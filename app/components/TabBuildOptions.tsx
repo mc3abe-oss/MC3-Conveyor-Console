@@ -95,21 +95,19 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
 
           {/* End guards */}
           <div>
-            <label className="label">End Guards</label>
-            <div className="flex flex-wrap gap-4">
+            <label htmlFor="end_guards" className="label">End Guards</label>
+            <select
+              id="end_guards"
+              className="input"
+              value={inputs.end_guards}
+              onChange={(e) => updateInput('end_guards', e.target.value)}
+            >
               {Object.values(EndGuards).map((option) => (
-                <label key={option} className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="end_guards"
-                    checked={inputs.end_guards === option}
-                    onChange={() => updateInput('end_guards', option)}
-                    className="mr-2"
-                  />
+                <option key={option} value={option}>
                   {option}
-                </label>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Finger safe */}
@@ -148,21 +146,19 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
         <div className="grid grid-cols-1 gap-4">
           {/* Side rails */}
           <div>
-            <label className="label">Side Rails</label>
-            <div className="flex flex-wrap gap-4">
+            <label htmlFor="side_rails" className="label">Side Rails</label>
+            <select
+              id="side_rails"
+              className="input"
+              value={inputs.side_rails}
+              onChange={(e) => updateInput('side_rails', e.target.value)}
+            >
               {Object.values(SideRails).map((option) => (
-                <label key={option} className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="side_rails"
-                    checked={inputs.side_rails === option}
-                    onChange={() => updateInput('side_rails', option)}
-                    className="mr-2"
-                  />
+                <option key={option} value={option}>
                   {option}
-                </label>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Side skirts */}

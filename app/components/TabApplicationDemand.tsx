@@ -72,17 +72,30 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             />
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="parts_sharp"
-              className="mr-2 h-4 w-4"
-              checked={inputs.parts_sharp === 'Yes'}
-              onChange={(e) => updateInput('parts_sharp', e.target.checked ? 'Yes' : 'No')}
-            />
-            <label htmlFor="parts_sharp" className="label mb-0">
-              Parts Sharp
-            </label>
+          <div>
+            <label className="label">Parts Sharp</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="parts_sharp"
+                  checked={inputs.parts_sharp === 'No'}
+                  onChange={() => updateInput('parts_sharp', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="parts_sharp"
+                  checked={inputs.parts_sharp === 'Yes'}
+                  onChange={() => updateInput('parts_sharp', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
           </div>
 
           <div>
@@ -360,21 +373,19 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
 
           {/* Side loading direction */}
           <div>
-            <label className="label">Side Loading</label>
-            <div className="flex flex-wrap gap-4">
+            <label htmlFor="side_loading_direction" className="label">Side Loading</label>
+            <select
+              id="side_loading_direction"
+              className="input"
+              value={inputs.side_loading_direction}
+              onChange={(e) => updateInput('side_loading_direction', e.target.value)}
+            >
               {Object.values(SideLoadingDirection).map((option) => (
-                <label key={option} className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="side_loading_direction"
-                    checked={inputs.side_loading_direction === option}
-                    onChange={() => updateInput('side_loading_direction', option)}
-                    className="mr-2"
-                  />
+                <option key={option} value={option}>
                   {option}
-                </label>
+                </option>
               ))}
-            </div>
+            </select>
           </div>
 
           {/* Side loading severity - only show if direction != None */}

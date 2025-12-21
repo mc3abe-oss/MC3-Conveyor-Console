@@ -437,17 +437,30 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
             />
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="field_wiring_required"
-              className="mr-2 h-4 w-4"
-              checked={inputs.field_wiring_required === 'Yes'}
-              onChange={(e) => updateInput('field_wiring_required', e.target.checked ? 'Yes' : 'No')}
-            />
-            <label htmlFor="field_wiring_required" className="label mb-0">
-              Field Wiring Required
-            </label>
+          <div>
+            <label className="label">Field Wiring Required</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'No'}
+                  onChange={() => updateInput('field_wiring_required', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'Yes'}
+                  onChange={() => updateInput('field_wiring_required', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
           </div>
 
           <div>
@@ -489,30 +502,56 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
             />
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="labels_required"
-              className="mr-2 h-4 w-4"
-              checked={inputs.labels_required === 'Yes'}
-              onChange={(e) => updateInput('labels_required', e.target.checked ? 'Yes' : 'No')}
-            />
-            <label htmlFor="labels_required" className="label mb-0">
-              Labels Required
-            </label>
+          <div>
+            <label className="label">Labels Required</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="labels_required"
+                  checked={inputs.labels_required === 'No'}
+                  onChange={() => updateInput('labels_required', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="labels_required"
+                  checked={inputs.labels_required === 'Yes'}
+                  onChange={() => updateInput('labels_required', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
           </div>
 
-          <div className="flex items-center">
-            <input
-              type="checkbox"
-              id="send_to_estimating"
-              className="mr-2 h-4 w-4"
-              checked={inputs.send_to_estimating === 'Yes'}
-              onChange={(e) => updateInput('send_to_estimating', e.target.checked ? 'Yes' : 'No')}
-            />
-            <label htmlFor="send_to_estimating" className="label mb-0">
-              Send to Estimating
-            </label>
+          <div>
+            <label className="label">Send to Estimating</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="send_to_estimating"
+                  checked={inputs.send_to_estimating === 'No'}
+                  onChange={() => updateInput('send_to_estimating', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="send_to_estimating"
+                  checked={inputs.send_to_estimating === 'Yes'}
+                  onChange={() => updateInput('send_to_estimating', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
           </div>
 
           <div>
