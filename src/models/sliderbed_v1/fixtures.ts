@@ -33,6 +33,15 @@ import {
   LabelsRequired,
   SendToEstimating,
   MotorBrand,
+  SideRails,
+  EndGuards,
+  LacingStyle,
+  PulleySurfaceType,
+  DirectionMode,
+  SideLoadingDirection,
+  DriveLocation,
+  GearmotorOrientation,
+  DriveHand,
 } from './schema';
 
 // ============================================================================
@@ -100,6 +109,7 @@ export const EXAMPLE_FIXTURE: TestFixture = {
     part_weight_lbs: 5,
     part_length_in: 12,
     part_width_in: 6,
+    drop_height_in: 0,
     part_temperature_class: PartTemperatureClass.Ambient,
     fluid_type: FluidType.None,
     orientation: Orientation.Lengthwise,
@@ -121,6 +131,24 @@ export const EXAMPLE_FIXTURE: TestFixture = {
     labels_required: LabelsRequired.Yes,
     send_to_estimating: SendToEstimating.No,
     motor_brand: MotorBrand.Standard,
+    // Features & Options
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    // Application / Demand
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    // Specifications
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
   },
   expected_outputs: {
     parts_on_belt: 5.0,

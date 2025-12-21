@@ -17,6 +17,10 @@ import {
   ValidationWarning,
   PartTemperatureClass,
   FluidType,
+  EndGuards,
+  LacingStyle,
+  SideLoadingDirection,
+  SideLoadingSeverity,
 } from './schema';
 
 // ============================================================================
@@ -121,6 +125,15 @@ export function validateInputs(
     errors.push({
       field: 'part_spacing_in',
       message: 'Part Spacing must be >= 0',
+      severity: 'error',
+    });
+  }
+
+  // DROP HEIGHT
+  if (inputs.drop_height_in < 0) {
+    errors.push({
+      field: 'drop_height_in',
+      message: 'Drop height cannot be negative.',
       severity: 'error',
     });
   }
@@ -330,6 +343,15 @@ export function applyApplicationRules(
     });
   }
 
+  // DROP HEIGHT WARNING
+  if (inputs.drop_height_in >= 24) {
+    warnings.push({
+      field: 'drop_height_in',
+      message: 'Drop height is high. Consider impact or wear protection.',
+      severity: 'warning',
+    });
+  }
+
   // INCLINE WARNINGS
   const inclineDeg = inputs.conveyor_incline_deg ?? 0;
 
@@ -358,6 +380,72 @@ export function applyApplicationRules(
       message: 'Incline exceeds 20°. Product retention by friction alone may be insufficient. Cleats or other retention features are typically required at this angle.',
       severity: 'warning',
     });
+  }
+
+  // =========================================================================
+  // FEATURES & OPTIONS WARNINGS
+  // =========================================================================
+
+  // FINGER SAFE + END GUARDS
+  if (inputs.finger_safe && inputs.end_guards === EndGuards.None) {
+    warnings.push({
+      field: 'end_guards',
+      message: 'Finger safety may require end guards depending on layout.',
+      severity: 'warning',
+    });
+  }
+
+  // FINGER SAFE + BOTTOM COVERS
+  if (inputs.finger_safe && !inputs.bottom_covers) {
+    warnings.push({
+      field: 'bottom_covers',
+      message: 'Bottom covers may be required to achieve finger-safe access underneath.',
+      severity: 'warning',
+    });
+  }
+
+  // CLIPPER LACING + END GUARDS
+  if (inputs.lacing_style === LacingStyle.ClipperLacing) {
+    warnings.push({
+      field: 'lacing_style',
+      message: 'Clipper lacing may interfere with end guards due to protrusion.',
+      severity: 'warning',
+    });
+  }
+
+  // MAGNETIZED BED + LACING MATERIAL (future: check bed_type when added)
+  // For now, skip magnetized bed check since bed_type field doesn't exist yet
+
+  // =========================================================================
+  // APPLICATION / DEMAND WARNINGS
+  // =========================================================================
+
+  // START/STOP + SHORT CYCLE TIME
+  if (inputs.start_stop_application && inputs.cycle_time_seconds !== undefined && inputs.cycle_time_seconds < 10) {
+    warnings.push({
+      field: 'cycle_time_seconds',
+      message: 'Frequent start/stop applications may require a higher-duty gearbox.',
+      severity: 'warning',
+    });
+  }
+
+  // SIDE LOADING SEVERITY - moderate/heavy without V-guide
+  // Note: V-guide field doesn't exist yet, so we just warn about severity
+  const severity = inputs.side_loading_severity;
+  if (inputs.side_loading_direction !== SideLoadingDirection.None) {
+    if (severity === SideLoadingSeverity.Heavy) {
+      warnings.push({
+        field: 'side_loading_severity',
+        message: 'Heavy side loading typically requires a V-guide for reliable tracking.',
+        severity: 'warning',
+      });
+    } else if (severity === SideLoadingSeverity.Moderate) {
+      warnings.push({
+        field: 'side_loading_severity',
+        message: 'Moderate side loading may require a V-guide for reliable tracking.',
+        severity: 'warning',
+      });
+    }
   }
 
   return { errors, warnings };

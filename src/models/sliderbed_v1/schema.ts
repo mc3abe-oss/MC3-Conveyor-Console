@@ -142,6 +142,90 @@ export enum Orientation {
 }
 
 // ============================================================================
+// FEATURES & OPTIONS ENUMS
+// ============================================================================
+
+export enum SideRails {
+  None = 'None',
+  Left = 'Left',
+  Right = 'Right',
+  Both = 'Both',
+}
+
+export enum EndGuards {
+  None = 'None',
+  HeadEnd = 'Head end',
+  TailEnd = 'Tail end',
+  BothEnds = 'Both ends',
+}
+
+export enum LacingStyle {
+  Endless = 'Endless (no lacing)',
+  HiddenLacing = 'Hidden lacing',
+  ClipperLacing = 'Clipper lacing',
+}
+
+export enum LacingMaterial {
+  CarbonSteel = 'Carbon steel',
+  StainlessSteel = 'Stainless steel',
+}
+
+export enum SensorOption {
+  ProductPresent = 'Product present (photoeye)',
+  JamDetection = 'Jam detection',
+  BeltMisTracking = 'Belt mis-tracking',
+  ZeroSpeed = 'Zero speed / motion',
+  Encoder = 'Encoder',
+}
+
+// ============================================================================
+// APPLICATION / DEMAND ENUMS
+// ============================================================================
+
+export enum PulleySurfaceType {
+  Plain = 'Plain (bare steel)',
+  Lagged = 'Lagged',
+}
+
+export enum DirectionMode {
+  OneDirection = 'One direction',
+  Reversing = 'Reversing',
+}
+
+export enum SideLoadingDirection {
+  None = 'No side loading',
+  Left = 'Left',
+  Right = 'Right',
+  Both = 'Both',
+}
+
+export enum SideLoadingSeverity {
+  Light = 'Light',
+  Moderate = 'Moderate',
+  Heavy = 'Heavy',
+}
+
+// ============================================================================
+// SPECIFICATIONS ENUMS
+// ============================================================================
+
+export enum DriveLocation {
+  Head = 'Head',
+  Tail = 'Tail',
+  Center = 'Center',
+}
+
+export enum GearmotorOrientation {
+  SideMount = 'Side mount',
+  BottomMount = 'Bottom mount',
+}
+
+export enum DriveHand {
+  RightHand = 'Right-hand (RH)',
+  LeftHand = 'Left-hand (LH)',
+}
+
+// ============================================================================
 // INPUTS SCHEMA
 // ============================================================================
 
@@ -175,6 +259,9 @@ export interface SliderbedInputs {
 
   /** Part Width in inches */
   part_width_in: number;
+
+  /** Drop height in inches (vertical distance from part release to belt surface) */
+  drop_height_in: number;
 
   /** Part Temperature Class */
   part_temperature_class: PartTemperatureClass | string;
@@ -273,6 +360,72 @@ export interface SliderbedInputs {
 
   /** Motor Brand */
   motor_brand: MotorBrand | string;
+
+  // =========================================================================
+  // FEATURES & OPTIONS
+  // =========================================================================
+
+  /** Bottom covers - include covers under return side */
+  bottom_covers: boolean;
+
+  /** Side rails */
+  side_rails: SideRails | string;
+
+  /** End guards */
+  end_guards: EndGuards | string;
+
+  /** Finger safe - design intent flag */
+  finger_safe: boolean;
+
+  /** Lacing style */
+  lacing_style: LacingStyle | string;
+
+  /** Lacing material - required if lacing_style != Endless */
+  lacing_material?: LacingMaterial | string;
+
+  /** Side skirts - optional belt edge containment */
+  side_skirts: boolean;
+
+  /** Sensor options - multi-select */
+  sensor_options: string[];
+
+  // =========================================================================
+  // APPLICATION / DEMAND (Extended)
+  // =========================================================================
+
+  /** Pulley surface type */
+  pulley_surface_type: PulleySurfaceType | string;
+
+  /** Start/stop application */
+  start_stop_application: boolean;
+
+  /** Cycle time in seconds - required if start_stop_application = true */
+  cycle_time_seconds?: number;
+
+  /** Direction mode */
+  direction_mode: DirectionMode | string;
+
+  /** Side loading direction */
+  side_loading_direction: SideLoadingDirection | string;
+
+  /** Side loading severity - required if side_loading_direction != None */
+  side_loading_severity?: SideLoadingSeverity | string;
+
+  // =========================================================================
+  // SPECIFICATIONS
+  // =========================================================================
+
+  /** Drive location */
+  drive_location: DriveLocation | string;
+
+  /** Brake motor */
+  brake_motor: boolean;
+
+  /** Gearmotor mounting orientation */
+  gearmotor_orientation: GearmotorOrientation | string;
+
+  /** Drive hand (RH/LH) - when facing discharge end */
+  drive_hand: DriveHand | string;
 }
 
 // ============================================================================
@@ -447,6 +600,7 @@ export const DEFAULT_PARAMETERS: SliderbedParameters = {
 
 export const DEFAULT_INPUT_VALUES = {
   conveyor_incline_deg: 0,
+  drop_height_in: 0,
   part_spacing_in: 0,
   throughput_margin_pct: 0,
   orientation: Orientation.Lengthwise,
@@ -468,4 +622,25 @@ export const DEFAULT_INPUT_VALUES = {
   labels_required: LabelsRequired.Yes,
   send_to_estimating: SendToEstimating.No,
   motor_brand: MotorBrand.Standard,
+
+  // Features & Options defaults
+  bottom_covers: false,
+  side_rails: SideRails.None,
+  end_guards: EndGuards.None,
+  finger_safe: false,
+  lacing_style: LacingStyle.Endless,
+  side_skirts: false,
+  sensor_options: [],
+
+  // Application / Demand defaults
+  pulley_surface_type: PulleySurfaceType.Plain,
+  start_stop_application: false,
+  direction_mode: DirectionMode.OneDirection,
+  side_loading_direction: SideLoadingDirection.None,
+
+  // Specifications defaults
+  drive_location: DriveLocation.Head,
+  brake_motor: false,
+  gearmotor_orientation: GearmotorOrientation.SideMount,
+  drive_hand: DriveHand.RightHand,
 };

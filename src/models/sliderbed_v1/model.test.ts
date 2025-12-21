@@ -36,6 +36,15 @@ import {
   LabelsRequired,
   SendToEstimating,
   MotorBrand,
+  SideRails,
+  EndGuards,
+  LacingStyle,
+  PulleySurfaceType,
+  DirectionMode,
+  SideLoadingDirection,
+  DriveLocation,
+  GearmotorOrientation,
+  DriveHand,
 } from './schema';
 
 describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
@@ -57,6 +66,24 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     labels_required: LabelsRequired.Yes,
     send_to_estimating: SendToEstimating.No,
     motor_brand: MotorBrand.Standard,
+    // Features & Options
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    // Application / Demand
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    // Specifications
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
   };
 
   // ========================================================================
@@ -74,6 +101,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -97,6 +125,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 3,
         part_length_in: 10,
         part_width_in: 5,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -119,6 +148,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 3,
         part_length_in: 10,
         part_width_in: 5,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -152,6 +182,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -175,6 +206,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -197,6 +229,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: -5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -208,6 +241,54 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
 
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
+    });
+
+    it('should reject negative drop height', () => {
+      const inputs: SliderbedInputs = {
+        conveyor_length_cc_in: 120,
+        conveyor_width_in: 24,
+        pulley_diameter_in: 2.5,
+        drive_rpm: 100,
+        part_weight_lbs: 5,
+        part_length_in: 12,
+        part_width_in: 6,
+        drop_height_in: -5,
+        part_temperature_class: PartTemperatureClass.Ambient,
+        fluid_type: FluidType.None,
+        orientation: Orientation.Lengthwise,
+        part_spacing_in: 0,
+        ...APPLICATION_DEFAULTS,
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.some(e => e.field === 'drop_height_in')).toBe(true);
+      expect(result.errors?.some(e => e.message.includes('negative'))).toBe(true);
+    });
+
+    it('should allow zero drop height', () => {
+      const inputs: SliderbedInputs = {
+        conveyor_length_cc_in: 120,
+        conveyor_width_in: 24,
+        pulley_diameter_in: 2.5,
+        drive_rpm: 100,
+        part_weight_lbs: 5,
+        part_length_in: 12,
+        part_width_in: 6,
+        drop_height_in: 0,
+        part_temperature_class: PartTemperatureClass.Ambient,
+        fluid_type: FluidType.None,
+        orientation: Orientation.Lengthwise,
+        part_spacing_in: 0,
+        ...APPLICATION_DEFAULTS,
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.errors).toBeUndefined();
     });
   });
 
@@ -252,6 +333,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.ConsiderableOilLiquid,
         orientation: Orientation.Lengthwise,
@@ -277,6 +359,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -302,6 +385,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Hot,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -318,6 +402,32 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       ).toBe(true);
     });
 
+    it('should warn on high drop height (>= 24 inches)', () => {
+      const inputs: SliderbedInputs = {
+        conveyor_length_cc_in: 120,
+        conveyor_width_in: 24,
+        pulley_diameter_in: 2.5,
+        drive_rpm: 100,
+        part_weight_lbs: 5,
+        part_length_in: 12,
+        part_width_in: 6,
+        drop_height_in: 24,
+        part_temperature_class: PartTemperatureClass.Ambient,
+        fluid_type: FluidType.None,
+        orientation: Orientation.Lengthwise,
+        part_spacing_in: 0,
+        ...APPLICATION_DEFAULTS,
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.warnings).toBeDefined();
+      expect(
+        result.warnings?.some((w) => w.field === 'drop_height_in' && w.message.includes('high'))
+      ).toBe(true);
+    });
+
     it('should show info on light oil', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
@@ -327,6 +437,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.MinimalResidualOil,
         orientation: Orientation.Lengthwise,
@@ -360,6 +471,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -381,6 +493,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Crosswise,
@@ -402,6 +515,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 3,
         part_length_in: 10,
         part_width_in: 5,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -424,6 +538,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 3,
         part_length_in: 10,
         part_width_in: 5,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -446,6 +561,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 3,
         part_length_in: 10,
         part_width_in: 5,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -475,6 +591,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -500,6 +617,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -530,6 +648,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       part_weight_lbs: 5,
       part_length_in: 12,
       part_width_in: 6,
+      drop_height_in: 0,
       part_temperature_class: PartTemperatureClass.Ambient,
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,
@@ -633,6 +752,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -656,6 +776,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
+        drop_height_in: 0,
         part_temperature_class: PartTemperatureClass.Ambient,
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
@@ -683,6 +804,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       part_weight_lbs: 5,
       part_length_in: 12,
       part_width_in: 6,
+      drop_height_in: 0,
       part_temperature_class: PartTemperatureClass.Ambient,
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,

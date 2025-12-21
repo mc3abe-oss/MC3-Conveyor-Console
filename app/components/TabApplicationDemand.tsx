@@ -6,7 +6,14 @@
 
 'use client';
 
-import { SliderbedInputs, Orientation } from '../../src/models/sliderbed_v1/schema';
+import {
+  SliderbedInputs,
+  Orientation,
+  PulleySurfaceType,
+  DirectionMode,
+  SideLoadingDirection,
+  SideLoadingSeverity,
+} from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 
 interface TabApplicationDemandProps {
@@ -127,6 +134,24 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
           </div>
 
           <div>
+            <label htmlFor="drop_height_in" className="label">
+              Drop Height (in)
+            </label>
+            <input
+              type="number"
+              id="drop_height_in"
+              className="input"
+              value={inputs.drop_height_in}
+              onChange={(e) => updateInput('drop_height_in', parseFloat(e.target.value) || 0)}
+              step="0.1"
+              min="0"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Vertical drop onto the belt. Zero is perfectly acceptable.
+            </p>
+          </div>
+
+          <div>
             <label htmlFor="part_spacing_in" className="label">
               Part Spacing (in)
             </label>
@@ -237,6 +262,141 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
               required
             />
           </div>
+        </div>
+      </div>
+
+      {/* Section C: Application Details */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Details</h3>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Pulley surface type */}
+          <div>
+            <label htmlFor="pulley_surface_type" className="label">
+              Pulley Surface Type
+            </label>
+            <select
+              id="pulley_surface_type"
+              className="input"
+              value={inputs.pulley_surface_type}
+              onChange={(e) => updateInput('pulley_surface_type', e.target.value)}
+            >
+              {Object.values(PulleySurfaceType).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Direction mode */}
+          <div>
+            <label className="label">Direction Mode</label>
+            <div className="flex gap-4">
+              {Object.values(DirectionMode).map((option) => (
+                <label key={option} className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="direction_mode"
+                    checked={inputs.direction_mode === option}
+                    onChange={() => updateInput('direction_mode', option)}
+                    className="mr-2"
+                  />
+                  {option}
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Reversing affects pulleys, V-guides, and controls.
+            </p>
+          </div>
+
+          {/* Start/stop application */}
+          <div>
+            <label className="label">Start/Stop Application</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="start_stop_application"
+                  checked={inputs.start_stop_application === false}
+                  onChange={() => updateInput('start_stop_application', false)}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="start_stop_application"
+                  checked={inputs.start_stop_application === true}
+                  onChange={() => updateInput('start_stop_application', true)}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
+          </div>
+
+          {/* Cycle time - only show if start/stop = true */}
+          {inputs.start_stop_application && (
+            <div>
+              <label htmlFor="cycle_time_seconds" className="label">
+                Cycle Time (seconds)
+              </label>
+              <input
+                type="number"
+                id="cycle_time_seconds"
+                className="input"
+                value={inputs.cycle_time_seconds || ''}
+                onChange={(e) =>
+                  updateInput('cycle_time_seconds', e.target.value ? parseFloat(e.target.value) : undefined)
+                }
+                step="0.1"
+                min="0"
+                required
+              />
+            </div>
+          )}
+
+          {/* Side loading direction */}
+          <div>
+            <label className="label">Side Loading</label>
+            <div className="flex flex-wrap gap-4">
+              {Object.values(SideLoadingDirection).map((option) => (
+                <label key={option} className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="side_loading_direction"
+                    checked={inputs.side_loading_direction === option}
+                    onChange={() => updateInput('side_loading_direction', option)}
+                    className="mr-2"
+                  />
+                  {option}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Side loading severity - only show if direction != None */}
+          {inputs.side_loading_direction !== SideLoadingDirection.None && (
+            <div>
+              <label className="label">Side Loading Severity</label>
+              <div className="flex gap-4">
+                {Object.values(SideLoadingSeverity).map((option) => (
+                  <label key={option} className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="side_loading_severity"
+                      checked={inputs.side_loading_severity === option}
+                      onChange={() => updateInput('side_loading_severity', option)}
+                      className="mr-2"
+                    />
+                    {option}
+                  </label>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

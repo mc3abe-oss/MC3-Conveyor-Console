@@ -6,9 +6,19 @@ import {
   SliderbedInputs,
   Orientation,
   CalculationResult,
+  SideRails,
+  EndGuards,
+  LacingStyle,
+  PulleySurfaceType,
+  DirectionMode,
+  SideLoadingDirection,
+  DriveLocation,
+  GearmotorOrientation,
+  DriveHand,
 } from '../../src/models/sliderbed_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorBuild from './TabConveyorBuild';
+import TabBuildOptions from './TabBuildOptions';
 
 interface Props {
   onCalculate: (result: CalculationResult) => void;
@@ -29,7 +39,7 @@ export default function CalculatorForm({
   triggerCalculate,
   hideCalculateButton = false,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'application' | 'conveyor'>('application');
+  const [activeTab, setActiveTab] = useState<'application' | 'conveyor' | 'build'>('application');
 
   const [inputs, setInputs] = useState<SliderbedInputs>({
     conveyor_length_cc_in: 120,
@@ -40,6 +50,7 @@ export default function CalculatorForm({
     part_weight_lbs: 5,
     part_length_in: 12,
     part_width_in: 6,
+    drop_height_in: 0,
     part_temperature_class: 'AMBIENT',
     fluid_type: 'NONE',
     orientation: Orientation.Lengthwise,
@@ -61,6 +72,27 @@ export default function CalculatorForm({
     labels_required: 'Yes', // Boolean checkbox
     send_to_estimating: 'No', // Boolean checkbox
     motor_brand: 'STANDARD', // Catalog (to be seeded)
+
+    // Features & Options
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+
+    // Application / Demand (extended)
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+
+    // Specifications
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
   });
 
   // Track the last loaded revision ID to prevent infinite loops
@@ -122,12 +154,12 @@ export default function CalculatorForm({
     <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-4">
       {/* Tab Navigation */}
       <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
+        <nav className="-mb-px flex flex-wrap gap-x-6 gap-y-1" aria-label="Tabs">
           <button
             type="button"
             onClick={() => setActiveTab('application')}
             className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
               ${
                 activeTab === 'application'
                   ? 'border-blue-500 text-blue-600'
@@ -135,13 +167,13 @@ export default function CalculatorForm({
               }
             `}
           >
-            Application & Demand
+            Application / Demand
           </button>
           <button
             type="button"
             onClick={() => setActiveTab('conveyor')}
             className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
+              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
               ${
                 activeTab === 'conveyor'
                   ? 'border-blue-500 text-blue-600'
@@ -149,7 +181,21 @@ export default function CalculatorForm({
               }
             `}
           >
-            Conveyor & Build
+            Conveyor
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('build')}
+            className={`
+              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
+              ${
+                activeTab === 'build'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            Build Options
           </button>
         </nav>
       </div>
@@ -161,6 +207,9 @@ export default function CalculatorForm({
         )}
         {activeTab === 'conveyor' && (
           <TabConveyorBuild inputs={inputs} updateInput={updateInput} />
+        )}
+        {activeTab === 'build' && (
+          <TabBuildOptions inputs={inputs} updateInput={updateInput} />
         )}
       </div>
 
