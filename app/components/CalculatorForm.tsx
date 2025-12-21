@@ -18,6 +18,7 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
 } from '../../src/models/sliderbed_v1/schema';
+import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorBuild from './TabConveyorBuild';
 import TabBuildOptions from './TabBuildOptions';
@@ -44,6 +45,8 @@ export default function CalculatorForm({
   const [activeTab, setActiveTab] = useState<'application' | 'conveyor' | 'build'>('application');
 
   const [inputs, setInputs] = useState<SliderbedInputs>({
+    // Bed type - determines friction coefficient preset
+    bed_type: BedType.SliderBed,
     conveyor_length_cc_in: 120,
     conveyor_width_in: 24,
     pulley_diameter_in: 2.5,
@@ -187,7 +190,7 @@ export default function CalculatorForm({
               }
             `}
           >
-            Conveyor
+            Conveyor Design
           </button>
           <button
             type="button"

@@ -1,20 +1,20 @@
 /**
- * SLIDERBED CONVEYOR v1.2 - VALIDATION RULES
+ * BELT CONVEYOR v1.0 - VALIDATION RULES
  *
- * This file implements all validation rules, hard errors, warnings, and info messages
- * as defined in the Model v1 specification.
+ * This module extends sliderbed validation with:
+ * - Updated error/warning messages (belt conveyor, not sliderbed)
+ * - Premium feature info messages
+ * - Bed type validation
  *
  * CHANGELOG:
- * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
- * v1.1 (2025-12-19): Fix open-belt wrap length: use πD not 2πD
- * v1.0 (2024-12-19): Initial implementation
+ * v1.0 (2025-12-21): Initial belt_conveyor_v1 with updated terminology
  */
 
+import type { BeltConveyorInputs, BeltConveyorParameters } from './schema';
+
+import type { ValidationError, ValidationWarning } from '../sliderbed_v1/schema';
+
 import {
-  SliderbedInputs,
-  SliderbedParameters,
-  ValidationError,
-  ValidationWarning,
   PartTemperatureClass,
   FluidType,
   EndGuards,
@@ -23,15 +23,23 @@ import {
   SideLoadingSeverity,
   BeltTrackingMethod,
   ShaftDiameterMode,
-} from './schema';
+} from '../sliderbed_v1/schema';
+
+import { calculatePremiumFlags } from './premium-flags';
+
+// Re-export validation types
+export type { ValidationError, ValidationWarning };
 
 // ============================================================================
 // INPUT VALIDATION
 // ============================================================================
 
-export function validateInputs(
-  inputs: SliderbedInputs
-): ValidationError[] {
+/**
+ * Validate belt conveyor inputs
+ *
+ * Same as sliderbed validation, with added bed_type validation
+ */
+export function validateInputs(inputs: BeltConveyorInputs): ValidationError[] {
   const errors: ValidationError[] = [];
 
   // GEOMETRY & LAYOUT
@@ -76,10 +84,7 @@ export function validateInputs(
     });
   }
 
-  if (
-    inputs.required_throughput_pph !== undefined &&
-    inputs.required_throughput_pph < 0
-  ) {
+  if (inputs.required_throughput_pph !== undefined && inputs.required_throughput_pph < 0) {
     errors.push({
       field: 'required_throughput_pph',
       message: 'Required throughput must be >= 0',
@@ -87,10 +92,7 @@ export function validateInputs(
     });
   }
 
-  if (
-    inputs.throughput_margin_pct !== undefined &&
-    inputs.throughput_margin_pct < 0
-  ) {
+  if (inputs.throughput_margin_pct !== undefined && inputs.throughput_margin_pct < 0) {
     errors.push({
       field: 'throughput_margin_pct',
       message: 'Throughput margin must be >= 0',
@@ -140,7 +142,7 @@ export function validateInputs(
     });
   }
 
-  // POWER-USER PARAMETERS (v1.2)
+  // POWER-USER PARAMETERS
   if (inputs.safety_factor !== undefined && inputs.safety_factor < 1.0) {
     errors.push({
       field: 'safety_factor',
@@ -165,7 +167,7 @@ export function validateInputs(
     });
   }
 
-  if (inputs.belt_coeff_piw !== undefined && (inputs.belt_coeff_piw < 0.05 || inputs.belt_coeff_piw > 0.30)) {
+  if (inputs.belt_coeff_piw !== undefined && (inputs.belt_coeff_piw < 0.05 || inputs.belt_coeff_piw > 0.3)) {
     errors.push({
       field: 'belt_coeff_piw',
       message: 'Belt coefficient piw should be between 0.05 and 0.30',
@@ -181,7 +183,7 @@ export function validateInputs(
     });
   }
 
-  if (inputs.belt_coeff_pil !== undefined && (inputs.belt_coeff_pil < 0.05 || inputs.belt_coeff_pil > 0.30)) {
+  if (inputs.belt_coeff_pil !== undefined && (inputs.belt_coeff_pil < 0.05 || inputs.belt_coeff_pil > 0.3)) {
     errors.push({
       field: 'belt_coeff_pil',
       message: 'Belt coefficient pil should be between 0.05 and 0.30',
@@ -238,10 +240,9 @@ export function validateInputs(
   }
 
   // BELT TRACKING & PULLEY VALIDATION
-
-  // V-guide profile required if V-guided
-  const isVGuided = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
-                    inputs.belt_tracking_method === 'V-guided';
+  const isVGuided =
+    inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+    inputs.belt_tracking_method === 'V-guided';
   if (isVGuided && !inputs.v_guide_profile) {
     errors.push({
       field: 'v_guide_profile',
@@ -251,8 +252,8 @@ export function validateInputs(
   }
 
   // Manual shaft diameters required if manual mode
-  const isManualShaft = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
-                        inputs.shaft_diameter_mode === 'Manual';
+  const isManualShaft =
+    inputs.shaft_diameter_mode === ShaftDiameterMode.Manual || inputs.shaft_diameter_mode === 'Manual';
   if (isManualShaft) {
     if (inputs.drive_shaft_diameter_in === undefined || inputs.drive_shaft_diameter_in <= 0) {
       errors.push({
@@ -270,7 +271,7 @@ export function validateInputs(
     }
   }
 
-  // BELT PIW/PIL OVERRIDE VALIDATION (v1.3)
+  // BELT PIW/PIL OVERRIDE VALIDATION
   if (inputs.belt_piw_override !== undefined && inputs.belt_piw_override <= 0) {
     errors.push({
       field: 'belt_piw_override',
@@ -279,7 +280,7 @@ export function validateInputs(
     });
   }
 
-  if (inputs.belt_piw_override !== undefined && (inputs.belt_piw_override < 0.05 || inputs.belt_piw_override > 0.30)) {
+  if (inputs.belt_piw_override !== undefined && (inputs.belt_piw_override < 0.05 || inputs.belt_piw_override > 0.3)) {
     errors.push({
       field: 'belt_piw_override',
       message: 'Belt PIW override should be between 0.05 and 0.30 lb/in',
@@ -295,7 +296,7 @@ export function validateInputs(
     });
   }
 
-  if (inputs.belt_pil_override !== undefined && (inputs.belt_pil_override < 0.05 || inputs.belt_pil_override > 0.30)) {
+  if (inputs.belt_pil_override !== undefined && (inputs.belt_pil_override < 0.05 || inputs.belt_pil_override > 0.3)) {
     errors.push({
       field: 'belt_pil_override',
       message: 'Belt PIL override should be between 0.05 and 0.30 lb/in',
@@ -345,7 +346,7 @@ export function validateInputs(
 // PARAMETER VALIDATION
 // ============================================================================
 
-export function validateParameters(parameters: SliderbedParameters): ValidationError[] {
+export function validateParameters(parameters: BeltConveyorParameters): ValidationError[] {
   const errors: ValidationError[] = [];
 
   if (parameters.friction_coeff < 0.1 || parameters.friction_coeff > 1.0) {
@@ -396,16 +397,16 @@ export function validateParameters(parameters: SliderbedParameters): ValidationE
 // ============================================================================
 
 export function applyApplicationRules(
-  inputs: SliderbedInputs
+  inputs: BeltConveyorInputs
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
 
-  // HARD ERROR: Red hot parts
+  // HARD ERROR: Red hot parts (updated terminology)
   if (inputs.part_temperature_class === 'RED_HOT' || inputs.part_temperature_class === PartTemperatureClass.RedHot) {
     errors.push({
       field: 'part_temperature_class',
-      message: 'Do not use sliderbed conveyor for red hot parts',
+      message: 'Do not use belt conveyor for red hot parts',
       severity: 'error',
     });
   }
@@ -455,14 +456,15 @@ export function applyApplicationRules(
     });
   }
 
-  // INCLINE WARNINGS
+  // INCLINE WARNINGS (updated terminology)
   const inclineDeg = inputs.conveyor_incline_deg ?? 0;
 
   // ERROR: Incline > 45°
   if (inclineDeg > 45) {
     errors.push({
       field: 'conveyor_incline_deg',
-      message: 'Incline exceeds 45°. Sliderbed conveyor without positive engagement is not supported by this model.',
+      message:
+        'Incline exceeds 45°. Belt conveyor without positive engagement is not supported by this model.',
       severity: 'error',
     });
   }
@@ -471,7 +473,8 @@ export function applyApplicationRules(
   if (inclineDeg > 35 && inclineDeg <= 45) {
     warnings.push({
       field: 'conveyor_incline_deg',
-      message: 'Incline exceeds 35°. Product retention by friction alone is unlikely. Cleats or positive engagement features are required for reliable operation.',
+      message:
+        'Incline exceeds 35°. Product retention by friction alone is unlikely. Cleats or positive engagement features are required for reliable operation.',
       severity: 'warning',
     });
   }
@@ -480,7 +483,8 @@ export function applyApplicationRules(
   if (inclineDeg > 20 && inclineDeg <= 35) {
     warnings.push({
       field: 'conveyor_incline_deg',
-      message: 'Incline exceeds 20°. Product retention by friction alone may be insufficient. Cleats or other retention features are typically required at this angle.',
+      message:
+        'Incline exceeds 20°. Product retention by friction alone may be insufficient. Cleats or other retention features are typically required at this angle.',
       severity: 'warning',
     });
   }
@@ -516,17 +520,15 @@ export function applyApplicationRules(
     });
   }
 
-  // MAGNETIZED BED + LACING MATERIAL (future: check bed_type when added)
-  // For now, skip magnetized bed check since bed_type field doesn't exist yet
-
   // =========================================================================
   // BELT SELECTION VALIDATION
   // =========================================================================
 
   // Pulley diameter vs belt minimum
   if (inputs.belt_catalog_key) {
-    const isVGuidedBelt = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
-                          inputs.belt_tracking_method === 'V-guided';
+    const isVGuidedBelt =
+      inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+      inputs.belt_tracking_method === 'V-guided';
     const minPulleyDia = isVGuidedBelt
       ? inputs.belt_min_pulley_dia_with_vguide_in
       : inputs.belt_min_pulley_dia_no_vguide_in;
@@ -554,7 +556,6 @@ export function applyApplicationRules(
   }
 
   // SIDE LOADING SEVERITY - moderate/heavy without V-guide
-  // Note: V-guide field doesn't exist yet, so we just warn about severity
   const severity = inputs.side_loading_severity;
   if (inputs.side_loading_direction !== SideLoadingDirection.None) {
     if (severity === SideLoadingSeverity.Heavy) {
@@ -572,6 +573,21 @@ export function applyApplicationRules(
     }
   }
 
+  // =========================================================================
+  // PREMIUM FEATURE INFO MESSAGES
+  // =========================================================================
+
+  const premiumFlags = calculatePremiumFlags(inputs);
+  if (premiumFlags.is_premium) {
+    for (const reason of premiumFlags.premium_reasons) {
+      warnings.push({
+        field: 'premium',
+        message: `Premium feature: ${reason}`,
+        severity: 'info',
+      });
+    }
+  }
+
   return { errors, warnings };
 }
 
@@ -580,8 +596,8 @@ export function applyApplicationRules(
 // ============================================================================
 
 export function validate(
-  inputs: SliderbedInputs,
-  parameters: SliderbedParameters
+  inputs: BeltConveyorInputs,
+  parameters: BeltConveyorParameters
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   const inputErrors = validateInputs(inputs);
   const paramErrors = validateParameters(parameters);

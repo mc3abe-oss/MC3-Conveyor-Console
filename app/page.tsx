@@ -4,19 +4,11 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import CalculatorForm from './components/CalculatorForm';
 import CalculationResults from './components/CalculationResults';
 import ReferenceHeader from './components/ReferenceHeader';
-import RevisionsPanel from './components/RevisionsPanel';
 import FindConfigModal from './components/FindConfigModal';
+import Header from './components/Header';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../src/lib/catalogs';
 import { payloadsEqual } from '../src/lib/payload-compare';
-
-interface Revision {
-  id: string;
-  revision_number: number;
-  created_at: string;
-  created_by_user_id: string;
-  change_note?: string;
-}
 
 interface Configuration {
   id: string;
@@ -35,6 +27,7 @@ export default function CalculatorPage() {
   const [referenceType, setReferenceType] = useState<'QUOTE' | 'SALES_ORDER'>('QUOTE');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [lineKey, setLineKey] = useState('1');
+  const [conveyorQty, setConveyorQty] = useState(1);
 
   // Load/Save state with dirty tracking
   const [loadedConfigurationId, setLoadedConfigurationId] = useState<string | null>(null);
@@ -51,13 +44,12 @@ export default function CalculatorPage() {
     revisionNumber?: number;
     savedAt?: string;
     savedByUser?: string;
+    configurationId?: string;
   }>({ isLoaded: false });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Revisions state
-  const [revisions, setRevisions] = useState<Revision[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   // Find Config Modal
@@ -69,8 +61,12 @@ export default function CalculatorPage() {
   };
 
   // Build application_json from inputs with all application fields
-  const buildApplicationJson = (inputs: SliderbedInputs) => {
-    const applicationFields: Record<string, { item_key: string; label: string } | string> = {};
+  // NOTE: conveyorQty is passed separately since it's line-level metadata, not a calculator input
+  const buildApplicationJson = (inputs: SliderbedInputs, qty: number = 1) => {
+    const applicationFields: Record<string, { item_key: string; label: string } | string | number> = {};
+
+    // Line-level metadata (quote/order data, NOT engineering inputs)
+    applicationFields.conveyor_qty = qty;
 
     // Extract catalog fields
     Object.keys(CATALOG_KEYS).forEach((fieldName) => {
@@ -109,9 +105,9 @@ export default function CalculatorPage() {
     return {
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
-      application_json: buildApplicationJson(inputs),
+      application_json: buildApplicationJson(inputs, conveyorQty),
     };
-  }, [inputs]);
+  }, [inputs, conveyorQty]);
 
   // Compute isDirty
   const isDirty = useMemo(() => {
@@ -259,13 +255,13 @@ export default function CalculatorPage() {
     setReferenceType('QUOTE');
     setReferenceNumber('');
     setLineKey('1');
+    setConveyorQty(1);
 
     // Reset loaded state
     setLoadedConfigurationId(null);
     setLoadedRevisionId(null);
     setInitialLoadedPayload(null);
     setLoadedState({ isLoaded: false });
-    setRevisions([]);
 
     // Reset inputs to null (form will use its defaults)
     setInputs(null);
@@ -313,7 +309,12 @@ export default function CalculatorPage() {
         revisionNumber: revision.revision_number,
         savedAt: revision.created_at,
         savedByUser: revision.created_by_user_id,
+        configurationId: configuration.id,
       });
+
+      // Restore conveyor_qty from application_json (default to 1 if not present)
+      const savedQty = revision.application_json?.conveyor_qty;
+      setConveyorQty(typeof savedQty === 'number' && savedQty >= 1 ? savedQty : 1);
 
       // Set inputs from revision
       setInputs(revision.inputs_json);
@@ -352,27 +353,12 @@ export default function CalculatorPage() {
       setInitialLoadedPayload(null);
       console.log('[Load] Cleared initial payload, will be set by effect');
 
-      // Load all revisions for this configuration
-      await loadRevisions(configuration.id);
-
       showToast(`Loaded ${referenceType} ${referenceNumber} Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('[Load] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to load configuration');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadRevisions = async (configurationId: string) => {
-    try {
-      const response = await fetch(`/api/configurations/revisions?configuration_id=${configurationId}`);
-      if (response.ok) {
-        const data = await response.json() as { revisions?: Revision[] };
-        setRevisions(data.revisions || []);
-      }
-    } catch (error) {
-      console.error('Load revisions error:', error);
     }
   };
 
@@ -455,7 +441,7 @@ export default function CalculatorPage() {
       model_key: 'sliderbed_conveyor_v1',
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
-      application_json: buildApplicationJson(inputs),
+      application_json: buildApplicationJson(inputs, conveyorQty),
       outputs_json: result.outputs,
       warnings_json: result.warnings,
     };
@@ -508,6 +494,7 @@ export default function CalculatorPage() {
         revisionNumber: revision.revision_number,
         savedAt: revision.created_at,
         savedByUser: revision.created_by_user_id,
+        configurationId: configuration.id,
       });
 
       // Reset initial loaded payload to current state
@@ -516,81 +503,12 @@ export default function CalculatorPage() {
 
       console.log('[Save] Updated state, new revision:', revision.revision_number);
 
-      // Reload revisions list
-      await loadRevisions(configuration.id);
-
       showToast(`Saved Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('[Save] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to save configuration');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleLoadRevision = async (revisionId: string) => {
-    try {
-      console.log('[LoadRevision] Loading revision:', revisionId);
-      const response = await fetch(`/api/configurations/revision?id=${revisionId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load revision');
-      }
-
-      const data = await response.json() as { revision: any };
-      const { revision } = data;
-
-      // Set inputs from this revision
-      setInputs(revision.inputs_json);
-
-      // Update loaded revision ID
-      setLoadedRevisionId(revision.id);
-
-      // Update loaded state
-      setLoadedState(prev => ({
-        ...prev,
-        revisionNumber: revision.revision_number,
-        savedAt: revision.created_at,
-        savedByUser: revision.created_by_user_id,
-      }));
-
-      // If revision has outputs, restore them and mark as calculated
-      if (revision.outputs_json) {
-        setResult({
-          success: true,
-          outputs: revision.outputs_json,
-          warnings: revision.warnings_json || [],
-          metadata: {
-            model_version_id: '1.0.0',
-            calculated_at: revision.created_at || new Date().toISOString(),
-            model_key: 'sliderbed_conveyor_v1',
-          },
-        });
-        setCalcStatus('ok');
-
-        // Set lastCalculatedPayload to match loaded state
-        const loadedPayload = {
-          inputs_json: revision.inputs_json,
-          parameters_json: DEFAULT_PARAMETERS,
-          application_json: revision.application_json,
-        };
-        setLastCalculatedPayload(loadedPayload);
-        console.log('[LoadRevision] Restored outputs and set lastCalculatedPayload');
-      } else {
-        // No outputs - clear result and calculation status
-        setResult(null);
-        setCalcStatus('idle');
-        setLastCalculatedPayload(null);
-        console.log('[LoadRevision] No outputs, cleared calc state');
-      }
-
-      // Clear initial payload so the effect can set it after inputs update
-      setInitialLoadedPayload(null);
-      console.log('[LoadRevision] Cleared initial payload, will be set by effect');
-
-      showToast(`Loaded Rev ${revision.revision_number}`);
-    } catch (error) {
-      console.error('Load revision error:', error);
-      showToast('Failed to load revision');
     }
   };
 
@@ -626,7 +544,12 @@ export default function CalculatorPage() {
         revisionNumber: revision.revision_number,
         savedAt: revision.created_at,
         savedByUser: revision.created_by_user_id,
+        configurationId: configuration.id,
       });
+
+      // Restore conveyor_qty from application_json (default to 1 if not present)
+      const savedQty = revision.application_json?.conveyor_qty;
+      setConveyorQty(typeof savedQty === 'number' && savedQty >= 1 ? savedQty : 1);
 
       // Set inputs from revision
       setInputs(revision.inputs_json);
@@ -665,9 +588,6 @@ export default function CalculatorPage() {
       setInitialLoadedPayload(null);
       console.log('[FindConfig] Cleared initial payload, will be set by effect');
 
-      // Load all revisions
-      await loadRevisions(configuration.id);
-
       showToast(`Loaded ${config.reference_type} ${config.reference_number} Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('Load error:', error);
@@ -684,29 +604,34 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Toast notification */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg">
-          {toast}
-        </div>
-      )}
+    <>
+      <Header loadedConfigurationId={loadedConfigurationId} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Toast notification */}
+          {toast && (
+            <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg">
+              {toast}
+            </div>
+          )}
 
-      {/* Find Config Modal */}
-      <FindConfigModal
-        isOpen={isFindModalOpen}
-        onClose={() => setIsFindModalOpen(false)}
-        onSelect={handleFindConfig}
-      />
+          {/* Find Config Modal */}
+          <FindConfigModal
+            isOpen={isFindModalOpen}
+            onClose={() => setIsFindModalOpen(false)}
+            onSelect={handleFindConfig}
+          />
 
-      {/* Reference Header */}
-      <ReferenceHeader
+          {/* Reference Header */}
+          <ReferenceHeader
         referenceType={referenceType}
         referenceNumber={referenceNumber}
         lineKey={lineKey}
+        conveyorQty={conveyorQty}
         onReferenceTypeChange={setReferenceType}
         onReferenceNumberChange={handleReferenceNumberChange}
         onLineKeyChange={handleLineKeyChange}
+        onConveyorQtyChange={setConveyorQty}
         onLoad={handleLoad}
         onSave={handleSave}
         onCalculate={handleCalculateClick}
@@ -739,21 +664,12 @@ export default function CalculatorPage() {
             />
           </div>
 
-          {/* Revisions Panel */}
-          {revisions.length > 0 && (
-            <RevisionsPanel
-              revisions={revisions}
-              currentRevisionNumber={loadedState.revisionNumber}
-              onLoadRevision={handleLoadRevision}
-              isLoading={isLoading}
-            />
-          )}
         </div>
 
         <div>
           {result && (
             <div className="sticky top-8">
-              <CalculationResults result={result} />
+              <CalculationResults result={result} inputs={inputs ?? undefined} />
             </div>
           )}
           {!result && (
@@ -781,8 +697,10 @@ export default function CalculatorPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
-    </div>
+      </main>
+    </>
   );
 }

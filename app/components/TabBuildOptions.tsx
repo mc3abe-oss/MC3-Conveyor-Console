@@ -5,9 +5,9 @@
  * - Guards & Safety (bottom covers, end guards, finger safe)
  * - Guides & Containment (side rails, side skirts)
  * - Belt & Pulley (lacing style, lacing material)
- * - Sensors / Controls
- * - Drive & Gearmotor configuration
- * - Build Options & Deliverables (specs, support, finish, documentation, etc.)
+ * - Sensors / Controls (sensor options, field wiring)
+ * - Drive & Gearmotor configuration (location, orientation, hand, motor brand)
+ * - Documentation & Finish (specs, support, bearing, finish, labels, etc.)
  */
 
 'use client';
@@ -141,7 +141,7 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
                 Yes
               </label>
             </div>
-            <p className="text-xs text-gray-500 mt-1">Design intent flag, not a guarantee.</p>
+            <p className="text-xs text-gray-500 mt-1">Design intent flag for finger-safe guarding. Not a certification or guarantee. Affects end guard and cover recommendations.</p>
           </div>
         </div>
       </div>
@@ -310,6 +310,33 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
 
             <p className="text-xs text-gray-500 mt-1">Preference only. No logic applied yet.</p>
           </div>
+
+          {/* Field Wiring Required - moved from Documentation & Finish */}
+          <div>
+            <label className="label">Field Wiring Required</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'No'}
+                  onChange={() => updateInput('field_wiring_required', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'Yes'}
+                  onChange={() => updateInput('field_wiring_required', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -401,12 +428,26 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             </div>
             <p className="text-xs text-gray-500 mt-1">Reference: when facing the discharge end.</p>
           </div>
+
+          {/* Motor Brand - moved from Build Options section */}
+          <div>
+            <label htmlFor="motor_brand" className="label">
+              Motor Brand
+            </label>
+            <CatalogSelect
+              catalogKey="motor_brand"
+              value={inputs.motor_brand}
+              onChange={(value) => updateInput('motor_brand', value)}
+              id="motor_brand"
+              required
+            />
+          </div>
         </div>
       </div>
 
-      {/* Build Options & Deliverables */}
+      {/* Documentation & Finish */}
       <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Build Options & Deliverables</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentation & Finish</h3>
         <div className="grid grid-cols-1 gap-4">
           {/* Spec Source */}
           <div>
@@ -451,33 +492,6 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
               id="support_option"
               required
             />
-          </div>
-
-          {/* Field Wiring Required */}
-          <div>
-            <label className="label">Field Wiring Required</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="field_wiring_required"
-                  checked={inputs.field_wiring_required === 'No'}
-                  onChange={() => updateInput('field_wiring_required', 'No')}
-                  className="mr-2"
-                />
-                No
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="field_wiring_required"
-                  checked={inputs.field_wiring_required === 'Yes'}
-                  onChange={() => updateInput('field_wiring_required', 'Yes')}
-                  className="mr-2"
-                />
-                Yes
-              </label>
-            </div>
           </div>
 
           {/* Bearing Grade */}
@@ -574,20 +588,6 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
                 Yes
               </label>
             </div>
-          </div>
-
-          {/* Motor Brand */}
-          <div>
-            <label htmlFor="motor_brand" className="label">
-              Motor Brand
-            </label>
-            <CatalogSelect
-              catalogKey="motor_brand"
-              value={inputs.motor_brand}
-              onChange={(value) => updateInput('motor_brand', value)}
-              id="motor_brand"
-              required
-            />
           </div>
         </div>
       </div>

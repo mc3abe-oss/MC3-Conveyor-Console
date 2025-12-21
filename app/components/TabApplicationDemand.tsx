@@ -24,10 +24,10 @@ interface TabApplicationDemandProps {
 export default function TabApplicationDemand({ inputs, updateInput }: TabApplicationDemandProps) {
   return (
     <div className="space-y-6">
-      {/* Section A: What and how much (Demand + Product) */}
+      {/* Section A: Product Definition */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          What and How Much
+          Product Definition
         </h3>
         <div className="grid grid-cols-1 gap-4">
           <div>
@@ -163,7 +163,15 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
               Vertical drop onto the belt. Zero is perfectly acceptable.
             </p>
           </div>
+        </div>
+      </div>
 
+      {/* Section B: Throughput Requirements */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Throughput Requirements
+        </h3>
+        <div className="grid grid-cols-1 gap-4">
           <div>
             <label htmlFor="part_spacing_in" className="label">
               Part Spacing (in)
@@ -178,6 +186,9 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
               min="0"
               required
             />
+            <p className="text-xs text-gray-500 mt-1">
+              Center-to-center distance between parts in direction of travel.
+            </p>
           </div>
 
           <div>
@@ -216,69 +227,7 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
         </div>
       </div>
 
-      {/* Section B: Environmental factors */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Environmental Factors
-        </h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <label htmlFor="environment_factors" className="label">
-              Environment Factors
-            </label>
-            <CatalogSelect
-              catalogKey="environment_factors"
-              value={inputs.environment_factors}
-              onChange={(value) => updateInput('environment_factors', value)}
-              id="environment_factors"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="fluid_type" className="label">
-              Fluid Type
-            </label>
-            <CatalogSelect
-              catalogKey="fluid_type"
-              value={inputs.fluid_type}
-              onChange={(value) => updateInput('fluid_type', value)}
-              id="fluid_type"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="part_temperature_class" className="label">
-              Part Temperature
-            </label>
-            <CatalogSelect
-              catalogKey="part_temperature_class"
-              value={inputs.part_temperature_class}
-              onChange={(value) => updateInput('part_temperature_class', value)}
-              id="part_temperature_class"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="ambient_temperature" className="label">
-              Ambient Temperature
-            </label>
-            <input
-              type="text"
-              id="ambient_temperature"
-              className="input"
-              value={inputs.ambient_temperature}
-              onChange={(e) => updateInput('ambient_temperature', e.target.value)}
-              placeholder="e.g., Normal (60-90°F)"
-              required
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Section C: Application Details */}
+      {/* Section C: Application Details (moved before Environmental Factors) */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Details</h3>
         <div className="grid grid-cols-1 gap-4">
@@ -408,6 +357,71 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
               </div>
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Section D: Environmental Factors */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Environmental Factors
+        </h3>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label htmlFor="environment_factors" className="label">
+              Environment Factors
+            </label>
+            <CatalogSelect
+              catalogKey="environment_factors"
+              value={inputs.environment_factors}
+              onChange={(value) => updateInput('environment_factors', value)}
+              id="environment_factors"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="fluid_type" className="label">
+              Fluid Type
+            </label>
+            <CatalogSelect
+              catalogKey="fluid_type"
+              value={inputs.fluid_type}
+              onChange={(value) => updateInput('fluid_type', value)}
+              id="fluid_type"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="part_temperature_class" className="label">
+              Part Temperature
+            </label>
+            <CatalogSelect
+              catalogKey="part_temperature_class"
+              value={inputs.part_temperature_class}
+              onChange={(value) => updateInput('part_temperature_class', value)}
+              id="part_temperature_class"
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="ambient_temperature" className="label">
+              Ambient Temperature
+            </label>
+            <input
+              type="text"
+              id="ambient_temperature"
+              className="input"
+              value={inputs.ambient_temperature}
+              onChange={(e) => updateInput('ambient_temperature', e.target.value)}
+              placeholder="e.g., Normal (60-90°F)"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Enter temperature range or classification.
+            </p>
+          </div>
         </div>
       </div>
     </div>

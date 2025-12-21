@@ -4,9 +4,11 @@ interface ReferenceHeaderProps {
   referenceType: 'QUOTE' | 'SALES_ORDER';
   referenceNumber: string;
   lineKey: string;
+  conveyorQty: number;
   onReferenceTypeChange: (type: 'QUOTE' | 'SALES_ORDER') => void;
   onReferenceNumberChange: (number: string) => void;
   onLineKeyChange: (key: string) => void;
+  onConveyorQtyChange: (qty: number) => void;
   onLoad: () => void;
   onSave: () => void;
   onCalculate?: () => void;
@@ -31,9 +33,11 @@ export default function ReferenceHeader({
   referenceType,
   referenceNumber,
   lineKey,
+  conveyorQty,
   onReferenceTypeChange,
   onReferenceNumberChange,
   onLineKeyChange,
+  onConveyorQtyChange,
   onLoad,
   onSave,
   onCalculate,
@@ -62,11 +66,12 @@ export default function ReferenceHeader({
 
   const saveTooltip = getSaveTooltip();
   const calculateTooltip = getCalculateTooltip();
+
   return (
     <div className="card mb-6">
       <h2 className="text-xl font-semibold text-gray-900 mb-4">Reference</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
         <div>
           <label htmlFor="reference_type" className="label">
             Type
@@ -106,6 +111,25 @@ export default function ReferenceHeader({
             className="input"
             value={lineKey}
             onChange={(e) => onLineKeyChange(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <label htmlFor="conveyor_qty" className="label">
+            Quantity
+          </label>
+          <input
+            type="number"
+            id="conveyor_qty"
+            className="input"
+            value={conveyorQty}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              onConveyorQtyChange(isNaN(val) || val < 1 ? 1 : val);
+            }}
+            min="1"
+            max="999"
+            title="How many of this same conveyor configuration?"
           />
         </div>
 

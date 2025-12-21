@@ -1,13 +1,19 @@
 'use client';
 
-import { CalculationResult } from '../../src/models/sliderbed_v1/schema';
+import { CalculationResult, SliderbedInputs } from '../../src/models/sliderbed_v1/schema';
+import {
+  calculateTrackingGuidance,
+  getRiskLevelColor,
+  TrackingRiskLevel,
+} from '../../src/models/sliderbed_v1/tracking-guidance';
 import clsx from 'clsx';
 
 interface Props {
   result: CalculationResult;
+  inputs?: SliderbedInputs;
 }
 
-export default function CalculationResults({ result }: Props) {
+export default function CalculationResults({ result, inputs }: Props) {
   if (!result.success) {
     return (
       <div className="card">
@@ -225,6 +231,70 @@ export default function CalculationResults({ result }: Props) {
             </div>
           </div>
 
+          {/* Belt Tracking */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              Belt Tracking
+            </h4>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between items-center text-gray-700">
+                <span>Tracking Method:</span>
+                <span className="font-mono font-semibold">
+                  {outputs.is_v_guided ? 'V-Guided' : 'Crowned'}
+                </span>
+              </div>
+              <ResultRow
+                label="Pulley Face Length"
+                value={outputs.pulley_face_length_in}
+                unit="in"
+                decimals={2}
+              />
+              <ResultRow
+                label="Drive Shaft Diameter"
+                value={outputs.drive_shaft_diameter_in}
+                unit="in"
+                decimals={3}
+              />
+              <ResultRow
+                label="Tail Shaft Diameter"
+                value={outputs.tail_shaft_diameter_in}
+                unit="in"
+                decimals={3}
+              />
+            </div>
+
+            {/* Tracking Guidance Summary */}
+            {inputs && inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
+              const guidance = calculateTrackingGuidance(inputs);
+              const isOptimal = inputs.belt_tracking_method === guidance.recommendation;
+
+              return (
+                <div className={`mt-3 p-2 rounded text-xs ${
+                  isOptimal
+                    ? 'bg-green-50 border border-green-200'
+                    : guidance.riskLevel === TrackingRiskLevel.High
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getRiskLevelColor(guidance.riskLevel)}`}>
+                      {guidance.riskLevel} Risk
+                    </span>
+                    {isOptimal ? (
+                      <span className="text-green-700">
+                        Current selection matches recommendation
+                      </span>
+                    ) : (
+                      <span className={guidance.riskLevel === TrackingRiskLevel.High ? 'text-red-700' : 'text-yellow-700'}>
+                        Recommended: {guidance.recommendation}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Throughput Outputs */}
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
@@ -305,6 +375,20 @@ export default function CalculationResults({ result }: Props) {
                 value={outputs.pil_used}
                 decimals={3}
               />
+              {outputs.belt_piw_effective !== undefined && (
+                <ResultRow
+                  label="Belt PIW (effective)"
+                  value={outputs.belt_piw_effective}
+                  decimals={3}
+                />
+              )}
+              {outputs.belt_pil_effective !== undefined && (
+                <ResultRow
+                  label="Belt PIL (effective)"
+                  value={outputs.belt_pil_effective}
+                  decimals={3}
+                />
+              )}
               <ResultRow
                 label="Starting Belt Pull"
                 value={outputs.starting_belt_pull_lb_used}

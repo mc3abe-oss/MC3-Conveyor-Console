@@ -33,9 +33,50 @@ const PI = Math.PI;
 // ============================================================================
 
 /**
+ * Calculate effective belt PIW/PIL values
+ *
+ * v1.3: Compute effective values from override → catalog → parameter defaults chain
+ *
+ * Priority order:
+ *   1. belt_piw_override / belt_pil_override (user-entered values)
+ *   2. belt_piw / belt_pil (from catalog when belt is selected)
+ *   3. belt_coeff_piw / belt_coeff_pil (advanced parameter overrides)
+ *   4. Parameter defaults (pulley-diameter-based: 0.138 for 2.5", 0.109 otherwise)
+ */
+export function calculateEffectiveBeltCoefficients(
+  pulleyDiameterIn: number,
+  params: SliderbedParameters,
+  beltPiwOverride?: number,
+  beltPilOverride?: number,
+  beltPiwFromCatalog?: number,
+  beltPilFromCatalog?: number,
+  advancedPiw?: number,
+  advancedPil?: number
+): { piw: number; pil: number; belt_piw_effective: number; belt_pil_effective: number } {
+  // Compute belt-specific effective values (override → catalog)
+  const beltPiwEffective = beltPiwOverride ?? beltPiwFromCatalog;
+  const beltPilEffective = beltPilOverride ?? beltPilFromCatalog;
+
+  // Compute final PIW/PIL used in calculations (belt effective → advanced → default)
+  const defaultPiw = pulleyDiameterIn === 2.5 ? params.piw_2p5 : params.piw_other;
+  const defaultPil = pulleyDiameterIn === 2.5 ? params.pil_2p5 : params.pil_other;
+
+  const piw = beltPiwEffective ?? advancedPiw ?? defaultPiw;
+  const pil = beltPilEffective ?? advancedPil ?? defaultPil;
+
+  return {
+    piw,
+    pil,
+    belt_piw_effective: beltPiwEffective ?? piw,
+    belt_pil_effective: beltPilEffective ?? pil,
+  };
+}
+
+/**
  * Calculate belt weight coefficients (piw, pil)
  *
  * v1.2: Now accepts user overrides, otherwise falls back to pulley-diameter-based defaults
+ * @deprecated Use calculateEffectiveBeltCoefficients for new code
  *
  * Logic:
  *   If user provided belt_coeff_piw/pil, use those
@@ -462,10 +503,14 @@ export function calculate(
   const frictionCoeff = inputs.friction_coeff ?? parameters.friction_coeff;
   const motorRpm = inputs.motor_rpm ?? parameters.motor_rpm;
 
-  // Step 1: Belt weight coefficients (v1.2: now accepts user overrides)
-  const { piw, pil } = calculateBeltWeightCoefficients(
+  // Step 1: Belt weight coefficients (v1.3: now uses effective belt coefficients)
+  const { piw, pil, belt_piw_effective, belt_pil_effective } = calculateEffectiveBeltCoefficients(
     inputs.pulley_diameter_in,
     parameters,
+    inputs.belt_piw_override,
+    inputs.belt_pil_override,
+    inputs.belt_piw,
+    inputs.belt_pil,
     inputs.belt_coeff_piw,
     inputs.belt_coeff_pil
   );
@@ -606,6 +651,8 @@ export function calculate(
     belt_pull_calc_lb: beltPullCalcLb,
     piw_used: piw,
     pil_used: pil,
+    belt_piw_effective,
+    belt_pil_effective,
 
     // Throughput outputs
     pitch_in: pitchIn,

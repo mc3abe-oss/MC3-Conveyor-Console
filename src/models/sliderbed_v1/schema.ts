@@ -256,6 +256,10 @@ export enum ShaftDiameterMode {
 // ============================================================================
 
 export interface SliderbedInputs {
+  // BED TYPE (for belt_conveyor_v1 compatibility)
+  /** Bed type - determines support method under belt (slider_bed or roller_bed) */
+  bed_type?: string;
+
   // GEOMETRY & LAYOUT
   /** Conveyor Length (C-C) in inches */
   conveyor_length_cc_in: number;
@@ -471,6 +475,31 @@ export interface SliderbedInputs {
 
   /** Tail shaft diameter in inches - required if shaft_diameter_mode = Manual */
   tail_shaft_diameter_in?: number;
+
+  // =========================================================================
+  // BELT SELECTION
+  // =========================================================================
+
+  /** Belt catalog key - references belt_catalog table */
+  belt_catalog_key?: string;
+
+  /** Belt PIW from catalog (populated when belt is selected) */
+  belt_piw?: number;
+
+  /** Belt PIL from catalog (populated when belt is selected) */
+  belt_pil?: number;
+
+  /** Belt PIW override - user-specified value that overrides catalog value */
+  belt_piw_override?: number;
+
+  /** Belt PIL override - user-specified value that overrides catalog value */
+  belt_pil_override?: number;
+
+  /** Minimum pulley diameter for selected belt (without V-guide) */
+  belt_min_pulley_dia_no_vguide_in?: number;
+
+  /** Minimum pulley diameter for selected belt (with V-guide) */
+  belt_min_pulley_dia_with_vguide_in?: number;
 }
 
 // ============================================================================
@@ -553,6 +582,12 @@ export interface SliderbedOutputs {
 
   /** Belt weight coefficient used (pil) */
   pil_used: number;
+
+  /** Belt PIW effective - override if provided, else catalog value, else parameter default */
+  belt_piw_effective?: number;
+
+  /** Belt PIL effective - override if provided, else catalog value, else parameter default */
+  belt_pil_effective?: number;
 
   // THROUGHPUT OUTPUTS
   /** Pitch in inches (travel dimension + spacing) */
@@ -719,4 +754,7 @@ export const DEFAULT_INPUT_VALUES = {
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,
   shaft_diameter_mode: ShaftDiameterMode.Calculated,
+
+  // Belt selection defaults (no belt selected by default)
+  belt_catalog_key: undefined,
 };
