@@ -45,6 +45,9 @@ import {
   DriveLocation,
   GearmotorOrientation,
   DriveHand,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
+  VGuideProfile,
 } from './schema';
 
 describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
@@ -84,6 +87,9 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     brake_motor: false,
     gearmotor_orientation: GearmotorOrientation.SideMount,
     drive_hand: DriveHand.RightHand,
+    // Belt tracking & pulley
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
   };
 
   // ========================================================================
@@ -883,6 +889,167 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
 
       // Friction pull should be the same for both (acts on full load)
       expect(result0.outputs?.friction_pull_lb).toBeCloseTo(result30.outputs!.friction_pull_lb, 2);
+    });
+  });
+
+  // ========================================================================
+  // BELT TRACKING & PULLEY CALCULATIONS
+  // ========================================================================
+
+  describe('Belt Tracking & Pulley', () => {
+    const baseInputs: SliderbedInputs = {
+      conveyor_length_cc_in: 120,
+      conveyor_width_in: 24,
+      pulley_diameter_in: 2.5,
+      drive_rpm: 100,
+      part_weight_lbs: 5,
+      part_length_in: 12,
+      part_width_in: 6,
+      drop_height_in: 0,
+      part_temperature_class: PartTemperatureClass.Ambient,
+      fluid_type: FluidType.None,
+      orientation: Orientation.Lengthwise,
+      part_spacing_in: 0,
+      ...APPLICATION_DEFAULTS,
+    };
+
+    it('should identify V-guided belt tracking correctly', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        v_guide_profile: VGuideProfile.K10,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.is_v_guided).toBe(true);
+      expect(result.outputs?.pulley_requires_crown).toBe(false);
+    });
+
+    it('should identify crowned belt tracking correctly', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.is_v_guided).toBe(false);
+      expect(result.outputs?.pulley_requires_crown).toBe(true);
+    });
+
+    it('should calculate pulley face extra correctly for V-guided (0.5")', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        v_guide_profile: VGuideProfile.K10,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.pulley_face_extra_in).toBe(DEFAULT_PARAMETERS.pulley_face_extra_v_guided_in);
+      expect(result.outputs?.pulley_face_extra_in).toBe(0.5);
+    });
+
+    it('should calculate pulley face extra correctly for crowned (2.0")', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.pulley_face_extra_in).toBe(DEFAULT_PARAMETERS.pulley_face_extra_crowned_in);
+      expect(result.outputs?.pulley_face_extra_in).toBe(2.0);
+    });
+
+    it('should calculate pulley face length correctly', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // pulley_face_length = conveyor_width + extra = 24 + 2.0 = 26
+      expect(result.outputs?.pulley_face_length_in).toBe(26);
+    });
+
+    it('should require v_guide_profile when V-guided', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        // v_guide_profile not set
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'v_guide_profile')).toBe(true);
+    });
+
+    it('should use manual shaft diameters when specified', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Manual,
+        drive_shaft_diameter_in: 1.5,
+        tail_shaft_diameter_in: 1.25,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.drive_shaft_diameter_in).toBe(1.5);
+      expect(result.outputs?.tail_shaft_diameter_in).toBe(1.25);
+    });
+
+    it('should require shaft diameters when manual mode', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Manual,
+        // drive_shaft_diameter_in and tail_shaft_diameter_in not set
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'drive_shaft_diameter_in')).toBe(true);
+      expect(result.errors?.some(e => e.field === 'tail_shaft_diameter_in')).toBe(true);
+    });
+
+    it('should reject shaft diameter < 0.5"', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Manual,
+        drive_shaft_diameter_in: 0.4,
+        tail_shaft_diameter_in: 1.0,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'drive_shaft_diameter_in' && e.message.includes('0.5'))).toBe(true);
+    });
+
+    it('should reject shaft diameter > 4.0"', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Manual,
+        drive_shaft_diameter_in: 1.5,
+        tail_shaft_diameter_in: 4.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'tail_shaft_diameter_in' && e.message.includes('4.0'))).toBe(true);
+    });
+
+    it('should calculate shaft diameters automatically when in calculated mode', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Calculated,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.drive_shaft_diameter_in).toBeGreaterThan(0);
+      expect(result.outputs?.tail_shaft_diameter_in).toBeGreaterThan(0);
     });
   });
 });

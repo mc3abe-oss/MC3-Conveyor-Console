@@ -18,6 +18,8 @@ import {
   SliderbedParameters,
   SliderbedOutputs,
   Orientation,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
 } from './schema';
 
 // ============================================================================
@@ -344,6 +346,98 @@ export function calculateMarginAchieved(
 }
 
 // ============================================================================
+// BELT TRACKING & PULLEY CALCULATIONS
+// ============================================================================
+
+/**
+ * Determine if belt tracking method is V-guided
+ *
+ * Formula:
+ *   is_v_guided = (belt_tracking_method === 'V-guided')
+ */
+export function calculateIsVGuided(beltTrackingMethod: BeltTrackingMethod | string): boolean {
+  return beltTrackingMethod === BeltTrackingMethod.VGuided || beltTrackingMethod === 'V-guided';
+}
+
+/**
+ * Determine if pulley requires crown
+ *
+ * Formula:
+ *   pulley_requires_crown = !is_v_guided
+ *
+ * Note: V-guided belts don't need crown, crowned belts need crown on at least one pulley
+ */
+export function calculatePulleyRequiresCrown(isVGuided: boolean): boolean {
+  return !isVGuided;
+}
+
+/**
+ * Calculate pulley face extra allowance in inches
+ *
+ * Formula:
+ *   pulley_face_extra_in = is_v_guided ? 0.5 : 2.0
+ *
+ * Note: V-guided needs less extra face width since the V-guide keeps belt centered
+ */
+export function calculatePulleyFaceExtra(
+  isVGuided: boolean,
+  params: SliderbedParameters
+): number {
+  return isVGuided
+    ? params.pulley_face_extra_v_guided_in
+    : params.pulley_face_extra_crowned_in;
+}
+
+/**
+ * Calculate pulley face length in inches
+ *
+ * Formula:
+ *   pulley_face_length_in = conveyor_width_in + pulley_face_extra_in
+ */
+export function calculatePulleyFaceLength(
+  conveyorWidthIn: number,
+  pulleyFaceExtraIn: number
+): number {
+  return conveyorWidthIn + pulleyFaceExtraIn;
+}
+
+/**
+ * Calculate shaft diameter in inches
+ *
+ * If shaft_diameter_mode is 'Manual', use the provided value
+ * If shaft_diameter_mode is 'Calculated', use a default lookup (simplified for now)
+ *
+ * Formula (simplified):
+ *   For calculated mode, use a torque-based lookup or a simple heuristic
+ *   Current implementation uses a simplified approach:
+ *   - For small conveyors (width <= 18"): 1.0"
+ *   - For medium conveyors (width <= 36"): 1.25"
+ *   - For large conveyors (width > 36"): 1.5"
+ *
+ * Note: In production, this would reference a shaft selection table
+ */
+export function calculateShaftDiameter(
+  shaftDiameterMode: ShaftDiameterMode | string,
+  manualDiameter: number | undefined,
+  conveyorWidthIn: number,
+  _torqueDriveShaftInlbf: number // Reserved for future torque-based shaft sizing
+): number {
+  if (shaftDiameterMode === ShaftDiameterMode.Manual || shaftDiameterMode === 'Manual') {
+    return manualDiameter ?? 1.0;
+  }
+
+  // Calculated mode: simple heuristic based on width and torque
+  // This is a simplified placeholder - real implementation would use shaft selection tables
+  if (conveyorWidthIn <= 18) {
+    return 1.0;
+  } else if (conveyorWidthIn <= 36) {
+    return 1.25;
+  } else {
+    return 1.5;
+  }
+}
+
+// ============================================================================
 // MASTER CALCULATION FUNCTION
 // ============================================================================
 
@@ -475,6 +569,28 @@ export function calculate(
     throughputMarginAchievedPct = calculateMarginAchieved(capacityPph, inputs.required_throughput_pph);
   }
 
+  // Step 17: Belt tracking & pulley face calculations
+  const beltTrackingMethod = inputs.belt_tracking_method ?? BeltTrackingMethod.Crowned;
+  const isVGuided = calculateIsVGuided(beltTrackingMethod);
+  const pulleyRequiresCrown = calculatePulleyRequiresCrown(isVGuided);
+  const pulleyFaceExtraIn = calculatePulleyFaceExtra(isVGuided, parameters);
+  const pulleyFaceLengthIn = calculatePulleyFaceLength(inputs.conveyor_width_in, pulleyFaceExtraIn);
+
+  // Step 18: Shaft diameter calculations
+  const shaftDiameterMode = inputs.shaft_diameter_mode ?? ShaftDiameterMode.Calculated;
+  const driveShaftDiameterIn = calculateShaftDiameter(
+    shaftDiameterMode,
+    inputs.drive_shaft_diameter_in,
+    inputs.conveyor_width_in,
+    torqueDriveShaftInlbf
+  );
+  const tailShaftDiameterIn = calculateShaftDiameter(
+    shaftDiameterMode,
+    inputs.tail_shaft_diameter_in,
+    inputs.conveyor_width_in,
+    torqueDriveShaftInlbf * 0.5 // Tail shaft typically sees less torque
+  );
+
   // Return all outputs
   return {
     // Intermediate outputs
@@ -508,5 +624,13 @@ export function calculate(
     starting_belt_pull_lb_used: startingBeltPullLb,
     friction_coeff_used: frictionCoeff,
     motor_rpm_used: motorRpm,
+
+    // Belt tracking & pulley outputs
+    is_v_guided: isVGuided,
+    pulley_requires_crown: pulleyRequiresCrown,
+    pulley_face_extra_in: pulleyFaceExtraIn,
+    pulley_face_length_in: pulleyFaceLengthIn,
+    drive_shaft_diameter_in: driveShaftDiameterIn,
+    tail_shaft_diameter_in: tailShaftDiameterIn,
   };
 }

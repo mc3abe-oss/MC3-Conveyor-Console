@@ -15,6 +15,8 @@ import {
   DriveLocation,
   GearmotorOrientation,
   DriveHand,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
 } from '../../src/models/sliderbed_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorBuild from './TabConveyorBuild';
@@ -93,6 +95,10 @@ export default function CalculatorForm({
     brake_motor: false,
     gearmotor_orientation: GearmotorOrientation.SideMount,
     drive_hand: DriveHand.RightHand,
+
+    // Belt tracking & pulley
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
   });
 
   // Track the last loaded revision ID to prevent infinite loops

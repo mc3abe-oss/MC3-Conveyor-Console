@@ -226,6 +226,32 @@ export enum DriveHand {
 }
 
 // ============================================================================
+// BELT TRACKING & PULLEY ENUMS
+// ============================================================================
+
+export enum BeltTrackingMethod {
+  VGuided = 'V-guided',
+  Crowned = 'Crowned',
+}
+
+export enum VGuideProfile {
+  K6 = 'K6',
+  K8 = 'K8',
+  K10 = 'K10',
+  K13 = 'K13',
+  K13Mod = 'K13 Modified',
+  K15 = 'K15',
+  K17 = 'K17',
+  K30 = 'K30',
+  Custom = 'Custom',
+}
+
+export enum ShaftDiameterMode {
+  Calculated = 'Calculated',
+  Manual = 'Manual',
+}
+
+// ============================================================================
 // INPUTS SCHEMA
 // ============================================================================
 
@@ -426,6 +452,25 @@ export interface SliderbedInputs {
 
   /** Drive hand (RH/LH) - when facing discharge end */
   drive_hand: DriveHand | string;
+
+  // =========================================================================
+  // BELT TRACKING & PULLEY
+  // =========================================================================
+
+  /** Belt tracking method */
+  belt_tracking_method: BeltTrackingMethod | string;
+
+  /** V-guide profile - required if belt_tracking_method = V-guided */
+  v_guide_profile?: VGuideProfile | string;
+
+  /** Shaft diameter mode */
+  shaft_diameter_mode: ShaftDiameterMode | string;
+
+  /** Drive shaft diameter in inches - required if shaft_diameter_mode = Manual */
+  drive_shaft_diameter_in?: number;
+
+  /** Tail shaft diameter in inches - required if shaft_diameter_mode = Manual */
+  tail_shaft_diameter_in?: number;
 }
 
 // ============================================================================
@@ -459,6 +504,12 @@ export interface SliderbedParameters {
 
   /** Belt weight coefficient for other pulleys (pil when pulley_diameter_in != 2.5) */
   pil_other: number;
+
+  /** Extra pulley face allowance for V-guided belts in inches */
+  pulley_face_extra_v_guided_in: number;
+
+  /** Extra pulley face allowance for crowned pulleys in inches */
+  pulley_face_extra_crowned_in: number;
 }
 
 // ============================================================================
@@ -546,6 +597,25 @@ export interface SliderbedOutputs {
 
   /** Motor RPM used */
   motor_rpm_used: number;
+
+  // BELT TRACKING & PULLEY OUTPUTS
+  /** Whether belt tracking is V-guided (true) or crowned (false) */
+  is_v_guided: boolean;
+
+  /** Whether pulley requires crown (only applies when not V-guided) */
+  pulley_requires_crown: boolean;
+
+  /** Extra pulley face allowance in inches (0.5 for V-guided, 2.0 for crowned) */
+  pulley_face_extra_in: number;
+
+  /** Pulley face length in inches (conveyor_width_in + pulley_face_extra_in) */
+  pulley_face_length_in: number;
+
+  /** Drive shaft diameter in inches (input or calculated) */
+  drive_shaft_diameter_in: number;
+
+  /** Tail shaft diameter in inches (input or calculated) */
+  tail_shaft_diameter_in: number;
 }
 
 // ============================================================================
@@ -596,6 +666,8 @@ export const DEFAULT_PARAMETERS: SliderbedParameters = {
   piw_other: 0.109,
   pil_2p5: 0.138,
   pil_other: 0.109,
+  pulley_face_extra_v_guided_in: 0.5,
+  pulley_face_extra_crowned_in: 2.0,
 };
 
 export const DEFAULT_INPUT_VALUES = {
@@ -643,4 +715,8 @@ export const DEFAULT_INPUT_VALUES = {
   brake_motor: false,
   gearmotor_orientation: GearmotorOrientation.SideMount,
   drive_hand: DriveHand.RightHand,
+
+  // Belt tracking & pulley defaults
+  belt_tracking_method: BeltTrackingMethod.Crowned,
+  shaft_diameter_mode: ShaftDiameterMode.Calculated,
 };

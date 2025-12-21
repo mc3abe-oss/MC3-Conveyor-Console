@@ -6,7 +6,12 @@
 
 'use client';
 
-import { SliderbedInputs } from '../../src/models/sliderbed_v1/schema';
+import {
+  SliderbedInputs,
+  BeltTrackingMethod,
+  VGuideProfile,
+  ShaftDiameterMode,
+} from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 
 interface TabConveyorBuildProps {
@@ -87,6 +92,118 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
               min="0"
             />
           </div>
+        </div>
+      </div>
+
+      {/* Section: Belt Tracking */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Belt Tracking</h3>
+        <div className="grid grid-cols-1 gap-4">
+          <div>
+            <label htmlFor="belt_tracking_method" className="label">
+              Belt Tracking Method
+            </label>
+            <select
+              id="belt_tracking_method"
+              className="input"
+              value={inputs.belt_tracking_method}
+              onChange={(e) => updateInput('belt_tracking_method', e.target.value)}
+            >
+              {Object.values(BeltTrackingMethod).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              V-guided uses a V-profile on the belt underside. Crowned uses crowned pulleys for tracking.
+            </p>
+          </div>
+
+          {/* V-guide profile - only show if V-guided */}
+          {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+            inputs.belt_tracking_method === 'V-guided') && (
+            <div>
+              <label htmlFor="v_guide_profile" className="label">
+                V-Guide Profile
+              </label>
+              <select
+                id="v_guide_profile"
+                className="input"
+                value={inputs.v_guide_profile || ''}
+                onChange={(e) => updateInput('v_guide_profile', e.target.value || undefined)}
+                required
+              >
+                <option value="">Select profile...</option>
+                {Object.values(VGuideProfile).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div>
+            <label htmlFor="shaft_diameter_mode" className="label">
+              Shaft Diameter Mode
+            </label>
+            <select
+              id="shaft_diameter_mode"
+              className="input"
+              value={inputs.shaft_diameter_mode}
+              onChange={(e) => updateInput('shaft_diameter_mode', e.target.value)}
+            >
+              {Object.values(ShaftDiameterMode).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Manual shaft diameters - only show if manual mode */}
+          {(inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
+            inputs.shaft_diameter_mode === 'Manual') && (
+            <>
+              <div>
+                <label htmlFor="drive_shaft_diameter_in" className="label">
+                  Drive Shaft Diameter (in)
+                </label>
+                <input
+                  type="number"
+                  id="drive_shaft_diameter_in"
+                  className="input"
+                  value={inputs.drive_shaft_diameter_in || ''}
+                  onChange={(e) =>
+                    updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.125"
+                  min="0.5"
+                  max="4.0"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="tail_shaft_diameter_in" className="label">
+                  Tail Shaft Diameter (in)
+                </label>
+                <input
+                  type="number"
+                  id="tail_shaft_diameter_in"
+                  className="input"
+                  value={inputs.tail_shaft_diameter_in || ''}
+                  onChange={(e) =>
+                    updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.125"
+                  min="0.5"
+                  max="4.0"
+                  required
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

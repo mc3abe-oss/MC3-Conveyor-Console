@@ -21,6 +21,8 @@ import {
   LacingStyle,
   SideLoadingDirection,
   SideLoadingSeverity,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
 } from './schema';
 
 // ============================================================================
@@ -233,6 +235,74 @@ export function validateInputs(
       message: 'Motor RPM must be <= 3600',
       severity: 'error',
     });
+  }
+
+  // BELT TRACKING & PULLEY VALIDATION
+
+  // V-guide profile required if V-guided
+  const isVGuided = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+                    inputs.belt_tracking_method === 'V-guided';
+  if (isVGuided && !inputs.v_guide_profile) {
+    errors.push({
+      field: 'v_guide_profile',
+      message: 'V-guide profile is required when belt tracking method is V-guided',
+      severity: 'error',
+    });
+  }
+
+  // Manual shaft diameters required if manual mode
+  const isManualShaft = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
+                        inputs.shaft_diameter_mode === 'Manual';
+  if (isManualShaft) {
+    if (inputs.drive_shaft_diameter_in === undefined || inputs.drive_shaft_diameter_in <= 0) {
+      errors.push({
+        field: 'drive_shaft_diameter_in',
+        message: 'Drive shaft diameter is required when shaft diameter mode is Manual',
+        severity: 'error',
+      });
+    }
+    if (inputs.tail_shaft_diameter_in === undefined || inputs.tail_shaft_diameter_in <= 0) {
+      errors.push({
+        field: 'tail_shaft_diameter_in',
+        message: 'Tail shaft diameter is required when shaft diameter mode is Manual',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Shaft diameter range validation
+  if (inputs.drive_shaft_diameter_in !== undefined) {
+    if (inputs.drive_shaft_diameter_in < 0.5) {
+      errors.push({
+        field: 'drive_shaft_diameter_in',
+        message: 'Drive shaft diameter must be >= 0.5"',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_shaft_diameter_in > 4.0) {
+      errors.push({
+        field: 'drive_shaft_diameter_in',
+        message: 'Drive shaft diameter must be <= 4.0"',
+        severity: 'error',
+      });
+    }
+  }
+
+  if (inputs.tail_shaft_diameter_in !== undefined) {
+    if (inputs.tail_shaft_diameter_in < 0.5) {
+      errors.push({
+        field: 'tail_shaft_diameter_in',
+        message: 'Tail shaft diameter must be >= 0.5"',
+        severity: 'error',
+      });
+    }
+    if (inputs.tail_shaft_diameter_in > 4.0) {
+      errors.push({
+        field: 'tail_shaft_diameter_in',
+        message: 'Tail shaft diameter must be <= 4.0"',
+        severity: 'error',
+      });
+    }
   }
 
   return errors;

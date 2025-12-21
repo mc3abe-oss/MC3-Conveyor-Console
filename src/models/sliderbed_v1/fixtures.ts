@@ -42,6 +42,8 @@ import {
   DriveLocation,
   GearmotorOrientation,
   DriveHand,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
 } from './schema';
 
 // ============================================================================
@@ -149,6 +151,9 @@ export const EXAMPLE_FIXTURE: TestFixture = {
     brake_motor: false,
     gearmotor_orientation: GearmotorOrientation.SideMount,
     drive_hand: DriveHand.RightHand,
+    // Belt tracking & pulley
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
   },
   expected_outputs: {
     parts_on_belt: 5.0,
