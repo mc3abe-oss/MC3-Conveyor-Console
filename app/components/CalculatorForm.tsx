@@ -23,6 +23,28 @@ import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorBuild from './TabConveyorBuild';
 import TabBuildOptions from './TabBuildOptions';
 
+/**
+ * Lane wrapper component - provides consistent styling for each lane
+ */
+interface LaneProps {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function Lane({ title, children, className = '' }: LaneProps) {
+  return (
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${className}`}>
+      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      </div>
+      <div className="p-4">
+        {children}
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   onCalculate: (result: CalculationResult) => void;
   isCalculating: boolean;
@@ -42,8 +64,6 @@ export default function CalculatorForm({
   triggerCalculate,
   hideCalculateButton = false,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'application' | 'conveyor' | 'build'>('application');
-
   const [inputs, setInputs] = useState<SliderbedInputs>({
     // Bed type - determines friction coefficient preset
     bed_type: BedType.SliderBed,
@@ -160,66 +180,23 @@ export default function CalculatorForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-4">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex flex-wrap gap-x-6 gap-y-1" aria-label="Tabs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('application')}
-            className={`
-              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === 'application'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            Application / Demand
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('conveyor')}
-            className={`
-              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === 'conveyor'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            Conveyor Design
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('build')}
-            className={`
-              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === 'build'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            Build Options
-          </button>
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="pt-4">
-        {activeTab === 'application' && (
+    <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
+      {/* Lane-based layout: responsive grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lane 1: Application / Demand */}
+        <Lane title="Application / Demand">
           <TabApplicationDemand inputs={inputs} updateInput={updateInput} />
-        )}
-        {activeTab === 'conveyor' && (
+        </Lane>
+
+        {/* Lane 2: Conveyor Design (largest - contains geometry, belt, drive) */}
+        <Lane title="Conveyor Design" className="lg:row-span-2">
           <TabConveyorBuild inputs={inputs} updateInput={updateInput} />
-        )}
-        {activeTab === 'build' && (
+        </Lane>
+
+        {/* Lane 3: Build Options */}
+        <Lane title="Build Options">
           <TabBuildOptions inputs={inputs} updateInput={updateInput} />
-        )}
+        </Lane>
       </div>
 
       {/* Calculate Button - hidden if triggered externally */}
