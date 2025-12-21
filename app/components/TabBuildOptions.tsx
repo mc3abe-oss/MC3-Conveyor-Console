@@ -1,8 +1,13 @@
 /**
  * Tab: Build Options
  *
- * Merged from Features & Options + Specifications.
- * Covers guards, guides, belt/pulley, sensors, and drive configuration.
+ * All build-related selections including:
+ * - Guards & Safety (bottom covers, end guards, finger safe)
+ * - Guides & Containment (side rails, side skirts)
+ * - Belt & Pulley (lacing style, lacing material)
+ * - Sensors / Controls
+ * - Drive & Gearmotor configuration
+ * - Build Options & Deliverables (specs, support, finish, documentation, etc.)
  */
 
 'use client';
@@ -19,6 +24,7 @@ import {
   GearmotorOrientation,
   DriveHand,
 } from '../../src/models/sliderbed_v1/schema';
+import CatalogSelect from './CatalogSelect';
 
 interface TabBuildOptionsProps {
   inputs: SliderbedInputs;
@@ -394,6 +400,194 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
               ))}
             </div>
             <p className="text-xs text-gray-500 mt-1">Reference: when facing the discharge end.</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Build Options & Deliverables */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Build Options & Deliverables</h3>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Spec Source */}
+          <div>
+            <label htmlFor="spec_source" className="label">
+              Spec Source
+            </label>
+            <CatalogSelect
+              catalogKey="spec_source"
+              value={inputs.spec_source}
+              onChange={(value) => updateInput('spec_source', value)}
+              id="spec_source"
+              required
+            />
+          </div>
+
+          {/* Customer Spec Reference - only show if spec_source is Customer Specification */}
+          {inputs.spec_source === 'CUSTOMER_SPEC' && (
+            <div>
+              <label htmlFor="customer_spec_reference" className="label">
+                Customer Spec Reference <span className="text-gray-500">(required)</span>
+              </label>
+              <input
+                type="text"
+                id="customer_spec_reference"
+                className="input"
+                value={inputs.customer_spec_reference || ''}
+                onChange={(e) => updateInput('customer_spec_reference', e.target.value || undefined)}
+                required
+              />
+            </div>
+          )}
+
+          {/* Support Option */}
+          <div>
+            <label htmlFor="support_option" className="label">
+              Support Option
+            </label>
+            <CatalogSelect
+              catalogKey="support_option"
+              value={inputs.support_option}
+              onChange={(value) => updateInput('support_option', value)}
+              id="support_option"
+              required
+            />
+          </div>
+
+          {/* Field Wiring Required */}
+          <div>
+            <label className="label">Field Wiring Required</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'No'}
+                  onChange={() => updateInput('field_wiring_required', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'Yes'}
+                  onChange={() => updateInput('field_wiring_required', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
+          </div>
+
+          {/* Bearing Grade */}
+          <div>
+            <label htmlFor="bearing_grade" className="label">
+              Bearing Grade
+            </label>
+            <CatalogSelect
+              catalogKey="bearing_grade"
+              value={inputs.bearing_grade}
+              onChange={(value) => updateInput('bearing_grade', value)}
+              id="bearing_grade"
+              required
+            />
+          </div>
+
+          {/* Documentation Package */}
+          <div>
+            <label htmlFor="documentation_package" className="label">
+              Documentation Package
+            </label>
+            <CatalogSelect
+              catalogKey="documentation_package"
+              value={inputs.documentation_package}
+              onChange={(value) => updateInput('documentation_package', value)}
+              id="documentation_package"
+              required
+            />
+          </div>
+
+          {/* Finish Paint System */}
+          <div>
+            <label htmlFor="finish_paint_system" className="label">
+              Finish Paint System
+            </label>
+            <CatalogSelect
+              catalogKey="finish_paint_system"
+              value={inputs.finish_paint_system}
+              onChange={(value) => updateInput('finish_paint_system', value)}
+              id="finish_paint_system"
+              required
+            />
+          </div>
+
+          {/* Labels Required */}
+          <div>
+            <label className="label">Labels Required</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="labels_required"
+                  checked={inputs.labels_required === 'No'}
+                  onChange={() => updateInput('labels_required', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="labels_required"
+                  checked={inputs.labels_required === 'Yes'}
+                  onChange={() => updateInput('labels_required', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
+          </div>
+
+          {/* Send to Estimating */}
+          <div>
+            <label className="label">Send to Estimating</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="send_to_estimating"
+                  checked={inputs.send_to_estimating === 'No'}
+                  onChange={() => updateInput('send_to_estimating', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="send_to_estimating"
+                  checked={inputs.send_to_estimating === 'Yes'}
+                  onChange={() => updateInput('send_to_estimating', 'Yes')}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
+          </div>
+
+          {/* Motor Brand */}
+          <div>
+            <label htmlFor="motor_brand" className="label">
+              Motor Brand
+            </label>
+            <CatalogSelect
+              catalogKey="motor_brand"
+              value={inputs.motor_brand}
+              onChange={(value) => updateInput('motor_brand', value)}
+              id="motor_brand"
+              required
+            />
           </div>
         </div>
       </div>
