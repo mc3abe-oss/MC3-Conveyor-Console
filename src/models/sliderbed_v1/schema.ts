@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.2 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.4 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,8 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.4 (2025-12-21): Per-end support types, derived legs_required, height model (TOB)
+ * v1.3 (2025-12-21): Split pulley diameter into drive/tail, add presets, add belt cleats
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
  * v1.1 (2025-12-19): Fix open-belt wrap length: use πD not 2πD
  * v1.0 (2024-12-19): Initial implementation
@@ -252,6 +254,54 @@ export enum ShaftDiameterMode {
 }
 
 // ============================================================================
+// v1.4: SUPPORT & HEIGHT ENUMS
+// ============================================================================
+
+/**
+ * Per-end support type (v1.4)
+ * Determines how each end of the conveyor is supported.
+ */
+export enum EndSupportType {
+  /** Suspended, wall-mounted, or framework-supported (no floor contact) */
+  External = 'External',
+  /** Floor-standing legs */
+  Legs = 'Legs',
+  /** Floor-rolling casters */
+  Casters = 'Casters',
+}
+
+/**
+ * Height input mode (v1.4)
+ * Determines how TOB (Top of Belt) heights are specified.
+ */
+export enum HeightInputMode {
+  /** Mode A: User provides reference TOB + angle, system calculates opposite */
+  ReferenceAndAngle = 'reference_and_angle',
+  /** Mode B: User provides both TOBs, system calculates implied angle */
+  BothEnds = 'both_ends',
+}
+
+/**
+ * Reference end for height input (v1.4)
+ * Only used in ReferenceAndAngle mode.
+ */
+export type HeightReferenceEnd = 'tail' | 'drive';
+
+/**
+ * Validation mode (v1.4)
+ * Controls strictness of validation.
+ */
+export type ValidationMode = 'draft' | 'commit';
+
+// ============================================================================
+// PULLEY PRESETS
+// ============================================================================
+
+/** Common pulley diameter presets in inches */
+export const PULLEY_DIAMETER_PRESETS = [3, 4, 5, 6, 8, 10] as const;
+export type PulleyDiameterPreset = typeof PULLEY_DIAMETER_PRESETS[number] | 'custom';
+
+// ============================================================================
 // INPUTS SCHEMA
 // ============================================================================
 
@@ -270,8 +320,47 @@ export interface SliderbedInputs {
   /** Incline Angle in degrees (default: 0) */
   conveyor_incline_deg?: number;
 
-  /** Pulley Diameter in inches */
+  /**
+   * @deprecated Use drive_pulley_diameter_in and tail_pulley_diameter_in instead.
+   * Legacy field - kept for backward compatibility during migration.
+   * If present and new fields are missing, this value is used for both pulleys.
+   */
   pulley_diameter_in: number;
+
+  // =========================================================================
+  // PULLEY DIAMETERS (v1.3)
+  // =========================================================================
+
+  /** Drive pulley diameter in inches */
+  drive_pulley_diameter_in?: number;
+
+  /** Tail pulley diameter in inches */
+  tail_pulley_diameter_in?: number;
+
+  /** Whether tail pulley matches drive pulley (UI state, default: true) */
+  tail_matches_drive?: boolean;
+
+  /** Drive pulley preset selection (UI state only) */
+  drive_pulley_preset?: PulleyDiameterPreset;
+
+  /** Tail pulley preset selection (UI state only) */
+  tail_pulley_preset?: PulleyDiameterPreset;
+
+  // =========================================================================
+  // BELT CLEATS (v1.3 - spec-only, no power math)
+  // =========================================================================
+
+  /** Whether belt cleats are enabled */
+  cleats_enabled?: boolean;
+
+  /** Cleat height in inches (required if cleats_enabled) */
+  cleat_height_in?: number;
+
+  /** Cleat center-to-center spacing in inches (required if cleats_enabled) */
+  cleat_spacing_in?: number;
+
+  /** Cleat edge offset in inches - distance from belt edge to nearest cleat edge (required if cleats_enabled) */
+  cleat_edge_offset_in?: number;
 
   // SPEED & THROUGHPUT
   /** Belt Speed in FPM (feet per minute) */
@@ -367,8 +456,41 @@ export interface SliderbedInputs {
   /** Customer Spec Reference (required only if spec_source = Customer Specification) */
   customer_spec_reference?: string;
 
-  /** Support Option */
-  support_option: SupportOption | string;
+  /**
+   * @deprecated Use tail_support_type and drive_support_type instead.
+   * Legacy field - kept for backward compatibility during migration.
+   */
+  support_option?: SupportOption | string;
+
+  // =========================================================================
+  // v1.4: PER-END SUPPORT TYPES
+  // =========================================================================
+
+  /** Tail end support type (v1.4) */
+  tail_support_type?: EndSupportType | string;
+
+  /** Drive end support type (v1.4) */
+  drive_support_type?: EndSupportType | string;
+
+  // =========================================================================
+  // v1.4: HEIGHT MODEL (TOP OF BELT)
+  // Only present when legs_required=true (derived from support types)
+  // =========================================================================
+
+  /** Height input mode - Mode A (reference + angle) or Mode B (both ends) */
+  height_input_mode?: HeightInputMode | string;
+
+  /** Reference end for Mode A (which end user specifies TOB for) */
+  reference_end?: HeightReferenceEnd;
+
+  /** Top of Belt height at tail end in inches */
+  tail_tob_in?: number;
+
+  /** Top of Belt height at drive end in inches */
+  drive_tob_in?: number;
+
+  /** Leg adjustment range in inches (default: ±2") */
+  adjustment_required_in?: number;
 
   /** Field Wiring Required */
   field_wiring_required: FieldWiringRequired | string;
@@ -651,6 +773,20 @@ export interface SliderbedOutputs {
 
   /** Tail shaft diameter in inches (input or calculated) */
   tail_shaft_diameter_in: number;
+
+  // PULLEY DIAMETER OUTPUTS (v1.3)
+  /** Drive pulley diameter used in inches */
+  drive_pulley_diameter_in: number;
+
+  /** Tail pulley diameter used in inches */
+  tail_pulley_diameter_in: number;
+
+  // CLEAT OUTPUTS (v1.3 - spec-only summary)
+  /** Whether cleats are enabled */
+  cleats_enabled?: boolean;
+
+  /** Cleat specification summary (for display) */
+  cleats_summary?: string;
 }
 
 // ============================================================================
@@ -721,7 +857,9 @@ export const DEFAULT_INPUT_VALUES = {
   power_feed: PowerFeed.V480_3Ph,
   controls_package: ControlsPackage.StartStop,
   spec_source: SpecSource.Standard,
-  support_option: SupportOption.FloorMounted,
+  // v1.4: support_option deprecated, use per-end support types
+  tail_support_type: EndSupportType.External,
+  drive_support_type: EndSupportType.External,
   field_wiring_required: FieldWiringRequired.No,
   bearing_grade: BearingGrade.Standard,
   documentation_package: DocumentationPackage.Basic,
@@ -757,4 +895,55 @@ export const DEFAULT_INPUT_VALUES = {
 
   // Belt selection defaults (no belt selected by default)
   belt_catalog_key: undefined,
+
+  // Pulley diameter defaults (v1.3)
+  tail_matches_drive: true,
+  drive_pulley_preset: 4 as PulleyDiameterPreset, // 4" is common default
+  tail_pulley_preset: 4 as PulleyDiameterPreset,
+
+  // Cleat defaults (v1.3)
+  cleats_enabled: false,
+
+  // Height model defaults (v1.4)
+  // Note: height_input_mode, reference_end, tail_tob_in, drive_tob_in, adjustment_required_in
+  // are intentionally NOT listed here because they must NOT exist when legs_required=false
 };
+
+// ============================================================================
+// v1.4: DERIVED HELPERS
+// ============================================================================
+
+/**
+ * Determine if legs are required based on per-end support types.
+ * legs_required = true if EITHER end is NOT External (i.e., has floor contact)
+ *
+ * This is a DERIVED value - never stored in inputs.
+ */
+export function derivedLegsRequired(
+  tailSupportType?: EndSupportType | string,
+  driveSupportType?: EndSupportType | string
+): boolean {
+  // If undefined, default to External (no floor contact)
+  const tailIsExternal =
+    tailSupportType === undefined ||
+    tailSupportType === EndSupportType.External ||
+    tailSupportType === 'External';
+  const driveIsExternal =
+    driveSupportType === undefined ||
+    driveSupportType === EndSupportType.External ||
+    driveSupportType === 'External';
+
+  // legs_required if EITHER end is NOT External
+  return !tailIsExternal || !driveIsExternal;
+}
+
+/**
+ * TOB field keys that must NOT exist when legs_required=false
+ */
+export const TOB_FIELDS = [
+  'height_input_mode',
+  'reference_end',
+  'tail_tob_in',
+  'drive_tob_in',
+  'adjustment_required_in',
+] as const;

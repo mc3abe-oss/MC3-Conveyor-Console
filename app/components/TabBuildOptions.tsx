@@ -23,6 +23,9 @@ import {
   DriveLocation,
   GearmotorOrientation,
   DriveHand,
+  EndSupportType,
+  HeightInputMode,
+  derivedLegsRequired,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 
@@ -240,6 +243,112 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
                     </option>
                   ))}
                 </select>
+              </div>
+            )}
+          </div>
+
+          {/* v1.3: Belt Cleats */}
+          <div className="border-t border-gray-200 pt-4 mt-2">
+            <div>
+              <label className="label">Belt Cleats</label>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="cleats_enabled"
+                    checked={inputs.cleats_enabled !== true}
+                    onChange={() => updateInput('cleats_enabled', false)}
+                    className="mr-2"
+                  />
+                  None
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="cleats_enabled"
+                    checked={inputs.cleats_enabled === true}
+                    onChange={() => updateInput('cleats_enabled', true)}
+                    className="mr-2"
+                  />
+                  Add Cleats
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Cleats help retain product on inclines. Does not affect power/tension calculations.
+              </p>
+            </div>
+
+            {/* Cleat configuration - only show if enabled */}
+            {inputs.cleats_enabled && (
+              <div className="ml-4 pl-4 border-l-2 border-gray-200 mt-4 space-y-4">
+                <div>
+                  <label htmlFor="cleat_height_in" className="label">
+                    Cleat Height (in)
+                  </label>
+                  <input
+                    type="number"
+                    id="cleat_height_in"
+                    className="input"
+                    value={inputs.cleat_height_in ?? ''}
+                    onChange={(e) =>
+                      updateInput('cleat_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                    }
+                    step="0.25"
+                    min="0.5"
+                    max="6"
+                    required
+                    placeholder="e.g., 1"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Height of cleats (0.5" - 6")
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="cleat_spacing_in" className="label">
+                    Cleat Spacing (in)
+                  </label>
+                  <input
+                    type="number"
+                    id="cleat_spacing_in"
+                    className="input"
+                    value={inputs.cleat_spacing_in ?? ''}
+                    onChange={(e) =>
+                      updateInput('cleat_spacing_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                    }
+                    step="1"
+                    min="2"
+                    max="48"
+                    required
+                    placeholder="e.g., 12"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Center-to-center spacing between cleats (2" - 48")
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="cleat_edge_offset_in" className="label">
+                    Cleat Edge Offset (in)
+                  </label>
+                  <input
+                    type="number"
+                    id="cleat_edge_offset_in"
+                    className="input"
+                    value={inputs.cleat_edge_offset_in ?? ''}
+                    onChange={(e) =>
+                      updateInput('cleat_edge_offset_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                    }
+                    step="0.25"
+                    min="0"
+                    max="12"
+                    required
+                    placeholder="e.g., 0.5"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Distance from belt edge to cleat end (0" - 12")
+                  </p>
+                </div>
               </div>
             )}
           </div>
@@ -480,19 +589,226 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             </div>
           )}
 
-          {/* Support Option */}
+          {/* v1.4: Per-End Support Types */}
           <div>
-            <label htmlFor="support_option" className="label">
-              Support Option
-            </label>
-            <CatalogSelect
-              catalogKey="support_option"
-              value={inputs.support_option}
-              onChange={(value) => updateInput('support_option', value)}
-              id="support_option"
-              required
-            />
+            <label className="label">Tail End Support</label>
+            <select
+              id="tail_support_type"
+              className="input"
+              value={inputs.tail_support_type ?? EndSupportType.External}
+              onChange={(e) => updateInput('tail_support_type', e.target.value as EndSupportType)}
+            >
+              <option value={EndSupportType.External}>External (Suspended/Framework)</option>
+              <option value={EndSupportType.Legs}>Legs (Floor Mounted)</option>
+              <option value={EndSupportType.Casters}>Casters (Floor Rolling)</option>
+            </select>
           </div>
+
+          <div>
+            <label className="label">Drive End Support</label>
+            <select
+              id="drive_support_type"
+              className="input"
+              value={inputs.drive_support_type ?? EndSupportType.External}
+              onChange={(e) => updateInput('drive_support_type', e.target.value as EndSupportType)}
+            >
+              <option value={EndSupportType.External}>External (Suspended/Framework)</option>
+              <option value={EndSupportType.Legs}>Legs (Floor Mounted)</option>
+              <option value={EndSupportType.Casters}>Casters (Floor Rolling)</option>
+            </select>
+          </div>
+
+          {/* v1.4: Height Model (TOB) - Only show when legs_required=true */}
+          {derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type) && (
+            <div className="border-t border-gray-200 pt-4 mt-2 space-y-4">
+              <h4 className="text-md font-medium text-gray-900">Height Configuration</h4>
+              <p className="text-xs text-gray-500">
+                Floor-standing support requires height specification (Top of Belt).
+              </p>
+
+              {/* Height Input Mode */}
+              <div>
+                <label className="label">Height Input Mode</label>
+                <div className="flex gap-4">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="height_input_mode"
+                      checked={(inputs.height_input_mode ?? HeightInputMode.ReferenceAndAngle) === HeightInputMode.ReferenceAndAngle}
+                      onChange={() => {
+                        // Mode switching clears TOB values to avoid ghost ownership
+                        updateInput('tail_tob_in', undefined);
+                        updateInput('drive_tob_in', undefined);
+                        updateInput('height_input_mode', HeightInputMode.ReferenceAndAngle);
+                      }}
+                      className="mr-2"
+                    />
+                    Reference + Angle
+                  </label>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="height_input_mode"
+                      checked={inputs.height_input_mode === HeightInputMode.BothEnds}
+                      onChange={() => {
+                        // Mode switching clears TOB values to avoid ghost ownership
+                        updateInput('tail_tob_in', undefined);
+                        updateInput('drive_tob_in', undefined);
+                        updateInput('height_input_mode', HeightInputMode.BothEnds);
+                      }}
+                      className="mr-2"
+                    />
+                    Both Ends
+                  </label>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(inputs.height_input_mode ?? HeightInputMode.ReferenceAndAngle) === HeightInputMode.ReferenceAndAngle
+                    ? 'Specify one TOB + incline angle; system calculates the other.'
+                    : 'Specify both TOBs; system calculates implied angle.'}
+                </p>
+              </div>
+
+              {/* Mode A: Reference End + Reference TOB */}
+              {(inputs.height_input_mode ?? HeightInputMode.ReferenceAndAngle) === HeightInputMode.ReferenceAndAngle && (
+                <>
+                  <div>
+                    <label className="label">Reference End</label>
+                    <div className="flex gap-4">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="reference_end"
+                          checked={(inputs.reference_end ?? 'tail') === 'tail'}
+                          onChange={() => {
+                            // Switching reference end clears TOB values
+                            updateInput('tail_tob_in', undefined);
+                            updateInput('drive_tob_in', undefined);
+                            updateInput('reference_end', 'tail');
+                          }}
+                          className="mr-2"
+                        />
+                        Tail
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="reference_end"
+                          checked={inputs.reference_end === 'drive'}
+                          onChange={() => {
+                            // Switching reference end clears TOB values
+                            updateInput('tail_tob_in', undefined);
+                            updateInput('drive_tob_in', undefined);
+                            updateInput('reference_end', 'drive');
+                          }}
+                          className="mr-2"
+                        />
+                        Drive
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Reference TOB input */}
+                  <div>
+                    <label htmlFor="reference_tob" className="label">
+                      {(inputs.reference_end ?? 'tail') === 'tail' ? 'Tail' : 'Drive'} TOB (in)
+                    </label>
+                    <input
+                      type="number"
+                      id="reference_tob"
+                      className="input"
+                      value={
+                        (inputs.reference_end ?? 'tail') === 'tail'
+                          ? (inputs.tail_tob_in ?? '')
+                          : (inputs.drive_tob_in ?? '')
+                      }
+                      onChange={(e) => {
+                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
+                        if ((inputs.reference_end ?? 'tail') === 'tail') {
+                          updateInput('tail_tob_in', value);
+                        } else {
+                          updateInput('drive_tob_in', value);
+                        }
+                      }}
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g., 36"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Top of Belt height at {(inputs.reference_end ?? 'tail') === 'tail' ? 'tail' : 'drive'} end.
+                      Opposite end calculated from incline angle.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Mode B: Both TOBs */}
+              {inputs.height_input_mode === HeightInputMode.BothEnds && (
+                <>
+                  <div>
+                    <label htmlFor="tail_tob_in" className="label">
+                      Tail TOB (in)
+                    </label>
+                    <input
+                      type="number"
+                      id="tail_tob_in"
+                      className="input"
+                      value={inputs.tail_tob_in ?? ''}
+                      onChange={(e) =>
+                        updateInput('tail_tob_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                      }
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g., 36"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="drive_tob_in" className="label">
+                      Drive TOB (in)
+                    </label>
+                    <input
+                      type="number"
+                      id="drive_tob_in"
+                      className="input"
+                      value={inputs.drive_tob_in ?? ''}
+                      onChange={(e) =>
+                        updateInput('drive_tob_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                      }
+                      step="0.25"
+                      min="0"
+                      placeholder="e.g., 42"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      System will calculate implied angle from these heights.
+                    </p>
+                  </div>
+                </>
+              )}
+
+              {/* Adjustment Range */}
+              <div>
+                <label htmlFor="adjustment_required_in" className="label">
+                  Leg Adjustment Range (in)
+                </label>
+                <input
+                  type="number"
+                  id="adjustment_required_in"
+                  className="input"
+                  value={inputs.adjustment_required_in ?? ''}
+                  onChange={(e) =>
+                    updateInput('adjustment_required_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.5"
+                  min="0"
+                  max="24"
+                  placeholder="e.g., 2"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  ±adjustment for floor leveling. Default: 2". Large values may require special leg design.
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Bearing Grade */}
           <div>

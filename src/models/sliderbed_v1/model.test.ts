@@ -49,7 +49,20 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
   VGuideProfile,
+  // v1.4: Support & Height
+  EndSupportType,
+  HeightInputMode,
+  derivedLegsRequired,
+  TOB_FIELDS,
 } from './schema';
+import {
+  migrateInputs,
+  calculateImpliedAngleDeg,
+  calculateOppositeTob,
+  hasAngleMismatch,
+  clearTobFields,
+} from './migrate';
+import { validateTob, validateForCommit } from './rules';
 import {
   calculateTrackingGuidance,
   getTrackingTooltip,
@@ -1582,6 +1595,1093 @@ describe('Belt Tracking Guidance', () => {
       expect(getRiskLevelColor(TrackingRiskLevel.Low)).toContain('green');
       expect(getRiskLevelColor(TrackingRiskLevel.Medium)).toContain('yellow');
       expect(getRiskLevelColor(TrackingRiskLevel.High)).toContain('red');
+    });
+  });
+});
+
+// ============================================================================
+// v1.3: SPLIT PULLEY DIAMETER TESTS
+// ============================================================================
+
+describe('Split Pulley Diameter (v1.3)', () => {
+  // Application field defaults (used in all tests)
+  const APPLICATION_DEFAULTS = {
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: EnvironmentFactors.Indoor,
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    support_option: SupportOption.FloorMounted,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  const baseInputs: SliderbedInputs = {
+    conveyor_length_cc_in: 100,
+    conveyor_width_in: 24,
+    pulley_diameter_in: 4, // Legacy field
+    drive_rpm: 100,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0,
+    ...APPLICATION_DEFAULTS,
+  };
+
+  describe('Backward Compatibility', () => {
+    it('should produce identical results when drive == tail == legacy pulley diameter', () => {
+      // Legacy config (using pulley_diameter_in only)
+      const legacyInputs = {
+        ...baseInputs,
+        pulley_diameter_in: 4,
+      };
+      const legacyResult = runCalculation({ inputs: legacyInputs });
+
+      // v1.3 config with same diameter for both
+      const v13Inputs = {
+        ...baseInputs,
+        pulley_diameter_in: 4,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 4,
+        tail_matches_drive: true,
+      };
+      const v13Result = runCalculation({ inputs: v13Inputs });
+
+      expect(legacyResult.success).toBe(true);
+      expect(v13Result.success).toBe(true);
+
+      // CRITICAL PARITY CHECK: Belt length must be identical
+      expect(v13Result.outputs?.total_belt_length_in).toBe(
+        legacyResult.outputs?.total_belt_length_in
+      );
+
+      // All other calculation outputs should match
+      expect(v13Result.outputs?.belt_weight_lbf).toBe(legacyResult.outputs?.belt_weight_lbf);
+      expect(v13Result.outputs?.total_belt_pull_lb).toBe(legacyResult.outputs?.total_belt_pull_lb);
+      expect(v13Result.outputs?.torque_drive_shaft_inlbf).toBe(
+        legacyResult.outputs?.torque_drive_shaft_inlbf
+      );
+    });
+
+    it('should migrate legacy pulley_diameter_in to drive and tail', () => {
+      const inputs = {
+        ...baseInputs,
+        pulley_diameter_in: 6,
+        // No drive_pulley_diameter_in or tail_pulley_diameter_in
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.drive_pulley_diameter_in).toBe(6);
+      expect(result.outputs?.tail_pulley_diameter_in).toBe(6);
+    });
+  });
+
+  describe('Belt Length Formula Parity', () => {
+    it('should calculate belt length correctly with equal pulleys (4" each)', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_length_cc_in: 100,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 4,
+      };
+      const result = runCalculation({ inputs });
+
+      // Formula: 2 * cc + π * (drive + tail) / 2
+      // = 2 * 100 + π * (4 + 4) / 2
+      // = 200 + π * 4
+      // = 200 + 12.566
+      // = 212.566
+      expect(result.outputs?.total_belt_length_in).toBeCloseTo(212.566, 2);
+
+      // This must equal legacy formula: 2 * cc + π * D = 200 + 12.566
+    });
+
+    it('should calculate belt length correctly with different pulleys (4" drive, 6" tail)', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_length_cc_in: 100,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 6,
+        tail_matches_drive: false,
+      };
+      const result = runCalculation({ inputs });
+
+      // Formula: 2 * cc + π * (drive + tail) / 2
+      // = 2 * 100 + π * (4 + 6) / 2
+      // = 200 + π * 5
+      // = 200 + 15.708
+      // = 215.708
+      expect(result.outputs?.total_belt_length_in).toBeCloseTo(215.708, 2);
+    });
+
+    it('should output both pulley diameters', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 5,
+        tail_pulley_diameter_in: 8,
+        tail_matches_drive: false,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.drive_pulley_diameter_in).toBe(5);
+      expect(result.outputs?.tail_pulley_diameter_in).toBe(8);
+    });
+  });
+
+  describe('Pulley Diameter Validation', () => {
+    it('should reject drive pulley diameter < 2.5"', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 2,
+        tail_pulley_diameter_in: 4,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'drive_pulley_diameter_in')).toBe(true);
+    });
+
+    it('should reject tail pulley diameter < 2.5"', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 2,
+        tail_matches_drive: false,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'tail_pulley_diameter_in')).toBe(true);
+    });
+
+    it('should reject drive pulley diameter > 12"', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 14,
+        tail_pulley_diameter_in: 4,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'drive_pulley_diameter_in')).toBe(true);
+    });
+
+    it('should warn on mismatched pulley diameters', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 6,
+        tail_matches_drive: false,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'tail_pulley_diameter_in' && w.message.includes('different')
+        )
+      ).toBe(true);
+    });
+
+    it('should show info for non-standard pulley diameters', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 4.5, // Non-standard
+        tail_pulley_diameter_in: 4.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'drive_pulley_diameter_in' && w.severity === 'info'
+        )
+      ).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// v1.3: BELT CLEAT TESTS
+// ============================================================================
+
+describe('Belt Cleats (v1.3)', () => {
+  // Application field defaults
+  const APPLICATION_DEFAULTS = {
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: EnvironmentFactors.Indoor,
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    support_option: SupportOption.FloorMounted,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  const baseInputs: SliderbedInputs = {
+    conveyor_length_cc_in: 100,
+    conveyor_width_in: 24,
+    pulley_diameter_in: 4,
+    drive_rpm: 100,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0,
+    ...APPLICATION_DEFAULTS,
+  };
+
+  describe('Cleats Disabled (Default)', () => {
+    it('should not require cleat fields when disabled', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: false,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.cleats_enabled).toBe(false);
+      expect(result.outputs?.cleats_summary).toBeUndefined();
+    });
+
+    it('should default to cleats_enabled = false when not specified', () => {
+      const inputs = {
+        ...baseInputs,
+        // cleats_enabled not set
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.cleats_enabled).toBe(false);
+    });
+  });
+
+  describe('Cleats Enabled', () => {
+    it('should require cleat height when enabled', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        // cleat_height_in missing
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'cleat_height_in')).toBe(true);
+    });
+
+    it('should require cleat spacing when enabled', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_edge_offset_in: 0.5,
+        // cleat_spacing_in missing
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'cleat_spacing_in')).toBe(true);
+    });
+
+    it('should require cleat edge offset when enabled', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 12,
+        // cleat_edge_offset_in missing
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'cleat_edge_offset_in')).toBe(true);
+    });
+
+    it('should calculate successfully with valid cleat config', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.cleats_enabled).toBe(true);
+      expect(result.outputs?.cleats_summary).toBe('Cleats: 1" high @ 12" c/c, 0.5" from belt edge');
+    });
+
+    it('should NOT affect power/tension calculations (spec only)', () => {
+      const withoutCleats = {
+        ...baseInputs,
+        cleats_enabled: false,
+      };
+      const withCleats = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 2,
+        cleat_spacing_in: 8,
+        cleat_edge_offset_in: 1,
+      };
+
+      const resultWithout = runCalculation({ inputs: withoutCleats });
+      const resultWith = runCalculation({ inputs: withCleats });
+
+      expect(resultWithout.success).toBe(true);
+      expect(resultWith.success).toBe(true);
+
+      // All power/tension calculations should be identical
+      expect(resultWith.outputs?.total_belt_pull_lb).toBe(resultWithout.outputs?.total_belt_pull_lb);
+      expect(resultWith.outputs?.torque_drive_shaft_inlbf).toBe(
+        resultWithout.outputs?.torque_drive_shaft_inlbf
+      );
+      expect(resultWith.outputs?.belt_weight_lbf).toBe(resultWithout.outputs?.belt_weight_lbf);
+      expect(resultWith.outputs?.total_belt_length_in).toBe(
+        resultWithout.outputs?.total_belt_length_in
+      );
+    });
+  });
+
+  describe('Cleat Validation', () => {
+    it('should reject cleat height < 0.5"', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 0.25,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(
+        result.errors?.some((e) => e.field === 'cleat_height_in' && e.message.includes('0.5'))
+      ).toBe(true);
+    });
+
+    it('should reject cleat height > 6"', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 7,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(
+        result.errors?.some((e) => e.field === 'cleat_height_in' && e.message.includes('6'))
+      ).toBe(true);
+    });
+
+    it('should reject cleat spacing < 2"', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 1,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(
+        result.errors?.some((e) => e.field === 'cleat_spacing_in' && e.message.includes('2'))
+      ).toBe(true);
+    });
+
+    it('should reject cleat spacing > 48"', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 50,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(
+        result.errors?.some((e) => e.field === 'cleat_spacing_in' && e.message.includes('48'))
+      ).toBe(true);
+    });
+
+    it('should reject cleat edge offset > 12"', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 15,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(
+        result.errors?.some((e) => e.field === 'cleat_edge_offset_in' && e.message.includes('12'))
+      ).toBe(true);
+    });
+
+    it('should warn when cleat spacing < part travel dimension', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 8, // Less than part_length_in (12)
+        cleat_edge_offset_in: 0.5,
+        orientation: Orientation.Lengthwise,
+        part_length_in: 12,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'cleat_spacing_in' && w.message.includes('travel dimension')
+        )
+      ).toBe(true);
+    });
+
+    it('should warn when cleat edge offset exceeds half belt width', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_width_in: 20,
+        cleats_enabled: true,
+        cleat_height_in: 1,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 11, // > 20/2 = 10
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'cleat_edge_offset_in' && w.message.includes('overlap')
+        )
+      ).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// v1.4: SUPPORT & HEIGHT MODEL TESTS
+// ============================================================================
+
+describe('Support & Height Model (v1.4)', () => {
+  // Application field defaults
+  const APPLICATION_DEFAULTS = {
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: EnvironmentFactors.Indoor,
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  const baseInputs: SliderbedInputs = {
+    conveyor_length_cc_in: 120,
+    conveyor_width_in: 24,
+    pulley_diameter_in: 4,
+    drive_rpm: 100,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0,
+    belt_speed_fpm: 50,
+    ...APPLICATION_DEFAULTS,
+  };
+
+  describe('derivedLegsRequired', () => {
+    it('should return false when both ends are External', () => {
+      expect(derivedLegsRequired(EndSupportType.External, EndSupportType.External)).toBe(false);
+    });
+
+    it('should return true when tail is Legs', () => {
+      expect(derivedLegsRequired(EndSupportType.Legs, EndSupportType.External)).toBe(true);
+    });
+
+    it('should return true when drive is Legs', () => {
+      expect(derivedLegsRequired(EndSupportType.External, EndSupportType.Legs)).toBe(true);
+    });
+
+    it('should return true when both ends are Legs', () => {
+      expect(derivedLegsRequired(EndSupportType.Legs, EndSupportType.Legs)).toBe(true);
+    });
+
+    it('should return true when tail is Casters', () => {
+      expect(derivedLegsRequired(EndSupportType.Casters, EndSupportType.External)).toBe(true);
+    });
+
+    it('should return true when drive is Casters', () => {
+      expect(derivedLegsRequired(EndSupportType.External, EndSupportType.Casters)).toBe(true);
+    });
+
+    it('should return true when both ends are Casters', () => {
+      expect(derivedLegsRequired(EndSupportType.Casters, EndSupportType.Casters)).toBe(true);
+    });
+
+    it('should return true for mixed Legs and Casters', () => {
+      expect(derivedLegsRequired(EndSupportType.Legs, EndSupportType.Casters)).toBe(true);
+    });
+  });
+
+  describe('Legacy support_option Migration', () => {
+    it('should migrate FloorMounted to Legs + Legs', () => {
+      const inputs = {
+        ...baseInputs,
+        support_option: SupportOption.FloorMounted,
+      };
+      const migrated = migrateInputs(inputs);
+
+      expect(migrated.tail_support_type).toBe(EndSupportType.Legs);
+      expect(migrated.drive_support_type).toBe(EndSupportType.Legs);
+      expect((migrated as Record<string, unknown>).support_option).toBeUndefined();
+    });
+
+    it('should migrate Suspended to External + External', () => {
+      const inputs = {
+        ...baseInputs,
+        support_option: SupportOption.Suspended,
+      };
+      const migrated = migrateInputs(inputs);
+
+      expect(migrated.tail_support_type).toBe(EndSupportType.External);
+      expect(migrated.drive_support_type).toBe(EndSupportType.External);
+    });
+
+    it('should migrate IntegratedFrame to External + External', () => {
+      const inputs = {
+        ...baseInputs,
+        support_option: SupportOption.IntegratedFrame,
+      };
+      const migrated = migrateInputs(inputs);
+
+      expect(migrated.tail_support_type).toBe(EndSupportType.External);
+      expect(migrated.drive_support_type).toBe(EndSupportType.External);
+    });
+
+    it('should not override existing per-end support types', () => {
+      const inputs = {
+        ...baseInputs,
+        support_option: SupportOption.FloorMounted,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.Casters,
+      };
+      const migrated = migrateInputs(inputs);
+
+      expect(migrated.tail_support_type).toBe(EndSupportType.External);
+      expect(migrated.drive_support_type).toBe(EndSupportType.Casters);
+    });
+  });
+
+  describe('TOB Field Existence Rules', () => {
+    it('should remove TOB fields when legs_required=false', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.External,
+        // These should be removed
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        tail_tob_in: 36,
+        adjustment_required_in: 2,
+      } as SliderbedInputs;
+      const migrated = migrateInputs(inputs);
+
+      expect((migrated as Record<string, unknown>).height_input_mode).toBeUndefined();
+      expect((migrated as Record<string, unknown>).tail_tob_in).toBeUndefined();
+      expect((migrated as Record<string, unknown>).adjustment_required_in).toBeUndefined();
+    });
+
+    it('should keep TOB fields when legs_required=true', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        tail_tob_in: 36,
+        adjustment_required_in: 2,
+      };
+      const migrated = migrateInputs(inputs);
+
+      expect(migrated.height_input_mode).toBe(HeightInputMode.ReferenceAndAngle);
+      expect(migrated.tail_tob_in).toBe(36);
+      expect(migrated.adjustment_required_in).toBe(2);
+    });
+  });
+
+  describe('Height Geometry Calculations', () => {
+    it('should calculate implied angle from TOB heights', () => {
+      // 10" rise over 120" run = atan(10/120) = 4.76°
+      const angle = calculateImpliedAngleDeg(36, 46, 120);
+      expect(angle).toBeCloseTo(4.76, 1);
+    });
+
+    it('should return 0 for level conveyor', () => {
+      const angle = calculateImpliedAngleDeg(36, 36, 120);
+      expect(angle).toBe(0);
+    });
+
+    it('should return negative angle for decline', () => {
+      const angle = calculateImpliedAngleDeg(46, 36, 120);
+      expect(angle).toBeCloseTo(-4.76, 1);
+    });
+
+    it('should calculate opposite TOB from tail reference', () => {
+      // Tail at 36", 5° incline, 120" run
+      // rise = tan(5°) * 120 = 10.49"
+      // drive = 36 + 10.49 = 46.49"
+      const driveTob = calculateOppositeTob(36, 5, 120, 'tail');
+      expect(driveTob).toBeCloseTo(46.49, 1);
+    });
+
+    it('should calculate opposite TOB from drive reference', () => {
+      // Drive at 46", 5° incline, 120" run
+      // rise = tan(5°) * 120 = 10.49"
+      // tail = 46 - 10.49 = 35.51"
+      const tailTob = calculateOppositeTob(46, 5, 120, 'drive');
+      expect(tailTob).toBeCloseTo(35.51, 1);
+    });
+
+    it('should detect angle mismatch beyond tolerance', () => {
+      expect(hasAngleMismatch(5.7, 5, 0.5)).toBe(true); // 0.7° > 0.5°
+      expect(hasAngleMismatch(5.3, 5, 0.5)).toBe(false); // 0.3° < 0.5°
+      expect(hasAngleMismatch(5.5, 5, 0.5)).toBe(false); // exactly at tolerance
+    });
+  });
+
+  describe('Draft vs Commit Validation', () => {
+    it('should pass draft validation for migrated FloorMounted without TOB', () => {
+      // Fixture 7: Migrated FloorMounted with no TOB
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        // No TOB fields - mimics migrated legacy config
+      };
+
+      const errors = validateTob(inputs, 'draft');
+      expect(errors.length).toBe(0);
+    });
+
+    it('should fail commit validation for Legs config without TOB (Mode A)', () => {
+      // Fixture 12: Commit-mode failure for missing TOB
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        adjustment_required_in: 2,
+        // tail_tob_in missing
+      };
+
+      const errors = validateTob(inputs, 'commit');
+      expect(errors.length).toBe(1);
+      expect(errors[0].field).toBe('tail_tob_in');
+    });
+
+    it('should fail commit validation for Legs config without both TOBs (Mode B)', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.BothEnds,
+        tail_tob_in: 36,
+        // drive_tob_in missing
+      };
+
+      const errors = validateTob(inputs, 'commit');
+      expect(errors.length).toBe(1);
+      expect(errors[0].field).toBe('drive_tob_in');
+    });
+
+    it('should pass commit validation for Mode A with reference TOB', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        tail_tob_in: 36,
+        adjustment_required_in: 2,
+      };
+
+      const errors = validateTob(inputs, 'commit');
+      expect(errors.length).toBe(0);
+    });
+
+    it('should pass commit validation for Mode B with both TOBs', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.BothEnds,
+        tail_tob_in: 36,
+        drive_tob_in: 46,
+        adjustment_required_in: 2,
+      };
+
+      const errors = validateTob(inputs, 'commit');
+      expect(errors.length).toBe(0);
+    });
+
+    it('should skip TOB validation when legs_required=false', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.External,
+      };
+
+      const errors = validateTob(inputs, 'commit');
+      expect(errors.length).toBe(0);
+    });
+  });
+
+  describe('Mode Switching (clearTobFields)', () => {
+    it('should clear both TOB fields', () => {
+      const inputs: Partial<SliderbedInputs> = {
+        tail_tob_in: 36,
+        drive_tob_in: 46,
+      };
+      clearTobFields(inputs);
+
+      expect(inputs.tail_tob_in).toBeUndefined();
+      expect(inputs.drive_tob_in).toBeUndefined();
+    });
+  });
+
+  describe('Adjustment Range Warnings', () => {
+    it('should warn on adjustment > 6"', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        tail_tob_in: 36,
+        adjustment_required_in: 8,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'adjustment_required_in' && w.severity === 'info'
+        )
+      ).toBe(true);
+    });
+
+    it('should strongly warn on adjustment > 12"', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        tail_tob_in: 36,
+        adjustment_required_in: 14,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'adjustment_required_in' && w.severity === 'warning'
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe('Angle Mismatch Warning', () => {
+    it('should warn when implied angle differs from entered angle > 0.5°', () => {
+      // Fixture 11: Angle mismatch
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 3, // Entered angle
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.BothEnds,
+        tail_tob_in: 36,
+        drive_tob_in: 48, // Implies ~5.7° over 120"
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'conveyor_incline_deg' && w.message.includes('differs')
+        )
+      ).toBe(true);
+    });
+
+    it('should not warn when implied angle matches entered angle', () => {
+      // 10.49" rise over 120" = 5°
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 5,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.BothEnds,
+        tail_tob_in: 36,
+        drive_tob_in: 46.49, // tan(5°) * 120 + 36 = 46.49
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Check no angle mismatch warning exists
+      const hasMismatchWarning = result.warnings?.some(
+        (w) => w.field === 'conveyor_incline_deg' && w.message.includes('differs')
+      ) ?? false;
+      expect(hasMismatchWarning).toBe(false);
+    });
+  });
+
+  describe('Test Fixtures (from Spec)', () => {
+    it('Fixture 1: External both ends (no TOB fields)', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.External,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type)).toBe(false);
+    });
+
+    it('Fixture 2: Legs both ends, Mode A (tail reference)', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 5,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        tail_tob_in: 36,
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type)).toBe(true);
+    });
+
+    it('Fixture 3: Legs both ends, Mode A (drive reference)', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 5,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'drive' as const,
+        drive_tob_in: 42,
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('Fixture 4: Legs both ends, Mode B (both TOBs)', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 5,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.BothEnds,
+        tail_tob_in: 36,
+        drive_tob_in: 46.5,
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+    });
+
+    it('Fixture 5: Mixed support (tail External, drive Legs)', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 0,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.Legs,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'drive' as const,
+        drive_tob_in: 36,
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type)).toBe(true);
+    });
+
+    it('Fixture 6: Casters both ends', () => {
+      const inputs = {
+        ...baseInputs,
+        conveyor_incline_deg: 0,
+        tail_support_type: EndSupportType.Casters,
+        drive_support_type: EndSupportType.Casters,
+        height_input_mode: HeightInputMode.BothEnds,
+        tail_tob_in: 34,
+        drive_tob_in: 34,
+        adjustment_required_in: 4,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type)).toBe(true);
+    });
+
+    it('Fixture 8: Migrated Suspended (legacy) - passes both modes', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.External,
+      };
+
+      const draftErrors = validateTob(inputs, 'draft');
+      const commitErrors = validateTob(inputs, 'commit');
+
+      expect(draftErrors.length).toBe(0);
+      expect(commitErrors.length).toBe(0);
+    });
+
+    it('Fixture 9: Invalid - TOB field present when legs_required=false', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.External,
+        drive_support_type: EndSupportType.External,
+        tail_tob_in: 36, // Should not exist
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'tail_tob_in')).toBe(true);
+    });
+
+    // =========================================================================
+    // SMOKE TESTS: TOB visibility conditions
+    // =========================================================================
+
+    it('Smoke: Tail=Legs + Drive=Casters triggers legs_required=true', () => {
+      // This is the exact case that was failing in the UI
+      expect(derivedLegsRequired(EndSupportType.Legs, EndSupportType.Casters)).toBe(true);
+    });
+
+    it('Smoke: Tail=External + Drive=External triggers legs_required=false', () => {
+      expect(derivedLegsRequired(EndSupportType.External, EndSupportType.External)).toBe(false);
+    });
+
+    it('Smoke: Mixed Legs+Casters with TOB fields is valid', () => {
+      const inputs = {
+        ...baseInputs,
+        tail_support_type: EndSupportType.Legs,
+        drive_support_type: EndSupportType.Casters,
+        height_input_mode: HeightInputMode.ReferenceAndAngle,
+        reference_end: 'tail' as const,
+        tail_tob_in: 36,
+        adjustment_required_in: 2,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type)).toBe(true);
     });
   });
 });

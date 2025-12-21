@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.2 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.3 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,7 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.3 (2025-12-21): Split pulley diameter into drive/tail, update belt length formula
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
  * v1.1 (2025-12-19): Fix open-belt wrap length: use πD not 2πD
  * v1.0 (2024-12-19): Initial implementation
@@ -21,6 +22,7 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
 } from './schema';
+import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
 
 // ============================================================================
 // CONSTANTS
@@ -95,18 +97,41 @@ export function calculateBeltWeightCoefficients(
 }
 
 /**
- * Calculate total belt length in inches
+ * Calculate total belt length in inches (LEGACY - single pulley diameter)
  *
  * Formula:
  *   total_belt_length_in = (2 * cc_length_in) + (PI * pulley_diameter_in)
  *
  * Note: Uses πD (half wrap) not 2πD (full wrap) for open-belt configuration
+ *
+ * @deprecated Use calculateTotalBeltLengthSplit for v1.3+ calculations
  */
 export function calculateTotalBeltLength(
   conveyorLengthCcIn: number,
   pulleyDiameterIn: number
 ): number {
   return 2 * conveyorLengthCcIn + PI * pulleyDiameterIn;
+}
+
+/**
+ * Calculate total belt length in inches (v1.3 - split pulley diameters)
+ *
+ * Formula:
+ *   total_belt_length_in = (2 * cc_length_in) + PI * (drive_pulley_diameter_in + tail_pulley_diameter_in) / 2
+ *
+ * PARITY GUARANTEE: When drive == tail == D:
+ *   = 2 * cc + PI * (D + D) / 2
+ *   = 2 * cc + PI * D
+ *   = legacy formula (bit-for-bit identical)
+ *
+ * Note: Uses half-wrap for each pulley in open-belt configuration
+ */
+export function calculateTotalBeltLengthSplit(
+  conveyorLengthCcIn: number,
+  drivePulleyDiameterIn: number,
+  tailPulleyDiameterIn: number
+): number {
+  return 2 * conveyorLengthCcIn + PI * (drivePulleyDiameterIn + tailPulleyDiameterIn) / 2;
 }
 
 /**
@@ -503,9 +528,12 @@ export function calculate(
   const frictionCoeff = inputs.friction_coeff ?? parameters.friction_coeff;
   const motorRpm = inputs.motor_rpm ?? parameters.motor_rpm;
 
-  // Step 1: Belt weight coefficients (v1.3: now uses effective belt coefficients)
+  // v1.3: Normalize pulley diameters (handles legacy migration)
+  const { drivePulleyDiameterIn, tailPulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+
+  // Step 1: Belt weight coefficients (v1.3: uses drive pulley for PIW/PIL lookup)
   const { piw, pil, belt_piw_effective, belt_pil_effective } = calculateEffectiveBeltCoefficients(
-    inputs.pulley_diameter_in,
+    drivePulleyDiameterIn, // Use drive pulley for coefficient lookup
     parameters,
     inputs.belt_piw_override,
     inputs.belt_pil_override,
@@ -515,10 +543,11 @@ export function calculate(
     inputs.belt_coeff_pil
   );
 
-  // Step 2: Total belt length
-  const totalBeltLengthIn = calculateTotalBeltLength(
+  // Step 2: Total belt length (v1.3: uses split pulley diameters)
+  const totalBeltLengthIn = calculateTotalBeltLengthSplit(
     inputs.conveyor_length_cc_in,
-    inputs.pulley_diameter_in
+    drivePulleyDiameterIn,
+    tailPulleyDiameterIn
   );
 
   // Step 3: Belt weight
@@ -579,10 +608,10 @@ export function calculate(
     inputs.orientation
   );
 
-  // Step 11: Belt speed (derived from drive RPM)
+  // Step 11: Belt speed (derived from drive RPM, v1.3: uses drive pulley)
   const beltSpeedFpm = calculateBeltSpeed(
     inputs.drive_rpm,
-    inputs.pulley_diameter_in
+    drivePulleyDiameterIn
   );
 
   // Step 12: Capacity (parts per hour)
@@ -591,10 +620,10 @@ export function calculate(
   // Step 13: Drive shaft RPM (same as drive_rpm input for now, but keep for backwards compatibility)
   const driveShaftRpm = inputs.drive_rpm;
 
-  // Step 14: Torque on drive shaft (v1.2: now uses user safety_factor if provided)
+  // Step 14: Torque on drive shaft (v1.2: now uses user safety_factor if provided, v1.3: uses drive pulley)
   const torqueDriveShaftInlbf = calculateTorqueDriveShaft(
     totalBeltPullLb,
-    inputs.pulley_diameter_in,
+    drivePulleyDiameterIn,
     safetyFactor
   );
 
@@ -610,7 +639,7 @@ export function calculate(
   if (inputs.required_throughput_pph !== undefined && inputs.required_throughput_pph > 0) {
     targetPph = calculateTargetThroughput(inputs.required_throughput_pph, throughputMarginPct);
     meetsThroughput = capacityPph >= targetPph;
-    rpmRequiredForTarget = calculateRpmRequired(targetPph, pitchIn, inputs.pulley_diameter_in);
+    rpmRequiredForTarget = calculateRpmRequired(targetPph, pitchIn, drivePulleyDiameterIn);
     throughputMarginAchievedPct = calculateMarginAchieved(capacityPph, inputs.required_throughput_pph);
   }
 
@@ -679,5 +708,13 @@ export function calculate(
     pulley_face_length_in: pulleyFaceLengthIn,
     drive_shaft_diameter_in: driveShaftDiameterIn,
     tail_shaft_diameter_in: tailShaftDiameterIn,
+
+    // v1.3: Split pulley diameters
+    drive_pulley_diameter_in: drivePulleyDiameterIn,
+    tail_pulley_diameter_in: tailPulleyDiameterIn,
+
+    // v1.3: Cleats (spec-only, no calculation impact)
+    cleats_enabled: inputs.cleats_enabled ?? false,
+    cleats_summary: buildCleatsSummary(inputs),
   };
 }
