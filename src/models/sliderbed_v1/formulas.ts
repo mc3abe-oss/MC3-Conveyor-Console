@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.3 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.5 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,7 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, update belt length formula
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
  * v1.1 (2025-12-19): Fix open-belt wrap length: use πD not 2πD
@@ -21,6 +22,7 @@ import {
   Orientation,
   BeltTrackingMethod,
   ShaftDiameterMode,
+  FrameHeightMode,
 } from './schema';
 import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
 
@@ -504,6 +506,197 @@ export function calculateShaftDiameter(
 }
 
 // ============================================================================
+// v1.5: FRAME HEIGHT CALCULATIONS
+// ============================================================================
+
+/**
+ * Frame height constants (v1.5)
+ */
+export const FRAME_HEIGHT_CONSTANTS = {
+  /**
+   * Standard frame height offset above largest pulley diameter.
+   * Set to 2.5" to match the snub roller clearance threshold, ensuring
+   * Standard mode never requires snub rollers.
+   */
+  STANDARD_OFFSET_IN: 2.5,
+  /** Low profile frame height offset above drive pulley diameter */
+  LOW_PROFILE_OFFSET_IN: 0.5,
+  /** Minimum allowed frame height */
+  MIN_FRAME_HEIGHT_IN: 3.0,
+  /** Threshold below which design review is required */
+  DESIGN_REVIEW_THRESHOLD_IN: 4.0,
+} as const;
+
+/**
+ * Calculate effective frame height in inches based on mode
+ *
+ * Formula:
+ *   Standard: drive_pulley_diameter_in + 1.0"
+ *   Low Profile: drive_pulley_diameter_in + 0.5"
+ *   Custom: user-specified custom_frame_height_in
+ *
+ * @param frameHeightMode - The frame height mode
+ * @param drivePulleyDiameterIn - Drive pulley diameter in inches
+ * @param customFrameHeightIn - Custom frame height (required if mode is Custom)
+ * @returns Effective frame height in inches
+ */
+export function calculateEffectiveFrameHeight(
+  frameHeightMode: FrameHeightMode | string | undefined,
+  drivePulleyDiameterIn: number,
+  customFrameHeightIn?: number
+): number {
+  const mode = frameHeightMode ?? FrameHeightMode.Standard;
+
+  if (mode === FrameHeightMode.Custom || mode === 'Custom') {
+    // Custom mode: use user-specified value, or fall back to standard if not provided
+    return customFrameHeightIn ?? (drivePulleyDiameterIn + FRAME_HEIGHT_CONSTANTS.STANDARD_OFFSET_IN);
+  }
+
+  if (mode === FrameHeightMode.LowProfile || mode === 'Low Profile') {
+    return drivePulleyDiameterIn + FRAME_HEIGHT_CONSTANTS.LOW_PROFILE_OFFSET_IN;
+  }
+
+  // Standard mode (default)
+  return drivePulleyDiameterIn + FRAME_HEIGHT_CONSTANTS.STANDARD_OFFSET_IN;
+}
+
+/**
+ * Snub roller clearance threshold constant (inches)
+ *
+ * Snub rollers are required when frame height doesn't provide sufficient clearance
+ * above the largest pulley. This 2.5" threshold accounts for belt return path
+ * geometry and pulley bearing housings in the high-tension zones near pulleys.
+ */
+export const SNUB_ROLLER_CLEARANCE_THRESHOLD_IN = 2.5;
+
+/**
+ * Determine if snub rollers are required
+ *
+ * Snub rollers handle HIGH-TENSION zones near the drive and tail pulleys.
+ * They are required when the frame height doesn't provide enough clearance
+ * above the largest pulley for the belt return path.
+ *
+ * Formula:
+ *   requires_snub_rollers = frame_height_in < (largest_pulley_diameter_in + 2.5")
+ *
+ * Note: Snub rollers do NOT replace all gravity return rollers - they only
+ * replace the ones at the ends (near pulleys). Gravity rollers still support
+ * the mid-span belt return path.
+ *
+ * @param effectiveFrameHeightIn - Effective frame height in inches
+ * @param drivePulleyDiameterIn - Drive pulley diameter in inches
+ * @param tailPulleyDiameterIn - Tail pulley diameter in inches
+ * @returns True if snub rollers are required
+ */
+export function calculateRequiresSnubRollers(
+  effectiveFrameHeightIn: number,
+  drivePulleyDiameterIn: number,
+  tailPulleyDiameterIn: number
+): boolean {
+  const largestPulleyDiameter = Math.max(drivePulleyDiameterIn, tailPulleyDiameterIn);
+  return effectiveFrameHeightIn < (largestPulleyDiameter + SNUB_ROLLER_CLEARANCE_THRESHOLD_IN);
+}
+
+/**
+ * Gravity return roller spacing constant (inches)
+ * Standard spacing for gravity return rollers under the belt return path
+ */
+export const GRAVITY_ROLLER_SPACING_IN = 60;
+
+/**
+ * Calculate the number of gravity return rollers needed
+ *
+ * Gravity return rollers support the belt in the FREE-SPAN zone (mid-section)
+ * of the return path. They are spaced at regular intervals (typically 60" / 5 feet).
+ *
+ * IMPORTANT: When snub rollers are present, they handle the HIGH-TENSION zones
+ * at both ends (near the pulleys). In this case, gravity rollers only cover
+ * the mid-span, so we subtract 2 from the total count (one end roller replaced
+ * by each snub).
+ *
+ * Layout:
+ *   Without snubs: [gravity]---[gravity]---[gravity]---[gravity]
+ *   With snubs:    [snub]---[gravity]---[gravity]---[snub]
+ *
+ * Formula:
+ *   total_positions = floor(conveyor_length_cc_in / spacing) + 1
+ *   gravity_count = requiresSnubs ? max(total_positions - 2, 0) : max(total_positions, 2)
+ *
+ * @param conveyorLengthCcIn - Center-to-center conveyor length in inches
+ * @param requiresSnubRollers - Whether snub rollers are required (ends handled by snubs)
+ * @param spacingIn - Spacing between rollers (default: 60")
+ * @returns Number of gravity return rollers
+ */
+export function calculateGravityRollerQuantity(
+  conveyorLengthCcIn: number,
+  requiresSnubRollers: boolean,
+  spacingIn: number = GRAVITY_ROLLER_SPACING_IN
+): number {
+  if (conveyorLengthCcIn <= 0) {
+    return 0;
+  }
+
+  // Calculate total roller positions based on spacing
+  const totalPositions = Math.floor(conveyorLengthCcIn / spacingIn) + 1;
+
+  if (requiresSnubRollers) {
+    // Snubs replace the end positions, gravity rollers cover mid-span only
+    // If total positions <= 2, snubs handle everything, no gravity rollers needed
+    return Math.max(totalPositions - 2, 0);
+  }
+
+  // No snubs: gravity rollers at all positions, minimum of 2
+  return Math.max(totalPositions, 2);
+}
+
+/**
+ * Calculate the number of snub rollers needed
+ *
+ * Snub rollers handle the HIGH-TENSION zones near the drive and tail pulleys.
+ * They are required when frame height is below the clearance threshold.
+ * Typically 2 rollers are needed (one at each end near the pulleys).
+ *
+ * Note: Snub rollers replace the END positions of gravity return rollers,
+ * so gravity roller count should be reduced by 2 when snubs are present.
+ *
+ * @param requiresSnubRollers - Whether snub rollers are required
+ * @returns Number of snub rollers (0 if not required, 2 if required)
+ */
+export function calculateSnubRollerQuantity(
+  requiresSnubRollers: boolean
+): number {
+  return requiresSnubRollers ? 2 : 0;
+}
+
+/**
+ * Calculate all cost flags for frame height configuration
+ *
+ * @param frameHeightMode - The frame height mode
+ * @param effectiveFrameHeightIn - Effective frame height in inches
+ * @param requiresSnubRollers - Whether snub rollers are required
+ * @returns Object with all cost flag booleans
+ */
+export function calculateFrameHeightCostFlags(
+  frameHeightMode: FrameHeightMode | string | undefined,
+  effectiveFrameHeightIn: number,
+  requiresSnubRollers: boolean
+): {
+  cost_flag_low_profile: boolean;
+  cost_flag_custom_frame: boolean;
+  cost_flag_snub_rollers: boolean;
+  cost_flag_design_review: boolean;
+} {
+  const mode = frameHeightMode ?? FrameHeightMode.Standard;
+
+  return {
+    cost_flag_low_profile: mode === FrameHeightMode.LowProfile || mode === 'Low Profile',
+    cost_flag_custom_frame: mode === FrameHeightMode.Custom || mode === 'Custom',
+    cost_flag_snub_rollers: requiresSnubRollers,
+    cost_flag_design_review: effectiveFrameHeightIn < FRAME_HEIGHT_CONSTANTS.DESIGN_REVIEW_THRESHOLD_IN,
+  };
+}
+
+// ============================================================================
 // MASTER CALCULATION FUNCTION
 // ============================================================================
 
@@ -665,6 +858,32 @@ export function calculate(
     torqueDriveShaftInlbf * 0.5 // Tail shaft typically sees less torque
   );
 
+  // Step 19: Frame height calculations (v1.5)
+  const effectiveFrameHeightIn = calculateEffectiveFrameHeight(
+    inputs.frame_height_mode,
+    drivePulleyDiameterIn,
+    inputs.custom_frame_height_in
+  );
+  // v1.5 FIX: Use largest pulley + 2.5" threshold for snub roller requirement
+  const requiresSnubRollers = calculateRequiresSnubRollers(
+    effectiveFrameHeightIn,
+    drivePulleyDiameterIn,
+    tailPulleyDiameterIn
+  );
+  const costFlags = calculateFrameHeightCostFlags(
+    inputs.frame_height_mode,
+    effectiveFrameHeightIn,
+    requiresSnubRollers
+  );
+
+  // Step 20: Roller quantities (v1.5)
+  // Note: Gravity roller count depends on whether snubs are present (snubs replace end positions)
+  const snubRollerQuantity = calculateSnubRollerQuantity(requiresSnubRollers);
+  const gravityRollerQuantity = calculateGravityRollerQuantity(
+    inputs.conveyor_length_cc_in,
+    requiresSnubRollers
+  );
+
   // Return all outputs
   return {
     // Intermediate outputs
@@ -716,5 +935,15 @@ export function calculate(
     // v1.3: Cleats (spec-only, no calculation impact)
     cleats_enabled: inputs.cleats_enabled ?? false,
     cleats_summary: buildCleatsSummary(inputs),
+
+    // v1.5: Frame height & snub roller outputs
+    effective_frame_height_in: effectiveFrameHeightIn,
+    requires_snub_rollers: requiresSnubRollers,
+    ...costFlags,
+
+    // v1.5: Roller quantities
+    gravity_roller_quantity: gravityRollerQuantity,
+    gravity_roller_spacing_in: GRAVITY_ROLLER_SPACING_IN,
+    snub_roller_quantity: snubRollerQuantity,
   };
 }

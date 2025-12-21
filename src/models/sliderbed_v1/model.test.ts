@@ -54,6 +54,8 @@ import {
   HeightInputMode,
   derivedLegsRequired,
   TOB_FIELDS,
+  // v1.5: Frame Height
+  FrameHeightMode,
 } from './schema';
 import {
   migrateInputs,
@@ -2682,6 +2684,562 @@ describe('Support & Height Model (v1.4)', () => {
 
       expect(result.success).toBe(true);
       expect(derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type)).toBe(true);
+    });
+  });
+});
+
+// ============================================================================
+// v1.5: FRAME HEIGHT & SNUB ROLLER TESTS
+// ============================================================================
+
+describe('Frame Height & Snub Roller Logic (v1.5)', () => {
+  // Import frame height functions and constants for testing
+  const {
+    calculateEffectiveFrameHeight,
+    calculateRequiresSnubRollers,
+    calculateFrameHeightCostFlags,
+    FRAME_HEIGHT_CONSTANTS,
+  } = require('./formulas');
+
+  const { FrameHeightMode } = require('./schema');
+
+  describe('calculateEffectiveFrameHeight', () => {
+    it('should calculate Standard frame height as pulley + 2.5"', () => {
+      // Standard mode uses 2.5" offset to match snub threshold (no snubs needed)
+      const frameHeight = calculateEffectiveFrameHeight(
+        FrameHeightMode.Standard,
+        4, // 4" pulley
+        undefined
+      );
+      expect(frameHeight).toBe(6.5); // 4 + 2.5
+    });
+
+    it('should calculate Low Profile frame height as pulley + 0.5"', () => {
+      const frameHeight = calculateEffectiveFrameHeight(
+        FrameHeightMode.LowProfile,
+        4, // 4" pulley
+        undefined
+      );
+      expect(frameHeight).toBe(4.5); // 4 + 0.5
+    });
+
+    it('should use custom frame height when mode is Custom', () => {
+      const frameHeight = calculateEffectiveFrameHeight(
+        FrameHeightMode.Custom,
+        4, // pulley (ignored)
+        3.5 // custom height
+      );
+      expect(frameHeight).toBe(3.5);
+    });
+
+    it('should fall back to standard when Custom mode has no value', () => {
+      const frameHeight = calculateEffectiveFrameHeight(
+        FrameHeightMode.Custom,
+        4, // pulley
+        undefined // no custom value
+      );
+      expect(frameHeight).toBe(6.5); // Falls back to standard (4 + 2.5)
+    });
+
+    it('should default to Standard when mode is undefined', () => {
+      const frameHeight = calculateEffectiveFrameHeight(
+        undefined,
+        6, // 6" pulley
+        undefined
+      );
+      expect(frameHeight).toBe(8.5); // 6 + 2.5 (Standard offset)
+    });
+
+    it('should handle string enum values', () => {
+      const frameHeight = calculateEffectiveFrameHeight(
+        'Low Profile',
+        4,
+        undefined
+      );
+      expect(frameHeight).toBe(4.5);
+    });
+  });
+
+  describe('calculateRequiresSnubRollers', () => {
+    // NEW LOGIC (v1.5 FIX): requires_snub = frame_height < (largest_pulley + 2.5")
+    // Snub rollers handle HIGH-TENSION zones near pulleys
+
+    it('should NOT require snub rollers when frame height >= largest pulley + 2.5"', () => {
+      // 7" frame >= (4" pulley + 2.5") = 6.5" threshold - no snub rollers needed
+      expect(calculateRequiresSnubRollers(7.0, 4.0, 4.0)).toBe(false);
+    });
+
+    it('should NOT require snub rollers when frame height equals threshold exactly', () => {
+      // 6.5" frame == (4" + 2.5") - no snub rollers needed (just at threshold)
+      expect(calculateRequiresSnubRollers(6.5, 4.0, 4.0)).toBe(false);
+    });
+
+    it('should require snub rollers when frame height < largest pulley + 2.5"', () => {
+      // 6" frame < (4" pulley + 2.5") = 6.5" threshold - snub rollers required
+      expect(calculateRequiresSnubRollers(6.0, 4.0, 4.0)).toBe(true);
+    });
+
+    it('should require snub rollers for Standard mode with 4" pulley', () => {
+      // Standard: 4" pulley + 1" = 5" frame
+      // 5" < (4" + 2.5") = 6.5" threshold - snub rollers REQUIRED
+      expect(calculateRequiresSnubRollers(5.0, 4.0, 4.0)).toBe(true);
+    });
+
+    it('should require snub rollers for Low Profile mode with 4" pulley', () => {
+      // Low profile: 4" pulley + 0.5" = 4.5" frame
+      // 4.5" < (4" + 2.5") = 6.5" threshold - snub rollers REQUIRED
+      expect(calculateRequiresSnubRollers(4.5, 4.0, 4.0)).toBe(true);
+    });
+
+    it('should use largest pulley for threshold when drive and tail differ', () => {
+      // 7" frame, 4" drive, 6" tail
+      // Threshold = 6" (largest) + 2.5" = 8.5"
+      // 7" < 8.5" - snub rollers required
+      expect(calculateRequiresSnubRollers(7.0, 4.0, 6.0)).toBe(true);
+
+      // 9" frame - above threshold
+      expect(calculateRequiresSnubRollers(9.0, 4.0, 6.0)).toBe(false);
+    });
+
+    it('should require snub rollers for custom low frame', () => {
+      // Custom: 3.5" frame < (4" + 2.5") = 6.5" threshold
+      expect(calculateRequiresSnubRollers(3.5, 4.0, 4.0)).toBe(true);
+    });
+  });
+
+  describe('calculateFrameHeightCostFlags', () => {
+    it('should set no cost flags for Standard mode with standard height', () => {
+      const flags = calculateFrameHeightCostFlags(
+        FrameHeightMode.Standard,
+        5.0, // 4" pulley + 1"
+        false
+      );
+      expect(flags.cost_flag_low_profile).toBe(false);
+      expect(flags.cost_flag_custom_frame).toBe(false);
+      expect(flags.cost_flag_snub_rollers).toBe(false);
+      expect(flags.cost_flag_design_review).toBe(false);
+    });
+
+    it('should set low_profile flag for Low Profile mode', () => {
+      const flags = calculateFrameHeightCostFlags(
+        FrameHeightMode.LowProfile,
+        4.5,
+        false
+      );
+      expect(flags.cost_flag_low_profile).toBe(true);
+      expect(flags.cost_flag_custom_frame).toBe(false);
+    });
+
+    it('should set custom_frame flag for Custom mode', () => {
+      const flags = calculateFrameHeightCostFlags(
+        FrameHeightMode.Custom,
+        5.0,
+        false
+      );
+      expect(flags.cost_flag_low_profile).toBe(false);
+      expect(flags.cost_flag_custom_frame).toBe(true);
+    });
+
+    it('should set snub_rollers flag when requiresSnubRollers is true', () => {
+      const flags = calculateFrameHeightCostFlags(
+        FrameHeightMode.Custom,
+        3.5,
+        true // snub rollers required
+      );
+      expect(flags.cost_flag_snub_rollers).toBe(true);
+    });
+
+    it('should set design_review flag when frame height < 4.0"', () => {
+      const flags = calculateFrameHeightCostFlags(
+        FrameHeightMode.Custom,
+        3.5,
+        true
+      );
+      expect(flags.cost_flag_design_review).toBe(true);
+    });
+
+    it('should NOT set design_review flag when frame height >= 4.0"', () => {
+      const flags = calculateFrameHeightCostFlags(
+        FrameHeightMode.Standard,
+        4.5,
+        false
+      );
+      expect(flags.cost_flag_design_review).toBe(false);
+    });
+  });
+
+  describe('Integration: Full Calculation with Frame Height', () => {
+    const APPLICATION_DEFAULTS = {
+      material_type: MaterialType.Steel,
+      process_type: ProcessType.Assembly,
+      parts_sharp: PartsSharp.No,
+      environment_factors: EnvironmentFactors.Indoor,
+      ambient_temperature: AmbientTemperature.Normal,
+      power_feed: PowerFeed.V480_3Ph,
+      controls_package: ControlsPackage.StartStop,
+      spec_source: SpecSource.Standard,
+      field_wiring_required: FieldWiringRequired.No,
+      bearing_grade: BearingGrade.Standard,
+      documentation_package: DocumentationPackage.Basic,
+      finish_paint_system: FinishPaintSystem.PowderCoat,
+      labels_required: LabelsRequired.Yes,
+      send_to_estimating: SendToEstimating.No,
+      motor_brand: MotorBrand.Standard,
+      bottom_covers: false,
+      side_rails: SideRails.None,
+      end_guards: EndGuards.None,
+      finger_safe: false,
+      lacing_style: LacingStyle.Endless,
+      side_skirts: false,
+      sensor_options: [],
+      pulley_surface_type: PulleySurfaceType.Plain,
+      start_stop_application: false,
+      direction_mode: DirectionMode.OneDirection,
+      side_loading_direction: SideLoadingDirection.None,
+      drive_location: DriveLocation.Head,
+      brake_motor: false,
+      gearmotor_orientation: GearmotorOrientation.SideMount,
+      drive_hand: DriveHand.RightHand,
+      belt_tracking_method: BeltTrackingMethod.Crowned,
+      shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    };
+
+    const baseInputs: SliderbedInputs = {
+      conveyor_length_cc_in: 120,
+      conveyor_width_in: 24,
+      pulley_diameter_in: 4,
+      drive_pulley_diameter_in: 4,
+      tail_pulley_diameter_in: 4,
+      drive_rpm: 100,
+      part_weight_lbs: 5,
+      part_length_in: 12,
+      part_width_in: 6,
+      drop_height_in: 0,
+      part_temperature_class: PartTemperatureClass.Ambient,
+      fluid_type: FluidType.None,
+      orientation: Orientation.Lengthwise,
+      part_spacing_in: 0,
+      belt_speed_fpm: 50,
+      ...APPLICATION_DEFAULTS,
+    };
+
+    it('should output frame height for Standard mode', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.Standard,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Standard mode: 4" pulley + 2.5" = 6.5" frame (matches snub threshold exactly)
+      expect(result.outputs?.effective_frame_height_in).toBe(6.5);
+      // Standard mode should NOT require snub rollers (frame height >= threshold)
+      expect(result.outputs?.requires_snub_rollers).toBe(false);
+      expect(result.outputs?.cost_flag_low_profile).toBe(false);
+      expect(result.outputs?.cost_flag_custom_frame).toBe(false);
+      expect(result.outputs?.cost_flag_design_review).toBe(false);
+    });
+
+    it('should output frame height for Low Profile mode', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.LowProfile,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.effective_frame_height_in).toBe(4.5); // 4" pulley + 0.5"
+      // NEW LOGIC: 4.5" frame < (4" pulley + 2.5") = 6.5" threshold → snubs REQUIRED
+      expect(result.outputs?.requires_snub_rollers).toBe(true);
+      expect(result.outputs?.cost_flag_low_profile).toBe(true);
+    });
+
+    it('should output frame height for Custom mode', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 5.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.effective_frame_height_in).toBe(5.5);
+      expect(result.outputs?.cost_flag_custom_frame).toBe(true);
+    });
+
+    it('should require snub rollers for low custom frame height', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 3.5, // Less than 4" pulley
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.effective_frame_height_in).toBe(3.5);
+      expect(result.outputs?.requires_snub_rollers).toBe(true);
+      expect(result.outputs?.cost_flag_snub_rollers).toBe(true);
+      expect(result.outputs?.cost_flag_design_review).toBe(true);
+    });
+
+    it('should warn on design review for low frame heights', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 3.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'frame_height_mode' && w.message.includes('Design review')
+        )
+      ).toBe(true);
+    });
+
+    it('should info on snub roller requirement', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 3.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // v1.5 FIX: Message now mentions snub roller threshold
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'frame_height_mode' && w.message.includes('Snub rollers will be required')
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe('Validation: Custom Frame Height', () => {
+    const { validateInputs } = require('./rules');
+
+    it('should error when Custom mode has no custom_frame_height_in', () => {
+      const inputs = {
+        conveyor_length_cc_in: 120,
+        conveyor_width_in: 24,
+        pulley_diameter_in: 4,
+        frame_height_mode: FrameHeightMode.Custom,
+        // custom_frame_height_in missing
+      } as unknown as SliderbedInputs;
+
+      const errors = validateInputs(inputs);
+      expect(errors.some((e: { field: string }) => e.field === 'custom_frame_height_in')).toBe(true);
+    });
+
+    it('should error when custom_frame_height_in < minimum', () => {
+      const inputs = {
+        conveyor_length_cc_in: 120,
+        conveyor_width_in: 24,
+        pulley_diameter_in: 4,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 2.5, // Below 3.0" minimum
+      } as unknown as SliderbedInputs;
+
+      const errors = validateInputs(inputs);
+      expect(errors.some((e: { field: string; message: string }) =>
+        e.field === 'custom_frame_height_in' && e.message.includes('3')
+      )).toBe(true);
+    });
+
+    it('should pass validation for valid custom frame height', () => {
+      const inputs = {
+        conveyor_length_cc_in: 120,
+        conveyor_width_in: 24,
+        pulley_diameter_in: 4,
+        drive_rpm: 100,
+        part_weight_lbs: 5,
+        part_length_in: 12,
+        part_width_in: 6,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 4.0, // Valid
+      } as unknown as SliderbedInputs;
+
+      const errors = validateInputs(inputs);
+      expect(errors.filter((e: { field: string }) => e.field === 'custom_frame_height_in').length).toBe(0);
+    });
+  });
+
+  describe('Roller Quantity Calculations', () => {
+    const { calculateGravityRollerQuantity, calculateSnubRollerQuantity, GRAVITY_ROLLER_SPACING_IN } = require('./formulas');
+
+    describe('calculateGravityRollerQuantity', () => {
+      it('should return 0 for zero-length conveyor', () => {
+        expect(calculateGravityRollerQuantity(0, false)).toBe(0);
+      });
+
+      it('should return minimum 2 rollers for short conveyor without snubs', () => {
+        // 30" conveyor / 60" spacing = 0 + 1 = 1, but min is 2
+        expect(calculateGravityRollerQuantity(30, false)).toBe(2);
+      });
+
+      it('should calculate rollers based on spacing without snubs', () => {
+        // 120" conveyor / 60" spacing = 2 + 1 = 3 rollers
+        expect(calculateGravityRollerQuantity(120, false)).toBe(3);
+        // 240" conveyor / 60" spacing = 4 + 1 = 5 rollers
+        expect(calculateGravityRollerQuantity(240, false)).toBe(5);
+      });
+
+      it('should subtract end rollers when snubs are present', () => {
+        // 120" conveyor / 60" spacing = 3 total positions
+        // With snubs: 3 - 2 = 1 gravity roller (mid-span)
+        expect(calculateGravityRollerQuantity(120, true)).toBe(1);
+      });
+
+      it('should return 0 gravity rollers when snubs handle everything', () => {
+        // 30" conveyor / 60" spacing = 2 total positions
+        // With snubs: 2 - 2 = 0 gravity rollers (snubs cover both ends)
+        expect(calculateGravityRollerQuantity(30, true)).toBe(0);
+      });
+
+      it('should have snubs and gravity rollers coexist for long conveyors', () => {
+        // 360" conveyor (30 feet) / 60" spacing = 6 + 1 = 7 total positions
+        // With snubs: 7 - 2 = 5 gravity rollers in mid-span
+        expect(calculateGravityRollerQuantity(360, true)).toBe(5);
+        // Layout: [snub]---[gravity]---[gravity]---[gravity]---[gravity]---[gravity]---[snub]
+      });
+    });
+
+    describe('calculateSnubRollerQuantity', () => {
+      it('should return 0 when snubs not required', () => {
+        expect(calculateSnubRollerQuantity(false)).toBe(0);
+      });
+
+      it('should return 2 when snubs are required', () => {
+        // One at each end (near drive and tail pulleys)
+        expect(calculateSnubRollerQuantity(true)).toBe(2);
+      });
+    });
+
+    describe('Integration: Roller Coexistence', () => {
+      it('should output both gravity and snub rollers for low profile long conveyor', () => {
+        const inputs: SliderbedInputs = {
+          conveyor_length_cc_in: 360, // 30 feet
+          conveyor_width_in: 24,
+          pulley_diameter_in: 4,
+          drive_pulley_diameter_in: 4,
+          tail_pulley_diameter_in: 4,
+          drive_rpm: 100,
+          part_weight_lbs: 5,
+          part_length_in: 12,
+          part_width_in: 6,
+          orientation: Orientation.Lengthwise,
+          frame_height_mode: FrameHeightMode.LowProfile, // 4.5" frame < 6.5" threshold
+          drop_height_in: 0,
+          part_temperature_class: PartTemperatureClass.Ambient,
+          fluid_type: FluidType.None,
+          part_spacing_in: 0,
+          belt_speed_fpm: 50,
+          material_type: MaterialType.Steel,
+          process_type: ProcessType.Assembly,
+          parts_sharp: PartsSharp.No,
+          environment_factors: EnvironmentFactors.Indoor,
+          ambient_temperature: AmbientTemperature.Normal,
+          power_feed: PowerFeed.V480_3Ph,
+          controls_package: ControlsPackage.StartStop,
+          spec_source: SpecSource.Standard,
+          field_wiring_required: FieldWiringRequired.No,
+          bearing_grade: BearingGrade.Standard,
+          documentation_package: DocumentationPackage.Basic,
+          finish_paint_system: FinishPaintSystem.PowderCoat,
+          labels_required: LabelsRequired.Yes,
+          send_to_estimating: SendToEstimating.No,
+          motor_brand: MotorBrand.Standard,
+          bottom_covers: false,
+          side_rails: SideRails.None,
+          end_guards: EndGuards.None,
+          finger_safe: false,
+          lacing_style: LacingStyle.Endless,
+          side_skirts: false,
+          sensor_options: [],
+          pulley_surface_type: PulleySurfaceType.Plain,
+          start_stop_application: false,
+          direction_mode: DirectionMode.OneDirection,
+          side_loading_direction: SideLoadingDirection.None,
+          drive_location: DriveLocation.Head,
+          brake_motor: false,
+          gearmotor_orientation: GearmotorOrientation.SideMount,
+          drive_hand: DriveHand.RightHand,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          shaft_diameter_mode: ShaftDiameterMode.Calculated,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        expect(result.outputs?.requires_snub_rollers).toBe(true);
+        expect(result.outputs?.snub_roller_quantity).toBe(2);
+        // 360" / 60" = 7 positions, minus 2 for snubs = 5 gravity rollers
+        expect(result.outputs?.gravity_roller_quantity).toBe(5);
+        expect(result.outputs?.gravity_roller_spacing_in).toBe(GRAVITY_ROLLER_SPACING_IN);
+      });
+
+      it('should output only gravity rollers when frame height above snub threshold', () => {
+        const inputs: SliderbedInputs = {
+          conveyor_length_cc_in: 240,
+          conveyor_width_in: 24,
+          pulley_diameter_in: 4,
+          drive_pulley_diameter_in: 4,
+          tail_pulley_diameter_in: 4,
+          drive_rpm: 100,
+          part_weight_lbs: 5,
+          part_length_in: 12,
+          part_width_in: 6,
+          orientation: Orientation.Lengthwise,
+          frame_height_mode: FrameHeightMode.Custom,
+          custom_frame_height_in: 7.0, // Above 6.5" threshold (4" + 2.5")
+          drop_height_in: 0,
+          part_temperature_class: PartTemperatureClass.Ambient,
+          fluid_type: FluidType.None,
+          part_spacing_in: 0,
+          belt_speed_fpm: 50,
+          material_type: MaterialType.Steel,
+          process_type: ProcessType.Assembly,
+          parts_sharp: PartsSharp.No,
+          environment_factors: EnvironmentFactors.Indoor,
+          ambient_temperature: AmbientTemperature.Normal,
+          power_feed: PowerFeed.V480_3Ph,
+          controls_package: ControlsPackage.StartStop,
+          spec_source: SpecSource.Standard,
+          field_wiring_required: FieldWiringRequired.No,
+          bearing_grade: BearingGrade.Standard,
+          documentation_package: DocumentationPackage.Basic,
+          finish_paint_system: FinishPaintSystem.PowderCoat,
+          labels_required: LabelsRequired.Yes,
+          send_to_estimating: SendToEstimating.No,
+          motor_brand: MotorBrand.Standard,
+          bottom_covers: false,
+          side_rails: SideRails.None,
+          end_guards: EndGuards.None,
+          finger_safe: false,
+          lacing_style: LacingStyle.Endless,
+          side_skirts: false,
+          sensor_options: [],
+          pulley_surface_type: PulleySurfaceType.Plain,
+          start_stop_application: false,
+          direction_mode: DirectionMode.OneDirection,
+          side_loading_direction: SideLoadingDirection.None,
+          drive_location: DriveLocation.Head,
+          brake_motor: false,
+          gearmotor_orientation: GearmotorOrientation.SideMount,
+          drive_hand: DriveHand.RightHand,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          shaft_diameter_mode: ShaftDiameterMode.Calculated,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        expect(result.outputs?.requires_snub_rollers).toBe(false);
+        expect(result.outputs?.snub_roller_quantity).toBe(0);
+        // 240" / 60" = 4 + 1 = 5 gravity rollers (all positions)
+        expect(result.outputs?.gravity_roller_quantity).toBe(5);
+      });
     });
   });
 });

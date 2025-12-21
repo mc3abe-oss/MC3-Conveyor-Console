@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.4 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.5 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,7 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
  * v1.4 (2025-12-21): Per-end support types, derived legs_required, height model (TOB)
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, add presets, add belt cleats
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
@@ -294,6 +295,23 @@ export type HeightReferenceEnd = 'tail' | 'drive';
 export type ValidationMode = 'draft' | 'commit';
 
 // ============================================================================
+// v1.5: FRAME HEIGHT ENUMS
+// ============================================================================
+
+/**
+ * Frame height mode (v1.5)
+ * Determines how frame height is specified.
+ */
+export enum FrameHeightMode {
+  /** Standard frame height: largest_pulley_diameter_in + 2.5" (no snub rollers required) */
+  Standard = 'Standard',
+  /** Low profile frame height: drive_pulley_diameter_in + 0.5" (snub rollers typically required) */
+  LowProfile = 'Low Profile',
+  /** Custom frame height: user-specified value */
+  Custom = 'Custom',
+}
+
+// ============================================================================
 // PULLEY PRESETS
 // ============================================================================
 
@@ -491,6 +509,16 @@ export interface SliderbedInputs {
 
   /** Leg adjustment range in inches (default: ±2") */
   adjustment_required_in?: number;
+
+  // =========================================================================
+  // v1.5: FRAME HEIGHT
+  // =========================================================================
+
+  /** Frame height mode (Standard, Low Profile, Custom) */
+  frame_height_mode?: FrameHeightMode | string;
+
+  /** Custom frame height in inches (required if frame_height_mode = Custom) */
+  custom_frame_height_in?: number;
 
   /** Field Wiring Required */
   field_wiring_required: FieldWiringRequired | string;
@@ -787,6 +815,39 @@ export interface SliderbedOutputs {
 
   /** Cleat specification summary (for display) */
   cleats_summary?: string;
+
+  // =========================================================================
+  // v1.5: FRAME HEIGHT & SNUB ROLLER OUTPUTS
+  // =========================================================================
+
+  /** Effective frame height in inches (calculated from mode or custom value) */
+  effective_frame_height_in?: number;
+
+  /** Whether snub rollers are required (frame height < drive pulley diameter) */
+  requires_snub_rollers?: boolean;
+
+  // COST FLAGS (v1.5)
+  /** Low profile frame (frame_height_mode = Low Profile) */
+  cost_flag_low_profile?: boolean;
+
+  /** Custom frame (frame_height_mode = Custom) */
+  cost_flag_custom_frame?: boolean;
+
+  /** Snub rollers required (additional cost) */
+  cost_flag_snub_rollers?: boolean;
+
+  /** Design review required (frame height < 4.0") */
+  cost_flag_design_review?: boolean;
+
+  // ROLLER QUANTITIES (v1.5)
+  /** Number of gravity return rollers */
+  gravity_roller_quantity?: number;
+
+  /** Spacing between gravity return rollers (inches) */
+  gravity_roller_spacing_in?: number;
+
+  /** Number of snub rollers (0 if not required, typically 2 if required) */
+  snub_roller_quantity?: number;
 }
 
 // ============================================================================
@@ -907,6 +968,9 @@ export const DEFAULT_INPUT_VALUES = {
   // Height model defaults (v1.4)
   // Note: height_input_mode, reference_end, tail_tob_in, drive_tob_in, adjustment_required_in
   // are intentionally NOT listed here because they must NOT exist when legs_required=false
+
+  // Frame height defaults (v1.5)
+  frame_height_mode: FrameHeightMode.Standard,
 };
 
 // ============================================================================

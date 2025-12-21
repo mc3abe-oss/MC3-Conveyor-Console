@@ -26,6 +26,7 @@ import {
   EndSupportType,
   HeightInputMode,
   derivedLegsRequired,
+  FrameHeightMode,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 
@@ -551,6 +552,83 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
               required
             />
           </div>
+        </div>
+      </div>
+
+      {/* v1.5: Frame Height */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Frame Height</h3>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Frame Height Mode */}
+          <div>
+            <label htmlFor="frame_height_mode" className="label">
+              Frame Height Mode
+            </label>
+            <select
+              id="frame_height_mode"
+              className="input"
+              value={inputs.frame_height_mode ?? FrameHeightMode.Standard}
+              onChange={(e) => {
+                const mode = e.target.value as FrameHeightMode;
+                updateInput('frame_height_mode', mode);
+                // Clear custom frame height when switching away from Custom
+                if (mode !== FrameHeightMode.Custom) {
+                  updateInput('custom_frame_height_in', undefined);
+                }
+              }}
+            >
+              <option value={FrameHeightMode.Standard}>Standard (Pulley + 2.5&quot;)</option>
+              <option value={FrameHeightMode.LowProfile}>Low Profile (Pulley + 0.5&quot;)</option>
+              <option value={FrameHeightMode.Custom}>Custom</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Standard frame clears the drive pulley with 2.5&quot; margin. Low Profile and Custom are cost options.
+            </p>
+          </div>
+
+          {/* Custom Frame Height - only show when Custom is selected */}
+          {inputs.frame_height_mode === FrameHeightMode.Custom && (
+            <div>
+              <label htmlFor="custom_frame_height_in" className="label">
+                Custom Frame Height (in) <span className="text-gray-500">(required)</span>
+              </label>
+              <input
+                type="number"
+                id="custom_frame_height_in"
+                className="input"
+                value={inputs.custom_frame_height_in ?? ''}
+                onChange={(e) =>
+                  updateInput('custom_frame_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                }
+                step="0.25"
+                min="3.0"
+                max="24"
+                required
+                placeholder="e.g., 4.5"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Minimum: 3.0&quot;. Heights below 4.0&quot; require design review.
+              </p>
+            </div>
+          )}
+
+          {/* Info messages based on mode */}
+          {inputs.frame_height_mode === FrameHeightMode.LowProfile && (
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
+              <p className="text-sm text-blue-800">
+                <strong>Low Profile:</strong> Frame height will be pulley diameter + 0.5&quot;.
+                This may require snub rollers for belt return path.
+              </p>
+            </div>
+          )}
+
+          {inputs.frame_height_mode === FrameHeightMode.Custom && inputs.custom_frame_height_in !== undefined && inputs.custom_frame_height_in < 4.0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                <strong>Design Review Required:</strong> Frame height below 4.0&quot; requires engineering review.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.4 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.5 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.5 (2025-12-21): Frame height validation, snub roller warnings, cost flag notifications
  * v1.4 (2025-12-21): Per-end support types, height model validation, draft/commit modes
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, add cleat validation
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
@@ -30,8 +31,15 @@ import {
   HeightInputMode,
   derivedLegsRequired,
   TOB_FIELDS,
+  FrameHeightMode,
 } from './schema';
 import { calculateImpliedAngleDeg, hasAngleMismatch } from './migrate';
+import {
+  FRAME_HEIGHT_CONSTANTS,
+  SNUB_ROLLER_CLEARANCE_THRESHOLD_IN,
+  calculateEffectiveFrameHeight,
+  calculateRequiresSnubRollers,
+} from './formulas';
 
 // ============================================================================
 // INPUT VALIDATION
@@ -530,6 +538,40 @@ export function validateInputs(
     });
   }
 
+  // =========================================================================
+  // v1.5: FRAME HEIGHT VALIDATION
+  // =========================================================================
+
+  // Custom frame height required when mode is Custom
+  const isCustomFrameHeight = inputs.frame_height_mode === FrameHeightMode.Custom ||
+                               inputs.frame_height_mode === 'Custom';
+  if (isCustomFrameHeight) {
+    if (inputs.custom_frame_height_in === undefined) {
+      errors.push({
+        field: 'custom_frame_height_in',
+        message: 'Custom frame height is required when frame height mode is Custom',
+        severity: 'error',
+      });
+    } else if (inputs.custom_frame_height_in < FRAME_HEIGHT_CONSTANTS.MIN_FRAME_HEIGHT_IN) {
+      errors.push({
+        field: 'custom_frame_height_in',
+        message: `Custom frame height must be >= ${FRAME_HEIGHT_CONSTANTS.MIN_FRAME_HEIGHT_IN}"`,
+        severity: 'error',
+      });
+    }
+  }
+
+  // Custom frame height range validation (when provided)
+  if (inputs.custom_frame_height_in !== undefined) {
+    if (inputs.custom_frame_height_in <= 0) {
+      errors.push({
+        field: 'custom_frame_height_in',
+        message: 'Custom frame height must be > 0"',
+        severity: 'error',
+      });
+    }
+  }
+
   return errors;
 }
 
@@ -842,6 +884,57 @@ export function applyApplicationRules(
         severity: 'warning',
       });
     }
+  }
+
+  // =========================================================================
+  // v1.5: FRAME HEIGHT WARNINGS
+  // =========================================================================
+
+  const effectiveFrameHeight = calculateEffectiveFrameHeight(
+    inputs.frame_height_mode,
+    drivePulley ?? 4, // Default pulley diameter if not set
+    inputs.custom_frame_height_in
+  );
+
+  // Design review warning for low frame heights
+  if (effectiveFrameHeight < FRAME_HEIGHT_CONSTANTS.DESIGN_REVIEW_THRESHOLD_IN) {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: `Frame height (${effectiveFrameHeight.toFixed(1)}") is below ${FRAME_HEIGHT_CONSTANTS.DESIGN_REVIEW_THRESHOLD_IN}". Design review required.`,
+      severity: 'warning',
+    });
+  }
+
+  // Snub roller requirement info
+  // v1.5 FIX: Use largest pulley + 2.5" threshold
+  const largestPulley = Math.max(drivePulley ?? 4, tailPulley ?? 4);
+  const snubThreshold = largestPulley + SNUB_ROLLER_CLEARANCE_THRESHOLD_IN;
+  const requiresSnubRollers = calculateRequiresSnubRollers(effectiveFrameHeight, drivePulley ?? 4, tailPulley ?? 4);
+  if (requiresSnubRollers) {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: `Frame height (${effectiveFrameHeight.toFixed(1)}") is below snub roller threshold (${snubThreshold.toFixed(1)}"). Snub rollers will be required at pulley ends.`,
+      severity: 'info',
+    });
+  }
+
+  // Low profile mode info
+  const frameHeightMode = inputs.frame_height_mode ?? FrameHeightMode.Standard;
+  if (frameHeightMode === FrameHeightMode.LowProfile || frameHeightMode === 'Low Profile') {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: 'Low profile frame selected. This is a cost option.',
+      severity: 'info',
+    });
+  }
+
+  // Custom frame mode info
+  if (frameHeightMode === FrameHeightMode.Custom || frameHeightMode === 'Custom') {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: 'Custom frame height selected. This is a cost option.',
+      severity: 'info',
+    });
   }
 
   return { errors, warnings };

@@ -354,6 +354,51 @@ export default function CalculationResults({ result, inputs }: Props) {
             </div>
           </div>
 
+          {/* Frame Height & Rollers */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              Frame & Rollers
+            </h4>
+            <div className="space-y-1.5 text-sm">
+              {outputs.effective_frame_height_in !== undefined && (
+                <ResultRow
+                  label="Effective Frame Height"
+                  value={outputs.effective_frame_height_in}
+                  unit="in"
+                  decimals={2}
+                />
+              )}
+              {outputs.gravity_roller_quantity !== undefined && (
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Gravity Return Rollers:</span>
+                  <span className="font-mono font-semibold">
+                    {outputs.gravity_roller_quantity} rollers
+                    <span className="text-xs text-gray-500 ml-1">
+                      (spaced at {outputs.gravity_roller_spacing_in}")
+                    </span>
+                  </span>
+                </div>
+              )}
+              {outputs.requires_snub_rollers && outputs.snub_roller_quantity !== undefined && outputs.snub_roller_quantity > 0 && (
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Snub Rollers:</span>
+                  <span className="font-mono font-semibold">
+                    {outputs.snub_roller_quantity} rollers
+                    <span className="text-xs text-gray-500 ml-1">
+                      (low profile frame)
+                    </span>
+                  </span>
+                </div>
+              )}
+              {outputs.requires_snub_rollers === false && (
+                <div className="flex justify-between items-center text-gray-500">
+                  <span>Snub Rollers:</span>
+                  <span className="font-mono">Not required</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Power-User Parameters Used */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
