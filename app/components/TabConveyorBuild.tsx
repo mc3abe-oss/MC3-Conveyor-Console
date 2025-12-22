@@ -28,6 +28,7 @@ import {
   DriveLocation,
   GearmotorOrientation,
   DriveHand,
+  SpeedMode,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateEffectiveFrameHeight,
@@ -35,6 +36,8 @@ import {
   calculateGravityRollerQuantity,
   calculateSnubRollerQuantity,
   GRAVITY_ROLLER_SPACING_IN,
+  calculateDriveShaftRpm,
+  calculateBeltSpeed,
 } from '../../src/models/sliderbed_v1/formulas';
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import {
@@ -1071,39 +1074,155 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
           Drive & Electrical
         </h3>
         <div className="grid grid-cols-1 gap-4">
+          {/* Speed Mode Selector (v1.6) */}
           <div>
-            <label htmlFor="drive_rpm" className="label">
-              Drive RPM
-            </label>
-            <input
-              type="number"
-              id="drive_rpm"
-              className="input"
-              value={inputs.drive_rpm}
-              onChange={(e) => updateInput('drive_rpm', parseFloat(e.target.value) || 0)}
-              step="1"
-              min="0"
-              required
-            />
+            <label className="label">Speed Mode</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="speed_mode"
+                  checked={(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed}
+                  onChange={() => updateInput('speed_mode', SpeedMode.BeltSpeed)}
+                  className="mr-2"
+                />
+                Specify Belt Speed
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="speed_mode"
+                  checked={inputs.speed_mode === SpeedMode.DriveRpm}
+                  onChange={() => updateInput('speed_mode', SpeedMode.DriveRpm)}
+                  className="mr-2"
+                />
+                Specify Drive RPM
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Primary workflow: specify Belt Speed and Motor RPM to calculate Drive RPM and Gear Ratio
+            </p>
           </div>
 
+          {/* Belt Speed Mode (default) */}
+          {(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed && (
+            <>
+              <div>
+                <label htmlFor="belt_speed_fpm" className="label">
+                  Belt Speed (FPM) <span className="text-primary-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="belt_speed_fpm"
+                  className="input"
+                  value={inputs.belt_speed_fpm}
+                  onChange={(e) => updateInput('belt_speed_fpm', parseFloat(e.target.value) || 0)}
+                  step="0.01"
+                  min="0"
+                  required
+                />
+              </div>
+
+              {/* Calculated Drive RPM preview */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Calculated Drive RPM:</span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {inputs.belt_speed_fpm > 0 && (inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in) > 0
+                      ? calculateDriveShaftRpm(
+                          inputs.belt_speed_fpm,
+                          inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in
+                        ).toFixed(2)
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Drive RPM Mode (legacy) */}
+          {inputs.speed_mode === SpeedMode.DriveRpm && (
+            <>
+              <div>
+                <label htmlFor="drive_rpm_input" className="label">
+                  Drive RPM <span className="text-primary-600">*</span>
+                </label>
+                <input
+                  type="number"
+                  id="drive_rpm_input"
+                  className="input"
+                  value={inputs.drive_rpm_input ?? inputs.drive_rpm}
+                  onChange={(e) => {
+                    const value = parseFloat(e.target.value) || 0;
+                    updateInput('drive_rpm_input', value);
+                    // Also sync to legacy drive_rpm for backward compat
+                    updateInput('drive_rpm', value);
+                  }}
+                  step="1"
+                  min="0"
+                  required
+                />
+              </div>
+
+              {/* Calculated Belt Speed preview */}
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Calculated Belt Speed:</span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {(inputs.drive_rpm_input ?? inputs.drive_rpm) > 0 && (inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in) > 0
+                      ? calculateBeltSpeed(
+                          inputs.drive_rpm_input ?? inputs.drive_rpm,
+                          inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in
+                        ).toFixed(2) + ' FPM'
+                      : '—'}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Motor RPM - always shown */}
           <div>
-            <label htmlFor="belt_speed_fpm" className="label">
-              Belt Speed (FPM)
+            <label htmlFor="motor_rpm" className="label">
+              Motor RPM
             </label>
             <input
               type="number"
-              id="belt_speed_fpm"
+              id="motor_rpm"
               className="input"
-              value={inputs.belt_speed_fpm}
-              onChange={(e) => updateInput('belt_speed_fpm', parseFloat(e.target.value) || 0)}
-              step="0.01"
-              min="0"
-              required
+              value={inputs.motor_rpm ?? 1750}
+              onChange={(e) => updateInput('motor_rpm', parseFloat(e.target.value) || 1750)}
+              step="1"
+              min="800"
+              max="3600"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Belt Speed = Drive RPM × π × Pulley Diameter / 12
+              Default: 1750 RPM. Range: 800–3600 RPM
             </p>
+          </div>
+
+          {/* Gear Ratio preview */}
+          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
+            <div className="flex justify-between items-center">
+              <span className="text-sm text-primary-700 font-medium">Calculated Gear Ratio:</span>
+              <span className="font-mono font-bold text-primary-900">
+                {(() => {
+                  const motorRpm = inputs.motor_rpm ?? 1750;
+                  const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
+                  let driveRpm: number;
+
+                  if ((inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed) {
+                    driveRpm = inputs.belt_speed_fpm > 0 && pulleyDia > 0
+                      ? calculateDriveShaftRpm(inputs.belt_speed_fpm, pulleyDia)
+                      : 0;
+                  } else {
+                    driveRpm = inputs.drive_rpm_input ?? inputs.drive_rpm;
+                  }
+
+                  return driveRpm > 0 ? (motorRpm / driveRpm).toFixed(2) : '—';
+                })()}
+              </span>
+            </div>
           </div>
 
           <div>
@@ -1305,24 +1424,6 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
               step="1"
               min="0"
               max="2000"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="motor_rpm" className="label">
-              Motor RPM <span className="text-gray-500">(800-3600, default: 1750)</span>
-            </label>
-            <input
-              type="number"
-              id="motor_rpm"
-              className="input"
-              value={inputs.motor_rpm || ''}
-              onChange={(e) =>
-                updateInput('motor_rpm', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-              step="1"
-              min="800"
-              max="3600"
             />
           </div>
 

@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.5 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.6 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,7 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs, derive Drive RPM
  * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, update belt length formula
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
@@ -23,6 +24,7 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
   FrameHeightMode,
+  SpeedMode,
 } from './schema';
 import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
 
@@ -801,17 +803,31 @@ export function calculate(
     inputs.orientation
   );
 
-  // Step 11: Belt speed (derived from drive RPM, v1.3: uses drive pulley)
-  const beltSpeedFpm = calculateBeltSpeed(
-    inputs.drive_rpm,
-    drivePulleyDiameterIn
-  );
+  // =========================================================================
+  // v1.6: SPEED MODE CALCULATION
+  // =========================================================================
+  // Determine speed mode (default to belt_speed for new behavior)
+  const speedMode = inputs.speed_mode ?? SpeedMode.BeltSpeed;
+  const isBeltSpeedMode = speedMode === SpeedMode.BeltSpeed || speedMode === 'belt_speed';
+
+  let beltSpeedFpm: number;
+  let driveShaftRpm: number;
+
+  if (isBeltSpeedMode) {
+    // Belt Speed mode (v1.6 default): User specifies belt_speed_fpm, derive drive_rpm
+    // Formula: drive_rpm = belt_speed_fpm * 12 / (PI * drive_pulley_diameter_in)
+    beltSpeedFpm = inputs.belt_speed_fpm;
+    driveShaftRpm = calculateDriveShaftRpm(beltSpeedFpm, drivePulleyDiameterIn);
+  } else {
+    // Drive RPM mode (legacy): User specifies drive_rpm_input, derive belt_speed
+    // Use drive_rpm_input if available, otherwise fall back to legacy drive_rpm
+    const driveRpmInput = inputs.drive_rpm_input ?? inputs.drive_rpm;
+    driveShaftRpm = driveRpmInput;
+    beltSpeedFpm = calculateBeltSpeed(driveShaftRpm, drivePulleyDiameterIn);
+  }
 
   // Step 12: Capacity (parts per hour)
   const capacityPph = calculateCapacity(beltSpeedFpm, pitchIn);
-
-  // Step 13: Drive shaft RPM (same as drive_rpm input for now, but keep for backwards compatibility)
-  const driveShaftRpm = inputs.drive_rpm;
 
   // Step 14: Torque on drive shaft (v1.2: now uses user safety_factor if provided, v1.3: uses drive pulley)
   const torqueDriveShaftInlbf = calculateTorqueDriveShaft(
@@ -901,6 +917,9 @@ export function calculate(
     pil_used: pil,
     belt_piw_effective,
     belt_pil_effective,
+
+    // v1.6: Speed mode
+    speed_mode_used: speedMode,
 
     // Throughput outputs
     pitch_in: pitchIn,

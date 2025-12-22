@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.4 - INPUT MIGRATION
+ * SLIDERBED CONVEYOR v1.6 - INPUT MIGRATION
  *
  * Handles migration of legacy inputs to the new schema.
  *
@@ -25,6 +25,11 @@
  * TOB FIELD HANDLING (v1.4):
  * - When legs_required=false: Remove any TOB fields that exist
  * - When legs_required=true: Legacy configs may be missing TOB (allowed in draft mode)
+ *
+ * SPEED MODE MIGRATION (v1.6):
+ * - Old configs have drive_rpm as primary input
+ * - Migrate to speed_mode = 'drive_rpm' with drive_rpm_input = drive_rpm
+ * - DO NOT silently reinterpret drive_rpm as belt_speed
  */
 
 import {
@@ -33,6 +38,7 @@ import {
   EndSupportType,
   derivedLegsRequired,
   TOB_FIELDS,
+  SpeedMode,
 } from './schema';
 
 const DEFAULT_PULLEY_DIAMETER_IN = 4;
@@ -155,6 +161,33 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
     // Remove TOB fields that must not exist when legs_required=false
     for (const field of TOB_FIELDS) {
       delete (migrated as unknown as Record<string, unknown>)[field];
+    }
+  }
+
+  // =========================================================================
+  // v1.6: SPEED MODE MIGRATION
+  // =========================================================================
+
+  // Check if this is a legacy config (has drive_rpm but no speed_mode)
+  if (inputs.speed_mode === undefined) {
+    // Legacy config detection:
+    // - If drive_rpm exists and is > 0, this is a legacy config
+    // - Set speed_mode = 'drive_rpm' to preserve original behavior
+    // - Copy drive_rpm to drive_rpm_input
+    if (inputs.drive_rpm !== undefined && inputs.drive_rpm > 0) {
+      migrated.speed_mode = SpeedMode.DriveRpm;
+      migrated.drive_rpm_input = inputs.drive_rpm;
+    } else {
+      // New config or no drive_rpm - default to belt_speed mode (v1.6 default)
+      migrated.speed_mode = SpeedMode.BeltSpeed;
+    }
+  }
+
+  // Ensure drive_rpm stays in sync for backward compatibility in calculation
+  // This is needed for any code that still reads drive_rpm directly
+  if (migrated.speed_mode === SpeedMode.DriveRpm || migrated.speed_mode === 'drive_rpm') {
+    if (migrated.drive_rpm_input !== undefined) {
+      migrated.drive_rpm = migrated.drive_rpm_input;
     }
   }
 

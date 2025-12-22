@@ -1,6 +1,6 @@
 'use client';
 
-import { CalculationResult, SliderbedInputs } from '../../src/models/sliderbed_v1/schema';
+import { CalculationResult, SliderbedInputs, SpeedMode } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateTrackingGuidance,
   getRiskLevelColor,
@@ -129,6 +129,28 @@ export default function CalculationResults({ result, inputs }: Props) {
               Key Outputs
             </h4>
             <div className="space-y-2">
+              {/* v1.6: Show speed mode context */}
+              <div className="flex justify-between items-center text-primary-700 mb-2 pb-2 border-b border-primary-200">
+                <span className="text-sm">Speed Mode:</span>
+                <span className="font-mono font-semibold">
+                  {outputs.speed_mode_used === SpeedMode.BeltSpeed || outputs.speed_mode_used === 'belt_speed'
+                    ? 'Belt Speed → Drive RPM'
+                    : 'Drive RPM → Belt Speed'}
+                </span>
+              </div>
+              <ResultRow
+                label="Motor RPM"
+                value={outputs.motor_rpm_used}
+                decimals={0}
+                highlight
+              />
+              <ResultRow
+                label="Belt Speed"
+                value={outputs.belt_speed_fpm}
+                unit="FPM"
+                decimals={2}
+                highlight
+              />
               <ResultRow
                 label="Drive Shaft RPM"
                 value={outputs.drive_shaft_rpm}
@@ -136,15 +158,15 @@ export default function CalculationResults({ result, inputs }: Props) {
                 highlight
               />
               <ResultRow
-                label="Torque"
-                value={outputs.torque_drive_shaft_inlbf}
-                unit="in-lbf"
+                label="Gear Ratio"
+                value={outputs.gear_ratio}
                 decimals={2}
                 highlight
               />
               <ResultRow
-                label="Gear Ratio"
-                value={outputs.gear_ratio}
+                label="Torque"
+                value={outputs.torque_drive_shaft_inlbf}
+                unit="in-lbf"
                 decimals={2}
                 highlight
               />

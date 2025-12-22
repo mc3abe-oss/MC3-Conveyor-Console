@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.5 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.6 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,7 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs
  * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
  * v1.4 (2025-12-21): Per-end support types, derived legs_required, height model (TOB)
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, add presets, add belt cleats
@@ -229,6 +230,21 @@ export enum DriveHand {
 }
 
 // ============================================================================
+// SPEED MODE ENUM (v1.6)
+// ============================================================================
+
+/**
+ * Speed mode (v1.6)
+ * Determines which speed parameter is the primary input.
+ */
+export enum SpeedMode {
+  /** User specifies Belt Speed (FPM), system calculates Drive RPM */
+  BeltSpeed = 'belt_speed',
+  /** User specifies Drive RPM, system calculates Belt Speed */
+  DriveRpm = 'drive_rpm',
+}
+
+// ============================================================================
 // BELT TRACKING & PULLEY ENUMS
 // ============================================================================
 
@@ -412,10 +428,35 @@ export interface SliderbedInputs {
   /** Part Spacing in inches (default: 0) */
   part_spacing_in: number;
 
-  // THROUGHPUT INPUTS
-  /** Drive RPM (current drive shaft speed) */
+  // =========================================================================
+  // SPEED INPUTS (v1.6)
+  // =========================================================================
+
+  /**
+   * Speed mode (v1.6)
+   * Determines which speed parameter is the primary input.
+   * - 'belt_speed': User specifies Belt Speed, system calculates Drive RPM
+   * - 'drive_rpm': User specifies Drive RPM, system calculates Belt Speed
+   * Default: 'belt_speed'
+   */
+  speed_mode?: SpeedMode | string;
+
+  /**
+   * @deprecated Use belt_speed_fpm as the primary input when speed_mode = 'belt_speed'.
+   * Drive RPM (current drive shaft speed) - legacy field, now secondary.
+   * When speed_mode = 'belt_speed', this is calculated from belt_speed_fpm.
+   * When speed_mode = 'drive_rpm', this is the user input (via drive_rpm_input).
+   */
   drive_rpm: number;
 
+  /**
+   * Drive RPM input (v1.6)
+   * Only used when speed_mode = 'drive_rpm'.
+   * This is the user-entered value when in drive_rpm mode.
+   */
+  drive_rpm_input?: number;
+
+  // THROUGHPUT INPUTS
   /** Required Throughput in parts per hour (optional) */
   required_throughput_pph?: number;
 
@@ -739,11 +780,18 @@ export interface SliderbedOutputs {
   /** Belt PIL effective - override if provided, else catalog value, else parameter default */
   belt_pil_effective?: number;
 
+  // =========================================================================
+  // SPEED OUTPUTS (v1.6)
+  // =========================================================================
+
+  /** Speed mode used in calculation */
+  speed_mode_used?: SpeedMode | string;
+
   // THROUGHPUT OUTPUTS
   /** Pitch in inches (travel dimension + spacing) */
   pitch_in: number;
 
-  /** Belt speed in FPM */
+  /** Belt speed in FPM (calculated when speed_mode='drive_rpm', input when speed_mode='belt_speed') */
   belt_speed_fpm: number;
 
   /** Capacity in parts per hour */
@@ -971,6 +1019,12 @@ export const DEFAULT_INPUT_VALUES = {
 
   // Frame height defaults (v1.5)
   frame_height_mode: FrameHeightMode.Standard,
+
+  // Speed mode defaults (v1.6)
+  speed_mode: SpeedMode.BeltSpeed,
+  // Note: belt_speed_fpm and motor_rpm are required inputs, not listed here
+  // drive_rpm_input only used in drive_rpm mode, defaults to 100 RPM
+  drive_rpm_input: 100,
 };
 
 // ============================================================================

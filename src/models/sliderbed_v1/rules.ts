@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.5 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.6 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.6 (2025-12-22): Speed mode validation, belt_speed_fpm and drive_rpm_input validation
  * v1.5 (2025-12-21): Frame height validation, snub roller warnings, cost flag notifications
  * v1.4 (2025-12-21): Per-end support types, height model validation, draft/commit modes
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, add cleat validation
@@ -32,6 +33,7 @@ import {
   derivedLegsRequired,
   TOB_FIELDS,
   FrameHeightMode,
+  SpeedMode,
 } from './schema';
 import { calculateImpliedAngleDeg, hasAngleMismatch } from './migrate';
 import {
@@ -133,15 +135,45 @@ export function validateInputs(
     }
   }
 
-  // SPEED & THROUGHPUT
-  if (inputs.drive_rpm <= 0) {
+  // =========================================================================
+  // v1.6: SPEED MODE VALIDATION
+  // =========================================================================
+
+  const speedMode = inputs.speed_mode ?? SpeedMode.BeltSpeed;
+  const isBeltSpeedMode = speedMode === SpeedMode.BeltSpeed || speedMode === 'belt_speed';
+
+  if (isBeltSpeedMode) {
+    // Belt Speed mode: belt_speed_fpm is required
+    if (inputs.belt_speed_fpm <= 0) {
+      errors.push({
+        field: 'belt_speed_fpm',
+        message: 'Belt Speed (FPM) must be greater than 0',
+        severity: 'error',
+      });
+    }
+  } else {
+    // Drive RPM mode: drive_rpm_input (or legacy drive_rpm) is required
+    const driveRpmValue = inputs.drive_rpm_input ?? inputs.drive_rpm;
+    if (driveRpmValue <= 0) {
+      errors.push({
+        field: 'drive_rpm_input',
+        message: 'Drive RPM must be greater than 0',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Pulley diameter validation (required for speed calculations)
+  const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
+  if (pulleyDia <= 0) {
     errors.push({
-      field: 'drive_rpm',
-      message: 'Drive RPM must be greater than 0',
+      field: 'drive_pulley_diameter_in',
+      message: 'Drive pulley diameter must be greater than 0 for speed calculations',
       severity: 'error',
     });
   }
 
+  // THROUGHPUT
   if (
     inputs.required_throughput_pph !== undefined &&
     inputs.required_throughput_pph < 0
@@ -935,6 +967,56 @@ export function applyApplicationRules(
       message: 'Custom frame height selected. This is a cost option.',
       severity: 'info',
     });
+  }
+
+  // =========================================================================
+  // v1.6: SPEED MODE WARNINGS
+  // =========================================================================
+
+  // High belt speed warning
+  if (inputs.belt_speed_fpm > 300) {
+    warnings.push({
+      field: 'belt_speed_fpm',
+      message: `Belt speed (${inputs.belt_speed_fpm} FPM) exceeds 300 FPM. Verify this is intentional for the application.`,
+      severity: 'warning',
+    });
+  }
+
+  // Calculate implied gear ratio for warning check
+  const speedModeWarning = inputs.speed_mode ?? SpeedMode.BeltSpeed;
+  const isBeltSpeedModeWarning = speedModeWarning === SpeedMode.BeltSpeed || speedModeWarning === 'belt_speed';
+  const motorRpmWarning = inputs.motor_rpm ?? 1750;
+
+  let impliedGearRatio: number | undefined;
+  if (drivePulley && drivePulley > 0) {
+    if (isBeltSpeedModeWarning && inputs.belt_speed_fpm > 0) {
+      // Calculate drive RPM from belt speed
+      const driveRpmCalc = inputs.belt_speed_fpm * 12 / (Math.PI * drivePulley);
+      impliedGearRatio = motorRpmWarning / driveRpmCalc;
+    } else if (!isBeltSpeedModeWarning) {
+      const driveRpmInput = inputs.drive_rpm_input ?? inputs.drive_rpm;
+      if (driveRpmInput > 0) {
+        impliedGearRatio = motorRpmWarning / driveRpmInput;
+      }
+    }
+  }
+
+  // Gear ratio warnings
+  if (impliedGearRatio !== undefined) {
+    if (impliedGearRatio < 5) {
+      warnings.push({
+        field: 'belt_speed_fpm',
+        message: `Calculated gear ratio (${impliedGearRatio.toFixed(2)}) is below 5. This may require a special gearbox.`,
+        severity: 'warning',
+      });
+    }
+    if (impliedGearRatio > 60) {
+      warnings.push({
+        field: 'belt_speed_fpm',
+        message: `Calculated gear ratio (${impliedGearRatio.toFixed(2)}) exceeds 60. This may require multiple reduction stages.`,
+        severity: 'warning',
+      });
+    }
   }
 
   return { errors, warnings };
