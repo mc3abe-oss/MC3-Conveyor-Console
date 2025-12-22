@@ -34,6 +34,18 @@ interface AuthHookPayload {
 
 serve(async (req) => {
   try {
+    // Verify the authorization token from Supabase Auth
+    const authHeader = req.headers.get('Authorization');
+    const expectedToken = Deno.env.get('AUTH_HOOK_SECRET');
+
+    if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
+      console.error('Invalid authorization token');
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
     const payload: AuthHookPayload = await req.json();
 
     // Log payload structure for debugging (remove in production)
