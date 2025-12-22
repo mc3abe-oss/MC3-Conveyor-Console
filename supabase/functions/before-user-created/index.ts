@@ -2,27 +2,20 @@
  * Supabase Auth Hook: Before User Created
  *
  * This edge function runs before a new user is created.
- * It enforces the @mc3mfg.com domain restriction.
+ * It enforces domain restrictions for signup.
  *
  * DEPLOYMENT:
- * 1. Install Supabase CLI: npm install -g supabase
- * 2. Link project: supabase link --project-ref dubadsxdgrvtjbxzettz
- * 3. Deploy: supabase functions deploy before-user-created
- * 4. In Supabase Dashboard > Auth > Hooks:
- *    - Enable "Before User Created" hook
- *    - Select this function
- *
- * HOOK PAYLOAD (log this once to confirm structure):
- * {
- *   "user": {
- *     "email": "user@example.com",
- *     ...
- *   }
- * }
+ * 1. Deploy: supabase functions deploy before-user-created
+ * 2. Set secret: supabase secrets set AUTH_HOOK_SECRET=<base64-secret-without-v1-whsec-prefix>
+ * 3. In Supabase Dashboard > Auth > Hooks:
+ *    - Add "Before User Created" hook
+ *    - Select HTTP endpoint
+ *    - Enter function URL
+ *    - Generate and save the webhook secret
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
+import { Webhook } from 'https://esm.sh/standardwebhooks@1.0.0';
 
 const ALLOWED_DOMAINS = ['@mc3mfg.com', '@clearcode.ca'];
 
@@ -34,46 +27,44 @@ interface AuthHookPayload {
 }
 
 serve(async (req) => {
-  try {
-    // Verify the webhook signature from Supabase Auth
-    const authHeader = req.headers.get('Authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      console.error('Missing or invalid Authorization header');
+  // Get the raw body for signature verification
+  const rawBody = await req.text();
+
+  // Verify the webhook signature
+  const secret = Deno.env.get('AUTH_HOOK_SECRET');
+  if (secret) {
+    const webhookId = req.headers.get('webhook-id');
+    const webhookTimestamp = req.headers.get('webhook-timestamp');
+    const webhookSignature = req.headers.get('webhook-signature');
+
+    if (!webhookId || !webhookTimestamp || !webhookSignature) {
+      console.error('Missing webhook headers');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
+        JSON.stringify({ error: 'Missing webhook headers' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    const secret = Deno.env.get('AUTH_HOOK_SECRET');
-
-    if (!secret) {
-      console.error('AUTH_HOOK_SECRET not configured');
-      return new Response(
-        JSON.stringify({ error: 'Server configuration error' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Verify the JWT token using the webhook secret
     try {
-      const secretKey = new TextEncoder().encode(secret);
-      await jose.jwtVerify(token, secretKey, {
-        issuer: 'supabase',
-        audience: 'authenticated',
+      const wh = new Webhook(secret);
+      wh.verify(rawBody, {
+        'webhook-id': webhookId,
+        'webhook-timestamp': webhookTimestamp,
+        'webhook-signature': webhookSignature,
       });
-    } catch (jwtError) {
-      console.error('JWT verification failed:', jwtError);
+    } catch (err) {
+      console.error('Webhook verification failed:', err);
       return new Response(
-        JSON.stringify({ error: 'Invalid token' }),
+        JSON.stringify({ error: 'Invalid webhook signature' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
+  }
 
-    const payload: AuthHookPayload = await req.json();
+  try {
+    const payload: AuthHookPayload = JSON.parse(rawBody);
 
-    // Log payload structure for debugging (remove in production)
+    // Log payload for debugging
     console.log('Auth hook payload:', JSON.stringify(payload, null, 2));
 
     // Extract and normalize email
@@ -85,10 +76,7 @@ serve(async (req) => {
           decision: 'reject',
           message: 'Email address is required.',
         }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
@@ -100,36 +88,24 @@ serve(async (req) => {
           decision: 'reject',
           message: `Only ${ALLOWED_DOMAINS.join(' or ')} email addresses are allowed.`,
         }),
-        {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        }
+        { status: 200, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     // Allow the signup
     console.log(`Approved signup: ${email}`);
     return new Response(
-      JSON.stringify({
-        decision: 'continue',
-      }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      JSON.stringify({ decision: 'continue' }),
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Auth hook error:', error);
-    // On error, reject to be safe
     return new Response(
       JSON.stringify({
         decision: 'reject',
         message: 'An error occurred during signup validation.',
       }),
-      {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      }
+      { status: 200, headers: { 'Content-Type': 'application/json' } }
     );
   }
 });
