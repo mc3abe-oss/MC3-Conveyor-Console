@@ -70,8 +70,8 @@ export default function CalculatorForm({
     bed_type: BedType.SliderBed,
     conveyor_length_cc_in: 120,
     conveyor_width_in: 24,
-    pulley_diameter_in: 2.5,
-    belt_speed_fpm: 65.45, // Calculated from drive_rpm=100 * (PI * 2.5/12) ≈ 65.45
+    pulley_diameter_in: 4,
+    belt_speed_fpm: 104.72, // Calculated from drive_rpm=100 * (PI * 4/12) ≈ 104.72
     drive_rpm: 100,
     part_weight_lbs: 5,
     part_length_in: 12,

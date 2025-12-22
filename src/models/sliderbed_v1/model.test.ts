@@ -230,12 +230,15 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.errors?.length).toBeGreaterThan(0);
     });
 
-    it('should reject zero drive RPM', () => {
+    it('should reject zero drive RPM in drive_rpm mode', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
         conveyor_width_in: 24,
         pulley_diameter_in: 2.5,
+        belt_speed_fpm: 65.45,
         drive_rpm: 0,
+        speed_mode: SpeedMode.DriveRpm, // v1.6: must set mode to test drive_rpm validation
+        drive_rpm_input: 0,
         part_weight_lbs: 5,
         part_length_in: 12,
         part_width_in: 6,
