@@ -6,7 +6,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, getCurrentUserId, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { getCurrentUserId } from '../../../../src/lib/supabase/server';
 import { computePayloadHash, payloadsEqual } from '../../../../src/lib/payload-hash';
 
 interface SaveRequestBody {
@@ -77,7 +78,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = getCurrentUserId();
+    const userId = await getCurrentUserId();
+
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
 
     // Compute payload hash for deduplication
     const payload = { inputs_json, parameters_json, application_json };

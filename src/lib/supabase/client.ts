@@ -1,7 +1,13 @@
 /**
- * Supabase Client
+ * Supabase Client (Legacy)
  *
- * Provides server-side Supabase client for API routes
+ * NOTE: For new code, prefer using:
+ * - src/lib/supabase/browser.ts for client components
+ * - src/lib/supabase/server.ts for server components and API routes
+ *
+ * This file is kept for backward compatibility with existing API routes
+ * that haven't been migrated yet. The `supabase` export here does NOT
+ * have session context - use createClient from server.ts for auth-aware queries.
  */
 
 import { createClient } from '@supabase/supabase-js';
@@ -23,14 +29,4 @@ export function isSupabaseConfigured(): boolean {
   return !!(supabaseUrl && supabaseAnonKey &&
     supabaseUrl !== 'https://placeholder.supabase.co' &&
     supabaseAnonKey !== 'placeholder-key');
-}
-
-/**
- * Get current user ID from request
- * For now, returns a mock user ID - replace with actual auth later
- */
-export function getCurrentUserId(): string {
-  // TODO: Implement actual authentication
-  // For now, return a mock user ID for development
-  return '00000000-0000-0000-0000-000000000001';
 }
