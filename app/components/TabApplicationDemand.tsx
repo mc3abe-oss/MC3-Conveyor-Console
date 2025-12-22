@@ -10,7 +10,6 @@ import {
   SliderbedInputs,
   Orientation,
   PulleySurfaceType,
-  DirectionMode,
   SideLoadingDirection,
   SideLoadingSeverity,
 } from '../../src/models/sliderbed_v1/schema';
@@ -30,6 +29,86 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
           Product Definition
         </h3>
         <div className="grid grid-cols-1 gap-4">
+          {/* 1. Process Type */}
+          <div>
+            <label htmlFor="process_type" className="label">
+              Process Type
+            </label>
+            <CatalogSelect
+              catalogKey="process_type"
+              value={inputs.process_type}
+              onChange={(value) => updateInput('process_type', value)}
+              id="process_type"
+              required
+            />
+          </div>
+
+          {/* 2. Material Type */}
+          <div>
+            <label htmlFor="material_type" className="label">
+              Material Type
+            </label>
+            <CatalogSelect
+              catalogKey="material_type"
+              value={inputs.material_type}
+              onChange={(value) => updateInput('material_type', value)}
+              id="material_type"
+              required
+            />
+          </div>
+
+          {/* 3. Part Length (in) */}
+          <div>
+            <label htmlFor="part_length_in" className="label">
+              Part Length (in)
+            </label>
+            <input
+              type="number"
+              id="part_length_in"
+              className="input"
+              value={inputs.part_length_in}
+              onChange={(e) => updateInput('part_length_in', parseFloat(e.target.value) || 0)}
+              step="0.1"
+              min="0"
+              required
+            />
+          </div>
+
+          {/* 4. Part Width (in) */}
+          <div>
+            <label htmlFor="part_width_in" className="label">
+              Part Width (in)
+            </label>
+            <input
+              type="number"
+              id="part_width_in"
+              className="input"
+              value={inputs.part_width_in}
+              onChange={(e) => updateInput('part_width_in', parseFloat(e.target.value) || 0)}
+              step="0.1"
+              min="0"
+              required
+            />
+          </div>
+
+          {/* 5. Part Weight (lbs) */}
+          <div>
+            <label htmlFor="part_weight_lbs" className="label">
+              Part Weight (lbs)
+            </label>
+            <input
+              type="number"
+              id="part_weight_lbs"
+              className="input"
+              value={inputs.part_weight_lbs}
+              onChange={(e) => updateInput('part_weight_lbs', parseFloat(e.target.value) || 0)}
+              step="0.1"
+              min="0"
+              required
+            />
+          </div>
+
+          {/* 6. Orientation */}
           <div>
             <label htmlFor="orientation" className="label">
               Orientation
@@ -46,32 +125,7 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             </select>
           </div>
 
-          <div>
-            <label htmlFor="material_type" className="label">
-              Material Type
-            </label>
-            <CatalogSelect
-              catalogKey="material_type"
-              value={inputs.material_type}
-              onChange={(value) => updateInput('material_type', value)}
-              id="material_type"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="process_type" className="label">
-              Process Type
-            </label>
-            <CatalogSelect
-              catalogKey="process_type"
-              value={inputs.process_type}
-              onChange={(value) => updateInput('process_type', value)}
-              id="process_type"
-              required
-            />
-          </div>
-
+          {/* 7. Parts Sharp (Yes / No) */}
           <div>
             <label className="label">Parts Sharp</label>
             <div className="flex gap-4">
@@ -98,54 +152,21 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             </div>
           </div>
 
+          {/* 8. Part Temperature */}
           <div>
-            <label htmlFor="part_weight_lbs" className="label">
-              Part Weight (lbs)
+            <label htmlFor="part_temperature_class" className="label">
+              Part Temperature
             </label>
-            <input
-              type="number"
-              id="part_weight_lbs"
-              className="input"
-              value={inputs.part_weight_lbs}
-              onChange={(e) => updateInput('part_weight_lbs', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
+            <CatalogSelect
+              catalogKey="part_temperature_class"
+              value={inputs.part_temperature_class}
+              onChange={(value) => updateInput('part_temperature_class', value)}
+              id="part_temperature_class"
               required
             />
           </div>
 
-          <div>
-            <label htmlFor="part_length_in" className="label">
-              Part Length (in)
-            </label>
-            <input
-              type="number"
-              id="part_length_in"
-              className="input"
-              value={inputs.part_length_in}
-              onChange={(e) => updateInput('part_length_in', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-          </div>
-
-          <div>
-            <label htmlFor="part_width_in" className="label">
-              Part Width (in)
-            </label>
-            <input
-              type="number"
-              id="part_width_in"
-              className="input"
-              value={inputs.part_width_in}
-              onChange={(e) => updateInput('part_width_in', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-          </div>
-
+          {/* 9. Drop Height (in) */}
           <div>
             <label htmlFor="drop_height_in" className="label">
               Drop Height (in)
@@ -163,164 +184,8 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
               Vertical drop onto the belt. Zero is perfectly acceptable.
             </p>
           </div>
-        </div>
-      </div>
 
-      {/* Section B: Throughput Requirements */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Throughput Requirements
-        </h3>
-        <div className="grid grid-cols-1 gap-4">
-          <div>
-            <label htmlFor="part_spacing_in" className="label">
-              Part Spacing (in)
-            </label>
-            <input
-              type="number"
-              id="part_spacing_in"
-              className="input"
-              value={inputs.part_spacing_in}
-              onChange={(e) => updateInput('part_spacing_in', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Center-to-center distance between parts in direction of travel.
-            </p>
-          </div>
-
-          <div>
-            <label htmlFor="required_throughput_pph" className="label">
-              Required Throughput (parts/hour) <span className="text-gray-500">(optional)</span>
-            </label>
-            <input
-              type="number"
-              id="required_throughput_pph"
-              className="input"
-              value={inputs.required_throughput_pph || ''}
-              onChange={(e) =>
-                updateInput('required_throughput_pph', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-              step="1"
-              min="0"
-            />
-          </div>
-
-          <div>
-            <label htmlFor="throughput_margin_pct" className="label">
-              Throughput Margin (%) <span className="text-gray-500">(optional)</span>
-            </label>
-            <input
-              type="number"
-              id="throughput_margin_pct"
-              className="input"
-              value={inputs.throughput_margin_pct || ''}
-              onChange={(e) =>
-                updateInput('throughput_margin_pct', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-              step="1"
-              min="0"
-            />
-          </div>
-        </div>
-      </div>
-
-      {/* Section C: Application Details (moved before Environmental Factors) */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Details</h3>
-        <div className="grid grid-cols-1 gap-4">
-          {/* Pulley surface type */}
-          <div>
-            <label htmlFor="pulley_surface_type" className="label">
-              Pulley Surface Type
-            </label>
-            <select
-              id="pulley_surface_type"
-              className="input"
-              value={inputs.pulley_surface_type}
-              onChange={(e) => updateInput('pulley_surface_type', e.target.value)}
-            >
-              {Object.values(PulleySurfaceType).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Direction mode */}
-          <div>
-            <label className="label">Direction Mode</label>
-            <div className="flex gap-4">
-              {Object.values(DirectionMode).map((option) => (
-                <label key={option} className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="direction_mode"
-                    checked={inputs.direction_mode === option}
-                    onChange={() => updateInput('direction_mode', option)}
-                    className="mr-2"
-                  />
-                  {option}
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Reversing affects pulleys, V-guides, and controls.
-            </p>
-          </div>
-
-          {/* Start/stop application */}
-          <div>
-            <label className="label">Start/Stop Application</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="start_stop_application"
-                  checked={inputs.start_stop_application === false}
-                  onChange={() => updateInput('start_stop_application', false)}
-                  className="mr-2"
-                />
-                No
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="start_stop_application"
-                  checked={inputs.start_stop_application === true}
-                  onChange={() => updateInput('start_stop_application', true)}
-                  className="mr-2"
-                />
-                Yes
-              </label>
-            </div>
-          </div>
-
-          {/* Cycle time - only show if start/stop = true */}
-          {inputs.start_stop_application && (
-            <div>
-              <label htmlFor="cycle_time_seconds" className="label">
-                Cycle Time (seconds)
-              </label>
-              <input
-                type="number"
-                id="cycle_time_seconds"
-                className="input"
-                value={inputs.cycle_time_seconds || ''}
-                onChange={(e) =>
-                  updateInput('cycle_time_seconds', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="0.1"
-                min="0"
-                required
-              />
-            </div>
-          )}
-
-          {/* Side loading direction */}
+          {/* 10. Side Loading */}
           <div>
             <label htmlFor="side_loading_direction" className="label">Side Loading</label>
             <select
@@ -360,12 +225,77 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
         </div>
       </div>
 
-      {/* Section D: Environmental Factors */}
+      {/* Section B: Throughput Requirements */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">
+          Throughput Requirements
+        </h3>
+        <div className="grid grid-cols-1 gap-4">
+          {/* 11. Part Spacing (in) */}
+          <div>
+            <label htmlFor="part_spacing_in" className="label">
+              Part Spacing (in)
+            </label>
+            <input
+              type="number"
+              id="part_spacing_in"
+              className="input"
+              value={inputs.part_spacing_in}
+              onChange={(e) => updateInput('part_spacing_in', parseFloat(e.target.value) || 0)}
+              step="0.1"
+              min="0"
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Center-to-center distance between parts in direction of travel.
+            </p>
+          </div>
+
+          {/* 12. Required Throughput (parts/hour) */}
+          <div>
+            <label htmlFor="required_throughput_pph" className="label">
+              Required Throughput (parts/hour) <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              type="number"
+              id="required_throughput_pph"
+              className="input"
+              value={inputs.required_throughput_pph || ''}
+              onChange={(e) =>
+                updateInput('required_throughput_pph', e.target.value ? parseFloat(e.target.value) : undefined)
+              }
+              step="1"
+              min="0"
+            />
+          </div>
+
+          {/* 13. Throughput Margin (%) */}
+          <div>
+            <label htmlFor="throughput_margin_pct" className="label">
+              Throughput Margin (%) <span className="text-gray-500">(optional)</span>
+            </label>
+            <input
+              type="number"
+              id="throughput_margin_pct"
+              className="input"
+              value={inputs.throughput_margin_pct || ''}
+              onChange={(e) =>
+                updateInput('throughput_margin_pct', e.target.value ? parseFloat(e.target.value) : undefined)
+              }
+              step="1"
+              min="0"
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Section C: Environmental Factors */}
       <div>
         <h3 className="text-lg font-semibold text-gray-900 mb-4">
           Environmental Factors
         </h3>
         <div className="grid grid-cols-1 gap-4">
+          {/* 14. Environment Factors */}
           <div>
             <label htmlFor="environment_factors" className="label">
               Environment Factors
@@ -379,6 +309,7 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             />
           </div>
 
+          {/* 15. Fluid Type */}
           <div>
             <label htmlFor="fluid_type" className="label">
               Fluid Type
@@ -392,19 +323,7 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             />
           </div>
 
-          <div>
-            <label htmlFor="part_temperature_class" className="label">
-              Part Temperature
-            </label>
-            <CatalogSelect
-              catalogKey="part_temperature_class"
-              value={inputs.part_temperature_class}
-              onChange={(value) => updateInput('part_temperature_class', value)}
-              id="part_temperature_class"
-              required
-            />
-          </div>
-
+          {/* 16. Ambient Temperature */}
           <div>
             <label htmlFor="ambient_temperature" className="label">
               Ambient Temperature
@@ -421,6 +340,31 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             <p className="text-xs text-gray-500 mt-1">
               Enter temperature range or classification.
             </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Section D: Application Details - Pulley Surface Type remains here */}
+      <div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Details</h3>
+        <div className="grid grid-cols-1 gap-4">
+          {/* Pulley surface type */}
+          <div>
+            <label htmlFor="pulley_surface_type" className="label">
+              Pulley Surface Type
+            </label>
+            <select
+              id="pulley_surface_type"
+              className="input"
+              value={inputs.pulley_surface_type}
+              onChange={(e) => updateInput('pulley_surface_type', e.target.value)}
+            >
+              {Object.values(PulleySurfaceType).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
