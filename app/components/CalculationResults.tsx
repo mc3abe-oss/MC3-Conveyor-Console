@@ -1,13 +1,19 @@
 'use client';
 
-import { CalculationResult } from '../../src/models/sliderbed_v1/schema';
+import { CalculationResult, SliderbedInputs, SpeedMode } from '../../src/models/sliderbed_v1/schema';
+import {
+  calculateTrackingGuidance,
+  getRiskLevelColor,
+  TrackingRiskLevel,
+} from '../../src/models/sliderbed_v1/tracking-guidance';
 import clsx from 'clsx';
 
 interface Props {
   result: CalculationResult;
+  inputs?: SliderbedInputs;
 }
 
-export default function CalculationResults({ result }: Props) {
+export default function CalculationResults({ result, inputs }: Props) {
   if (!result.success) {
     return (
       <div className="card">
@@ -123,6 +129,28 @@ export default function CalculationResults({ result }: Props) {
               Key Outputs
             </h4>
             <div className="space-y-2">
+              {/* v1.6: Show speed mode context */}
+              <div className="flex justify-between items-center text-primary-700 mb-2 pb-2 border-b border-primary-200">
+                <span className="text-sm">Speed Mode:</span>
+                <span className="font-mono font-semibold">
+                  {outputs.speed_mode_used === SpeedMode.BeltSpeed || outputs.speed_mode_used === 'belt_speed'
+                    ? 'Belt Speed → Drive RPM'
+                    : 'Drive RPM → Belt Speed'}
+                </span>
+              </div>
+              <ResultRow
+                label="Motor RPM"
+                value={outputs.motor_rpm_used}
+                decimals={0}
+                highlight
+              />
+              <ResultRow
+                label="Belt Speed"
+                value={outputs.belt_speed_fpm}
+                unit="FPM"
+                decimals={2}
+                highlight
+              />
               <ResultRow
                 label="Drive Shaft RPM"
                 value={outputs.drive_shaft_rpm}
@@ -130,15 +158,38 @@ export default function CalculationResults({ result }: Props) {
                 highlight
               />
               <ResultRow
-                label="Torque"
-                value={outputs.torque_drive_shaft_inlbf}
-                unit="in-lbf"
+                label="Gear Ratio"
+                value={outputs.gear_ratio}
                 decimals={2}
                 highlight
               />
+              {/* v1.7: Chain ratio (only show if bottom mount with chain drive) */}
+              {outputs.chain_ratio !== undefined && outputs.chain_ratio !== 1 && (
+                <>
+                  <ResultRow
+                    label="Chain Ratio"
+                    value={outputs.chain_ratio}
+                    decimals={3}
+                    highlight
+                  />
+                  <ResultRow
+                    label="Gearmotor Output RPM"
+                    value={outputs.gearmotor_output_rpm ?? 0}
+                    decimals={1}
+                    highlight
+                  />
+                  <ResultRow
+                    label="Total Drive Ratio"
+                    value={outputs.total_drive_ratio ?? outputs.gear_ratio}
+                    decimals={2}
+                    highlight
+                  />
+                </>
+              )}
               <ResultRow
-                label="Gear Ratio"
-                value={outputs.gear_ratio}
+                label="Torque"
+                value={outputs.torque_drive_shaft_inlbf}
+                unit="in-lbf"
                 decimals={2}
                 highlight
               />
@@ -225,6 +276,70 @@ export default function CalculationResults({ result }: Props) {
             </div>
           </div>
 
+          {/* Belt Tracking */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              Belt Tracking
+            </h4>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between items-center text-gray-700">
+                <span>Tracking Method:</span>
+                <span className="font-mono font-semibold">
+                  {outputs.is_v_guided ? 'V-Guided' : 'Crowned'}
+                </span>
+              </div>
+              <ResultRow
+                label="Pulley Face Length"
+                value={outputs.pulley_face_length_in}
+                unit="in"
+                decimals={2}
+              />
+              <ResultRow
+                label="Drive Shaft Diameter"
+                value={outputs.drive_shaft_diameter_in}
+                unit="in"
+                decimals={3}
+              />
+              <ResultRow
+                label="Tail Shaft Diameter"
+                value={outputs.tail_shaft_diameter_in}
+                unit="in"
+                decimals={3}
+              />
+            </div>
+
+            {/* Tracking Guidance Summary */}
+            {inputs && inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
+              const guidance = calculateTrackingGuidance(inputs);
+              const isOptimal = inputs.belt_tracking_method === guidance.recommendation;
+
+              return (
+                <div className={`mt-3 p-2 rounded text-xs ${
+                  isOptimal
+                    ? 'bg-green-50 border border-green-200'
+                    : guidance.riskLevel === TrackingRiskLevel.High
+                    ? 'bg-red-50 border border-red-200'
+                    : 'bg-yellow-50 border border-yellow-200'
+                }`}>
+                  <div className="flex items-center gap-2">
+                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getRiskLevelColor(guidance.riskLevel)}`}>
+                      {guidance.riskLevel} Risk
+                    </span>
+                    {isOptimal ? (
+                      <span className="text-green-700">
+                        Current selection matches recommendation
+                      </span>
+                    ) : (
+                      <span className={guidance.riskLevel === TrackingRiskLevel.High ? 'text-red-700' : 'text-yellow-700'}>
+                        Recommended: {guidance.recommendation}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
+          </div>
+
           {/* Throughput Outputs */}
           <div>
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
@@ -284,6 +399,51 @@ export default function CalculationResults({ result }: Props) {
             </div>
           </div>
 
+          {/* Frame Height & Rollers */}
+          <div>
+            <h4 className="text-sm font-semibold text-gray-700 mb-2">
+              Frame & Rollers
+            </h4>
+            <div className="space-y-1.5 text-sm">
+              {outputs.effective_frame_height_in !== undefined && (
+                <ResultRow
+                  label="Effective Frame Height"
+                  value={outputs.effective_frame_height_in}
+                  unit="in"
+                  decimals={2}
+                />
+              )}
+              {outputs.gravity_roller_quantity !== undefined && (
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Gravity Return Rollers:</span>
+                  <span className="font-mono font-semibold">
+                    {outputs.gravity_roller_quantity} rollers
+                    <span className="text-xs text-gray-500 ml-1">
+                      (spaced at {outputs.gravity_roller_spacing_in}")
+                    </span>
+                  </span>
+                </div>
+              )}
+              {outputs.requires_snub_rollers && outputs.snub_roller_quantity !== undefined && outputs.snub_roller_quantity > 0 && (
+                <div className="flex justify-between items-center text-gray-700">
+                  <span>Snub Rollers:</span>
+                  <span className="font-mono font-semibold">
+                    {outputs.snub_roller_quantity} rollers
+                    <span className="text-xs text-gray-500 ml-1">
+                      (low profile frame)
+                    </span>
+                  </span>
+                </div>
+              )}
+              {outputs.requires_snub_rollers === false && (
+                <div className="flex justify-between items-center text-gray-500">
+                  <span>Snub Rollers:</span>
+                  <span className="font-mono">Not required</span>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Power-User Parameters Used */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h4 className="text-sm font-semibold text-gray-700 mb-2">
@@ -305,6 +465,20 @@ export default function CalculationResults({ result }: Props) {
                 value={outputs.pil_used}
                 decimals={3}
               />
+              {outputs.belt_piw_effective !== undefined && (
+                <ResultRow
+                  label="Belt PIW (effective)"
+                  value={outputs.belt_piw_effective}
+                  decimals={3}
+                />
+              )}
+              {outputs.belt_pil_effective !== undefined && (
+                <ResultRow
+                  label="Belt PIL (effective)"
+                  value={outputs.belt_pil_effective}
+                  decimals={3}
+                />
+              )}
               <ResultRow
                 label="Starting Belt Pull"
                 value={outputs.starting_belt_pull_lb_used}

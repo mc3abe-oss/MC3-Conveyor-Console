@@ -1,12 +1,16 @@
 'use client';
 
+import { useState } from 'react';
+
 interface ReferenceHeaderProps {
   referenceType: 'QUOTE' | 'SALES_ORDER';
   referenceNumber: string;
   lineKey: string;
+  conveyorQty: number;
   onReferenceTypeChange: (type: 'QUOTE' | 'SALES_ORDER') => void;
   onReferenceNumberChange: (number: string) => void;
   onLineKeyChange: (key: string) => void;
+  onConveyorQtyChange: (qty: number) => void;
   onLoad: () => void;
   onSave: () => void;
   onCalculate?: () => void;
@@ -31,9 +35,11 @@ export default function ReferenceHeader({
   referenceType,
   referenceNumber,
   lineKey,
+  conveyorQty,
   onReferenceTypeChange,
   onReferenceNumberChange,
   onLineKeyChange,
+  onConveyorQtyChange,
   onLoad,
   onSave,
   onCalculate,
@@ -47,6 +53,8 @@ export default function ReferenceHeader({
   needsRecalc = false,
   onOpenFindModal,
 }: ReferenceHeaderProps) {
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+
   // Determine tooltip messages for buttons
   const getSaveTooltip = () => {
     if (!loadedState.isLoaded) return '';
@@ -55,18 +63,136 @@ export default function ReferenceHeader({
     return '';
   };
 
-  const getCalculateTooltip = () => {
-    if (!needsRecalc) return 'Up to date';
-    return '';
+  const saveTooltip = getSaveTooltip();
+
+  // Save button styling: primary when dirty & can save, otherwise outline
+  const saveButtonClass = isDirty && canSave && !needsRecalc
+    ? 'btn btn-primary'
+    : 'btn btn-outline';
+
+  const handleClearClick = () => {
+    if (isDirty) {
+      setShowClearConfirm(true);
+    } else {
+      onClear?.();
+    }
   };
 
-  const saveTooltip = getSaveTooltip();
-  const calculateTooltip = getCalculateTooltip();
+  const handleConfirmClear = () => {
+    setShowClearConfirm(false);
+    onClear?.();
+  };
+
   return (
     <div className="card mb-6">
-      <h2 className="text-xl font-semibold text-gray-900 mb-4">Reference</h2>
+      {/* Header row with title and action buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+        <h2 className="text-xl font-semibold text-gray-900">Reference</h2>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        {/* Action buttons - grouped logically */}
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Group A: Data actions */}
+          <div className="flex items-center gap-2">
+            {onOpenFindModal && (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={onOpenFindModal}
+                title="Search for existing configurations"
+              >
+                Find
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={onLoad}
+              disabled={!referenceNumber || isLoading}
+              title={!referenceNumber ? 'Enter a reference number first' : 'Load configuration'}
+            >
+              {isLoading ? 'Loading...' : 'Load'}
+            </button>
+          </div>
+
+          {/* Divider */}
+          <div className="hidden sm:block h-6 w-px bg-gray-300" />
+
+          {/* Group B: Work actions */}
+          <div className="flex items-center gap-2">
+            {onCalculate && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={onCalculate}
+                disabled={isCalculating}
+              >
+                {isCalculating ? (
+                  <span className="flex items-center gap-1.5">
+                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Calculating
+                  </span>
+                ) : (
+                  'Calculate'
+                )}
+              </button>
+            )}
+            <button
+              type="button"
+              className={saveButtonClass}
+              onClick={onSave}
+              disabled={!canSave || isSaving}
+              title={saveTooltip}
+            >
+              <span className="flex items-center gap-1.5">
+                {isSaving ? 'Saving...' : 'Save'}
+                {isDirty && !isSaving && (
+                  <span className="w-1.5 h-1.5 bg-amber-500 rounded-full" title="Unsaved changes" />
+                )}
+              </span>
+            </button>
+            {onClear && (
+              <button
+                type="button"
+                className="btn btn-destructive"
+                onClick={handleClearClick}
+              >
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Clear confirmation dialog */}
+      {showClearConfirm && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center justify-between">
+          <span className="text-sm text-red-800">
+            You have unsaved changes. Clear anyway?
+          </span>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              className="px-3 py-1 text-sm text-gray-600 hover:text-gray-800"
+              onClick={() => setShowClearConfirm(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="px-3 py-1 text-sm bg-red-600 text-white rounded hover:bg-red-700"
+              onClick={handleConfirmClear}
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Form fields */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-4">
         <div>
           <label htmlFor="reference_type" className="label">
             Type
@@ -109,55 +235,23 @@ export default function ReferenceHeader({
           />
         </div>
 
-        <div className="flex items-end gap-2">
-          {onOpenFindModal && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onOpenFindModal}
-            >
-              Find
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-secondary flex-1"
-            onClick={onLoad}
-            disabled={!referenceNumber || isLoading}
-          >
-            {isLoading ? 'Loading...' : 'Load'}
-          </button>
-          {onCalculate && (
-            <button
-              type="button"
-              className="btn btn-secondary flex-1"
-              onClick={onCalculate}
-              disabled={isCalculating}
-              title={calculateTooltip}
-            >
-              {isCalculating ? 'Calculating...' : 'Calculate'}
-              {needsRecalc && !isCalculating && ' *'}
-            </button>
-          )}
-          <button
-            type="button"
-            className="btn btn-primary flex-1"
-            onClick={onSave}
-            disabled={!canSave || isSaving}
-            title={saveTooltip}
-          >
-            {isSaving ? 'Saving...' : 'Save'}
-            {isDirty && !isSaving && ' *'}
-          </button>
-          {onClear && (
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={onClear}
-            >
-              Clear
-            </button>
-          )}
+        <div>
+          <label htmlFor="conveyor_qty" className="label">
+            Quantity
+          </label>
+          <input
+            type="number"
+            id="conveyor_qty"
+            className="input"
+            value={conveyorQty}
+            onChange={(e) => {
+              const val = parseInt(e.target.value, 10);
+              onConveyorQtyChange(isNaN(val) || val < 1 ? 1 : val);
+            }}
+            min="1"
+            max="999"
+            title="How many of this same conveyor configuration?"
+          />
         </div>
       </div>
 

@@ -6,9 +6,45 @@ import {
   SliderbedInputs,
   Orientation,
   CalculationResult,
+  SideRails,
+  EndGuards,
+  LacingStyle,
+  PulleySurfaceType,
+  DirectionMode,
+  SideLoadingDirection,
+  DriveLocation,
+  GearmotorOrientation,
+  DriveHand,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
+  GearmotorMountingStyle,
 } from '../../src/models/sliderbed_v1/schema';
+import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorBuild from './TabConveyorBuild';
+import TabBuildOptions from './TabBuildOptions';
+
+/**
+ * Lane wrapper component - provides consistent styling for each lane
+ */
+interface LaneProps {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+}
+
+function Lane({ title, children, className = '' }: LaneProps) {
+  return (
+    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${className}`}>
+      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
+        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
+      </div>
+      <div className="p-4">
+        {children}
+      </div>
+    </div>
+  );
+}
 
 interface Props {
   onCalculate: (result: CalculationResult) => void;
@@ -29,17 +65,18 @@ export default function CalculatorForm({
   triggerCalculate,
   hideCalculateButton = false,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<'application' | 'conveyor'>('application');
-
   const [inputs, setInputs] = useState<SliderbedInputs>({
+    // Bed type - determines friction coefficient preset
+    bed_type: BedType.SliderBed,
     conveyor_length_cc_in: 120,
     conveyor_width_in: 24,
-    pulley_diameter_in: 2.5,
-    belt_speed_fpm: 65.45, // Calculated from drive_rpm=100 * (PI * 2.5/12) ≈ 65.45
+    pulley_diameter_in: 4,
+    belt_speed_fpm: 104.72, // Calculated from drive_rpm=100 * (PI * 4/12) ≈ 104.72
     drive_rpm: 100,
     part_weight_lbs: 5,
     part_length_in: 12,
     part_width_in: 6,
+    drop_height_in: 0,
     part_temperature_class: 'AMBIENT',
     fluid_type: 'NONE',
     orientation: Orientation.Lengthwise,
@@ -61,6 +98,36 @@ export default function CalculatorForm({
     labels_required: 'Yes', // Boolean checkbox
     send_to_estimating: 'No', // Boolean checkbox
     motor_brand: 'STANDARD', // Catalog (to be seeded)
+
+    // Features & Options
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+
+    // Application / Demand (extended)
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+
+    // Specifications
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+
+    // Gearmotor mounting style & sprockets (v1.7)
+    gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
+    gm_sprocket_teeth: 18,
+    drive_shaft_sprocket_teeth: 24,
+
+    // Belt tracking & pulley
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
   });
 
   // Track the last loaded revision ID to prevent infinite loops
@@ -119,49 +186,23 @@ export default function CalculatorForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-4">
-      {/* Tab Navigation */}
-      <div className="border-b border-gray-200">
-        <nav className="-mb-px flex space-x-8" aria-label="Tabs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('application')}
-            className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === 'application'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            Application & Demand
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('conveyor')}
-            className={`
-              whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm
-              ${
-                activeTab === 'conveyor'
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-              }
-            `}
-          >
-            Conveyor & Build
-          </button>
-        </nav>
-      </div>
-
-      {/* Tab Content */}
-      <div className="pt-4">
-        {activeTab === 'application' && (
+    <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
+      {/* Lane-based layout: responsive grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Lane 1: Application / Demand */}
+        <Lane title="Application / Demand">
           <TabApplicationDemand inputs={inputs} updateInput={updateInput} />
-        )}
-        {activeTab === 'conveyor' && (
+        </Lane>
+
+        {/* Lane 2: Conveyor Design (largest - contains geometry, belt, drive) */}
+        <Lane title="Conveyor Design" className="lg:row-span-2">
           <TabConveyorBuild inputs={inputs} updateInput={updateInput} />
-        )}
+        </Lane>
+
+        {/* Lane 3: Build Options */}
+        <Lane title="Build Options">
+          <TabBuildOptions inputs={inputs} updateInput={updateInput} />
+        </Lane>
       </div>
 
       {/* Calculate Button - hidden if triggered externally */}

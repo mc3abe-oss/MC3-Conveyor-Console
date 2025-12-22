@@ -1,10 +1,15 @@
 /**
- * SLIDERBED CONVEYOR v1.2 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.7 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.7 (2025-12-22): Sprocket validation for bottom-mount gearmotor configuration
+ * v1.6 (2025-12-22): Speed mode validation, belt_speed_fpm and drive_rpm_input validation
+ * v1.5 (2025-12-21): Frame height validation, snub roller warnings, cost flag notifications
+ * v1.4 (2025-12-21): Per-end support types, height model validation, draft/commit modes
+ * v1.3 (2025-12-21): Split pulley diameter into drive/tail, add cleat validation
  * v1.2 (2025-12-19): Make key parameters power-user editable (safety_factor, belt coeffs, base pull)
  * v1.1 (2025-12-19): Fix open-belt wrap length: use πD not 2πD
  * v1.0 (2024-12-19): Initial implementation
@@ -17,7 +22,28 @@ import {
   ValidationWarning,
   PartTemperatureClass,
   FluidType,
+  EndGuards,
+  LacingStyle,
+  SideLoadingDirection,
+  SideLoadingSeverity,
+  BeltTrackingMethod,
+  ShaftDiameterMode,
+  PULLEY_DIAMETER_PRESETS,
+  ValidationMode,
+  HeightInputMode,
+  derivedLegsRequired,
+  TOB_FIELDS,
+  FrameHeightMode,
+  SpeedMode,
+  GearmotorMountingStyle,
 } from './schema';
+import { calculateImpliedAngleDeg, hasAngleMismatch } from './migrate';
+import {
+  FRAME_HEIGHT_CONSTANTS,
+  SNUB_ROLLER_CLEARANCE_THRESHOLD_IN,
+  calculateEffectiveFrameHeight,
+  calculateRequiresSnubRollers,
+} from './formulas';
 
 // ============================================================================
 // INPUT VALIDATION
@@ -61,15 +87,134 @@ export function validateInputs(
     });
   }
 
-  // SPEED & THROUGHPUT
-  if (inputs.drive_rpm <= 0) {
+  // v1.3: Drive pulley diameter validation
+  if (inputs.drive_pulley_diameter_in !== undefined) {
+    if (inputs.drive_pulley_diameter_in <= 0) {
+      errors.push({
+        field: 'drive_pulley_diameter_in',
+        message: 'Drive pulley diameter must be greater than 0',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_pulley_diameter_in < 2.5) {
+      errors.push({
+        field: 'drive_pulley_diameter_in',
+        message: 'Drive pulley diameter must be >= 2.5"',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_pulley_diameter_in > 12) {
+      errors.push({
+        field: 'drive_pulley_diameter_in',
+        message: 'Drive pulley diameter must be <= 12"',
+        severity: 'error',
+      });
+    }
+  }
+
+  // v1.3: Tail pulley diameter validation
+  if (inputs.tail_pulley_diameter_in !== undefined) {
+    if (inputs.tail_pulley_diameter_in <= 0) {
+      errors.push({
+        field: 'tail_pulley_diameter_in',
+        message: 'Tail pulley diameter must be greater than 0',
+        severity: 'error',
+      });
+    }
+    if (inputs.tail_pulley_diameter_in < 2.5) {
+      errors.push({
+        field: 'tail_pulley_diameter_in',
+        message: 'Tail pulley diameter must be >= 2.5"',
+        severity: 'error',
+      });
+    }
+    if (inputs.tail_pulley_diameter_in > 12) {
+      errors.push({
+        field: 'tail_pulley_diameter_in',
+        message: 'Tail pulley diameter must be <= 12"',
+        severity: 'error',
+      });
+    }
+  }
+
+  // =========================================================================
+  // v1.6: SPEED MODE VALIDATION
+  // =========================================================================
+
+  const speedMode = inputs.speed_mode ?? SpeedMode.BeltSpeed;
+  const isBeltSpeedMode = speedMode === SpeedMode.BeltSpeed || speedMode === 'belt_speed';
+
+  if (isBeltSpeedMode) {
+    // Belt Speed mode: belt_speed_fpm is required
+    if (inputs.belt_speed_fpm <= 0) {
+      errors.push({
+        field: 'belt_speed_fpm',
+        message: 'Belt Speed (FPM) must be greater than 0',
+        severity: 'error',
+      });
+    }
+  } else {
+    // Drive RPM mode: drive_rpm_input (or legacy drive_rpm) is required
+    const driveRpmValue = inputs.drive_rpm_input ?? inputs.drive_rpm;
+    if (driveRpmValue <= 0) {
+      errors.push({
+        field: 'drive_rpm_input',
+        message: 'Drive RPM must be greater than 0',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Pulley diameter validation (required for speed calculations)
+  const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
+  if (pulleyDia <= 0) {
     errors.push({
-      field: 'drive_rpm',
-      message: 'Drive RPM must be greater than 0',
+      field: 'drive_pulley_diameter_in',
+      message: 'Drive pulley diameter must be greater than 0 for speed calculations',
       severity: 'error',
     });
   }
 
+  // =========================================================================
+  // v1.7: SPROCKET VALIDATION (BOTTOM MOUNT)
+  // =========================================================================
+
+  const mountingStyle = inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted;
+  const isBottomMount = mountingStyle === GearmotorMountingStyle.BottomMount || mountingStyle === 'bottom_mount';
+
+  if (isBottomMount) {
+    // Gearmotor sprocket teeth required and must be positive integer
+    if (inputs.gm_sprocket_teeth === undefined || inputs.gm_sprocket_teeth <= 0) {
+      errors.push({
+        field: 'gm_sprocket_teeth',
+        message: 'Gearmotor sprocket teeth must be greater than 0',
+        severity: 'error',
+      });
+    } else if (!Number.isInteger(inputs.gm_sprocket_teeth)) {
+      errors.push({
+        field: 'gm_sprocket_teeth',
+        message: 'Sprocket teeth must be a whole number',
+        severity: 'error',
+      });
+    }
+
+    // Drive shaft sprocket teeth required and must be positive integer
+    if (inputs.drive_shaft_sprocket_teeth === undefined || inputs.drive_shaft_sprocket_teeth <= 0) {
+      errors.push({
+        field: 'drive_shaft_sprocket_teeth',
+        message: 'Drive shaft sprocket teeth must be greater than 0',
+        severity: 'error',
+      });
+    } else if (!Number.isInteger(inputs.drive_shaft_sprocket_teeth)) {
+      errors.push({
+        field: 'drive_shaft_sprocket_teeth',
+        message: 'Sprocket teeth must be a whole number',
+        severity: 'error',
+      });
+    }
+  }
+
+  // THROUGHPUT
   if (
     inputs.required_throughput_pph !== undefined &&
     inputs.required_throughput_pph < 0
@@ -121,6 +266,15 @@ export function validateInputs(
     errors.push({
       field: 'part_spacing_in',
       message: 'Part Spacing must be >= 0',
+      severity: 'error',
+    });
+  }
+
+  // DROP HEIGHT
+  if (inputs.drop_height_in < 0) {
+    errors.push({
+      field: 'drop_height_in',
+      message: 'Drop height cannot be negative.',
       severity: 'error',
     });
   }
@@ -220,6 +374,275 @@ export function validateInputs(
       message: 'Motor RPM must be <= 3600',
       severity: 'error',
     });
+  }
+
+  // BELT TRACKING & PULLEY VALIDATION
+
+  // V-guide profile required if V-guided
+  const isVGuided = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+                    inputs.belt_tracking_method === 'V-guided';
+  if (isVGuided && !inputs.v_guide_profile) {
+    errors.push({
+      field: 'v_guide_profile',
+      message: 'V-guide profile is required when belt tracking method is V-guided',
+      severity: 'error',
+    });
+  }
+
+  // Manual shaft diameters required if manual mode
+  const isManualShaft = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
+                        inputs.shaft_diameter_mode === 'Manual';
+  if (isManualShaft) {
+    if (inputs.drive_shaft_diameter_in === undefined || inputs.drive_shaft_diameter_in <= 0) {
+      errors.push({
+        field: 'drive_shaft_diameter_in',
+        message: 'Drive shaft diameter is required when shaft diameter mode is Manual',
+        severity: 'error',
+      });
+    }
+    if (inputs.tail_shaft_diameter_in === undefined || inputs.tail_shaft_diameter_in <= 0) {
+      errors.push({
+        field: 'tail_shaft_diameter_in',
+        message: 'Tail shaft diameter is required when shaft diameter mode is Manual',
+        severity: 'error',
+      });
+    }
+  }
+
+  // BELT PIW/PIL OVERRIDE VALIDATION (v1.3)
+  if (inputs.belt_piw_override !== undefined && inputs.belt_piw_override <= 0) {
+    errors.push({
+      field: 'belt_piw_override',
+      message: 'Belt PIW override must be > 0',
+      severity: 'error',
+    });
+  }
+
+  if (inputs.belt_piw_override !== undefined && (inputs.belt_piw_override < 0.05 || inputs.belt_piw_override > 0.30)) {
+    errors.push({
+      field: 'belt_piw_override',
+      message: 'Belt PIW override should be between 0.05 and 0.30 lb/in',
+      severity: 'error',
+    });
+  }
+
+  if (inputs.belt_pil_override !== undefined && inputs.belt_pil_override <= 0) {
+    errors.push({
+      field: 'belt_pil_override',
+      message: 'Belt PIL override must be > 0',
+      severity: 'error',
+    });
+  }
+
+  if (inputs.belt_pil_override !== undefined && (inputs.belt_pil_override < 0.05 || inputs.belt_pil_override > 0.30)) {
+    errors.push({
+      field: 'belt_pil_override',
+      message: 'Belt PIL override should be between 0.05 and 0.30 lb/in',
+      severity: 'error',
+    });
+  }
+
+  // Shaft diameter range validation
+  if (inputs.drive_shaft_diameter_in !== undefined) {
+    if (inputs.drive_shaft_diameter_in < 0.5) {
+      errors.push({
+        field: 'drive_shaft_diameter_in',
+        message: 'Drive shaft diameter must be >= 0.5"',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_shaft_diameter_in > 4.0) {
+      errors.push({
+        field: 'drive_shaft_diameter_in',
+        message: 'Drive shaft diameter must be <= 4.0"',
+        severity: 'error',
+      });
+    }
+  }
+
+  if (inputs.tail_shaft_diameter_in !== undefined) {
+    if (inputs.tail_shaft_diameter_in < 0.5) {
+      errors.push({
+        field: 'tail_shaft_diameter_in',
+        message: 'Tail shaft diameter must be >= 0.5"',
+        severity: 'error',
+      });
+    }
+    if (inputs.tail_shaft_diameter_in > 4.0) {
+      errors.push({
+        field: 'tail_shaft_diameter_in',
+        message: 'Tail shaft diameter must be <= 4.0"',
+        severity: 'error',
+      });
+    }
+  }
+
+  // =========================================================================
+  // v1.3: CLEAT VALIDATION
+  // =========================================================================
+
+  if (inputs.cleats_enabled) {
+    // Cleat height required when enabled
+    if (inputs.cleat_height_in === undefined || inputs.cleat_height_in <= 0) {
+      errors.push({
+        field: 'cleat_height_in',
+        message: 'Cleat height is required when cleats are enabled',
+        severity: 'error',
+      });
+    }
+
+    // Cleat height range (0.5" - 6")
+    if (inputs.cleat_height_in !== undefined) {
+      if (inputs.cleat_height_in < 0.5) {
+        errors.push({
+          field: 'cleat_height_in',
+          message: 'Cleat height must be >= 0.5"',
+          severity: 'error',
+        });
+      }
+      if (inputs.cleat_height_in > 6) {
+        errors.push({
+          field: 'cleat_height_in',
+          message: 'Cleat height must be <= 6"',
+          severity: 'error',
+        });
+      }
+    }
+
+    // Cleat spacing required when enabled
+    if (inputs.cleat_spacing_in === undefined || inputs.cleat_spacing_in <= 0) {
+      errors.push({
+        field: 'cleat_spacing_in',
+        message: 'Cleat spacing is required when cleats are enabled',
+        severity: 'error',
+      });
+    }
+
+    // Cleat spacing range (2" - 48")
+    if (inputs.cleat_spacing_in !== undefined) {
+      if (inputs.cleat_spacing_in < 2) {
+        errors.push({
+          field: 'cleat_spacing_in',
+          message: 'Cleat spacing must be >= 2"',
+          severity: 'error',
+        });
+      }
+      if (inputs.cleat_spacing_in > 48) {
+        errors.push({
+          field: 'cleat_spacing_in',
+          message: 'Cleat spacing must be <= 48"',
+          severity: 'error',
+        });
+      }
+    }
+
+    // Cleat edge offset required when enabled
+    if (inputs.cleat_edge_offset_in === undefined || inputs.cleat_edge_offset_in < 0) {
+      errors.push({
+        field: 'cleat_edge_offset_in',
+        message: 'Cleat edge offset is required when cleats are enabled',
+        severity: 'error',
+      });
+    }
+
+    // Cleat edge offset range (0" - 12")
+    if (inputs.cleat_edge_offset_in !== undefined) {
+      if (inputs.cleat_edge_offset_in < 0) {
+        errors.push({
+          field: 'cleat_edge_offset_in',
+          message: 'Cleat edge offset must be >= 0"',
+          severity: 'error',
+        });
+      }
+      if (inputs.cleat_edge_offset_in > 12) {
+        errors.push({
+          field: 'cleat_edge_offset_in',
+          message: 'Cleat edge offset must be <= 12"',
+          severity: 'error',
+        });
+      }
+    }
+  }
+
+  // =========================================================================
+  // v1.4: TOB FIELD EXISTENCE VALIDATION
+  // =========================================================================
+
+  const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
+
+  if (!legsRequired) {
+    // When legs_required=false, TOB fields must NOT exist
+    for (const field of TOB_FIELDS) {
+      if (field in inputs && (inputs as unknown as Record<string, unknown>)[field] !== undefined) {
+        errors.push({
+          field,
+          message: `Field '${field}' must not exist when legs are not required (both ends are External)`,
+          severity: 'error',
+        });
+      }
+    }
+  }
+
+  // =========================================================================
+  // v1.4: TOB VALUE VALIDATION (when present)
+  // =========================================================================
+
+  if (inputs.tail_tob_in !== undefined && inputs.tail_tob_in < 0) {
+    errors.push({
+      field: 'tail_tob_in',
+      message: 'Tail TOB must be >= 0"',
+      severity: 'error',
+    });
+  }
+
+  if (inputs.drive_tob_in !== undefined && inputs.drive_tob_in < 0) {
+    errors.push({
+      field: 'drive_tob_in',
+      message: 'Drive TOB must be >= 0"',
+      severity: 'error',
+    });
+  }
+
+  if (inputs.adjustment_required_in !== undefined && inputs.adjustment_required_in < 0) {
+    errors.push({
+      field: 'adjustment_required_in',
+      message: 'Adjustment range must be >= 0"',
+      severity: 'error',
+    });
+  }
+
+  // =========================================================================
+  // v1.5: FRAME HEIGHT VALIDATION
+  // =========================================================================
+
+  // Custom frame height required when mode is Custom
+  const isCustomFrameHeight = inputs.frame_height_mode === FrameHeightMode.Custom ||
+                               inputs.frame_height_mode === 'Custom';
+  if (isCustomFrameHeight) {
+    if (inputs.custom_frame_height_in === undefined) {
+      errors.push({
+        field: 'custom_frame_height_in',
+        message: 'Custom frame height is required when frame height mode is Custom',
+        severity: 'error',
+      });
+    } else if (inputs.custom_frame_height_in < FRAME_HEIGHT_CONSTANTS.MIN_FRAME_HEIGHT_IN) {
+      errors.push({
+        field: 'custom_frame_height_in',
+        message: `Custom frame height must be >= ${FRAME_HEIGHT_CONSTANTS.MIN_FRAME_HEIGHT_IN}"`,
+        severity: 'error',
+      });
+    }
+  }
+
+  // Custom frame height range validation (when provided)
+  if (inputs.custom_frame_height_in !== undefined) {
+    if (inputs.custom_frame_height_in <= 0) {
+      errors.push({
+        field: 'custom_frame_height_in',
+        message: 'Custom frame height must be > 0"',
+        severity: 'error',
+      });
+    }
   }
 
   return errors;
@@ -330,6 +753,15 @@ export function applyApplicationRules(
     });
   }
 
+  // DROP HEIGHT WARNING
+  if (inputs.drop_height_in >= 24) {
+    warnings.push({
+      field: 'drop_height_in',
+      message: 'Drop height is high. Consider impact or wear protection.',
+      severity: 'warning',
+    });
+  }
+
   // INCLINE WARNINGS
   const inclineDeg = inputs.conveyor_incline_deg ?? 0;
 
@@ -360,22 +792,490 @@ export function applyApplicationRules(
     });
   }
 
+  // =========================================================================
+  // v1.3: PULLEY DIAMETER WARNINGS
+  // =========================================================================
+
+  // Mismatched pulley diameters warning
+  const drivePulley = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
+  const tailPulley = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in;
+
+  if (drivePulley !== undefined && tailPulley !== undefined && drivePulley !== tailPulley) {
+    warnings.push({
+      field: 'tail_pulley_diameter_in',
+      message: `Drive and tail pulleys have different diameters (${drivePulley}" vs ${tailPulley}"). This is valid but verify belt tracking is correct.`,
+      severity: 'warning',
+    });
+  }
+
+  // Non-standard pulley diameter info
+  const presetArray = PULLEY_DIAMETER_PRESETS as readonly number[];
+  if (drivePulley !== undefined && !presetArray.includes(drivePulley)) {
+    warnings.push({
+      field: 'drive_pulley_diameter_in',
+      message: `Drive pulley diameter (${drivePulley}") is non-standard. Standard sizes: ${presetArray.join(', ')}"`,
+      severity: 'info',
+    });
+  }
+  if (tailPulley !== undefined && tailPulley !== drivePulley && !presetArray.includes(tailPulley)) {
+    warnings.push({
+      field: 'tail_pulley_diameter_in',
+      message: `Tail pulley diameter (${tailPulley}") is non-standard. Standard sizes: ${presetArray.join(', ')}"`,
+      severity: 'info',
+    });
+  }
+
+  // =========================================================================
+  // v1.3: CLEAT WARNINGS
+  // =========================================================================
+
+  // Cleats on high incline
+  if (inputs.cleats_enabled && inclineDeg > 20) {
+    // This is good - cleats are appropriate for high inclines
+    // No warning needed, but we could add an info message if desired
+  }
+
+  // High incline WITHOUT cleats (already covered above in incline warnings)
+  // Just reinforce: if incline > 20° and no cleats, already warned
+
+  // Cleat spacing vs part size
+  if (inputs.cleats_enabled && inputs.cleat_spacing_in !== undefined) {
+    const travelDim = inputs.orientation === 'Lengthwise' ? inputs.part_length_in : inputs.part_width_in;
+    if (inputs.cleat_spacing_in < travelDim) {
+      warnings.push({
+        field: 'cleat_spacing_in',
+        message: `Cleat spacing (${inputs.cleat_spacing_in}") is less than part travel dimension (${travelDim}"). Parts may not fit between cleats.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // Cleat edge offset vs belt width
+  if (inputs.cleats_enabled && inputs.cleat_edge_offset_in !== undefined) {
+    const maxOffset = inputs.conveyor_width_in / 2;
+    if (inputs.cleat_edge_offset_in > maxOffset) {
+      warnings.push({
+        field: 'cleat_edge_offset_in',
+        message: `Cleat edge offset (${inputs.cleat_edge_offset_in}") exceeds half of belt width (${maxOffset}"). Cleats would overlap.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // =========================================================================
+  // FEATURES & OPTIONS WARNINGS
+  // =========================================================================
+
+  // FINGER SAFE + END GUARDS
+  if (inputs.finger_safe && inputs.end_guards === EndGuards.None) {
+    warnings.push({
+      field: 'end_guards',
+      message: 'Finger safety may require end guards depending on layout.',
+      severity: 'warning',
+    });
+  }
+
+  // FINGER SAFE + BOTTOM COVERS
+  if (inputs.finger_safe && !inputs.bottom_covers) {
+    warnings.push({
+      field: 'bottom_covers',
+      message: 'Bottom covers may be required to achieve finger-safe access underneath.',
+      severity: 'warning',
+    });
+  }
+
+  // CLIPPER LACING + END GUARDS
+  if (inputs.lacing_style === LacingStyle.ClipperLacing) {
+    warnings.push({
+      field: 'lacing_style',
+      message: 'Clipper lacing may interfere with end guards due to protrusion.',
+      severity: 'warning',
+    });
+  }
+
+  // MAGNETIZED BED + LACING MATERIAL (future: check bed_type when added)
+  // For now, skip magnetized bed check since bed_type field doesn't exist yet
+
+  // =========================================================================
+  // BELT SELECTION VALIDATION
+  // =========================================================================
+
+  // Pulley diameter vs belt minimum (v1.3: check both drive and tail)
+  if (inputs.belt_catalog_key) {
+    const isVGuidedBelt = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+                          inputs.belt_tracking_method === 'V-guided';
+    const minPulleyDia = isVGuidedBelt
+      ? inputs.belt_min_pulley_dia_with_vguide_in
+      : inputs.belt_min_pulley_dia_no_vguide_in;
+
+    // v1.3: Check drive pulley
+    if (minPulleyDia !== undefined && drivePulley !== undefined && drivePulley < minPulleyDia) {
+      errors.push({
+        field: 'drive_pulley_diameter_in',
+        message: `Drive pulley diameter (${drivePulley}") is below the belt minimum (${minPulleyDia}" for ${isVGuidedBelt ? 'V-guided' : 'crowned'} tracking). Increase pulley diameter or select a different belt.`,
+        severity: 'error',
+      });
+    }
+
+    // v1.3: Check tail pulley
+    if (minPulleyDia !== undefined && tailPulley !== undefined && tailPulley < minPulleyDia) {
+      errors.push({
+        field: 'tail_pulley_diameter_in',
+        message: `Tail pulley diameter (${tailPulley}") is below the belt minimum (${minPulleyDia}" for ${isVGuidedBelt ? 'V-guided' : 'crowned'} tracking). Increase pulley diameter or select a different belt.`,
+        severity: 'error',
+      });
+    }
+  }
+
+  // =========================================================================
+  // APPLICATION / DEMAND WARNINGS
+  // =========================================================================
+
+  // START/STOP + SHORT CYCLE TIME
+  if (inputs.start_stop_application && inputs.cycle_time_seconds !== undefined && inputs.cycle_time_seconds < 10) {
+    warnings.push({
+      field: 'cycle_time_seconds',
+      message: 'Frequent start/stop applications may require a higher-duty gearbox.',
+      severity: 'warning',
+    });
+  }
+
+  // SIDE LOADING SEVERITY - moderate/heavy without V-guide
+  // Note: V-guide field doesn't exist yet, so we just warn about severity
+  const severity = inputs.side_loading_severity;
+  if (inputs.side_loading_direction !== SideLoadingDirection.None) {
+    if (severity === SideLoadingSeverity.Heavy) {
+      warnings.push({
+        field: 'side_loading_severity',
+        message: 'Heavy side loading typically requires a V-guide for reliable tracking.',
+        severity: 'warning',
+      });
+    } else if (severity === SideLoadingSeverity.Moderate) {
+      warnings.push({
+        field: 'side_loading_severity',
+        message: 'Moderate side loading may require a V-guide for reliable tracking.',
+        severity: 'warning',
+      });
+    }
+  }
+
+  // =========================================================================
+  // v1.5: FRAME HEIGHT WARNINGS
+  // =========================================================================
+
+  const effectiveFrameHeight = calculateEffectiveFrameHeight(
+    inputs.frame_height_mode,
+    drivePulley ?? 4, // Default pulley diameter if not set
+    inputs.custom_frame_height_in
+  );
+
+  // Design review warning for low frame heights
+  if (effectiveFrameHeight < FRAME_HEIGHT_CONSTANTS.DESIGN_REVIEW_THRESHOLD_IN) {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: `Frame height (${effectiveFrameHeight.toFixed(1)}") is below ${FRAME_HEIGHT_CONSTANTS.DESIGN_REVIEW_THRESHOLD_IN}". Design review required.`,
+      severity: 'warning',
+    });
+  }
+
+  // Snub roller requirement info
+  // v1.5 FIX: Use largest pulley + 2.5" threshold
+  const largestPulley = Math.max(drivePulley ?? 4, tailPulley ?? 4);
+  const snubThreshold = largestPulley + SNUB_ROLLER_CLEARANCE_THRESHOLD_IN;
+  const requiresSnubRollers = calculateRequiresSnubRollers(effectiveFrameHeight, drivePulley ?? 4, tailPulley ?? 4);
+  if (requiresSnubRollers) {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: `Frame height (${effectiveFrameHeight.toFixed(1)}") is below snub roller threshold (${snubThreshold.toFixed(1)}"). Snub rollers will be required at pulley ends.`,
+      severity: 'info',
+    });
+  }
+
+  // Low profile mode info
+  const frameHeightMode = inputs.frame_height_mode ?? FrameHeightMode.Standard;
+  if (frameHeightMode === FrameHeightMode.LowProfile || frameHeightMode === 'Low Profile') {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: 'Low profile frame selected. This is a cost option.',
+      severity: 'info',
+    });
+  }
+
+  // Custom frame mode info
+  if (frameHeightMode === FrameHeightMode.Custom || frameHeightMode === 'Custom') {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: 'Custom frame height selected. This is a cost option.',
+      severity: 'info',
+    });
+  }
+
+  // =========================================================================
+  // v1.7: SPROCKET WARNINGS
+  // =========================================================================
+
+  const mountingStyleWarning = inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted;
+  const isBottomMountWarning = mountingStyleWarning === GearmotorMountingStyle.BottomMount || mountingStyleWarning === 'bottom_mount';
+
+  if (isBottomMountWarning) {
+    const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+    const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+
+    // Calculate chain ratio for warnings
+    if (gmTeeth > 0 && driveTeeth > 0) {
+      const chainRatio = driveTeeth / gmTeeth;
+
+      // Extreme ratio warnings
+      if (chainRatio < 0.5) {
+        warnings.push({
+          field: 'gm_sprocket_teeth',
+          message: `Chain ratio (${chainRatio.toFixed(3)}) is below 0.5. This is an unusual speed-up configuration.`,
+          severity: 'warning',
+        });
+      }
+      if (chainRatio > 3.0) {
+        warnings.push({
+          field: 'drive_shaft_sprocket_teeth',
+          message: `Chain ratio (${chainRatio.toFixed(3)}) exceeds 3.0. Consider using a higher gearbox ratio instead.`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    // Small sprocket warnings
+    if (gmTeeth > 0 && gmTeeth < 12) {
+      warnings.push({
+        field: 'gm_sprocket_teeth',
+        message: `Gearmotor sprocket (${gmTeeth}T) is smaller than recommended minimum (12T). This may cause accelerated wear.`,
+        severity: 'warning',
+      });
+    }
+    if (driveTeeth > 0 && driveTeeth < 12) {
+      warnings.push({
+        field: 'drive_shaft_sprocket_teeth',
+        message: `Drive shaft sprocket (${driveTeeth}T) is smaller than recommended minimum (12T). This may cause accelerated wear.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // =========================================================================
+  // v1.6: SPEED MODE WARNINGS
+  // =========================================================================
+
+  // High belt speed warning
+  if (inputs.belt_speed_fpm > 300) {
+    warnings.push({
+      field: 'belt_speed_fpm',
+      message: `Belt speed (${inputs.belt_speed_fpm} FPM) exceeds 300 FPM. Verify this is intentional for the application.`,
+      severity: 'warning',
+    });
+  }
+
+  // Calculate implied gear ratio for warning check
+  const speedModeWarning = inputs.speed_mode ?? SpeedMode.BeltSpeed;
+  const isBeltSpeedModeWarning = speedModeWarning === SpeedMode.BeltSpeed || speedModeWarning === 'belt_speed';
+  const motorRpmWarning = inputs.motor_rpm ?? 1750;
+
+  let impliedGearRatio: number | undefined;
+  if (drivePulley && drivePulley > 0) {
+    if (isBeltSpeedModeWarning && inputs.belt_speed_fpm > 0) {
+      // Calculate drive RPM from belt speed
+      const driveRpmCalc = inputs.belt_speed_fpm * 12 / (Math.PI * drivePulley);
+      impliedGearRatio = motorRpmWarning / driveRpmCalc;
+    } else if (!isBeltSpeedModeWarning) {
+      const driveRpmInput = inputs.drive_rpm_input ?? inputs.drive_rpm;
+      if (driveRpmInput > 0) {
+        impliedGearRatio = motorRpmWarning / driveRpmInput;
+      }
+    }
+  }
+
+  // Gear ratio warnings
+  if (impliedGearRatio !== undefined) {
+    if (impliedGearRatio < 5) {
+      warnings.push({
+        field: 'belt_speed_fpm',
+        message: `Calculated gear ratio (${impliedGearRatio.toFixed(2)}) is below 5. This may require a special gearbox.`,
+        severity: 'warning',
+      });
+    }
+    if (impliedGearRatio > 60) {
+      warnings.push({
+        field: 'belt_speed_fpm',
+        message: `Calculated gear ratio (${impliedGearRatio.toFixed(2)}) exceeds 60. This may require multiple reduction stages.`,
+        severity: 'warning',
+      });
+    }
+  }
+
   return { errors, warnings };
+}
+
+// ============================================================================
+// v1.4: TOB VALIDATION (DRAFT VS COMMIT MODE)
+// ============================================================================
+
+/**
+ * Validate TOB fields based on validation mode.
+ *
+ * - draft mode: Lenient - allows missing TOB even when legs_required=true
+ *   (supports legacy configs that were migrated to legs but have no TOB data)
+ * - commit mode: Strict - requires all TOB fields based on height_input_mode
+ *
+ * @param inputs - The inputs to validate
+ * @param mode - 'draft' (lenient) or 'commit' (strict)
+ */
+export function validateTob(
+  inputs: SliderbedInputs,
+  mode: ValidationMode
+): ValidationError[] {
+  const errors: ValidationError[] = [];
+  const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
+
+  // If legs not required, no TOB validation needed (field existence checked in validateInputs)
+  if (!legsRequired) {
+    return errors;
+  }
+
+  // In draft mode, allow missing TOB (legacy migrated configs)
+  if (mode === 'draft') {
+    return errors;
+  }
+
+  // Commit mode: strict validation
+  const heightInputMode = inputs.height_input_mode ?? HeightInputMode.ReferenceAndAngle;
+
+  if (heightInputMode === HeightInputMode.ReferenceAndAngle || heightInputMode === 'reference_and_angle') {
+    // Mode A: Only reference TOB required
+    const referenceEnd = inputs.reference_end ?? 'tail';
+
+    if (referenceEnd === 'tail') {
+      if (inputs.tail_tob_in === undefined) {
+        errors.push({
+          field: 'tail_tob_in',
+          message: 'Tail TOB is required when reference end is tail',
+          severity: 'error',
+        });
+      }
+    } else {
+      if (inputs.drive_tob_in === undefined) {
+        errors.push({
+          field: 'drive_tob_in',
+          message: 'Drive TOB is required when reference end is drive',
+          severity: 'error',
+        });
+      }
+    }
+  } else {
+    // Mode B: Both TOBs required
+    if (inputs.tail_tob_in === undefined) {
+      errors.push({
+        field: 'tail_tob_in',
+        message: 'Tail TOB is required in both-ends height input mode',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_tob_in === undefined) {
+      errors.push({
+        field: 'drive_tob_in',
+        message: 'Drive TOB is required in both-ends height input mode',
+        severity: 'error',
+      });
+    }
+  }
+
+  return errors;
+}
+
+/**
+ * Apply v1.4 height/support warnings.
+ * Called as part of applyApplicationRules.
+ */
+function applyHeightWarnings(inputs: SliderbedInputs): ValidationWarning[] {
+  const warnings: ValidationWarning[] = [];
+  const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
+
+  if (!legsRequired) {
+    return warnings;
+  }
+
+  // Adjustment range warnings
+  if (inputs.adjustment_required_in !== undefined) {
+    if (inputs.adjustment_required_in > 12) {
+      warnings.push({
+        field: 'adjustment_required_in',
+        message: `Very large adjustment range (${inputs.adjustment_required_in}") — verify leg feasibility`,
+        severity: 'warning',
+      });
+    } else if (inputs.adjustment_required_in > 6) {
+      warnings.push({
+        field: 'adjustment_required_in',
+        message: `Large adjustment range (${inputs.adjustment_required_in}") may require special leg design`,
+        severity: 'info',
+      });
+    }
+  }
+
+  // Angle mismatch warning (Mode B or when both TOBs are known)
+  const conveyorInclineDeg = inputs.conveyor_incline_deg ?? 0;
+  if (inputs.tail_tob_in !== undefined && inputs.drive_tob_in !== undefined) {
+    const impliedAngle = calculateImpliedAngleDeg(
+      inputs.tail_tob_in,
+      inputs.drive_tob_in,
+      inputs.conveyor_length_cc_in
+    );
+    if (hasAngleMismatch(impliedAngle, conveyorInclineDeg)) {
+      warnings.push({
+        field: 'conveyor_incline_deg',
+        message: `Implied angle from TOB heights (${impliedAngle.toFixed(1)}°) differs from entered incline (${conveyorInclineDeg}°) by more than 0.5°`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  return warnings;
 }
 
 // ============================================================================
 // COMBINED VALIDATION
 // ============================================================================
 
+/**
+ * Validate inputs (draft mode - lenient for loading)
+ */
 export function validate(
   inputs: SliderbedInputs,
   parameters: SliderbedParameters
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   const inputErrors = validateInputs(inputs);
   const paramErrors = validateParameters(parameters);
-  const { errors: ruleErrors, warnings } = applyApplicationRules(inputs);
+  const { errors: ruleErrors, warnings: ruleWarnings } = applyApplicationRules(inputs);
+
+  // v1.4: Add height warnings
+  const heightWarnings = applyHeightWarnings(inputs);
 
   const allErrors = [...inputErrors, ...paramErrors, ...ruleErrors];
+  const allWarnings = [...ruleWarnings, ...heightWarnings];
 
-  return { errors: allErrors, warnings };
+  return { errors: allErrors, warnings: allWarnings };
+}
+
+/**
+ * Validate inputs for commit (strict mode - required for saving)
+ */
+export function validateForCommit(
+  inputs: SliderbedInputs,
+  parameters: SliderbedParameters
+): { errors: ValidationError[]; warnings: ValidationWarning[] } {
+  // Start with standard validation
+  const { errors, warnings } = validate(inputs, parameters);
+
+  // Add commit-mode TOB validation
+  const tobErrors = validateTob(inputs, 'commit');
+
+  return {
+    errors: [...errors, ...tobErrors],
+    warnings,
+  };
 }

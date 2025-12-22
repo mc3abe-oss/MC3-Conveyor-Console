@@ -4,19 +4,14 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import CalculatorForm from './components/CalculatorForm';
 import CalculationResults from './components/CalculationResults';
 import ReferenceHeader from './components/ReferenceHeader';
-import RevisionsPanel from './components/RevisionsPanel';
 import FindConfigModal from './components/FindConfigModal';
+import Header from './components/Header';
+import InputEcho from './components/InputEcho';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../src/lib/catalogs';
 import { payloadsEqual } from '../src/lib/payload-compare';
 
-interface Revision {
-  id: string;
-  revision_number: number;
-  created_at: string;
-  created_by_user_id: string;
-  change_note?: string;
-}
+type ViewMode = 'configure' | 'results';
 
 interface Configuration {
   id: string;
@@ -35,6 +30,7 @@ export default function CalculatorPage() {
   const [referenceType, setReferenceType] = useState<'QUOTE' | 'SALES_ORDER'>('QUOTE');
   const [referenceNumber, setReferenceNumber] = useState('');
   const [lineKey, setLineKey] = useState('1');
+  const [conveyorQty, setConveyorQty] = useState(1);
 
   // Load/Save state with dirty tracking
   const [loadedConfigurationId, setLoadedConfigurationId] = useState<string | null>(null);
@@ -51,17 +47,19 @@ export default function CalculatorPage() {
     revisionNumber?: number;
     savedAt?: string;
     savedByUser?: string;
+    configurationId?: string;
   }>({ isLoaded: false });
 
   const [isSaving, setIsSaving] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Revisions state
-  const [revisions, setRevisions] = useState<Revision[]>([]);
   const [toast, setToast] = useState<string | null>(null);
 
   // Find Config Modal
   const [isFindModalOpen, setIsFindModalOpen] = useState(false);
+
+  // View mode: 'configure' or 'results'
+  const [viewMode, setViewMode] = useState<ViewMode>('configure');
 
   const showToast = (message: string) => {
     setToast(message);
@@ -69,8 +67,12 @@ export default function CalculatorPage() {
   };
 
   // Build application_json from inputs with all application fields
-  const buildApplicationJson = (inputs: SliderbedInputs) => {
-    const applicationFields: Record<string, { item_key: string; label: string } | string> = {};
+  // NOTE: conveyorQty is passed separately since it's line-level metadata, not a calculator input
+  const buildApplicationJson = (inputs: SliderbedInputs, qty: number = 1) => {
+    const applicationFields: Record<string, { item_key: string; label: string } | string | number> = {};
+
+    // Line-level metadata (quote/order data, NOT engineering inputs)
+    applicationFields.conveyor_qty = qty;
 
     // Extract catalog fields
     Object.keys(CATALOG_KEYS).forEach((fieldName) => {
@@ -109,9 +111,9 @@ export default function CalculatorPage() {
     return {
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
-      application_json: buildApplicationJson(inputs),
+      application_json: buildApplicationJson(inputs, conveyorQty),
     };
-  }, [inputs]);
+  }, [inputs, conveyorQty]);
 
   // Compute isDirty
   const isDirty = useMemo(() => {
@@ -230,6 +232,9 @@ export default function CalculatorPage() {
 
     console.log('[Calculate] Success - payload snapshot saved', calculatedPayload);
     setIsCalculating(false);
+
+    // Switch to results view after successful calculation
+    setViewMode('results');
   };
 
   const handleInputsChange = useCallback((newInputs: SliderbedInputs) => {
@@ -259,13 +264,13 @@ export default function CalculatorPage() {
     setReferenceType('QUOTE');
     setReferenceNumber('');
     setLineKey('1');
+    setConveyorQty(1);
 
     // Reset loaded state
     setLoadedConfigurationId(null);
     setLoadedRevisionId(null);
     setInitialLoadedPayload(null);
     setLoadedState({ isLoaded: false });
-    setRevisions([]);
 
     // Reset inputs to null (form will use its defaults)
     setInputs(null);
@@ -313,7 +318,12 @@ export default function CalculatorPage() {
         revisionNumber: revision.revision_number,
         savedAt: revision.created_at,
         savedByUser: revision.created_by_user_id,
+        configurationId: configuration.id,
       });
+
+      // Restore conveyor_qty from application_json (default to 1 if not present)
+      const savedQty = revision.application_json?.conveyor_qty;
+      setConveyorQty(typeof savedQty === 'number' && savedQty >= 1 ? savedQty : 1);
 
       // Set inputs from revision
       setInputs(revision.inputs_json);
@@ -352,27 +362,12 @@ export default function CalculatorPage() {
       setInitialLoadedPayload(null);
       console.log('[Load] Cleared initial payload, will be set by effect');
 
-      // Load all revisions for this configuration
-      await loadRevisions(configuration.id);
-
       showToast(`Loaded ${referenceType} ${referenceNumber} Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('[Load] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to load configuration');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const loadRevisions = async (configurationId: string) => {
-    try {
-      const response = await fetch(`/api/configurations/revisions?configuration_id=${configurationId}`);
-      if (response.ok) {
-        const data = await response.json() as { revisions?: Revision[] };
-        setRevisions(data.revisions || []);
-      }
-    } catch (error) {
-      console.error('Load revisions error:', error);
     }
   };
 
@@ -455,7 +450,7 @@ export default function CalculatorPage() {
       model_key: 'sliderbed_conveyor_v1',
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
-      application_json: buildApplicationJson(inputs),
+      application_json: buildApplicationJson(inputs, conveyorQty),
       outputs_json: result.outputs,
       warnings_json: result.warnings,
     };
@@ -508,6 +503,7 @@ export default function CalculatorPage() {
         revisionNumber: revision.revision_number,
         savedAt: revision.created_at,
         savedByUser: revision.created_by_user_id,
+        configurationId: configuration.id,
       });
 
       // Reset initial loaded payload to current state
@@ -516,81 +512,12 @@ export default function CalculatorPage() {
 
       console.log('[Save] Updated state, new revision:', revision.revision_number);
 
-      // Reload revisions list
-      await loadRevisions(configuration.id);
-
       showToast(`Saved Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('[Save] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to save configuration');
     } finally {
       setIsSaving(false);
-    }
-  };
-
-  const handleLoadRevision = async (revisionId: string) => {
-    try {
-      console.log('[LoadRevision] Loading revision:', revisionId);
-      const response = await fetch(`/api/configurations/revision?id=${revisionId}`);
-      if (!response.ok) {
-        throw new Error('Failed to load revision');
-      }
-
-      const data = await response.json() as { revision: any };
-      const { revision } = data;
-
-      // Set inputs from this revision
-      setInputs(revision.inputs_json);
-
-      // Update loaded revision ID
-      setLoadedRevisionId(revision.id);
-
-      // Update loaded state
-      setLoadedState(prev => ({
-        ...prev,
-        revisionNumber: revision.revision_number,
-        savedAt: revision.created_at,
-        savedByUser: revision.created_by_user_id,
-      }));
-
-      // If revision has outputs, restore them and mark as calculated
-      if (revision.outputs_json) {
-        setResult({
-          success: true,
-          outputs: revision.outputs_json,
-          warnings: revision.warnings_json || [],
-          metadata: {
-            model_version_id: '1.0.0',
-            calculated_at: revision.created_at || new Date().toISOString(),
-            model_key: 'sliderbed_conveyor_v1',
-          },
-        });
-        setCalcStatus('ok');
-
-        // Set lastCalculatedPayload to match loaded state
-        const loadedPayload = {
-          inputs_json: revision.inputs_json,
-          parameters_json: DEFAULT_PARAMETERS,
-          application_json: revision.application_json,
-        };
-        setLastCalculatedPayload(loadedPayload);
-        console.log('[LoadRevision] Restored outputs and set lastCalculatedPayload');
-      } else {
-        // No outputs - clear result and calculation status
-        setResult(null);
-        setCalcStatus('idle');
-        setLastCalculatedPayload(null);
-        console.log('[LoadRevision] No outputs, cleared calc state');
-      }
-
-      // Clear initial payload so the effect can set it after inputs update
-      setInitialLoadedPayload(null);
-      console.log('[LoadRevision] Cleared initial payload, will be set by effect');
-
-      showToast(`Loaded Rev ${revision.revision_number}`);
-    } catch (error) {
-      console.error('Load revision error:', error);
-      showToast('Failed to load revision');
     }
   };
 
@@ -626,7 +553,12 @@ export default function CalculatorPage() {
         revisionNumber: revision.revision_number,
         savedAt: revision.created_at,
         savedByUser: revision.created_by_user_id,
+        configurationId: configuration.id,
       });
+
+      // Restore conveyor_qty from application_json (default to 1 if not present)
+      const savedQty = revision.application_json?.conveyor_qty;
+      setConveyorQty(typeof savedQty === 'number' && savedQty >= 1 ? savedQty : 1);
 
       // Set inputs from revision
       setInputs(revision.inputs_json);
@@ -665,9 +597,6 @@ export default function CalculatorPage() {
       setInitialLoadedPayload(null);
       console.log('[FindConfig] Cleared initial payload, will be set by effect');
 
-      // Load all revisions
-      await loadRevisions(configuration.id);
-
       showToast(`Loaded ${config.reference_type} ${config.reference_number} Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('Load error:', error);
@@ -684,29 +613,34 @@ export default function CalculatorPage() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Toast notification */}
-      {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg">
-          {toast}
-        </div>
-      )}
+    <>
+      <Header loadedConfigurationId={loadedConfigurationId} />
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="space-y-6">
+          {/* Toast notification */}
+          {toast && (
+            <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg">
+              {toast}
+            </div>
+          )}
 
-      {/* Find Config Modal */}
-      <FindConfigModal
-        isOpen={isFindModalOpen}
-        onClose={() => setIsFindModalOpen(false)}
-        onSelect={handleFindConfig}
-      />
+          {/* Find Config Modal */}
+          <FindConfigModal
+            isOpen={isFindModalOpen}
+            onClose={() => setIsFindModalOpen(false)}
+            onSelect={handleFindConfig}
+          />
 
-      {/* Reference Header */}
-      <ReferenceHeader
+          {/* Reference Header */}
+          <ReferenceHeader
         referenceType={referenceType}
         referenceNumber={referenceNumber}
         lineKey={lineKey}
+        conveyorQty={conveyorQty}
         onReferenceTypeChange={setReferenceType}
         onReferenceNumberChange={handleReferenceNumberChange}
         onLineKeyChange={handleLineKeyChange}
+        onConveyorQtyChange={setConveyorQty}
         onLoad={handleLoad}
         onSave={handleSave}
         onCalculate={handleCalculateClick}
@@ -722,67 +656,204 @@ export default function CalculatorPage() {
         onOpenFindModal={() => setIsFindModalOpen(true)}
       />
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          <div className="card">
-            <h2 className="text-xl font-bold text-gray-900 mb-6">
-              Application Design Inputs
-            </h2>
-            <CalculatorForm
-              onCalculate={handleCalculate}
-              isCalculating={isCalculating}
-              initialInputs={inputs}
-              onInputsChange={handleInputsChange}
-              loadedRevisionId={loadedRevisionId ?? undefined}
-              triggerCalculate={triggerCalculate}
-              hideCalculateButton={true}
-            />
-          </div>
+      {/* Page-level Mode Tabs */}
+      <div className="border-b border-gray-200 mb-6">
+        <nav className="-mb-px flex gap-x-8" aria-label="View mode">
+          <button
+            type="button"
+            onClick={() => setViewMode('configure')}
+            className={`
+              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
+              ${
+                viewMode === 'configure'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Configure
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setViewMode('results')}
+            className={`
+              whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
+              ${
+                viewMode === 'results'
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }
+            `}
+          >
+            <span className="flex items-center gap-2">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Results
+              {/* Stale indicator badge */}
+              {result && needsRecalc && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+                  Stale
+                </span>
+              )}
+            </span>
+          </button>
+        </nav>
+      </div>
 
-          {/* Revisions Panel */}
-          {revisions.length > 0 && (
-            <RevisionsPanel
-              revisions={revisions}
-              currentRevisionNumber={loadedState.revisionNumber}
-              onLoadRevision={handleLoadRevision}
-              isLoading={isLoading}
-            />
-          )}
-        </div>
+      {/* Configure Mode - Full width lanes */}
+      {/* NOTE: Using CSS visibility instead of conditional rendering to prevent
+          CalculatorForm from unmounting/remounting when switching tabs.
+          This fixes a bug where the triggerCalculate ref would reset on remount,
+          causing an unwanted recalculation that switched back to Results tab. */}
+      <div className={viewMode === 'configure' ? '' : 'hidden'}>
+        <CalculatorForm
+          onCalculate={handleCalculate}
+          isCalculating={isCalculating}
+          initialInputs={inputs}
+          onInputsChange={handleInputsChange}
+          loadedRevisionId={loadedRevisionId ?? undefined}
+          triggerCalculate={triggerCalculate}
+          hideCalculateButton={true}
+        />
 
-        <div>
-          {result && (
-            <div className="sticky top-8">
-              <CalculationResults result={result} />
-            </div>
-          )}
-          {!result && (
-            <div className="card">
-              <div className="text-center py-12 text-gray-500">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                  />
+        {/* View Results CTA */}
+        <div className="mt-6 flex justify-center gap-4">
+          <button
+            type="button"
+            onClick={handleCalculateClick}
+            disabled={isCalculating}
+            className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+          >
+            {isCalculating ? (
+              <>
+                <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No calculation yet
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Fill in the form and click Calculate to see results
-                </p>
-              </div>
-            </div>
+                Calculating...
+              </>
+            ) : (
+              <>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+                Calculate & View Results
+              </>
+            )}
+          </button>
+          {result && (
+            <button
+              type="button"
+              onClick={() => setViewMode('results')}
+              className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              View Last Results
+              {needsRecalc && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
+                  Stale
+                </span>
+              )}
+            </button>
           )}
         </div>
       </div>
-    </div>
+
+      {/* Results Mode - Full width results */}
+      <div className={viewMode === 'results' ? '' : 'hidden'}>
+        {/* Stale Results Banner */}
+        {result && needsRecalc && (
+          <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-800">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+              <span className="font-medium">Results are stale.</span>
+              <span className="text-sm">Inputs have changed since last calculation.</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                handleCalculateClick();
+              }}
+              className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded hover:bg-amber-700 transition-colors"
+            >
+              Recalculate
+            </button>
+          </div>
+        )}
+
+        {result ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Results - Takes 2 columns */}
+            <div className="lg:col-span-2">
+              <CalculationResults result={result} inputs={inputs ?? undefined} />
+            </div>
+
+            {/* Input Echo - Summary of key inputs */}
+            <div className="lg:col-span-1">
+              <InputEcho inputs={inputs} />
+            </div>
+          </div>
+        ) : (
+          <div className="card">
+            <div className="text-center py-12 text-gray-500">
+              <svg
+                className="mx-auto h-12 w-12 text-gray-400"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+                />
+              </svg>
+              <h3 className="mt-2 text-sm font-medium text-gray-900">
+                No calculation yet
+              </h3>
+              <p className="mt-1 text-sm text-gray-500">
+                Configure your conveyor and click Calculate to see results
+              </p>
+              <button
+                type="button"
+                onClick={() => setViewMode('configure')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Go to Configure
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Inputs CTA */}
+        {result && (
+          <div className="mt-6 flex justify-center">
+            <button
+              type="button"
+              onClick={() => setViewMode('configure')}
+              className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit Configuration
+            </button>
+          </div>
+        )}
+      </div>
+      </div>
+      </main>
+    </>
   );
 }
