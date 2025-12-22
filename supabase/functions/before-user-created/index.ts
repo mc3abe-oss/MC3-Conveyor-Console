@@ -23,7 +23,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 
-const ALLOWED_DOMAIN = '@mc3mfg.com';
+const ALLOWED_DOMAINS = ['@mc3mfg.com', '@clearcode.ca'];
 
 interface AuthHookPayload {
   user: {
@@ -56,12 +56,12 @@ serve(async (req) => {
     }
 
     // Check domain restriction
-    if (!email.endsWith(ALLOWED_DOMAIN)) {
+    if (!ALLOWED_DOMAINS.some((domain) => email.endsWith(domain))) {
       console.log(`Rejected signup attempt: ${email}`);
       return new Response(
         JSON.stringify({
           decision: 'reject',
-          message: `Only ${ALLOWED_DOMAIN} email addresses are allowed.`,
+          message: `Only ${ALLOWED_DOMAINS.join(' or ')} email addresses are allowed.`,
         }),
         {
           status: 200,

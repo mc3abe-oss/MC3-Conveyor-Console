@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { createClient } from '../../src/lib/supabase/browser';
 import Link from 'next/link';
 
-const ALLOWED_DOMAIN = '@mc3mfg.com';
+const ALLOWED_DOMAINS = ['@mc3mfg.com', '@clearcode.ca'];
 
 export default function SignupPage() {
   const [email, setEmail] = useState('');
@@ -16,8 +16,8 @@ export default function SignupPage() {
 
   const validateEmail = (email: string): string | null => {
     const normalizedEmail = email.trim().toLowerCase();
-    if (!normalizedEmail.endsWith(ALLOWED_DOMAIN)) {
-      return `Only ${ALLOWED_DOMAIN} email addresses are allowed.`;
+    if (!ALLOWED_DOMAINS.some((domain) => normalizedEmail.endsWith(domain))) {
+      return `Only ${ALLOWED_DOMAINS.join(' or ')} email addresses are allowed.`;
     }
     return null;
   };
@@ -56,8 +56,8 @@ export default function SignupPage() {
 
     if (signUpError) {
       // Handle domain restriction error from auth hook
-      if (signUpError.message.includes('mc3mfg.com') || signUpError.message.includes('not allowed')) {
-        setError(`Only ${ALLOWED_DOMAIN} email addresses are allowed.`);
+      if (signUpError.message.includes('mc3mfg.com') || signUpError.message.includes('clearcode.ca') || signUpError.message.includes('not allowed')) {
+        setError(`Only ${ALLOWED_DOMAINS.join(' or ')} email addresses are allowed.`);
       } else {
         setError(signUpError.message);
       }
@@ -104,7 +104,7 @@ export default function SignupPage() {
             Create your account
           </h2>
           <p className="mt-2 text-center text-sm text-gray-500">
-            Use your {ALLOWED_DOMAIN} email address
+            Use your {ALLOWED_DOMAINS.join(' or ')} email address
           </p>
         </div>
 
