@@ -1317,7 +1317,16 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                   type="radio"
                   name="gearmotor_mounting_style"
                   checked={inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount}
-                  onChange={() => updateInput('gearmotor_mounting_style', GearmotorMountingStyle.BottomMount)}
+                  onChange={() => {
+                    updateInput('gearmotor_mounting_style', GearmotorMountingStyle.BottomMount);
+                    // Ensure sprocket defaults are set for legacy configs
+                    if (inputs.gm_sprocket_teeth === undefined) {
+                      updateInput('gm_sprocket_teeth', 18);
+                    }
+                    if (inputs.drive_shaft_sprocket_teeth === undefined) {
+                      updateInput('drive_shaft_sprocket_teeth', 24);
+                    }
+                  }}
                   className="mr-2"
                 />
                 Bottom Mount (Chain Drive)

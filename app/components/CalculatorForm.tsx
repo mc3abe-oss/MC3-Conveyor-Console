@@ -17,6 +17,7 @@ import {
   DriveHand,
   BeltTrackingMethod,
   ShaftDiameterMode,
+  GearmotorMountingStyle,
 } from '../../src/models/sliderbed_v1/schema';
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
@@ -118,6 +119,11 @@ export default function CalculatorForm({
     brake_motor: false,
     gearmotor_orientation: GearmotorOrientation.SideMount,
     drive_hand: DriveHand.RightHand,
+
+    // Gearmotor mounting style & sprockets (v1.7)
+    gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
+    gm_sprocket_teeth: 18,
+    drive_shaft_sprocket_teeth: 24,
 
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,
