@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.6 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.7 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.7 (2025-12-22): Sprocket validation for bottom-mount gearmotor configuration
  * v1.6 (2025-12-22): Speed mode validation, belt_speed_fpm and drive_rpm_input validation
  * v1.5 (2025-12-21): Frame height validation, snub roller warnings, cost flag notifications
  * v1.4 (2025-12-21): Per-end support types, height model validation, draft/commit modes
@@ -34,6 +35,7 @@ import {
   TOB_FIELDS,
   FrameHeightMode,
   SpeedMode,
+  GearmotorMountingStyle,
 } from './schema';
 import { calculateImpliedAngleDeg, hasAngleMismatch } from './migrate';
 import {
@@ -171,6 +173,45 @@ export function validateInputs(
       message: 'Drive pulley diameter must be greater than 0 for speed calculations',
       severity: 'error',
     });
+  }
+
+  // =========================================================================
+  // v1.7: SPROCKET VALIDATION (BOTTOM MOUNT)
+  // =========================================================================
+
+  const mountingStyle = inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted;
+  const isBottomMount = mountingStyle === GearmotorMountingStyle.BottomMount || mountingStyle === 'bottom_mount';
+
+  if (isBottomMount) {
+    // Gearmotor sprocket teeth required and must be positive integer
+    if (inputs.gm_sprocket_teeth === undefined || inputs.gm_sprocket_teeth <= 0) {
+      errors.push({
+        field: 'gm_sprocket_teeth',
+        message: 'Gearmotor sprocket teeth must be greater than 0',
+        severity: 'error',
+      });
+    } else if (!Number.isInteger(inputs.gm_sprocket_teeth)) {
+      errors.push({
+        field: 'gm_sprocket_teeth',
+        message: 'Sprocket teeth must be a whole number',
+        severity: 'error',
+      });
+    }
+
+    // Drive shaft sprocket teeth required and must be positive integer
+    if (inputs.drive_shaft_sprocket_teeth === undefined || inputs.drive_shaft_sprocket_teeth <= 0) {
+      errors.push({
+        field: 'drive_shaft_sprocket_teeth',
+        message: 'Drive shaft sprocket teeth must be greater than 0',
+        severity: 'error',
+      });
+    } else if (!Number.isInteger(inputs.drive_shaft_sprocket_teeth)) {
+      errors.push({
+        field: 'drive_shaft_sprocket_teeth',
+        message: 'Sprocket teeth must be a whole number',
+        severity: 'error',
+      });
+    }
   }
 
   // THROUGHPUT
@@ -967,6 +1008,55 @@ export function applyApplicationRules(
       message: 'Custom frame height selected. This is a cost option.',
       severity: 'info',
     });
+  }
+
+  // =========================================================================
+  // v1.7: SPROCKET WARNINGS
+  // =========================================================================
+
+  const mountingStyleWarning = inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted;
+  const isBottomMountWarning = mountingStyleWarning === GearmotorMountingStyle.BottomMount || mountingStyleWarning === 'bottom_mount';
+
+  if (isBottomMountWarning) {
+    const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+    const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+
+    // Calculate chain ratio for warnings
+    if (gmTeeth > 0 && driveTeeth > 0) {
+      const chainRatio = driveTeeth / gmTeeth;
+
+      // Extreme ratio warnings
+      if (chainRatio < 0.5) {
+        warnings.push({
+          field: 'gm_sprocket_teeth',
+          message: `Chain ratio (${chainRatio.toFixed(3)}) is below 0.5. This is an unusual speed-up configuration.`,
+          severity: 'warning',
+        });
+      }
+      if (chainRatio > 3.0) {
+        warnings.push({
+          field: 'drive_shaft_sprocket_teeth',
+          message: `Chain ratio (${chainRatio.toFixed(3)}) exceeds 3.0. Consider using a higher gearbox ratio instead.`,
+          severity: 'warning',
+        });
+      }
+    }
+
+    // Small sprocket warnings
+    if (gmTeeth > 0 && gmTeeth < 12) {
+      warnings.push({
+        field: 'gm_sprocket_teeth',
+        message: `Gearmotor sprocket (${gmTeeth}T) is smaller than recommended minimum (12T). This may cause accelerated wear.`,
+        severity: 'warning',
+      });
+    }
+    if (driveTeeth > 0 && driveTeeth < 12) {
+      warnings.push({
+        field: 'drive_shaft_sprocket_teeth',
+        message: `Drive shaft sprocket (${driveTeeth}T) is smaller than recommended minimum (12T). This may cause accelerated wear.`,
+        severity: 'warning',
+      });
+    }
   }
 
   // =========================================================================

@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.6 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.7 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,7 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.7 (2025-12-22): Chain ratio stage for bottom-mount gearmotor configuration
  * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs, derive Drive RPM
  * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
  * v1.3 (2025-12-21): Split pulley diameter into drive/tail, update belt length formula
@@ -25,6 +26,7 @@ import {
   ShaftDiameterMode,
   FrameHeightMode,
   SpeedMode,
+  GearmotorMountingStyle,
 } from './schema';
 import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
 
@@ -839,6 +841,31 @@ export function calculate(
   // Step 15: Gear ratio (v1.2: now uses user motor_rpm if provided)
   const gearRatio = calculateGearRatio(motorRpm, driveShaftRpm);
 
+  // =========================================================================
+  // v1.7: CHAIN RATIO STAGE
+  // =========================================================================
+  // Calculate chain ratio based on gearmotor mounting style
+  const mountingStyle = inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted;
+  const isBottomMount = mountingStyle === GearmotorMountingStyle.BottomMount || mountingStyle === 'bottom_mount';
+
+  let chainRatio: number;
+  if (isBottomMount) {
+    // Chain ratio = driven_teeth / driver_teeth
+    // driver = gearmotor sprocket, driven = drive shaft sprocket
+    const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+    const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+    chainRatio = gmTeeth > 0 ? driveTeeth / gmTeeth : 1;
+  } else {
+    // Shaft-mounted: no chain, ratio = 1
+    chainRatio = 1;
+  }
+
+  // Gearmotor output RPM required = drive_shaft_rpm * chain_ratio
+  const gearmotorOutputRpm = driveShaftRpm * chainRatio;
+
+  // Total drive ratio = gear_ratio * chain_ratio
+  const totalDriveRatio = gearRatio * chainRatio;
+
   // Step 16: Throughput calculations (optional - only if required_throughput_pph provided)
   let targetPph: number | undefined;
   let meetsThroughput: boolean | undefined;
@@ -934,6 +961,12 @@ export function calculate(
     drive_shaft_rpm: driveShaftRpm,
     torque_drive_shaft_inlbf: torqueDriveShaftInlbf,
     gear_ratio: gearRatio,
+
+    // v1.7: Chain ratio stage
+    chain_ratio: chainRatio,
+    gearmotor_output_rpm: gearmotorOutputRpm,
+    total_drive_ratio: totalDriveRatio,
+
     safety_factor_used: safetyFactor,
     starting_belt_pull_lb_used: startingBeltPullLb,
     friction_coeff_used: frictionCoeff,

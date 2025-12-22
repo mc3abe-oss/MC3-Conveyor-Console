@@ -163,6 +163,29 @@ export default function CalculationResults({ result, inputs }: Props) {
                 decimals={2}
                 highlight
               />
+              {/* v1.7: Chain ratio (only show if bottom mount with chain drive) */}
+              {outputs.chain_ratio !== undefined && outputs.chain_ratio !== 1 && (
+                <>
+                  <ResultRow
+                    label="Chain Ratio"
+                    value={outputs.chain_ratio}
+                    decimals={3}
+                    highlight
+                  />
+                  <ResultRow
+                    label="Gearmotor Output RPM"
+                    value={outputs.gearmotor_output_rpm ?? 0}
+                    decimals={1}
+                    highlight
+                  />
+                  <ResultRow
+                    label="Total Drive Ratio"
+                    value={outputs.total_drive_ratio ?? outputs.gear_ratio}
+                    decimals={2}
+                    highlight
+                  />
+                </>
+              )}
               <ResultRow
                 label="Torque"
                 value={outputs.torque_drive_shaft_inlbf}

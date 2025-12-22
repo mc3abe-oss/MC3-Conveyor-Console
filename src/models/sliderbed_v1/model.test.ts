@@ -58,6 +58,8 @@ import {
   FrameHeightMode,
   // v1.6: Speed Mode
   SpeedMode,
+  // v1.7: Gearmotor Mounting Style
+  GearmotorMountingStyle,
 } from './schema';
 import {
   migrateInputs,
@@ -3522,6 +3524,243 @@ describe('v1.6 Speed Mode Regression Tests', () => {
         resultDriveRpm.outputs?.gear_ratio ?? 0,
         2
       );
+    });
+  });
+});
+
+// ============================================================================
+// v1.7 GEARMOTOR MOUNTING STYLE & SPROCKET CHAIN RATIO TESTS
+// ============================================================================
+
+describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
+  // Application field defaults (used in all tests)
+  const APPLICATION_DEFAULTS = {
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: EnvironmentFactors.Indoor,
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    support_option: SupportOption.FloorMounted,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    lacing_style: LacingStyle.Standard,
+    head_pulley_surface: PulleySurfaceType.Bare,
+    tail_pulley_surface: PulleySurfaceType.Bare,
+  };
+
+  const BASE_INPUTS: SliderbedInputs = {
+    belt_width_in: 18,
+    length_ft: 20,
+    incline_deg: 0,
+    belt_speed_fpm: 50,
+    motor_rpm: 1750,
+    drive_rpm: 0,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0.5,
+    speed_mode: SpeedMode.BeltSpeed,
+    ...APPLICATION_DEFAULTS,
+  };
+
+  describe('Fixture 1: Shaft mounted ignores sprockets', () => {
+    it('should have chain_ratio = 1 when shaft_mounted (default)', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
+        gm_sprocket_teeth: 18,
+        drive_shaft_sprocket_teeth: 36,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs?.chain_ratio).toBe(1);
+      expect(result.outputs?.gearmotor_output_rpm).toBe(result.outputs?.drive_shaft_rpm);
+      expect(result.outputs?.total_drive_ratio).toBe(result.outputs?.gear_ratio);
+    });
+
+    it('should default to shaft_mounted when not specified', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs?.chain_ratio).toBe(1);
+    });
+  });
+
+  describe('Fixture 2: Bottom mount 18T -> 24T (chain_ratio = 1.333)', () => {
+    it('should calculate chain_ratio as driven/driver (24/18 = 1.333)', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 18,
+        drive_shaft_sprocket_teeth: 24,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs?.chain_ratio).toBeCloseTo(24 / 18, 4);
+      expect(result.outputs?.chain_ratio).toBeCloseTo(1.3333, 3);
+    });
+
+    it('should calculate gearmotor_output_rpm = drive_shaft_rpm * chain_ratio', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 18,
+        drive_shaft_sprocket_teeth: 24,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      const expectedChainRatio = 24 / 18;
+      const driveShaftRpm = result.outputs?.drive_shaft_rpm ?? 0;
+      const expectedGearmotorRpm = driveShaftRpm * expectedChainRatio;
+
+      expect(result.outputs?.gearmotor_output_rpm).toBeCloseTo(expectedGearmotorRpm, 2);
+    });
+
+    it('should calculate total_drive_ratio = gear_ratio * chain_ratio', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 18,
+        drive_shaft_sprocket_teeth: 24,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      const expectedChainRatio = 24 / 18;
+      const gearRatio = result.outputs?.gear_ratio ?? 0;
+      const expectedTotalRatio = gearRatio * expectedChainRatio;
+
+      expect(result.outputs?.total_drive_ratio).toBeCloseTo(expectedTotalRatio, 2);
+    });
+  });
+
+  describe('Fixture 3: Bottom mount 24T -> 18T (chain_ratio = 0.75)', () => {
+    it('should calculate chain_ratio for speed-up configuration (18/24 = 0.75)', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 24,
+        drive_shaft_sprocket_teeth: 18,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs?.chain_ratio).toBeCloseTo(18 / 24, 4);
+      expect(result.outputs?.chain_ratio).toBeCloseTo(0.75, 3);
+    });
+
+    it('should produce lower gearmotor_output_rpm than drive_shaft_rpm', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 24,
+        drive_shaft_sprocket_teeth: 18,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      const driveShaftRpm = result.outputs?.drive_shaft_rpm ?? 0;
+      const gearmotorRpm = result.outputs?.gearmotor_output_rpm ?? 0;
+
+      expect(gearmotorRpm).toBeLessThan(driveShaftRpm);
+      expect(gearmotorRpm).toBeCloseTo(driveShaftRpm * 0.75, 2);
+    });
+  });
+
+  describe('Fixture 4: Validation failures', () => {
+    it('should fail validation when gm_sprocket_teeth = 0 for bottom_mount', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 0,
+        drive_shaft_sprocket_teeth: 24,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.errors?.some((e) => e.field === 'gm_sprocket_teeth')).toBe(true);
+    });
+
+    it('should fail validation when drive_shaft_sprocket_teeth = 0 for bottom_mount', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 18,
+        drive_shaft_sprocket_teeth: 0,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.errors?.some((e) => e.field === 'drive_shaft_sprocket_teeth')).toBe(true);
+    });
+
+    it('should warn when chain_ratio > 3.0', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 10,
+        drive_shaft_sprocket_teeth: 40,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs?.chain_ratio).toBeCloseTo(4.0, 2);
+      expect(result.warnings?.some((w) => w.message.toLowerCase().includes('chain ratio'))).toBe(
+        true
+      );
+    });
+
+    it('should warn when chain_ratio < 0.5', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 40,
+        drive_shaft_sprocket_teeth: 10,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs?.chain_ratio).toBeCloseTo(0.25, 2);
+      expect(result.warnings?.some((w) => w.message.toLowerCase().includes('chain ratio'))).toBe(
+        true
+      );
+    });
+
+    it('should warn when sprocket teeth < 12', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        gearmotor_mounting_style: GearmotorMountingStyle.BottomMount,
+        gm_sprocket_teeth: 10,
+        drive_shaft_sprocket_teeth: 24,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some((w) => w.message.includes('sprocket') && w.message.includes('12'))
+      ).toBe(true);
     });
   });
 });

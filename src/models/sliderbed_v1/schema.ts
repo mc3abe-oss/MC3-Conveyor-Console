@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.6 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.7 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,7 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.7 (2025-12-22): Gearmotor mounting style + sprocket chain ratio stage
  * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs
  * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
  * v1.4 (2025-12-21): Per-end support types, derived legs_required, height model (TOB)
@@ -222,6 +223,23 @@ export enum DriveLocation {
 export enum GearmotorOrientation {
   SideMount = 'Side mount',
   BottomMount = 'Bottom mount',
+}
+
+// ============================================================================
+// GEARMOTOR MOUNTING STYLE (v1.7)
+// ============================================================================
+
+/**
+ * Gearmotor mounting style (v1.7)
+ * Determines how the gearmotor connects to the drive shaft.
+ * - shaft_mounted: Direct coupling, no chain/sprocket (chain_ratio = 1)
+ * - bottom_mount: Chain-coupled via sprockets (requires sprocket config)
+ */
+export enum GearmotorMountingStyle {
+  /** Direct shaft-mounted gearmotor (no chain) */
+  ShaftMounted = 'shaft_mounted',
+  /** Bottom mount with chain drive (requires sprocket configuration) */
+  BottomMount = 'bottom_mount',
 }
 
 export enum DriveHand {
@@ -645,6 +663,32 @@ export interface SliderbedInputs {
   /** Gearmotor mounting orientation */
   gearmotor_orientation: GearmotorOrientation | string;
 
+  // =========================================================================
+  // GEARMOTOR MOUNTING STYLE & SPROCKETS (v1.7)
+  // =========================================================================
+
+  /**
+   * Gearmotor mounting style (v1.7)
+   * - 'shaft_mounted': Direct coupling (chain_ratio = 1)
+   * - 'bottom_mount': Chain-coupled via sprockets
+   * Default: 'shaft_mounted'
+   */
+  gearmotor_mounting_style?: GearmotorMountingStyle | string;
+
+  /**
+   * Gearmotor sprocket teeth (driver) (v1.7)
+   * Required when gearmotor_mounting_style = 'bottom_mount'.
+   * This is the sprocket on the gearmotor output shaft.
+   */
+  gm_sprocket_teeth?: number;
+
+  /**
+   * Drive shaft sprocket teeth (driven) (v1.7)
+   * Required when gearmotor_mounting_style = 'bottom_mount'.
+   * This is the sprocket on the conveyor drive shaft.
+   */
+  drive_shaft_sprocket_teeth?: number;
+
   /** Drive hand (RH/LH) - when facing discharge end */
   drive_hand: DriveHand | string;
 
@@ -818,6 +862,31 @@ export interface SliderbedOutputs {
 
   /** Gear ratio (motor RPM / drive shaft RPM) */
   gear_ratio: number;
+
+  // =========================================================================
+  // CHAIN RATIO OUTPUTS (v1.7)
+  // =========================================================================
+
+  /**
+   * Chain ratio (driven_teeth / driver_teeth) (v1.7)
+   * = 1 when shaft_mounted, > 1 or < 1 when bottom_mount with sprockets.
+   * chain_ratio = drive_shaft_sprocket_teeth / gm_sprocket_teeth
+   */
+  chain_ratio?: number;
+
+  /**
+   * Gearmotor output RPM required (v1.7)
+   * = drive_shaft_rpm * chain_ratio
+   * This is the RPM the gearmotor output shaft must spin at.
+   */
+  gearmotor_output_rpm?: number;
+
+  /**
+   * Total drive ratio (v1.7)
+   * = gear_ratio * chain_ratio
+   * The overall ratio from motor to drive shaft.
+   */
+  total_drive_ratio?: number;
 
   /** Safety factor used */
   safety_factor_used: number;
@@ -997,6 +1066,11 @@ export const DEFAULT_INPUT_VALUES = {
   brake_motor: false,
   gearmotor_orientation: GearmotorOrientation.SideMount,
   drive_hand: DriveHand.RightHand,
+
+  // Gearmotor mounting style defaults (v1.7)
+  gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
+  gm_sprocket_teeth: 18,
+  drive_shaft_sprocket_teeth: 24,
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,

@@ -27,6 +27,7 @@ import {
   derivedLegsRequired,
   DriveLocation,
   GearmotorOrientation,
+  GearmotorMountingStyle,
   DriveHand,
   SpeedMode,
 } from '../../src/models/sliderbed_v1/schema';
@@ -1296,6 +1297,117 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
               </label>
             </div>
           </div>
+
+          {/* Gearmotor Mounting Style (v1.7) - shaft vs chain drive */}
+          <div>
+            <label className="label">Gearmotor Mounting Style</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="gearmotor_mounting_style"
+                  checked={(inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted) === GearmotorMountingStyle.ShaftMounted}
+                  onChange={() => updateInput('gearmotor_mounting_style', GearmotorMountingStyle.ShaftMounted)}
+                  className="mr-2"
+                />
+                Shaft Mounted
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="gearmotor_mounting_style"
+                  checked={inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount}
+                  onChange={() => updateInput('gearmotor_mounting_style', GearmotorMountingStyle.BottomMount)}
+                  className="mr-2"
+                />
+                Bottom Mount (Chain Drive)
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Shaft mounted: direct coupling. Bottom mount: chain-coupled via sprockets.
+            </p>
+          </div>
+
+          {/* Sprocket Configuration - only shown for bottom mount */}
+          {inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+              <h4 className="text-sm font-medium text-gray-700">Sprocket Configuration</h4>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label htmlFor="gm_sprocket_teeth" className="label">
+                    Gearmotor Sprocket (Driver)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      id="gm_sprocket_teeth"
+                      className="input"
+                      value={inputs.gm_sprocket_teeth ?? 18}
+                      onChange={(e) => updateInput('gm_sprocket_teeth', parseInt(e.target.value) || 18)}
+                      step="1"
+                      min="1"
+                      required
+                    />
+                    <span className="text-sm text-gray-500">teeth</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="drive_shaft_sprocket_teeth" className="label">
+                    Drive Shaft Sprocket (Driven)
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      id="drive_shaft_sprocket_teeth"
+                      className="input"
+                      value={inputs.drive_shaft_sprocket_teeth ?? 24}
+                      onChange={(e) => updateInput('drive_shaft_sprocket_teeth', parseInt(e.target.value) || 24)}
+                      step="1"
+                      min="1"
+                      required
+                    />
+                    <span className="text-sm text-gray-500">teeth</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chain ratio preview */}
+              <div className="bg-white border border-gray-200 rounded p-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600">Chain Ratio:</span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {(() => {
+                      const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+                      const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+                      if (gmTeeth > 0 && driveTeeth > 0) {
+                        const ratio = driveTeeth / gmTeeth;
+                        return `${ratio.toFixed(3)} (${driveTeeth}T / ${gmTeeth}T)`;
+                      }
+                      return '—';
+                    })()}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  {(() => {
+                    const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+                    const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+                    if (gmTeeth > 0 && driveTeeth > 0) {
+                      const ratio = driveTeeth / gmTeeth;
+                      if (ratio > 1) {
+                        return 'Speed reduction at chain stage (gearmotor output RPM > drive shaft RPM)';
+                      } else if (ratio < 1) {
+                        return 'Speed increase at chain stage (drive shaft spins faster)';
+                      }
+                      return 'No speed change at chain stage';
+                    }
+                    return '';
+                  })()}
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Gearmotor orientation */}
           <div>
