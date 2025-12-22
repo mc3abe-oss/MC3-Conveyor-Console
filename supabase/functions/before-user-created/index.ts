@@ -22,6 +22,7 @@
  */
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import * as jose from 'https://deno.land/x/jose@v4.14.4/index.ts';
 
 const ALLOWED_DOMAINS = ['@mc3mfg.com', '@clearcode.ca'];
 
@@ -34,14 +35,38 @@ interface AuthHookPayload {
 
 serve(async (req) => {
   try {
-    // Verify the authorization token from Supabase Auth
+    // Verify the webhook signature from Supabase Auth
     const authHeader = req.headers.get('Authorization');
-    const expectedToken = Deno.env.get('AUTH_HOOK_SECRET');
-
-    if (expectedToken && authHeader !== `Bearer ${expectedToken}`) {
-      console.error('Invalid authorization token');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.error('Missing or invalid Authorization header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const secret = Deno.env.get('AUTH_HOOK_SECRET');
+
+    if (!secret) {
+      console.error('AUTH_HOOK_SECRET not configured');
+      return new Response(
+        JSON.stringify({ error: 'Server configuration error' }),
+        { status: 500, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify the JWT token using the webhook secret
+    try {
+      const secretKey = new TextEncoder().encode(secret);
+      await jose.jwtVerify(token, secretKey, {
+        issuer: 'supabase',
+        audience: 'authenticated',
+      });
+    } catch (jwtError) {
+      console.error('JWT verification failed:', jwtError);
+      return new Response(
+        JSON.stringify({ error: 'Invalid token' }),
         { status: 401, headers: { 'Content-Type': 'application/json' } }
       );
     }
