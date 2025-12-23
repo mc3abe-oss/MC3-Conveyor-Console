@@ -21,8 +21,6 @@ import {
 } from '../../src/models/sliderbed_v1/schema';
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
-import TabConveyorOperation from './TabConveyorOperation';
-import TabBeltInterface from './TabBeltInterface';
 import TabConveyorBuild from './TabConveyorBuild';
 import TabBuildOptions from './TabBuildOptions';
 
@@ -189,33 +187,23 @@ export default function CalculatorForm({
 
   return (
     <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
-      {/* Lane-based layout: responsive grid - 4 lanes */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Lane-based layout: responsive grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Lane 1: Application / Demand */}
         <Lane title="Application / Demand">
           <TabApplicationDemand inputs={inputs} updateInput={updateInput} />
         </Lane>
 
-        {/* Lane 2: Conveyor Design – Operation */}
-        <Lane title="Conveyor Design – Operation">
-          <TabConveyorOperation inputs={inputs} updateInput={updateInput} />
+        {/* Lane 2: Conveyor Design (largest - contains geometry, belt, drive) */}
+        <Lane title="Conveyor Design" className="lg:row-span-2">
+          <TabConveyorBuild inputs={inputs} updateInput={updateInput} />
         </Lane>
 
-        {/* Lane 3: Conveyor Design – Belt & Interface */}
-        <Lane title="Conveyor Design – Belt & Interface">
-          <TabBeltInterface inputs={inputs} updateInput={updateInput} />
-        </Lane>
-
-        {/* Lane 4: Build Options */}
+        {/* Lane 3: Build Options */}
         <Lane title="Build Options">
           <TabBuildOptions inputs={inputs} updateInput={updateInput} />
         </Lane>
       </div>
-
-      {/* Conveyor Design (full width - contains geometry, belt selection, drive) */}
-      <Lane title="Conveyor Design">
-        <TabConveyorBuild inputs={inputs} updateInput={updateInput} />
-      </Lane>
 
       {/* Calculate Button - hidden if triggered externally */}
       {!hideCalculateButton && (
