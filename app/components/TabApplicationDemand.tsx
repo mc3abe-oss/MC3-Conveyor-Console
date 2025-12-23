@@ -9,7 +9,6 @@
 import {
   SliderbedInputs,
   Orientation,
-  PulleySurfaceType,
   SideLoadingDirection,
   SideLoadingSeverity,
 } from '../../src/models/sliderbed_v1/schema';
@@ -344,30 +343,6 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
         </div>
       </div>
 
-      {/* Section D: Application Details - Pulley Surface Type remains here */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Application Details</h3>
-        <div className="grid grid-cols-1 gap-4">
-          {/* Pulley surface type */}
-          <div>
-            <label htmlFor="pulley_surface_type" className="label">
-              Pulley Surface Type
-            </label>
-            <select
-              id="pulley_surface_type"
-              className="input"
-              value={inputs.pulley_surface_type}
-              onChange={(e) => updateInput('pulley_surface_type', e.target.value)}
-            >
-              {Object.values(PulleySurfaceType).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
