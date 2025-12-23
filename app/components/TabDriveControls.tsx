@@ -10,7 +10,6 @@
 
 'use client';
 
-import { useState } from 'react';
 import {
   SliderbedInputs,
   DriveLocation,
@@ -25,23 +24,28 @@ import {
   calculateBeltSpeed,
 } from '../../src/models/sliderbed_v1/formulas';
 import CatalogSelect from './CatalogSelect';
+import AccordionSection, { useAccordionState } from './AccordionSection';
+import { SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabDriveControlsProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
+  sectionCounts: Record<SectionKey, SectionCounts>;
 }
 
-export default function TabDriveControls({ inputs, updateInput }: TabDriveControlsProps) {
-  // State for collapsible advanced parameters section
-  const [advancedExpanded, setAdvancedExpanded] = useState(false);
+export default function TabDriveControls({ inputs, updateInput, sectionCounts }: TabDriveControlsProps) {
+  const { handleToggle, isExpanded } = useAccordionState();
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* SECTION: Speed Definition */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Speed Definition
-        </h3>
+      <AccordionSection
+        id="speed"
+        title="Speed Definition"
+        isExpanded={isExpanded('speed')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.speed}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Speed Mode Selector */}
           <div>
@@ -193,13 +197,16 @@ export default function TabDriveControls({ inputs, updateInput }: TabDriveContro
             </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* SECTION: Electrical */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Electrical
-        </h3>
+      <AccordionSection
+        id="electrical"
+        title="Electrical"
+        isExpanded={isExpanded('electrical')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.electrical}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Power Feed */}
           <div>
@@ -256,13 +263,16 @@ export default function TabDriveControls({ inputs, updateInput }: TabDriveContro
             </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* SECTION: Drive Arrangement */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Drive Arrangement
-        </h3>
+      <AccordionSection
+        id="drive"
+        title="Drive Arrangement"
+        isExpanded={isExpanded('drive')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.drive}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Direction Mode */}
           <div>
@@ -525,29 +535,17 @@ export default function TabDriveControls({ inputs, updateInput }: TabDriveContro
             />
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
-      {/* SECTION: Advanced Parameters (collapsible) */}
-      <div className="border border-gray-200 rounded-lg overflow-hidden">
-        <button
-          type="button"
-          onClick={() => setAdvancedExpanded(!advancedExpanded)}
-          className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors"
-        >
-          <h3 className="text-lg font-semibold text-gray-900">
-            Advanced Parameters <span className="text-sm font-normal text-gray-500">(Optional)</span>
-          </h3>
-          <svg
-            className={`w-5 h-5 text-gray-500 transition-transform ${advancedExpanded ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-        {advancedExpanded && (
-          <div className="p-4 grid grid-cols-1 gap-4">
+      {/* SECTION: Advanced Parameters */}
+      <AccordionSection
+        id="advanced"
+        title="Advanced Parameters (Optional)"
+        isExpanded={isExpanded('advanced')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.advanced}
+      >
+        <div className="grid grid-cols-1 gap-4">
             <div>
               <label htmlFor="friction_coeff" className="label">
                 Friction Coefficient <span className="text-gray-500">(0.05-0.6, default: 0.25)</span>
@@ -637,9 +635,8 @@ export default function TabDriveControls({ inputs, updateInput }: TabDriveContro
                 max="0.30"
               />
             </div>
-          </div>
-        )}
-      </div>
+        </div>
+      </AccordionSection>
     </div>
   );
 }

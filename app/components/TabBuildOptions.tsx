@@ -21,13 +21,16 @@ import {
   SensorOption,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
+import AccordionSection, { useAccordionState } from './AccordionSection';
+import { SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabBuildOptionsProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
+  sectionCounts: Record<SectionKey, SectionCounts>;
 }
 
-export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptionsProps) {
+export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: TabBuildOptionsProps) {
   const [sensorDropdownOpen, setSensorDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -62,11 +65,18 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
     );
   };
 
+  const { handleToggle, isExpanded } = useAccordionState();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Guards & Safety */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Guards & Safety</h3>
+      <AccordionSection
+        id="guards"
+        title="Guards & Safety"
+        isExpanded={isExpanded('guards')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.guards}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Bottom covers */}
           <div>
@@ -140,11 +150,16 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             <p className="text-xs text-gray-500 mt-1">Design intent flag for finger-safe guarding. Not a certification or guarantee. Affects end guard and cover recommendations.</p>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Guides & Containment */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Guides & Containment</h3>
+      <AccordionSection
+        id="guides"
+        title="Guides & Containment"
+        isExpanded={isExpanded('guides')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.guides}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Side rails */}
           <div>
@@ -190,11 +205,16 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Belt & Pulley */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Belt & Pulley</h3>
+      <AccordionSection
+        id="beltpulley"
+        title="Belt & Pulley"
+        isExpanded={isExpanded('beltpulley')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.beltpulley}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Belt Lacing group */}
           <div className="space-y-3">
@@ -240,11 +260,16 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             )}
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Sensors / Controls */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Sensors / Controls</h3>
+      <AccordionSection
+        id="sensors"
+        title="Sensors / Controls"
+        isExpanded={isExpanded('sensors')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.sensors}
+      >
         <div className="grid grid-cols-1 gap-4">
           <div ref={dropdownRef} className="relative">
             <label className="label">Sensor Options</label>
@@ -334,11 +359,16 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Documentation & Finish */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Documentation & Finish</h3>
+      <AccordionSection
+        id="documentation"
+        title="Documentation & Finish"
+        isExpanded={isExpanded('documentation')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.documentation}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Spec Source */}
           <div>
@@ -467,7 +497,7 @@ export default function TabBuildOptions({ inputs, updateInput }: TabBuildOptions
             </div>
           </div>
         </div>
-      </div>
+      </AccordionSection>
     </div>
   );
 }

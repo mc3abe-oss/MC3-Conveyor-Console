@@ -11,22 +11,32 @@ import {
   Orientation,
   SideLoadingDirection,
   SideLoadingSeverity,
+  AmbientTemperatureClass,
+  AMBIENT_TEMPERATURE_CLASS_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
+import AccordionSection, { useAccordionState } from './AccordionSection';
+import { SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabApplicationDemandProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
+  sectionCounts: Record<SectionKey, SectionCounts>;
 }
 
-export default function TabApplicationDemand({ inputs, updateInput }: TabApplicationDemandProps) {
+export default function TabApplicationDemand({ inputs, updateInput, sectionCounts }: TabApplicationDemandProps) {
+  const { handleToggle, isExpanded } = useAccordionState();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Section A: Product Definition */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Product Definition
-        </h3>
+      <AccordionSection
+        id="product"
+        title="Product Definition"
+        isExpanded={isExpanded('product')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.product}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* 1. Process Type */}
           <div>
@@ -222,13 +232,16 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             </div>
           )}
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Section B: Throughput Requirements */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Throughput Requirements
-        </h3>
+      <AccordionSection
+        id="throughput"
+        title="Throughput Requirements"
+        isExpanded={isExpanded('throughput')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.throughput}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* 11. Part Spacing (in) */}
           <div>
@@ -286,13 +299,16 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
             />
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* Section C: Environmental Factors */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Environmental Factors
-        </h3>
+      <AccordionSection
+        id="environment"
+        title="Environmental Factors"
+        isExpanded={isExpanded('environment')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.environment}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* 14. Environment Factors */}
           <div>
@@ -324,25 +340,28 @@ export default function TabApplicationDemand({ inputs, updateInput }: TabApplica
 
           {/* 16. Ambient Temperature */}
           <div>
-            <label htmlFor="ambient_temperature" className="label">
+            <label htmlFor="ambient_temperature_class" className="label">
               Ambient Temperature
             </label>
-            <input
-              type="text"
-              id="ambient_temperature"
+            <select
+              id="ambient_temperature_class"
               className="input"
-              value={inputs.ambient_temperature}
-              onChange={(e) => updateInput('ambient_temperature', e.target.value)}
-              placeholder="e.g., Normal (60-90°F)"
+              value={inputs.ambient_temperature_class ?? AmbientTemperatureClass.Normal}
+              onChange={(e) => updateInput('ambient_temperature_class', e.target.value)}
               required
-            />
+            >
+              {Object.values(AmbientTemperatureClass).map((value) => (
+                <option key={value} value={value}>
+                  {AMBIENT_TEMPERATURE_CLASS_LABELS[value]}
+                </option>
+              ))}
+            </select>
             <p className="text-xs text-gray-500 mt-1">
-              Enter temperature range or classification.
+              Select the typical operating temperature range around the conveyor.
             </p>
           </div>
         </div>
-      </div>
-
+      </AccordionSection>
     </div>
   );
 }

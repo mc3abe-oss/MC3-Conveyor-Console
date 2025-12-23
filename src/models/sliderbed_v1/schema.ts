@@ -66,11 +66,40 @@ export enum PartTemperatureClass {
   RedHot = 'Red Hot',
 }
 
+/**
+ * @deprecated Use AmbientTemperatureClass instead.
+ * Kept for backward compatibility during migration.
+ */
 export enum AmbientTemperature {
   Normal = 'Normal (60-90°F)',
   Cold = 'Cold (<60°F)',
   Hot = 'Hot (>90°F)',
 }
+
+/**
+ * Ambient Temperature Class (v1.8)
+ * Classification-based dropdown with no gaps in temperature ranges.
+ * Ambient temperature is informational only in v1.
+ * Future versions may apply warnings or derating.
+ */
+export enum AmbientTemperatureClass {
+  VeryCold = 'very_cold',
+  Cold = 'cold',
+  Normal = 'normal',
+  Hot = 'hot',
+  VeryHot = 'very_hot',
+}
+
+/**
+ * Display labels for AmbientTemperatureClass enum values
+ */
+export const AMBIENT_TEMPERATURE_CLASS_LABELS: Record<AmbientTemperatureClass, string> = {
+  [AmbientTemperatureClass.VeryCold]: 'Very Cold (Below 32°F)',
+  [AmbientTemperatureClass.Cold]: 'Cold (32–60°F)',
+  [AmbientTemperatureClass.Normal]: 'Normal (60–90°F)',
+  [AmbientTemperatureClass.Hot]: 'Hot (90–120°F)',
+  [AmbientTemperatureClass.VeryHot]: 'Very Hot (Above 120°F)',
+};
 
 // GROUP 3: Electrical and Controls
 export enum PowerFeed {
@@ -514,8 +543,19 @@ export interface SliderbedInputs {
   /** Environment Factors */
   environment_factors: EnvironmentFactors | string;
 
-  /** Ambient Temperature */
+  /**
+   * @deprecated Use ambient_temperature_class instead.
+   * Kept for backward compatibility during migration.
+   */
   ambient_temperature: AmbientTemperature | string;
+
+  /**
+   * Ambient Temperature Class (v1.8)
+   * Classification-based dropdown with no gaps in temperature ranges.
+   * Ambient temperature is informational only in v1.
+   * Future versions may apply warnings or derating.
+   */
+  ambient_temperature_class?: AmbientTemperatureClass | string;
 
   // Note: fluid_type and part_temperature_class already defined above in PRODUCT/PART section
 
@@ -1031,7 +1071,8 @@ export const DEFAULT_INPUT_VALUES = {
   process_type: ProcessType.Assembly,
   parts_sharp: PartsSharp.No,
   environment_factors: EnvironmentFactors.Indoor,
-  ambient_temperature: AmbientTemperature.Normal,
+  ambient_temperature: AmbientTemperature.Normal, // Deprecated, kept for backward compatibility
+  ambient_temperature_class: AmbientTemperatureClass.Normal,
   power_feed: PowerFeed.V480_3Ph,
   controls_package: ControlsPackage.StartStop,
   spec_source: SpecSource.Standard,

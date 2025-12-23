@@ -38,13 +38,16 @@ import {
 } from '../../src/models/sliderbed_v1/tracking-guidance';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
+import AccordionSection, { useAccordionState } from './AccordionSection';
+import { SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabConveyorPhysicalProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
+  sectionCounts: Record<SectionKey, SectionCounts>;
 }
 
-export default function TabConveyorPhysical({ inputs, updateInput }: TabConveyorPhysicalProps) {
+export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   const handleBeltChange = (catalogKey: string | undefined, belt: BeltCatalogItem | undefined) => {
     updateInput('belt_catalog_key', catalogKey);
@@ -134,13 +137,18 @@ export default function TabConveyorPhysical({ inputs, updateInput }: TabConveyor
     }
   };
 
+  const { handleToggle, isExpanded } = useAccordionState();
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* SECTION: Conveyor Type & Geometry */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Conveyor Type & Geometry
-        </h3>
+      <AccordionSection
+        id="geometry"
+        title="Conveyor Type & Geometry"
+        isExpanded={isExpanded('geometry')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.geometry}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Bed Type */}
           <div>
@@ -213,13 +221,16 @@ export default function TabConveyorPhysical({ inputs, updateInput }: TabConveyor
             />
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* SECTION: Pulleys & Belt Interface */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Pulleys & Belt Interface
-        </h3>
+      <AccordionSection
+        id="pulleys"
+        title="Pulleys & Belt Interface"
+        isExpanded={isExpanded('pulleys')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.pulleys}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Drive Pulley Diameter */}
           <div>
@@ -361,13 +372,16 @@ export default function TabConveyorPhysical({ inputs, updateInput }: TabConveyor
             </select>
           </div>
         </div>
-      </div>
+      </AccordionSection>
 
       {/* SECTION: Frame, Height & Support */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">
-          Frame, Height & Support
-        </h3>
+      <AccordionSection
+        id="frame"
+        title="Frame, Height & Support"
+        isExpanded={isExpanded('frame')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.frame}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Frame Height Mode */}
           <div>
@@ -691,11 +705,16 @@ export default function TabConveyorPhysical({ inputs, updateInput }: TabConveyor
             </div>
           )}
         </div>
-      </div>
+      </AccordionSection>
 
       {/* SECTION: Belt & Tracking */}
-      <div>
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Belt & Tracking</h3>
+      <AccordionSection
+        id="tracking"
+        title="Belt & Tracking"
+        isExpanded={isExpanded('tracking')}
+        onToggle={handleToggle}
+        issueCounts={sectionCounts.tracking}
+      >
         <div className="grid grid-cols-1 gap-4">
           {/* Belt Selection */}
           <div>
@@ -1064,7 +1083,7 @@ export default function TabConveyorPhysical({ inputs, updateInput }: TabConveyor
             </div>
           )}
         </div>
-      </div>
+      </AccordionSection>
     </div>
   );
 }

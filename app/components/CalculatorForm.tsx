@@ -18,34 +18,30 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
   GearmotorMountingStyle,
+  AmbientTemperatureClass,
 } from '../../src/models/sliderbed_v1/schema';
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorPhysical from './TabConveyorPhysical';
 import TabDriveControls from './TabDriveControls';
 import TabBuildOptions from './TabBuildOptions';
+import { useConfigureIssues, ConfigureTabKey } from './useConfigureIssues';
+import StatusLight from './StatusLight';
 
 /**
- * Lane wrapper component - provides consistent styling for each lane
+ * Configure sub-tab type (alias to ConfigureTabKey for local use)
  */
-interface LaneProps {
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}
+type ConfigureTab = ConfigureTabKey;
 
-function Lane({ title, children, className = '' }: LaneProps) {
-  return (
-    <div className={`bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden ${className}`}>
-      <div className="bg-gray-50 border-b border-gray-200 px-4 py-3">
-        <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
-      </div>
-      <div className="p-4">
-        {children}
-      </div>
-    </div>
-  );
-}
+/**
+ * Tab configuration for the Configure sub-tabs
+ */
+const CONFIGURE_TABS: { id: ConfigureTab; label: string }[] = [
+  { id: 'application', label: 'Application' },
+  { id: 'physical', label: 'Physical' },
+  { id: 'drive', label: 'Drive & Controls' },
+  { id: 'build', label: 'Build Options' },
+];
 
 interface Props {
   onCalculate: (result: CalculationResult) => void;
@@ -66,6 +62,9 @@ export default function CalculatorForm({
   triggerCalculate,
   hideCalculateButton = false,
 }: Props) {
+  // Active sub-tab state
+  const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
+
   const [inputs, setInputs] = useState<SliderbedInputs>({
     // Bed type - determines friction coefficient preset
     bed_type: BedType.SliderBed,
@@ -87,7 +86,8 @@ export default function CalculatorForm({
     process_type: 'MOLDING', // Catalog: MOLDING, WELDING, STAMPING, LASER_CUT, FOOD_PROC, PACKAGING
     parts_sharp: 'No', // Boolean checkbox
     environment_factors: 'NONE', // Catalog: NONE, PARTICULATE, MOISTURE, HIGH_TEMP, OUTDOORS, HAZARDOUS, WELD_EXPUL, DUSTY
-    ambient_temperature: 'Normal (60-90°F)', // Text input
+    ambient_temperature: 'Normal (60-90°F)', // Deprecated - kept for backward compatibility
+    ambient_temperature_class: AmbientTemperatureClass.Normal, // New classification-based dropdown
     power_feed: 'AC_480_3_60', // Catalog: AC_480_3_60, AC_230_3_60, AC_120_1_60, DC_24
     controls_package: 'NOT_SUPPLIED', // Catalog: NOT_SUPPLIED, VFD_ESTOP, VFD_ESTOP_DIR, CUSTOM
     spec_source: 'MC3_STD', // Catalog: MC3_STD, CUSTOMER_SPEC
@@ -176,6 +176,9 @@ export default function CalculatorForm({
     setInputs((prev) => ({ ...prev, [field]: value }));
   };
 
+  // Compute validation issues
+  const { sectionCounts, tabCounts } = useConfigureIssues(inputs);
+
   // Handle Enter key press to trigger recalculation
   const handleKeyPress = (e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -188,27 +191,65 @@ export default function CalculatorForm({
 
   return (
     <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
-      {/* Lane-based layout: 4-column responsive grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {/* Lane 1: Application / Demand */}
-        <Lane title="Application / Demand">
-          <TabApplicationDemand inputs={inputs} updateInput={updateInput} />
-        </Lane>
+      {/* Configure Sub-Tabs */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* Sub-tab navigation */}
+        <div className="border-b border-gray-200 bg-gray-50">
+          <nav className="flex -mb-px" aria-label="Configure tabs">
+            {CONFIGURE_TABS.map((tab) => {
+              const counts = tabCounts[tab.id];
 
-        {/* Lane 2: Conveyor Design – Physical Conveyor */}
-        <Lane title="Conveyor Design – Physical Conveyor">
-          <TabConveyorPhysical inputs={inputs} updateInput={updateInput} />
-        </Lane>
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex-1 py-3 px-4 text-center font-medium text-sm transition-colors
+                    border-b-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500
+                    ${
+                      activeTab === tab.id
+                        ? 'border-blue-500 text-blue-600 bg-white'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                    }
+                  `}
+                >
+                  <span className="flex items-center justify-center gap-1.5">
+                    {tab.label}
+                    <StatusLight
+                      errorCount={counts.errors}
+                      warningCount={counts.warnings}
+                      size="sm"
+                    />
+                  </span>
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
-        {/* Lane 3: Conveyor Design – Drive & Controls */}
-        <Lane title="Conveyor Design – Drive & Controls">
-          <TabDriveControls inputs={inputs} updateInput={updateInput} />
-        </Lane>
+        {/* Tab content */}
+        <div className="p-6">
+          {/* Application Tab */}
+          {activeTab === 'application' && (
+            <TabApplicationDemand inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+          )}
 
-        {/* Lane 4: Build Options */}
-        <Lane title="Build Options">
-          <TabBuildOptions inputs={inputs} updateInput={updateInput} />
-        </Lane>
+          {/* Physical Tab */}
+          {activeTab === 'physical' && (
+            <TabConveyorPhysical inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+          )}
+
+          {/* Drive & Controls Tab */}
+          {activeTab === 'drive' && (
+            <TabDriveControls inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+          )}
+
+          {/* Build Options Tab */}
+          {activeTab === 'build' && (
+            <TabBuildOptions inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+          )}
+        </div>
       </div>
 
       {/* Calculate Button - hidden if triggered externally */}
