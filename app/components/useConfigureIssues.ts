@@ -9,6 +9,10 @@
 
 import { useMemo } from 'react';
 import { SliderbedInputs, LacingStyle } from '../../src/models/sliderbed_v1/schema';
+import {
+  calculateTrackingGuidance,
+  TrackingRiskLevel,
+} from '../../src/models/sliderbed_v1/tracking-guidance';
 
 // ============================================================================
 // TAB AND SECTION KEYS
@@ -321,6 +325,29 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       tabKey: 'build',
       sectionKey: 'documentation',
       fieldKeys: ['customer_spec_reference'],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHYSICAL TAB - Belt & Tracking (Advisory from Tracking Guidance)
+  // ---------------------------------------------------------------------------
+
+  const trackingGuidance = calculateTrackingGuidance(inputs);
+  if (trackingGuidance.riskLevel === TrackingRiskLevel.High) {
+    issues.push({
+      severity: 'warning',
+      message: 'Tracking guidance: V-guided recommended (High Risk)',
+      detail: trackingGuidance.summary,
+      tabKey: 'physical',
+      sectionKey: 'tracking',
+    });
+  } else if (trackingGuidance.riskLevel === TrackingRiskLevel.Medium) {
+    issues.push({
+      severity: 'warning',
+      message: 'Tracking guidance: Consider V-guided (Medium Risk)',
+      detail: trackingGuidance.summary,
+      tabKey: 'physical',
+      sectionKey: 'tracking',
     });
   }
 
