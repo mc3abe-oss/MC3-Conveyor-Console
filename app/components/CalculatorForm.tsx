@@ -21,7 +21,8 @@ import {
 } from '../../src/models/sliderbed_v1/schema';
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
-import TabConveyorBuild from './TabConveyorBuild';
+import TabConveyorPhysical from './TabConveyorPhysical';
+import TabDriveControls from './TabDriveControls';
 import TabBuildOptions from './TabBuildOptions';
 
 /**
@@ -187,19 +188,24 @@ export default function CalculatorForm({
 
   return (
     <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
-      {/* Lane-based layout: responsive grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {/* Lane-based layout: 4-column responsive grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Lane 1: Application / Demand */}
         <Lane title="Application / Demand">
           <TabApplicationDemand inputs={inputs} updateInput={updateInput} />
         </Lane>
 
-        {/* Lane 2: Conveyor Design (largest - contains geometry, belt, drive) */}
-        <Lane title="Conveyor Design" className="lg:row-span-2">
-          <TabConveyorBuild inputs={inputs} updateInput={updateInput} />
+        {/* Lane 2: Conveyor Design – Physical Conveyor */}
+        <Lane title="Conveyor Design – Physical Conveyor">
+          <TabConveyorPhysical inputs={inputs} updateInput={updateInput} />
         </Lane>
 
-        {/* Lane 3: Build Options */}
+        {/* Lane 3: Conveyor Design – Drive & Controls */}
+        <Lane title="Conveyor Design – Drive & Controls">
+          <TabDriveControls inputs={inputs} updateInput={updateInput} />
+        </Lane>
+
+        {/* Lane 4: Build Options */}
         <Lane title="Build Options">
           <TabBuildOptions inputs={inputs} updateInput={updateInput} />
         </Lane>
