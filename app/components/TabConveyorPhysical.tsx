@@ -42,6 +42,7 @@ import {
 } from '../../src/models/sliderbed_v1/tracking-guidance';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
+import { getEffectiveMinPulleyDiameters } from '../../src/lib/belt-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey } from './useConfigureIssues';
 
@@ -85,13 +86,16 @@ function GeometryStat({
 
 export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
+  // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
   const handleBeltChange = (catalogKey: string | undefined, belt: BeltCatalogItem | undefined) => {
     updateInput('belt_catalog_key', catalogKey);
     if (belt) {
       updateInput('belt_piw', belt.piw);
       updateInput('belt_pil', belt.pil);
-      updateInput('belt_min_pulley_dia_no_vguide_in', belt.min_pulley_dia_no_vguide_in);
-      updateInput('belt_min_pulley_dia_with_vguide_in', belt.min_pulley_dia_with_vguide_in);
+      // Use effective min diameters (material_profile overrides legacy columns if present)
+      const effectiveMin = getEffectiveMinPulleyDiameters(belt);
+      updateInput('belt_min_pulley_dia_no_vguide_in', effectiveMin.noVguide);
+      updateInput('belt_min_pulley_dia_with_vguide_in', effectiveMin.withVguide);
     } else {
       updateInput('belt_piw', undefined);
       updateInput('belt_pil', undefined);
@@ -510,15 +514,229 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
         </div>
       </AccordionSection>
 
-      {/* SECTION: Pulleys & Belt Interface */}
+      {/* SECTION: Belt & Pulleys (merged from previous "Pulleys & Belt Interface" and "Belt & Tracking") */}
       <AccordionSection
-        id="pulleys"
-        title="Pulleys & Belt Interface"
-        isExpanded={isExpanded('pulleys')}
+        id="beltPulleys"
+        title="Belt & Pulleys"
+        isExpanded={isExpanded('beltPulleys')}
         onToggle={handleToggle}
-        issueCounts={sectionCounts.pulleys}
+        issueCounts={sectionCounts.beltPulleys}
       >
         <div className="grid grid-cols-1 gap-4">
+          {/* ===== BELT SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">
+            Belt
+          </h4>
+
+          {/* Belt Selection */}
+          <div>
+            <label htmlFor="belt_catalog_key" className="label">
+              Belt
+            </label>
+            <BeltSelect
+              id="belt_catalog_key"
+              value={inputs.belt_catalog_key}
+              onChange={handleBeltChange}
+              showDetails={true}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select a belt to auto-populate PIW/PIL and minimum pulley diameter constraints.
+            </p>
+          </div>
+
+          {/* PIW/PIL Override Fields */}
+          {inputs.belt_catalog_key && (
+            <>
+              <div>
+                <label htmlFor="belt_piw_override" className="label">
+                  PIW Override (lb/in) <span className="text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  id="belt_piw_override"
+                  className="input"
+                  value={inputs.belt_piw_override ?? ''}
+                  onChange={(e) =>
+                    updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.001"
+                  min="0.05"
+                  max="0.30"
+                  placeholder={inputs.belt_piw?.toString() ?? ''}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to use catalog value ({inputs.belt_piw ?? 'N/A'} lb/in)
+                </p>
+              </div>
+              <div>
+                <label htmlFor="belt_pil_override" className="label">
+                  PIL Override (lb/in) <span className="text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  id="belt_pil_override"
+                  className="input"
+                  value={inputs.belt_pil_override ?? ''}
+                  onChange={(e) =>
+                    updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.001"
+                  min="0.05"
+                  max="0.30"
+                  placeholder={inputs.belt_pil?.toString() ?? ''}
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Leave blank to use catalog value ({inputs.belt_pil ?? 'N/A'} lb/in)
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* ===== TRACKING SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
+            Tracking
+          </h4>
+
+          {/* Tracking Guidance Banner */}
+          {inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
+            const guidance = calculateTrackingGuidance(inputs);
+            const _showWarning = guidance.riskLevel !== TrackingRiskLevel.Low &&
+              inputs.belt_tracking_method !== guidance.recommendation;
+            void _showWarning;
+
+            return (
+              <div className={`mb-4 p-3 rounded-lg ${
+                guidance.riskLevel === TrackingRiskLevel.High
+                  ? 'bg-red-50 border border-red-200'
+                  : guidance.riskLevel === TrackingRiskLevel.Medium
+                  ? 'bg-yellow-50 border border-yellow-200'
+                  : 'bg-green-50 border border-green-200'
+              }`}>
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    {guidance.riskLevel === TrackingRiskLevel.High && (
+                      <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {guidance.riskLevel === TrackingRiskLevel.Medium && (
+                      <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                    {guidance.riskLevel === TrackingRiskLevel.Low && (
+                      <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  <div className="ml-3 flex-1">
+                    <h4 className={`text-sm font-medium ${
+                      guidance.riskLevel === TrackingRiskLevel.High
+                        ? 'text-red-800'
+                        : guidance.riskLevel === TrackingRiskLevel.Medium
+                        ? 'text-yellow-800'
+                        : 'text-green-800'
+                    }`}>
+                      Tracking Recommendation: {guidance.recommendation}
+                      <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${getRiskLevelColor(guidance.riskLevel)}`}>
+                        {guidance.riskLevel} Risk
+                      </span>
+                    </h4>
+                    <p className={`mt-1 text-sm ${
+                      guidance.riskLevel === TrackingRiskLevel.High
+                        ? 'text-red-700'
+                        : guidance.riskLevel === TrackingRiskLevel.Medium
+                        ? 'text-yellow-700'
+                        : 'text-green-700'
+                    }`}>
+                      {guidance.summary}
+                    </p>
+
+                    {guidance.factors.filter(f => f.risk !== TrackingRiskLevel.Low).length > 0 && (
+                      <div className="mt-2">
+                        <p className="text-xs text-gray-600 font-medium">Risk factors:</p>
+                        <ul className="mt-1 text-xs text-gray-600 list-disc list-inside">
+                          {guidance.factors
+                            .filter(f => f.risk !== TrackingRiskLevel.Low)
+                            .map((f, i) => (
+                              <li key={i}>
+                                <span className={`font-medium ${
+                                  f.risk === TrackingRiskLevel.High ? 'text-red-600' : 'text-yellow-600'
+                                }`}>{f.name}</span>: {f.explanation}
+                              </li>
+                            ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {guidance.warnings.length > 0 && (
+                      <div className="mt-2 p-2 bg-white/50 rounded border border-red-200">
+                        <p className="text-xs text-red-700 font-medium">Warnings:</p>
+                        <ul className="mt-1 text-xs text-red-600 list-disc list-inside">
+                          {guidance.warnings.map((w, i) => (
+                            <li key={i}>{w}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Belt Tracking Method */}
+          <div>
+            <label htmlFor="belt_tracking_method" className="label">
+              Belt Tracking Method
+            </label>
+            <select
+              id="belt_tracking_method"
+              className="input"
+              value={inputs.belt_tracking_method}
+              onChange={(e) => updateInput('belt_tracking_method', e.target.value)}
+            >
+              {Object.values(BeltTrackingMethod).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              V-guided uses a V-profile on the belt underside. Crowned uses crowned pulleys for tracking.
+            </p>
+          </div>
+
+          {/* V-guide profile */}
+          {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+            inputs.belt_tracking_method === 'V-guided') && (
+            <div>
+              <label htmlFor="v_guide_profile" className="label">
+                V-Guide Profile
+              </label>
+              <select
+                id="v_guide_profile"
+                className="input"
+                value={inputs.v_guide_profile || ''}
+                onChange={(e) => updateInput('v_guide_profile', e.target.value || undefined)}
+                required
+              >
+                <option value="">Select profile...</option>
+                {Object.values(VGuideProfile).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* ===== PULLEYS SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
+            Pulleys
+          </h4>
+
           {/* Drive Pulley Diameter */}
           <div>
             <label htmlFor="drive_pulley_preset" className="label">
@@ -668,6 +886,177 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
               ))}
             </select>
           </div>
+
+          {/* Shaft Diameter Mode */}
+          <div>
+            <label htmlFor="shaft_diameter_mode" className="label">
+              Shaft Diameter Mode
+            </label>
+            <select
+              id="shaft_diameter_mode"
+              className="input"
+              value={inputs.shaft_diameter_mode}
+              onChange={(e) => updateInput('shaft_diameter_mode', e.target.value)}
+            >
+              {Object.values(ShaftDiameterMode).map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Manual shaft diameters */}
+          {(inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
+            inputs.shaft_diameter_mode === 'Manual') && (
+            <div className="ml-4 pl-4 border-l-2 border-gray-200 space-y-4">
+              <div>
+                <label htmlFor="drive_shaft_diameter_in" className="label">
+                  Drive Shaft Diameter (in)
+                </label>
+                <input
+                  type="number"
+                  id="drive_shaft_diameter_in"
+                  className="input"
+                  value={inputs.drive_shaft_diameter_in || ''}
+                  onChange={(e) =>
+                    updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.125"
+                  min="0.5"
+                  max="4.0"
+                  required
+                />
+              </div>
+              <div>
+                <label htmlFor="tail_shaft_diameter_in" className="label">
+                  Tail Shaft Diameter (in)
+                </label>
+                <input
+                  type="number"
+                  id="tail_shaft_diameter_in"
+                  className="input"
+                  value={inputs.tail_shaft_diameter_in || ''}
+                  onChange={(e) =>
+                    updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.125"
+                  min="0.5"
+                  max="4.0"
+                  required
+                />
+              </div>
+            </div>
+          )}
+
+          {/* ===== CLEATS SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
+            Cleats
+          </h4>
+
+          {/* Belt Cleats */}
+          <div>
+            <label className="label">Belt Cleats</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="cleats_enabled"
+                  checked={inputs.cleats_enabled !== true}
+                  onChange={() => updateInput('cleats_enabled', false)}
+                  className="mr-2"
+                />
+                None
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="cleats_enabled"
+                  checked={inputs.cleats_enabled === true}
+                  onChange={() => updateInput('cleats_enabled', true)}
+                  className="mr-2"
+                />
+                Add Cleats
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Cleats help retain product on inclines. Does not affect power/tension calculations.
+            </p>
+          </div>
+
+          {/* Cleat configuration */}
+          {inputs.cleats_enabled && (
+            <div className="ml-4 pl-4 border-l-2 border-gray-200 mt-4 space-y-4">
+              <div>
+                <label htmlFor="cleat_height_in" className="label">
+                  Cleat Height (in)
+                </label>
+                <input
+                  type="number"
+                  id="cleat_height_in"
+                  className="input"
+                  value={inputs.cleat_height_in ?? ''}
+                  onChange={(e) =>
+                    updateInput('cleat_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.25"
+                  min="0.5"
+                  max="6"
+                  required
+                  placeholder="e.g., 1"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Height of cleats (0.5" - 6")
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="cleat_spacing_in" className="label">
+                  Cleat Spacing (in)
+                </label>
+                <input
+                  type="number"
+                  id="cleat_spacing_in"
+                  className="input"
+                  value={inputs.cleat_spacing_in ?? ''}
+                  onChange={(e) =>
+                    updateInput('cleat_spacing_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="1"
+                  min="2"
+                  max="48"
+                  required
+                  placeholder="e.g., 12"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Center-to-center spacing between cleats (2" - 48")
+                </p>
+              </div>
+
+              <div>
+                <label htmlFor="cleat_edge_offset_in" className="label">
+                  Cleat Edge Offset (in)
+                </label>
+                <input
+                  type="number"
+                  id="cleat_edge_offset_in"
+                  className="input"
+                  value={inputs.cleat_edge_offset_in ?? ''}
+                  onChange={(e) =>
+                    updateInput('cleat_edge_offset_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                  }
+                  step="0.25"
+                  min="0"
+                  max="12"
+                  required
+                  placeholder="e.g., 0.5"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Distance from belt edge to cleat end (0" - 12")
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       </AccordionSection>
 
@@ -918,384 +1307,6 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
                 <p className="text-xs text-gray-500 mt-1">
                   ±adjustment for floor leveling. TOB heights are set in Geometry section.
                 </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </AccordionSection>
-
-      {/* SECTION: Belt & Tracking */}
-      <AccordionSection
-        id="tracking"
-        title="Belt & Tracking"
-        isExpanded={isExpanded('tracking')}
-        onToggle={handleToggle}
-        issueCounts={sectionCounts.tracking}
-      >
-        <div className="grid grid-cols-1 gap-4">
-          {/* Belt Selection */}
-          <div>
-            <label htmlFor="belt_catalog_key" className="label">
-              Belt
-            </label>
-            <BeltSelect
-              id="belt_catalog_key"
-              value={inputs.belt_catalog_key}
-              onChange={handleBeltChange}
-              showDetails={true}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Select a belt to auto-populate PIW/PIL and minimum pulley diameter constraints.
-            </p>
-          </div>
-
-          {/* PIW/PIL Override Fields */}
-          {inputs.belt_catalog_key && (
-            <>
-              <div>
-                <label htmlFor="belt_piw_override" className="label">
-                  PIW Override (lb/in) <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_piw_override"
-                  className="input"
-                  value={inputs.belt_piw_override ?? ''}
-                  onChange={(e) =>
-                    updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.001"
-                  min="0.05"
-                  max="0.30"
-                  placeholder={inputs.belt_piw?.toString() ?? ''}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave blank to use catalog value ({inputs.belt_piw ?? 'N/A'} lb/in)
-                </p>
-              </div>
-              <div>
-                <label htmlFor="belt_pil_override" className="label">
-                  PIL Override (lb/in) <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_pil_override"
-                  className="input"
-                  value={inputs.belt_pil_override ?? ''}
-                  onChange={(e) =>
-                    updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.001"
-                  min="0.05"
-                  max="0.30"
-                  placeholder={inputs.belt_pil?.toString() ?? ''}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave blank to use catalog value ({inputs.belt_pil ?? 'N/A'} lb/in)
-                </p>
-              </div>
-            </>
-          )}
-
-          {/* Belt Cleats */}
-          <div className="border-t border-gray-200 pt-4 mt-2">
-            <div>
-              <label className="label">Belt Cleats</label>
-              <div className="flex gap-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="cleats_enabled"
-                    checked={inputs.cleats_enabled !== true}
-                    onChange={() => updateInput('cleats_enabled', false)}
-                    className="mr-2"
-                  />
-                  None
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="cleats_enabled"
-                    checked={inputs.cleats_enabled === true}
-                    onChange={() => updateInput('cleats_enabled', true)}
-                    className="mr-2"
-                  />
-                  Add Cleats
-                </label>
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Cleats help retain product on inclines. Does not affect power/tension calculations.
-              </p>
-            </div>
-
-            {/* Cleat configuration */}
-            {inputs.cleats_enabled && (
-              <div className="ml-4 pl-4 border-l-2 border-gray-200 mt-4 space-y-4">
-                <div>
-                  <label htmlFor="cleat_height_in" className="label">
-                    Cleat Height (in)
-                  </label>
-                  <input
-                    type="number"
-                    id="cleat_height_in"
-                    className="input"
-                    value={inputs.cleat_height_in ?? ''}
-                    onChange={(e) =>
-                      updateInput('cleat_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                    }
-                    step="0.25"
-                    min="0.5"
-                    max="6"
-                    required
-                    placeholder="e.g., 1"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Height of cleats (0.5" - 6")
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="cleat_spacing_in" className="label">
-                    Cleat Spacing (in)
-                  </label>
-                  <input
-                    type="number"
-                    id="cleat_spacing_in"
-                    className="input"
-                    value={inputs.cleat_spacing_in ?? ''}
-                    onChange={(e) =>
-                      updateInput('cleat_spacing_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                    }
-                    step="1"
-                    min="2"
-                    max="48"
-                    required
-                    placeholder="e.g., 12"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Center-to-center spacing between cleats (2" - 48")
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="cleat_edge_offset_in" className="label">
-                    Cleat Edge Offset (in)
-                  </label>
-                  <input
-                    type="number"
-                    id="cleat_edge_offset_in"
-                    className="input"
-                    value={inputs.cleat_edge_offset_in ?? ''}
-                    onChange={(e) =>
-                      updateInput('cleat_edge_offset_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                    }
-                    step="0.25"
-                    min="0"
-                    max="12"
-                    required
-                    placeholder="e.g., 0.5"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Distance from belt edge to cleat end (0" - 12")
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Tracking Guidance Banner */}
-          {inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
-            const guidance = calculateTrackingGuidance(inputs);
-            const _showWarning = guidance.riskLevel !== TrackingRiskLevel.Low &&
-              inputs.belt_tracking_method !== guidance.recommendation;
-            void _showWarning;
-
-            return (
-              <div className={`mb-4 p-3 rounded-lg ${
-                guidance.riskLevel === TrackingRiskLevel.High
-                  ? 'bg-red-50 border border-red-200'
-                  : guidance.riskLevel === TrackingRiskLevel.Medium
-                  ? 'bg-yellow-50 border border-yellow-200'
-                  : 'bg-green-50 border border-green-200'
-              }`}>
-                <div className="flex items-start">
-                  <div className="flex-shrink-0">
-                    {guidance.riskLevel === TrackingRiskLevel.High && (
-                      <svg className="h-5 w-5 text-red-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                    {guidance.riskLevel === TrackingRiskLevel.Medium && (
-                      <svg className="h-5 w-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                    {guidance.riskLevel === TrackingRiskLevel.Low && (
-                      <svg className="h-5 w-5 text-green-400" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                      </svg>
-                    )}
-                  </div>
-                  <div className="ml-3 flex-1">
-                    <h4 className={`text-sm font-medium ${
-                      guidance.riskLevel === TrackingRiskLevel.High
-                        ? 'text-red-800'
-                        : guidance.riskLevel === TrackingRiskLevel.Medium
-                        ? 'text-yellow-800'
-                        : 'text-green-800'
-                    }`}>
-                      Tracking Recommendation: {guidance.recommendation}
-                      <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${getRiskLevelColor(guidance.riskLevel)}`}>
-                        {guidance.riskLevel} Risk
-                      </span>
-                    </h4>
-                    <p className={`mt-1 text-sm ${
-                      guidance.riskLevel === TrackingRiskLevel.High
-                        ? 'text-red-700'
-                        : guidance.riskLevel === TrackingRiskLevel.Medium
-                        ? 'text-yellow-700'
-                        : 'text-green-700'
-                    }`}>
-                      {guidance.summary}
-                    </p>
-
-                    {guidance.factors.filter(f => f.risk !== TrackingRiskLevel.Low).length > 0 && (
-                      <div className="mt-2">
-                        <p className="text-xs text-gray-600 font-medium">Risk factors:</p>
-                        <ul className="mt-1 text-xs text-gray-600 list-disc list-inside">
-                          {guidance.factors
-                            .filter(f => f.risk !== TrackingRiskLevel.Low)
-                            .map((f, i) => (
-                              <li key={i}>
-                                <span className={`font-medium ${
-                                  f.risk === TrackingRiskLevel.High ? 'text-red-600' : 'text-yellow-600'
-                                }`}>{f.name}</span>: {f.explanation}
-                              </li>
-                            ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {guidance.warnings.length > 0 && (
-                      <div className="mt-2 p-2 bg-white/50 rounded border border-red-200">
-                        <p className="text-xs text-red-700 font-medium">Warnings:</p>
-                        <ul className="mt-1 text-xs text-red-600 list-disc list-inside">
-                          {guidance.warnings.map((w, i) => (
-                            <li key={i}>{w}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* Belt Tracking Method */}
-          <div>
-            <label htmlFor="belt_tracking_method" className="label">
-              Belt Tracking Method
-            </label>
-            <select
-              id="belt_tracking_method"
-              className="input"
-              value={inputs.belt_tracking_method}
-              onChange={(e) => updateInput('belt_tracking_method', e.target.value)}
-            >
-              {Object.values(BeltTrackingMethod).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              V-guided uses a V-profile on the belt underside. Crowned uses crowned pulleys for tracking.
-            </p>
-          </div>
-
-          {/* V-guide profile */}
-          {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
-            inputs.belt_tracking_method === 'V-guided') && (
-            <div>
-              <label htmlFor="v_guide_profile" className="label">
-                V-Guide Profile
-              </label>
-              <select
-                id="v_guide_profile"
-                className="input"
-                value={inputs.v_guide_profile || ''}
-                onChange={(e) => updateInput('v_guide_profile', e.target.value || undefined)}
-                required
-              >
-                <option value="">Select profile...</option>
-                {Object.values(VGuideProfile).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {/* Shaft Diameter Mode */}
-          <div>
-            <label htmlFor="shaft_diameter_mode" className="label">
-              Shaft Diameter Mode
-            </label>
-            <select
-              id="shaft_diameter_mode"
-              className="input"
-              value={inputs.shaft_diameter_mode}
-              onChange={(e) => updateInput('shaft_diameter_mode', e.target.value)}
-            >
-              {Object.values(ShaftDiameterMode).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Manual shaft diameters */}
-          {(inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
-            inputs.shaft_diameter_mode === 'Manual') && (
-            <div className="ml-4 pl-4 border-l-2 border-gray-200 space-y-4">
-              <div>
-                <label htmlFor="drive_shaft_diameter_in" className="label">
-                  Drive Shaft Diameter (in)
-                </label>
-                <input
-                  type="number"
-                  id="drive_shaft_diameter_in"
-                  className="input"
-                  value={inputs.drive_shaft_diameter_in || ''}
-                  onChange={(e) =>
-                    updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.125"
-                  min="0.5"
-                  max="4.0"
-                  required
-                />
-              </div>
-              <div>
-                <label htmlFor="tail_shaft_diameter_in" className="label">
-                  Tail Shaft Diameter (in)
-                </label>
-                <input
-                  type="number"
-                  id="tail_shaft_diameter_in"
-                  className="input"
-                  value={inputs.tail_shaft_diameter_in || ''}
-                  onChange={(e) =>
-                    updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.125"
-                  min="0.5"
-                  max="4.0"
-                  required
-                />
               </div>
             </div>
           )}

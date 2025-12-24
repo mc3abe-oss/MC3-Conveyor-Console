@@ -10,6 +10,7 @@
 
 import { useBeltCatalog } from '../hooks/useBeltCatalog';
 import { BeltCatalogItem } from '../api/belts/route';
+import { getEffectiveMinPulleyDiameters } from '../../src/lib/belt-catalog';
 
 interface BeltSelectProps {
   value: string | undefined;
@@ -94,36 +95,87 @@ export default function BeltSelect({
       </select>
 
       {/* Belt details summary */}
-      {showDetails && selectedBelt && (
-        <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600 space-y-1">
-          <div className="flex justify-between">
-            <span>PIW:</span>
-            <span className="font-mono">{selectedBelt.piw} lb/in</span>
+      {showDetails && selectedBelt && (() => {
+        const effectiveMin = getEffectiveMinPulleyDiameters(selectedBelt);
+        const hasProfile = effectiveMin.source === 'material_profile';
+
+        return (
+          <div className="mt-2 p-2 bg-gray-50 rounded text-xs text-gray-600 space-y-1">
+            <div className="flex justify-between">
+              <span>PIW:</span>
+              <span className="font-mono">{selectedBelt.piw} lb/in</span>
+            </div>
+            <div className="flex justify-between">
+              <span>PIL:</span>
+              <span className="font-mono">{selectedBelt.pil} lb/in</span>
+            </div>
+            <div className="flex justify-between">
+              <span>Min Pulley (no V-guide):</span>
+              <span className="font-mono">
+                {effectiveMin.noVguide}"
+                {hasProfile && (
+                  <span className="ml-1 text-blue-600" title="From material profile">*</span>
+                )}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span>Min Pulley (V-guided):</span>
+              <span className="font-mono">
+                {effectiveMin.withVguide}"
+                {hasProfile && (
+                  <span className="ml-1 text-blue-600" title="From material profile">*</span>
+                )}
+              </span>
+            </div>
+            {hasProfile && (
+              <div className="text-blue-600 text-[10px] mt-1">
+                * From material profile ({selectedBelt.material_profile?.material_family})
+              </div>
+            )}
+
+            {/* Phase 3A: Banding info */}
+            {effectiveMin.banding.supported && (
+              <div className="mt-2 pt-2 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-purple-700 font-medium">Head Tension Banding:</span>
+                  <span className="text-purple-600 text-[10px] px-1.5 py-0.5 bg-purple-100 rounded">
+                    Supported
+                  </span>
+                </div>
+                {(effectiveMin.banding.minNoVguide !== undefined || effectiveMin.banding.minWithVguide !== undefined) && (
+                  <div className="mt-1 text-purple-700">
+                    {effectiveMin.banding.minNoVguide !== undefined && (
+                      <div className="flex justify-between">
+                        <span>With banding (no V-guide):</span>
+                        <span className="font-mono">{effectiveMin.banding.minNoVguide}"</span>
+                      </div>
+                    )}
+                    {effectiveMin.banding.minWithVguide !== undefined && (
+                      <div className="flex justify-between">
+                        <span>With banding (V-guided):</span>
+                        <span className="font-mono">{effectiveMin.banding.minWithVguide}"</span>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="flex flex-wrap gap-1 mt-1">
+              {selectedBelt.food_grade && (
+                <span className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs">
+                  Food Grade
+                </span>
+              )}
+              {selectedBelt.cut_resistant && (
+                <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs">
+                  Cut Resistant
+                </span>
+              )}
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span>PIL:</span>
-            <span className="font-mono">{selectedBelt.pil} lb/in</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Min Pulley (no V-guide):</span>
-            <span className="font-mono">{selectedBelt.min_pulley_dia_no_vguide_in}"</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Min Pulley (V-guided):</span>
-            <span className="font-mono">{selectedBelt.min_pulley_dia_with_vguide_in}"</span>
-          </div>
-          {selectedBelt.food_grade && (
-            <span className="inline-block px-1.5 py-0.5 bg-green-100 text-green-800 rounded text-xs">
-              Food Grade
-            </span>
-          )}
-          {selectedBelt.cut_resistant && (
-            <span className="inline-block px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded text-xs ml-1">
-              Cut Resistant
-            </span>
-          )}
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }

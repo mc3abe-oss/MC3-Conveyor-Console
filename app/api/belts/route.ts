@@ -2,36 +2,18 @@
  * GET /api/belts
  *
  * Fetch active belt catalog items
- * Returns: [{ catalog_key, display_name, piw, pil, min_pulley_dia_no_vguide_in, min_pulley_dia_with_vguide_in, ... }]
+ * Returns: [{ catalog_key, display_name, piw, pil, min_pulley_dia_no_vguide_in, min_pulley_dia_with_vguide_in, material_profile, ... }]
  *
- * POST /api/belts (Admin only - for future use)
- * Create or update a belt catalog item
+ * POST /api/belts (Admin only)
+ * Create or update a belt catalog item, including optional material_profile
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { validateMaterialProfile } from '../../../src/lib/belt-catalog';
 
-export interface BeltCatalogItem {
-  id: string;
-  catalog_key: string;
-  display_name: string;
-  manufacturer: string | null;
-  material: string;
-  surface: string | null;
-  food_grade: boolean;
-  cut_resistant: boolean;
-  oil_resistant: boolean;
-  abrasion_resistant: boolean;
-  antistatic: boolean;
-  thickness_in: number | null;
-  piw: number;
-  pil: number;
-  min_pulley_dia_no_vguide_in: number;
-  min_pulley_dia_with_vguide_in: number;
-  notes: string | null;
-  tags: string[] | null;
-  is_active: boolean;
-}
+// Re-export types for backward compatibility
+export type { BeltCatalogItem, BeltMaterialProfile } from '../../../src/lib/belt-catalog';
 
 export async function GET() {
   try {
@@ -46,32 +28,11 @@ export async function GET() {
       );
     }
 
-    // Query belt_catalog table
+    // Query belt_catalog table (includes material_profile for v1.11)
+    // Using select('*') for backwards compatibility - works before and after migration
     const { data: belts, error } = await supabase
       .from('belt_catalog')
-      .select(
-        `
-        id,
-        catalog_key,
-        display_name,
-        manufacturer,
-        material,
-        surface,
-        food_grade,
-        cut_resistant,
-        oil_resistant,
-        abrasion_resistant,
-        antistatic,
-        thickness_in,
-        piw,
-        pil,
-        min_pulley_dia_no_vguide_in,
-        min_pulley_dia_with_vguide_in,
-        notes,
-        tags,
-        is_active
-      `
-      )
+      .select('*')
       .eq('is_active', true)
       .order('display_name', { ascending: true });
 
@@ -107,6 +68,24 @@ export async function POST(request: NextRequest) {
         { error: 'Missing required fields: belt, change_reason' },
         { status: 400 }
       );
+    }
+
+    // Validate material_profile if provided (v1.11)
+    if (belt.material_profile !== undefined && belt.material_profile !== null) {
+      const validation = validateMaterialProfile(belt.material_profile);
+      if (!validation.isValid) {
+        return NextResponse.json(
+          {
+            error: 'Invalid material_profile',
+            details: validation.errors.join('; '),
+          },
+          { status: 400 }
+        );
+      }
+      // Ensure version is set
+      if (belt.material_profile_version === undefined) {
+        belt.material_profile_version = 1;
+      }
     }
 
     // Set session variables for audit

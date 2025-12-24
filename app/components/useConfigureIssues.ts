@@ -24,7 +24,7 @@ export type ConfigureTabKey = 'application' | 'physical' | 'drive' | 'build';
  * Section keys for each tab
  */
 export const APPLICATION_SECTIONS = ['product', 'throughput', 'environment'] as const;
-export const PHYSICAL_SECTIONS = ['geometry', 'pulleys', 'frame', 'tracking'] as const;
+export const PHYSICAL_SECTIONS = ['geometry', 'beltPulleys', 'frame'] as const;
 export const DRIVE_SECTIONS = ['speed', 'electrical', 'drive', 'advanced'] as const;
 export const BUILD_SECTIONS = ['guards', 'guides', 'beltpulley', 'sensors', 'documentation'] as const;
 
@@ -196,7 +196,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
   }
 
   // ---------------------------------------------------------------------------
-  // PHYSICAL TAB - Pulleys & Belt Interface
+  // PHYSICAL TAB - Belt & Pulleys
   // ---------------------------------------------------------------------------
 
   const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
@@ -207,7 +207,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       severity: 'error',
       message: 'Drive pulley diameter must be at least 2"',
       tabKey: 'physical',
-      sectionKey: 'pulleys',
+      sectionKey: 'beltPulleys',
       fieldKeys: ['drive_pulley_diameter_in'],
     });
   }
@@ -217,7 +217,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       severity: 'error',
       message: 'Tail pulley diameter must be at least 2"',
       tabKey: 'physical',
-      sectionKey: 'pulleys',
+      sectionKey: 'beltPulleys',
       fieldKeys: ['tail_pulley_diameter_in'],
     });
   }
@@ -231,7 +231,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
         message: `Drive pulley diameter below belt minimum (${minPulleyDia}")`,
         detail: 'May cause belt damage or tracking issues',
         tabKey: 'physical',
-        sectionKey: 'pulleys',
+        sectionKey: 'beltPulleys',
         fieldKeys: ['drive_pulley_diameter_in'],
       });
     }
@@ -241,7 +241,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
         message: `Tail pulley diameter below belt minimum (${minPulleyDia}")`,
         detail: 'May cause belt damage or tracking issues',
         tabKey: 'physical',
-        sectionKey: 'pulleys',
+        sectionKey: 'beltPulleys',
         fieldKeys: ['tail_pulley_diameter_in'],
       });
     }
@@ -329,7 +329,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
   }
 
   // ---------------------------------------------------------------------------
-  // PHYSICAL TAB - Belt & Tracking (Advisory from Tracking Guidance)
+  // PHYSICAL TAB - Belt & Pulleys (Tracking Guidance Advisory)
   // ---------------------------------------------------------------------------
 
   const trackingGuidance = calculateTrackingGuidance(inputs);
@@ -339,7 +339,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       message: 'Tracking guidance: V-guided recommended (High Risk)',
       detail: trackingGuidance.summary,
       tabKey: 'physical',
-      sectionKey: 'tracking',
+      sectionKey: 'beltPulleys',
     });
   } else if (trackingGuidance.riskLevel === TrackingRiskLevel.Medium) {
     issues.push({
@@ -347,7 +347,7 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       message: 'Tracking guidance: Consider V-guided (Medium Risk)',
       detail: trackingGuidance.summary,
       tabKey: 'physical',
-      sectionKey: 'tracking',
+      sectionKey: 'beltPulleys',
     });
   }
 
