@@ -211,34 +211,88 @@ function assessAccumulation(
 }
 
 /**
- * Assess tracking risk from environment
+ * Assess tracking risk from a single environment factor
+ * @internal Used by assessEnvironments
  */
-function assessEnvironment(environment: EnvironmentFactors | string): TrackingRiskFactor {
+function assessSingleEnvironment(environment: string): { risk: TrackingRiskLevel; explanation: string } {
   if (environment === EnvironmentFactors.Washdown) {
     return {
-      name: 'Environment',
       risk: TrackingRiskLevel.Medium,
-      explanation: 'Washdown environments may cause belt slip on crowned pulleys. Consider V-guided or lagged pulleys.',
+      explanation: 'Washdown environments may cause belt slip on crowned pulleys.',
     };
   } else if (environment === EnvironmentFactors.Dusty) {
     return {
-      name: 'Environment',
       risk: TrackingRiskLevel.Medium,
-      explanation: 'Dusty environments can affect belt grip on crowned pulleys. Regular maintenance is important.',
+      explanation: 'Dusty environments can affect belt grip on crowned pulleys.',
     };
   } else if (environment === EnvironmentFactors.Outdoor) {
     return {
-      name: 'Environment',
       risk: TrackingRiskLevel.Low,
-      explanation: 'Outdoor installation is compatible with crowned tracking with proper belt selection.',
+      explanation: 'Outdoor installation is compatible with crowned tracking.',
     };
   } else {
+    return {
+      risk: TrackingRiskLevel.Low,
+      explanation: 'Indoor environment is ideal for crowned tracking.',
+    };
+  }
+}
+
+/**
+ * Assess tracking risk from environment factors (v1.9 - multi-select)
+ *
+ * Combination rule: Highest risk wins.
+ * For single-element arrays, output matches legacy single-value behavior exactly.
+ *
+ * @param factors - Array of environment factor keys
+ * @returns TrackingRiskFactor with highest risk from all selected factors
+ */
+function assessEnvironments(factors: string[]): TrackingRiskFactor {
+  // Handle empty/invalid input (shouldn't happen with validation, but be safe)
+  if (!Array.isArray(factors) || factors.length === 0) {
     return {
       name: 'Environment',
       risk: TrackingRiskLevel.Low,
       explanation: 'Indoor environment is ideal for crowned tracking.',
     };
   }
+
+  // Assess each factor
+  const assessments = factors.map(f => assessSingleEnvironment(f));
+
+  // Find highest risk (Low < Medium < High)
+  const riskOrder = [TrackingRiskLevel.Low, TrackingRiskLevel.Medium, TrackingRiskLevel.High];
+  let highestRiskIdx = 0;
+  let highestAssessment = assessments[0];
+
+  for (const assessment of assessments) {
+    const idx = riskOrder.indexOf(assessment.risk);
+    if (idx > highestRiskIdx) {
+      highestRiskIdx = idx;
+      highestAssessment = assessment;
+    }
+  }
+
+  // Build explanation based on selected factors
+  const riskFactorNames = factors
+    .filter(f => assessSingleEnvironment(f).risk !== TrackingRiskLevel.Low)
+    .map(f => f);
+
+  let explanation: string;
+  if (factors.length === 1) {
+    // Single factor - use legacy explanation style
+    explanation = highestAssessment.explanation;
+  } else if (riskFactorNames.length === 0) {
+    explanation = 'Selected environments are ideal for crowned tracking.';
+  } else {
+    explanation = `Environment factors (${riskFactorNames.join(', ')}) may affect belt tracking. ${highestAssessment.explanation}`;
+  }
+
+  return {
+    name: 'Environment',
+    risk: highestAssessment.risk,
+    explanation,
+  };
 }
 
 /**
@@ -283,7 +337,7 @@ export function calculateTrackingGuidance(inputs: SliderbedInputs): TrackingGuid
     assessDirectionMode(inputs.direction_mode),
     assessSideLoading(inputs.side_loading_direction, inputs.side_loading_severity),
     assessAccumulation(inputs.start_stop_application, inputs.cycle_time_seconds),
-    assessEnvironment(inputs.environment_factors),
+    assessEnvironments(inputs.environment_factors), // v1.9: Multi-select environment factors
     assessBeltSpeed(inputs.belt_speed_fpm),
   ];
 

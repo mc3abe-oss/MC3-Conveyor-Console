@@ -214,6 +214,18 @@ export function validateInputs(
     }
   }
 
+  // =========================================================================
+  // v1.9: ENVIRONMENT FACTORS VALIDATION
+  // =========================================================================
+
+  if (!Array.isArray(inputs.environment_factors) || inputs.environment_factors.length === 0) {
+    errors.push({
+      field: 'environment_factors',
+      message: 'At least one environment factor must be selected',
+      severity: 'error',
+    });
+  }
+
   // THROUGHPUT
   if (
     inputs.required_throughput_pph !== undefined &&

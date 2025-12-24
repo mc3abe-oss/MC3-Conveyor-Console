@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { normalizeEnvironmentFactors } from '../../../../src/models/sliderbed_v1/schema';
 
 export async function GET(request: NextRequest) {
   try {
@@ -88,6 +89,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(
         { error: 'Failed to load revision', details: revisionError.message },
         { status: 500 }
+      );
+    }
+
+    // Normalize environment_factors for backward compatibility (v1.9)
+    // Old configs stored a single string, new ones store an array
+    if (revision.inputs_json && revision.inputs_json.environment_factors !== undefined) {
+      revision.inputs_json.environment_factors = normalizeEnvironmentFactors(
+        revision.inputs_json.environment_factors
       );
     }
 

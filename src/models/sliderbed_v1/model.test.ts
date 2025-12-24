@@ -83,7 +83,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -512,6 +512,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
         part_spacing_in: 12, // 12 inches
+        environment_factors: [EnvironmentFactors.Indoor],
       };
 
       const result = runCalculation({ inputs });
@@ -534,6 +535,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Crosswise,
         part_spacing_in: 12, // 12 inches
+        environment_factors: [EnvironmentFactors.Indoor],
       };
 
       const result = runCalculation({ inputs });
@@ -1273,7 +1275,7 @@ describe('Belt Tracking Guidance', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -1402,7 +1404,7 @@ describe('Belt Tracking Guidance', () => {
 
   describe('Risk Assessment - Environment', () => {
     it('should assess low risk for indoor environment', () => {
-      const inputs = { ...baseInputs, environment_factors: EnvironmentFactors.Indoor };
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Indoor] };
       const guidance = calculateTrackingGuidance(inputs);
 
       const envFactor = guidance.factors.find(f => f.name === 'Environment');
@@ -1410,7 +1412,7 @@ describe('Belt Tracking Guidance', () => {
     });
 
     it('should assess medium risk for washdown environment', () => {
-      const inputs = { ...baseInputs, environment_factors: EnvironmentFactors.Washdown };
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Washdown] };
       const guidance = calculateTrackingGuidance(inputs);
 
       const envFactor = guidance.factors.find(f => f.name === 'Environment');
@@ -1418,11 +1420,29 @@ describe('Belt Tracking Guidance', () => {
     });
 
     it('should assess medium risk for dusty environment', () => {
-      const inputs = { ...baseInputs, environment_factors: EnvironmentFactors.Dusty };
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Dusty] };
       const guidance = calculateTrackingGuidance(inputs);
 
       const envFactor = guidance.factors.find(f => f.name === 'Environment');
       expect(envFactor?.risk).toBe(TrackingRiskLevel.Medium);
+    });
+
+    // v1.9: Multi-select environment tests
+    it('should assess highest risk when multiple environments selected', () => {
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Indoor, EnvironmentFactors.Washdown] };
+      const guidance = calculateTrackingGuidance(inputs);
+
+      const envFactor = guidance.factors.find(f => f.name === 'Environment');
+      // Washdown is Medium, Indoor is Low - should take highest (Medium)
+      expect(envFactor?.risk).toBe(TrackingRiskLevel.Medium);
+    });
+
+    it('should handle all low-risk environments as low risk', () => {
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Indoor, EnvironmentFactors.Outdoor] };
+      const guidance = calculateTrackingGuidance(inputs);
+
+      const envFactor = guidance.factors.find(f => f.name === 'Environment');
+      expect(envFactor?.risk).toBe(TrackingRiskLevel.Low);
     });
   });
 
@@ -1461,7 +1481,7 @@ describe('Belt Tracking Guidance', () => {
         belt_speed_fpm: 50,
         direction_mode: DirectionMode.OneDirection,
         side_loading_direction: SideLoadingDirection.None,
-        environment_factors: EnvironmentFactors.Indoor,
+        environment_factors: [EnvironmentFactors.Indoor],
       };
       const guidance = calculateTrackingGuidance(inputs);
 
@@ -1488,7 +1508,7 @@ describe('Belt Tracking Guidance', () => {
         conveyor_length_cc_in: 120, // 5:1 L:W (Medium)
         conveyor_width_in: 24,
         belt_speed_fpm: 150, // Medium
-        environment_factors: EnvironmentFactors.Washdown, // Medium
+        environment_factors: [EnvironmentFactors.Washdown], // Medium
       };
       const guidance = calculateTrackingGuidance(inputs);
 
@@ -1618,7 +1638,7 @@ describe('Split Pulley Diameter (v1.3)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -1851,7 +1871,7 @@ describe('Belt Cleats (v1.3)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -2145,7 +2165,7 @@ describe('Support & Height Model (v1.4)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -2880,7 +2900,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       material_type: MaterialType.Steel,
       process_type: ProcessType.Assembly,
       parts_sharp: PartsSharp.No,
-      environment_factors: EnvironmentFactors.Indoor,
+      environment_factors: [EnvironmentFactors.Indoor],
       ambient_temperature: AmbientTemperature.Normal,
       power_feed: PowerFeed.V480_3Ph,
       controls_package: ControlsPackage.StartStop,
@@ -3145,7 +3165,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           material_type: MaterialType.Steel,
           process_type: ProcessType.Assembly,
           parts_sharp: PartsSharp.No,
-          environment_factors: EnvironmentFactors.Indoor,
+          environment_factors: [EnvironmentFactors.Indoor],
           ambient_temperature: AmbientTemperature.Normal,
           power_feed: PowerFeed.V480_3Ph,
           controls_package: ControlsPackage.StartStop,
@@ -3208,7 +3228,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           material_type: MaterialType.Steel,
           process_type: ProcessType.Assembly,
           parts_sharp: PartsSharp.No,
-          environment_factors: EnvironmentFactors.Indoor,
+          environment_factors: [EnvironmentFactors.Indoor],
           ambient_temperature: AmbientTemperature.Normal,
           power_feed: PowerFeed.V480_3Ph,
           controls_package: ControlsPackage.StartStop,
@@ -3261,7 +3281,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -3541,7 +3561,7 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,

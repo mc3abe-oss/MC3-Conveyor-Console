@@ -85,7 +85,7 @@ export default function CalculatorForm({
     material_type: 'PARTS', // Catalog: CHIPS, PARTS, SCRAP
     process_type: 'MOLDING', // Catalog: MOLDING, WELDING, STAMPING, LASER_CUT, FOOD_PROC, PACKAGING
     parts_sharp: 'No', // Boolean checkbox
-    environment_factors: 'NONE', // Catalog: NONE, PARTICULATE, MOISTURE, HIGH_TEMP, OUTDOORS, HAZARDOUS, WELD_EXPUL, DUSTY
+    environment_factors: ['Indoor'], // v1.9: Multi-select array, Catalog: Indoor, Outdoor, Washdown, Dusty, Other
     ambient_temperature: 'Normal (60-90°F)', // Deprecated - kept for backward compatibility
     ambient_temperature_class: AmbientTemperatureClass.Normal, // New classification-based dropdown
     power_feed: 'AC_480_3_60', // Catalog: AC_480_3_60, AC_230_3_60, AC_120_1_60, DC_24

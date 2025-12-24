@@ -15,6 +15,7 @@ import {
   AMBIENT_TEMPERATURE_CLASS_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
+import CatalogMultiSelect from './CatalogMultiSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey } from './useConfigureIssues';
 
@@ -310,12 +311,12 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
         issueCounts={sectionCounts.environment}
       >
         <div className="grid grid-cols-1 gap-4">
-          {/* 14. Environment Factors */}
+          {/* 14. Environment Factors (v1.9 - Multi-select) */}
           <div>
             <label htmlFor="environment_factors" className="label">
               Environment Factors
             </label>
-            <CatalogSelect
+            <CatalogMultiSelect
               catalogKey="environment_factors"
               value={inputs.environment_factors}
               onChange={(value) => updateInput('environment_factors', value)}

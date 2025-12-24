@@ -120,7 +120,7 @@ export const EXAMPLE_FIXTURE: TestFixture = {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: EnvironmentFactors.Indoor,
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,

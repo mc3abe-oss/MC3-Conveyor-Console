@@ -540,8 +540,12 @@ export interface SliderbedInputs {
   parts_sharp: PartsSharp | string;
 
   // APPLICATION FIELDS (Group 2: Environment and Temperature)
-  /** Environment Factors */
-  environment_factors: EnvironmentFactors | string;
+  /**
+   * Environment Factors (v1.9 - Multi-select)
+   * Array of environment factor keys from catalog.
+   * Must contain at least one value.
+   */
+  environment_factors: string[];
 
   /**
    * @deprecated Use ambient_temperature_class instead.
@@ -1070,7 +1074,7 @@ export const DEFAULT_INPUT_VALUES = {
   material_type: MaterialType.Steel,
   process_type: ProcessType.Assembly,
   parts_sharp: PartsSharp.No,
-  environment_factors: EnvironmentFactors.Indoor,
+  environment_factors: [EnvironmentFactors.Indoor], // v1.9: Multi-select array
   ambient_temperature: AmbientTemperature.Normal, // Deprecated, kept for backward compatibility
   ambient_temperature_class: AmbientTemperatureClass.Normal,
   power_feed: PowerFeed.V480_3Ph,
@@ -1180,3 +1184,53 @@ export const TOB_FIELDS = [
   'drive_tob_in',
   'adjustment_required_in',
 ] as const;
+
+// ============================================================================
+// v1.9: ENVIRONMENT FACTORS HELPERS
+// ============================================================================
+
+/**
+ * Normalize environment_factors to array format (v1.9)
+ *
+ * Handles backward compatibility for old configs that stored a single string.
+ * Rules:
+ * - array → return deduplicated, sorted array
+ * - string → [string]
+ * - null/undefined/other → ["Indoor"]
+ *
+ * @param value - The raw environment_factors value from inputs
+ * @returns Normalized string array, deduplicated and sorted
+ */
+export function normalizeEnvironmentFactors(value: unknown): string[] {
+  const defaultValue = [EnvironmentFactors.Indoor];
+
+  if (Array.isArray(value)) {
+    // Filter to valid strings, dedupe, sort
+    const validStrings = value.filter(
+      (v): v is string => typeof v === 'string' && v.trim() !== ''
+    );
+    if (validStrings.length === 0) {
+      return defaultValue;
+    }
+    return Array.from(new Set(validStrings)).sort();
+  }
+
+  if (typeof value === 'string' && value.trim() !== '') {
+    return [value];
+  }
+
+  return defaultValue;
+}
+
+/**
+ * Prepare environment_factors for save (dedupe + sort)
+ *
+ * @param factors - Array of environment factor keys
+ * @returns Deduplicated and sorted array
+ */
+export function prepareEnvironmentFactorsForSave(factors: string[]): string[] {
+  if (!Array.isArray(factors) || factors.length === 0) {
+    return [EnvironmentFactors.Indoor];
+  }
+  return Array.from(new Set(factors)).sort();
+}
