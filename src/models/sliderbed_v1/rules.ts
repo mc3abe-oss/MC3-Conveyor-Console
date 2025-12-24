@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.10 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.11 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.11 (2025-12-24): Belt minimum pulley diameter warnings
  * v1.10 (2025-12-24): Geometry mode validation (L_ANGLE, H_ANGLE, H_TOB)
  * v1.7 (2025-12-22): Sprocket validation for bottom-mount gearmotor configuration
  * v1.6 (2025-12-22): Speed mode validation, belt_speed_fpm and drive_rpm_input validation
@@ -876,6 +877,41 @@ export function applyApplicationRules(
       message: `Tail pulley diameter (${tailPulley}") is non-standard. Standard sizes: ${presetArray.join(', ')}"`,
       severity: 'info',
     });
+  }
+
+  // =========================================================================
+  // v1.11: BELT MINIMUM PULLEY DIAMETER WARNINGS
+  // =========================================================================
+
+  // Determine tracking method and minimum required diameter from belt
+  const isVGuided =
+    inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+    inputs.belt_tracking_method === 'V-guided';
+  const minPulleyRequired = isVGuided
+    ? inputs.belt_min_pulley_dia_with_vguide_in
+    : inputs.belt_min_pulley_dia_no_vguide_in;
+
+  // Only warn if belt has a minimum requirement (belt is selected)
+  if (minPulleyRequired !== undefined) {
+    const trackingType = isVGuided ? 'V-guided' : 'crowned';
+
+    // Check drive pulley
+    if (drivePulley !== undefined && drivePulley < minPulleyRequired) {
+      warnings.push({
+        field: 'drive_pulley_diameter_in',
+        message: `Drive pulley (${drivePulley}") is below belt minimum (${minPulleyRequired}" for ${trackingType} tracking). Belt may not track properly or could be damaged.`,
+        severity: 'warning',
+      });
+    }
+
+    // Check tail pulley (only if different from drive)
+    if (inputs.tail_matches_drive === false && tailPulley !== undefined && tailPulley < minPulleyRequired) {
+      warnings.push({
+        field: 'tail_pulley_diameter_in',
+        message: `Tail pulley (${tailPulley}") is below belt minimum (${minPulleyRequired}" for ${trackingType} tracking). Belt may not track properly or could be damaged.`,
+        severity: 'warning',
+      });
+    }
   }
 
   // =========================================================================

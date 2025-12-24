@@ -572,6 +572,11 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
                 {isVGuided ? 'V-guided' : 'crowned'} tracking).
               </p>
             )}
+            {!drivePulleyBelowMinimum && minPulleyDia !== undefined && (
+              <p className="text-xs text-gray-500 mt-1">
+                Minimum required: {minPulleyDia}" ({isVGuided ? 'V-guided' : 'crowned'})
+              </p>
+            )}
           </div>
 
           {/* Tail Matches Drive toggle */}
@@ -635,6 +640,11 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
                 <p className="text-xs text-red-600 mt-1">
                   Tail pulley is below the belt minimum ({minPulleyDia}" for{' '}
                   {isVGuided ? 'V-guided' : 'crowned'} tracking).
+                </p>
+              )}
+              {!tailPulleyBelowMinimum && minPulleyDia !== undefined && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Minimum required: {minPulleyDia}" ({isVGuided ? 'V-guided' : 'crowned'})
                 </p>
               )}
             </div>

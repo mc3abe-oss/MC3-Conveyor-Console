@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.10 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.11 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,7 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.11 (2025-12-24): Belt minimum pulley diameter outputs and validation
  * v1.10 (2025-12-24): Geometry mode - L_ANGLE, H_ANGLE, H_TOB modes; horizontal_run_in field
  * v1.9 (2025-12-24): Environment factors multi-select
  * v1.8 (2025-12-23): Ambient temperature class enum
@@ -1019,6 +1020,35 @@ export interface SliderbedOutputs {
 
   /** Tail pulley diameter used in inches */
   tail_pulley_diameter_in: number;
+
+  // =========================================================================
+  // v1.11: BELT MINIMUM PULLEY DIAMETER OUTPUTS
+  // =========================================================================
+
+  /**
+   * Minimum required drive pulley diameter from belt spec (inches)
+   * Based on belt_min_pulley_dia_no_vguide_in or belt_min_pulley_dia_with_vguide_in
+   * depending on tracking method. Undefined if no belt selected.
+   */
+  min_pulley_drive_required_in?: number;
+
+  /**
+   * Minimum required tail pulley diameter from belt spec (inches)
+   * Same as drive requirement in v1.11. Undefined if no belt selected.
+   */
+  min_pulley_tail_required_in?: number;
+
+  /**
+   * Whether drive pulley meets or exceeds belt minimum requirement
+   * Undefined if no belt selected (no requirement to check).
+   */
+  drive_pulley_meets_minimum?: boolean;
+
+  /**
+   * Whether tail pulley meets or exceeds belt minimum requirement
+   * Undefined if no belt selected (no requirement to check).
+   */
+  tail_pulley_meets_minimum?: boolean;
 
   // CLEAT OUTPUTS (v1.3 - spec-only summary)
   /** Whether cleats are enabled */

@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.7 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.11 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,7 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.11 (2025-12-24): Belt minimum pulley diameter outputs
  * v1.7 (2025-12-22): Chain ratio stage for bottom-mount gearmotor configuration
  * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs, derive Drive RPM
  * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
@@ -927,6 +928,24 @@ export function calculate(
     requiresSnubRollers
   );
 
+  // Step 21: Belt minimum pulley diameter requirements (v1.11)
+  // Determine minimum pulley diameter based on belt spec and tracking method
+  const minPulleyFromBelt = isVGuided
+    ? inputs.belt_min_pulley_dia_with_vguide_in
+    : inputs.belt_min_pulley_dia_no_vguide_in;
+
+  // Only compute if belt has a minimum requirement (belt is selected)
+  const minPulleyDriveRequiredIn = minPulleyFromBelt;
+  const minPulleyTailRequiredIn = minPulleyFromBelt; // Same as drive in v1.11
+
+  // Check if current pulleys meet the minimum (undefined if no belt selected)
+  const drivePulleyMeetsMinimum = minPulleyFromBelt !== undefined
+    ? drivePulleyDiameterIn >= minPulleyFromBelt
+    : undefined;
+  const tailPulleyMeetsMinimum = minPulleyFromBelt !== undefined
+    ? tailPulleyDiameterIn >= minPulleyFromBelt
+    : undefined;
+
   // Return all outputs
   return {
     // Intermediate outputs
@@ -983,6 +1002,12 @@ export function calculate(
     // v1.3: Split pulley diameters
     drive_pulley_diameter_in: drivePulleyDiameterIn,
     tail_pulley_diameter_in: tailPulleyDiameterIn,
+
+    // v1.11: Belt minimum pulley diameter outputs
+    min_pulley_drive_required_in: minPulleyDriveRequiredIn,
+    min_pulley_tail_required_in: minPulleyTailRequiredIn,
+    drive_pulley_meets_minimum: drivePulleyMeetsMinimum,
+    tail_pulley_meets_minimum: tailPulleyMeetsMinimum,
 
     // v1.3: Cleats (spec-only, no calculation impact)
     cleats_enabled: inputs.cleats_enabled ?? false,

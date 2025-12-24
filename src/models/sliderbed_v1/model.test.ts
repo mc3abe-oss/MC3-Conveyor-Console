@@ -3789,6 +3789,265 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
 });
 
 // ============================================================================
+// v1.11: BELT MINIMUM PULLEY DIAMETER TESTS
+// ============================================================================
+
+describe('Belt Minimum Pulley Diameter (v1.11)', () => {
+  // Base inputs for all tests
+  const BASE_INPUTS: SliderbedInputs = {
+    conveyor_length_cc_in: 120,
+    conveyor_width_in: 24,
+    conveyor_incline_deg: 0,
+    pulley_diameter_in: 4, // Default pulley size
+    drive_pulley_diameter_in: 4,
+    belt_speed_fpm: 50,
+    drive_rpm: 100,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0.5,
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: [EnvironmentFactors.Indoor],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  describe('No belt selected (backward compatibility)', () => {
+    it('should calculate successfully with no warnings when no belt is selected', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_catalog_key: undefined,
+        belt_min_pulley_dia_no_vguide_in: undefined,
+        belt_min_pulley_dia_with_vguide_in: undefined,
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.min_pulley_drive_required_in).toBeUndefined();
+      expect(result.outputs?.min_pulley_tail_required_in).toBeUndefined();
+      expect(result.outputs?.drive_pulley_meets_minimum).toBeUndefined();
+      expect(result.outputs?.tail_pulley_meets_minimum).toBeUndefined();
+      // No belt-related pulley warnings
+      expect(
+        result.warnings?.some((w) => w.message.includes('below belt minimum'))
+      ).toBeFalsy();
+    });
+  });
+
+  describe('Crowned tracking mode', () => {
+    it('should use belt_min_pulley_dia_no_vguide_in for crowned tracking', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+        belt_min_pulley_dia_no_vguide_in: 3.0, // Belt requires 3" for crowned
+        belt_min_pulley_dia_with_vguide_in: 4.0, // Belt requires 4" for V-guided
+        drive_pulley_diameter_in: 4, // Pulley meets minimum
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.min_pulley_drive_required_in).toBe(3.0);
+      expect(result.outputs?.min_pulley_tail_required_in).toBe(3.0);
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(true);
+      expect(result.outputs?.tail_pulley_meets_minimum).toBe(true);
+    });
+
+    it('should warn when pulley is below crowned minimum', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+        belt_min_pulley_dia_no_vguide_in: 5.0, // Belt requires 5" for crowned
+        belt_min_pulley_dia_with_vguide_in: 6.0,
+        drive_pulley_diameter_in: 4, // Pulley is below minimum
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true); // Still calculates
+      expect(result.outputs?.min_pulley_drive_required_in).toBe(5.0);
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(false);
+      // Should have warning
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'drive_pulley_diameter_in' && w.message.includes('below belt minimum')
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe('V-guided tracking mode', () => {
+    it('should use belt_min_pulley_dia_with_vguide_in for V-guided tracking', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        v_guide_profile: VGuideProfile.K10, // Required for V-guided
+        belt_min_pulley_dia_no_vguide_in: 3.0,
+        belt_min_pulley_dia_with_vguide_in: 4.0, // Belt requires 4" for V-guided
+        drive_pulley_diameter_in: 5, // Pulley meets minimum
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.min_pulley_drive_required_in).toBe(4.0);
+      expect(result.outputs?.min_pulley_tail_required_in).toBe(4.0);
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(true);
+      expect(result.outputs?.tail_pulley_meets_minimum).toBe(true);
+    });
+
+    it('should warn when pulley is below V-guided minimum', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        v_guide_profile: VGuideProfile.K10, // Required for V-guided
+        belt_min_pulley_dia_no_vguide_in: 3.0,
+        belt_min_pulley_dia_with_vguide_in: 5.0, // Belt requires 5" for V-guided
+        drive_pulley_diameter_in: 4, // Pulley is below minimum
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true); // Still calculates
+      expect(result.outputs?.min_pulley_drive_required_in).toBe(5.0);
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(false);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'drive_pulley_diameter_in' && w.message.includes('below belt minimum')
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe('Split pulley diameters', () => {
+    it('should warn for tail pulley when tail differs from drive and is below minimum', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+        belt_min_pulley_dia_no_vguide_in: 4.0, // Belt requires 4"
+        drive_pulley_diameter_in: 5, // Drive meets minimum
+        tail_matches_drive: false,
+        tail_pulley_diameter_in: 3, // Tail is below minimum
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(true);
+      expect(result.outputs?.tail_pulley_meets_minimum).toBe(false);
+      // Should have warning for tail only
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'tail_pulley_diameter_in' && w.message.includes('below belt minimum')
+        )
+      ).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'drive_pulley_diameter_in' && w.message.includes('below belt minimum')
+        )
+      ).toBe(false);
+    });
+
+    it('should not warn for tail pulley when tail_matches_drive is true', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+        belt_min_pulley_dia_no_vguide_in: 5.0, // Belt requires 5"
+        drive_pulley_diameter_in: 4, // Drive is below minimum
+        tail_matches_drive: true, // Default, tail inherits drive
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Both pulleys are 4" (same as drive)
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(false);
+      expect(result.outputs?.tail_pulley_meets_minimum).toBe(false);
+      // Should have warning for drive pulley only (not separate tail warning)
+      expect(
+        result.warnings?.filter((w) => w.message.includes('below belt minimum')).length
+      ).toBe(1);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'drive_pulley_diameter_in' && w.message.includes('below belt minimum')
+        )
+      ).toBe(true);
+    });
+  });
+
+  describe('Edge cases', () => {
+    it('should handle pulley exactly at minimum (no warning)', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        belt_tracking_method: BeltTrackingMethod.Crowned,
+        belt_min_pulley_dia_no_vguide_in: 4.0,
+        drive_pulley_diameter_in: 4.0, // Exactly at minimum
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.drive_pulley_meets_minimum).toBe(true);
+      // No warning about being below minimum (use toBeFalsy to handle undefined warnings)
+      expect(
+        result.warnings?.some((w) => w.message.includes('below belt minimum'))
+      ).toBeFalsy();
+    });
+
+    it('should preserve existing configs that calculated successfully', () => {
+      // Simulate an old config without belt_min fields
+      const legacyInputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_pulley_diameter_in: 3, // Would be below many belt minimums
+        // No belt_min fields set (legacy config)
+      };
+
+      const result = runCalculation({ inputs: legacyInputs });
+
+      expect(result.success).toBe(true);
+      // No minimum requirements, so no warnings about belt minimum
+      expect(result.outputs?.min_pulley_drive_required_in).toBeUndefined();
+      expect(
+        result.warnings?.some((w) => w.message.includes('below belt minimum'))
+      ).toBe(false);
+    });
+  });
+});
+
+// ============================================================================
 // EXCEL PARITY TEST FIXTURES
 // ============================================================================
 
