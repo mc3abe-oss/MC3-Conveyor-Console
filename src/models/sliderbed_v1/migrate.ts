@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.6 - INPUT MIGRATION
+ * SLIDERBED CONVEYOR v1.10 - INPUT MIGRATION
  *
  * Handles migration of legacy inputs to the new schema.
  *
@@ -30,6 +30,12 @@
  * - Old configs have drive_rpm as primary input
  * - Migrate to speed_mode = 'drive_rpm' with drive_rpm_input = drive_rpm
  * - DO NOT silently reinterpret drive_rpm as belt_speed
+ *
+ * GEOMETRY MODE MIGRATION (v1.10):
+ * - Old configs have no geometry_mode, default to L_ANGLE
+ * - Derive horizontal_run_in from conveyor_length_cc_in and angle if missing
+ * - Deprecated helpers calculateImpliedAngleDeg/calculateOppositeTob
+ *   remain for backward compatibility but are incorrect for inclined conveyors
  */
 
 import {
@@ -39,7 +45,9 @@ import {
   derivedLegsRequired,
   TOB_FIELDS,
   SpeedMode,
+  GeometryMode,
 } from './schema';
+import { horizontalFromAxis, normalizeGeometry, DerivedGeometry } from './geometry';
 
 const DEFAULT_PULLEY_DIAMETER_IN = 4;
 
@@ -191,6 +199,26 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
     }
   }
 
+  // =========================================================================
+  // GEOMETRY MODE MIGRATION (v1.10)
+  // =========================================================================
+
+  // If geometry_mode is missing, default to L_ANGLE (Length + Angle mode)
+  // This preserves existing behavior where conveyor_length_cc_in was the primary input
+  if (migrated.geometry_mode === undefined) {
+    migrated.geometry_mode = GeometryMode.LengthAngle;
+  }
+
+  // If horizontal_run_in is missing, derive it from L_cc and angle
+  // This ensures the field exists for the new geometry functions
+  if (migrated.horizontal_run_in === undefined) {
+    const angleDeg = migrated.conveyor_incline_deg ?? 0;
+    const axisLength = migrated.conveyor_length_cc_in;
+    if (axisLength > 0) {
+      migrated.horizontal_run_in = horizontalFromAxis(axisLength, angleDeg);
+    }
+  }
+
   return migrated;
 }
 
@@ -215,6 +243,36 @@ export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
 }
 
 /**
+ * Normalize inputs before calculation (v1.10)
+ *
+ * Extended version that includes geometry normalization.
+ * Returns pulley diameters AND derived geometry values.
+ */
+export function normalizeInputsForCalculationV2(inputs: SliderbedInputs): {
+  drivePulleyDiameterIn: number;
+  tailPulleyDiameterIn: number;
+  geometry: DerivedGeometry;
+  normalizedInputs: Partial<SliderbedInputs>;
+} {
+  // Apply migration if needed
+  const migrated = migrateInputs(inputs);
+
+  // Normalize pulley diameters
+  const drivePulleyDiameterIn = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
+  const tailPulleyDiameterIn = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
+
+  // Normalize geometry (v1.10)
+  const { normalized, derived } = normalizeGeometry(migrated);
+
+  return {
+    drivePulleyDiameterIn,
+    tailPulleyDiameterIn,
+    geometry: derived,
+    normalizedInputs: normalized,
+  };
+}
+
+/**
  * Build cleat summary string for outputs
  */
 export function buildCleatsSummary(inputs: SliderbedInputs): string | undefined {
@@ -235,22 +293,26 @@ export function buildCleatsSummary(inputs: SliderbedInputs): string | undefined 
 
 // ============================================================================
 // v1.4: HEIGHT GEOMETRY HELPERS
+// v1.10: DEPRECATED - Use geometry.ts functions instead
 // ============================================================================
 
 /**
- * Calculate implied incline angle from two TOB heights.
- * Uses conveyor_length_cc_in as the horizontal run.
+ * @deprecated Use calculateImpliedAngleFromTobs from geometry.ts instead.
  *
- * @param tailTobIn - Top of Belt at tail end (inches)
- * @param driveTobIn - Top of Belt at drive end (inches)
- * @param conveyorLengthCcIn - Center-to-center conveyor length (inches)
- * @returns Angle in degrees (positive = incline toward drive)
+ * BUG (v1.4-v1.9): This function incorrectly uses conveyor_length_cc_in (axis length)
+ * as if it were horizontal run. For inclined conveyors, H_cc = L_cc * cos(theta),
+ * so using L_cc directly produces wrong angles.
+ *
+ * This function is kept for backward compatibility but should not be used.
+ * Use geometry.calculateImpliedAngleFromTobs() which correctly uses horizontal_run_in.
  */
 export function calculateImpliedAngleDeg(
   tailTobIn: number,
   driveTobIn: number,
   conveyorLengthCcIn: number
 ): number {
+  // DEPRECATED: Kept for backward compatibility only
+  // This calculation is WRONG for inclined conveyors!
   if (conveyorLengthCcIn <= 0) {
     return 0;
   }
@@ -259,14 +321,17 @@ export function calculateImpliedAngleDeg(
 }
 
 /**
- * Calculate the opposite TOB from a reference TOB and angle.
- * Uses conveyor_length_cc_in as the horizontal run.
+ * @deprecated Use calculateOppositeTobFromAngle from geometry.ts instead.
  *
- * @param referenceTobIn - Reference TOB (at the specified end)
- * @param angleDeg - Incline angle in degrees (positive = incline toward drive)
- * @param conveyorLengthCcIn - Center-to-center conveyor length (inches)
- * @param referenceEnd - Which end the reference TOB is at ('tail' or 'drive')
- * @returns The calculated TOB at the opposite end
+ * BUG (v1.4-v1.9): This function incorrectly uses conveyor_length_cc_in (axis length)
+ * as if it were horizontal run. For inclined conveyors, the rise should be
+ * tan(theta) * H_cc, not tan(theta) * L_cc.
+ *
+ * Additionally, this function doesn't account for different pulley diameters
+ * when converting between TOB and centerline heights.
+ *
+ * Use geometry.calculateOppositeTobFromAngle() which correctly uses horizontal_run_in
+ * and properly handles pulley diameter offsets.
  */
 export function calculateOppositeTob(
   referenceTobIn: number,
@@ -274,6 +339,8 @@ export function calculateOppositeTob(
   conveyorLengthCcIn: number,
   referenceEnd: 'tail' | 'drive'
 ): number {
+  // DEPRECATED: Kept for backward compatibility only
+  // This calculation is WRONG for inclined conveyors and ignores pulley diameters!
   const rise = Math.tan(angleDeg * Math.PI / 180) * conveyorLengthCcIn;
   if (referenceEnd === 'tail') {
     // Reference is tail, calculating drive

@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.7 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.10 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,9 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.10 (2025-12-24): Geometry mode - L_ANGLE, H_ANGLE, H_TOB modes; horizontal_run_in field
+ * v1.9 (2025-12-24): Environment factors multi-select
+ * v1.8 (2025-12-23): Ambient temperature class enum
  * v1.7 (2025-12-22): Gearmotor mounting style + sprocket chain ratio stage
  * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs
  * v1.5 (2025-12-21): Frame height modes, snub roller requirements, cost flags
@@ -292,6 +295,28 @@ export enum SpeedMode {
 }
 
 // ============================================================================
+// GEOMETRY MODE ENUM (v1.10)
+// ============================================================================
+
+/**
+ * Geometry input mode (v1.10)
+ * Determines which geometry parameters are primary inputs vs derived.
+ *
+ * Definitions:
+ * - L_cc: Axis length between pulley centers (conveyor_length_cc_in)
+ * - H_cc: Horizontal projection/run (horizontal_run_in)
+ * - theta: Incline angle in degrees (conveyor_incline_deg)
+ */
+export enum GeometryMode {
+  /** User specifies L_cc + angle, system derives H_cc */
+  LengthAngle = 'L_ANGLE',
+  /** User specifies H_cc + angle, system derives L_cc */
+  HorizontalAngle = 'H_ANGLE',
+  /** User specifies H_cc + both TOBs, system derives angle + L_cc */
+  HorizontalTob = 'H_TOB',
+}
+
+// ============================================================================
 // BELT TRACKING & PULLEY ENUMS
 // ============================================================================
 
@@ -391,14 +416,39 @@ export interface SliderbedInputs {
   /** Bed type - determines support method under belt (slider_bed or roller_bed) */
   bed_type?: string;
 
-  // GEOMETRY & LAYOUT
-  /** Conveyor Length (C-C) in inches */
+  // =========================================================================
+  // GEOMETRY & LAYOUT (v1.10)
+  // =========================================================================
+
+  /**
+   * Geometry input mode (v1.10)
+   * Determines which geometry parameters are primary inputs.
+   * Default: 'L_ANGLE' (Length + Angle mode)
+   */
+  geometry_mode?: GeometryMode;
+
+  /**
+   * Conveyor Length (C-C) in inches - axis length between pulley centers (L_cc)
+   * In L_ANGLE mode: user input
+   * In H_ANGLE/H_TOB modes: derived from horizontal_run_in and angle
+   */
   conveyor_length_cc_in: number;
+
+  /**
+   * Horizontal run in inches (H_cc) - horizontal projection of conveyor
+   * In L_ANGLE mode: derived from conveyor_length_cc_in and angle
+   * In H_ANGLE/H_TOB modes: user input
+   */
+  horizontal_run_in?: number;
 
   /** Conveyor Width in inches */
   conveyor_width_in: number;
 
-  /** Incline Angle in degrees (default: 0) */
+  /**
+   * Incline Angle in degrees (default: 0)
+   * In L_ANGLE/H_ANGLE modes: user input
+   * In H_TOB mode: derived from TOB heights and horizontal run
+   */
   conveyor_incline_deg?: number;
 
   /**
@@ -1064,7 +1114,11 @@ export const DEFAULT_PARAMETERS: SliderbedParameters = {
 };
 
 export const DEFAULT_INPUT_VALUES = {
+  // Geometry defaults (v1.10)
+  geometry_mode: GeometryMode.LengthAngle,
   conveyor_incline_deg: 0,
+  // horizontal_run_in is derived in L_ANGLE mode, not set by default
+
   drop_height_in: 0,
   part_spacing_in: 0,
   throughput_margin_pct: 0,

@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.7 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.10 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.10 (2025-12-24): Geometry mode validation (L_ANGLE, H_ANGLE, H_TOB)
  * v1.7 (2025-12-22): Sprocket validation for bottom-mount gearmotor configuration
  * v1.6 (2025-12-22): Speed mode validation, belt_speed_fpm and drive_rpm_input validation
  * v1.5 (2025-12-21): Frame height validation, snub roller warnings, cost flag notifications
@@ -36,8 +37,13 @@ import {
   FrameHeightMode,
   SpeedMode,
   GearmotorMountingStyle,
+  GeometryMode,
 } from './schema';
-import { calculateImpliedAngleDeg, hasAngleMismatch } from './migrate';
+import { hasAngleMismatch } from './migrate';
+import {
+  calculateImpliedAngleFromTobs,
+  horizontalFromAxis,
+} from './geometry';
 import {
   FRAME_HEIGHT_CONSTANTS,
   SNUB_ROLLER_CLEARANCE_THRESHOLD_IN,
@@ -77,6 +83,41 @@ export function validateInputs(
       message: 'Incline Angle must be >= 0',
       severity: 'error',
     });
+  }
+
+  // v1.10: GEOMETRY MODE VALIDATION
+  const mode = inputs.geometry_mode ?? GeometryMode.LengthAngle;
+
+  // H_ANGLE and H_TOB modes require horizontal_run_in
+  if (mode === GeometryMode.HorizontalAngle || mode === GeometryMode.HorizontalTob) {
+    if (inputs.horizontal_run_in === undefined || inputs.horizontal_run_in <= 0) {
+      // Fall back to conveyor_length_cc_in if available
+      if (inputs.conveyor_length_cc_in <= 0) {
+        errors.push({
+          field: 'horizontal_run_in',
+          message: 'Horizontal run must be greater than 0 for this geometry mode',
+          severity: 'error',
+        });
+      }
+    }
+  }
+
+  // H_TOB mode requires both TOB values
+  if (mode === GeometryMode.HorizontalTob) {
+    if (inputs.tail_tob_in === undefined) {
+      errors.push({
+        field: 'tail_tob_in',
+        message: 'Tail TOB is required in Horizontal + TOBs geometry mode',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_tob_in === undefined) {
+      errors.push({
+        field: 'drive_tob_in',
+        message: 'Drive TOB is required in Horizontal + TOBs geometry mode',
+        severity: 'error',
+      });
+    }
   }
 
   if (inputs.pulley_diameter_in <= 0) {
@@ -1229,18 +1270,36 @@ function applyHeightWarnings(inputs: SliderbedInputs): ValidationWarning[] {
     }
   }
 
-  // Angle mismatch warning (Mode B or when both TOBs are known)
+  // v1.10: Angle mismatch warning - uses corrected geometry calculation
+  // Only show in L_ANGLE or H_ANGLE modes when both TOBs are known
+  // In H_TOB mode, the angle IS derived from TOBs, so no mismatch is possible
+  const geometryMode = inputs.geometry_mode ?? GeometryMode.LengthAngle;
   const conveyorInclineDeg = inputs.conveyor_incline_deg ?? 0;
-  if (inputs.tail_tob_in !== undefined && inputs.drive_tob_in !== undefined) {
-    const impliedAngle = calculateImpliedAngleDeg(
+
+  if (geometryMode !== GeometryMode.HorizontalTob &&
+      inputs.tail_tob_in !== undefined &&
+      inputs.drive_tob_in !== undefined) {
+    // Get pulley diameters for accurate centerline calculation
+    const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
+    const tailPulleyDia = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in ?? drivePulleyDia;
+
+    // Calculate horizontal run from axis length (for L_ANGLE) or use directly (H_ANGLE)
+    const H_cc = inputs.horizontal_run_in ??
+      horizontalFromAxis(inputs.conveyor_length_cc_in, conveyorInclineDeg);
+
+    // Use the CORRECTED implied angle calculation
+    const impliedAngle = calculateImpliedAngleFromTobs(
       inputs.tail_tob_in,
       inputs.drive_tob_in,
-      inputs.conveyor_length_cc_in
+      H_cc,
+      tailPulleyDia,
+      drivePulleyDia
     );
+
     if (hasAngleMismatch(impliedAngle, conveyorInclineDeg)) {
       warnings.push({
         field: 'conveyor_incline_deg',
-        message: `Implied angle from TOB heights (${impliedAngle.toFixed(1)}°) differs from entered incline (${conveyorInclineDeg}°) by more than 0.5°`,
+        message: `Implied angle from TOB heights (${impliedAngle.toFixed(1)}°) differs from entered incline (${conveyorInclineDeg.toFixed(1)}°) by more than 0.5°. Consider using Horizontal + TOBs geometry mode.`,
         severity: 'warning',
       });
     }
