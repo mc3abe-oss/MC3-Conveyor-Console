@@ -70,10 +70,10 @@ export function validateInputs(
     });
   }
 
-  if (inputs.conveyor_width_in <= 0) {
+  if (inputs.belt_width_in <= 0) {
     errors.push({
-      field: 'conveyor_width_in',
-      message: 'Conveyor Width must be greater than 0',
+      field: 'belt_width_in',
+      message: 'Belt Width must be greater than 0',
       severity: 'error',
     });
   }
@@ -941,7 +941,7 @@ export function applyApplicationRules(
 
   // Cleat edge offset vs belt width
   if (inputs.cleats_enabled && inputs.cleat_edge_offset_in !== undefined) {
-    const maxOffset = inputs.conveyor_width_in / 2;
+    const maxOffset = inputs.belt_width_in / 2;
     if (inputs.cleat_edge_offset_in > maxOffset) {
       warnings.push({
         field: 'cleat_edge_offset_in',

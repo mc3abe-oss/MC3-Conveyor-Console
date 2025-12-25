@@ -69,7 +69,7 @@ export default function CalculatorForm({
     // Bed type - determines friction coefficient preset
     bed_type: BedType.SliderBed,
     conveyor_length_cc_in: 120,
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     pulley_diameter_in: 4,
     belt_speed_fpm: 104.72, // Calculated from drive_rpm=100 * (PI * 4/12) ≈ 104.72
     drive_rpm: 100,

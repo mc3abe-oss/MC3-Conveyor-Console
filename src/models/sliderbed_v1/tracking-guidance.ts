@@ -333,7 +333,7 @@ function assessBeltSpeed(speedFpm: number): TrackingRiskFactor {
 export function calculateTrackingGuidance(inputs: SliderbedInputs): TrackingGuidance {
   // Assess all risk factors
   const factors: TrackingRiskFactor[] = [
-    assessLengthWidthRatio(inputs.conveyor_length_cc_in, inputs.conveyor_width_in),
+    assessLengthWidthRatio(inputs.conveyor_length_cc_in, inputs.belt_width_in),
     assessDirectionMode(inputs.direction_mode),
     assessSideLoading(inputs.side_loading_direction, inputs.side_loading_severity),
     assessAccumulation(inputs.start_stop_application, inputs.cycle_time_seconds),
@@ -382,7 +382,7 @@ export function calculateTrackingGuidance(inputs: SliderbedInputs): TrackingGuid
   }
 
   // Check for L:W ratio issues with crowned
-  const lwRatio = computeLengthWidthRatio(inputs.conveyor_length_cc_in, inputs.conveyor_width_in);
+  const lwRatio = computeLengthWidthRatio(inputs.conveyor_length_cc_in, inputs.belt_width_in);
   if (lwRatio > LW_RATIO_HIGH_THRESHOLD && inputs.belt_tracking_method === BeltTrackingMethod.Crowned) {
     warnings.push(
       `High length-to-width ratio (${lwRatio.toFixed(1)}:1) with crowned tracking increases mis-tracking risk.`
@@ -408,7 +408,7 @@ export function calculateTrackingGuidance(inputs: SliderbedInputs): TrackingGuid
 
   if (recommendation === BeltTrackingMethod.Crowned) {
     notes.push('Crowned pulleys are cost-effective and suitable for this application.');
-    if (inputs.conveyor_width_in < 12) {
+    if (inputs.belt_width_in < 12) {
       notes.push('Narrow belts may require more frequent tracking adjustment.');
     }
   } else {

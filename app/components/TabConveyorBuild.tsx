@@ -291,15 +291,15 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
           </div>
 
           <div>
-            <label htmlFor="conveyor_width_in" className="label">
-              Conveyor Width (in)
+            <label htmlFor="belt_width_in" className="label">
+              Belt Width (in)
             </label>
             <input
               type="number"
-              id="conveyor_width_in"
+              id="belt_width_in"
               className="input"
-              value={inputs.conveyor_width_in}
-              onChange={(e) => updateInput('conveyor_width_in', parseFloat(e.target.value) || 0)}
+              value={inputs.belt_width_in}
+              onChange={(e) => updateInput('belt_width_in', parseFloat(e.target.value) || 0)}
               step="1"
               min="0"
               required
@@ -960,7 +960,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
         <h3 className="text-lg font-semibold text-gray-900 mb-4">Belt Tracking</h3>
 
         {/* Tracking Guidance Banner */}
-        {inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
+        {inputs.conveyor_length_cc_in > 0 && inputs.belt_width_in > 0 && (() => {
           const guidance = calculateTrackingGuidance(inputs);
           // showWarning used to gate warning display, but warnings now always show if present
           const _showWarning = guidance.riskLevel !== TrackingRiskLevel.Low &&

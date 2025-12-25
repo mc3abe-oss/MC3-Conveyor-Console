@@ -130,7 +130,7 @@ export {
   calculatePulleyRequiresCrown,
   calculatePulleyFaceExtra,
   calculatePulleyFaceLength,
-  calculateShaftDiameter,
+  calculateShaftDiameterLegacy,
 } from './formulas';
 
 // ============================================================================

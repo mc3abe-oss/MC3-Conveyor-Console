@@ -9,6 +9,8 @@ import {
   BeltMaterialProfile,
   getEffectiveMinPulleyDiameters,
   validateMaterialProfile,
+  getCleatSpacingMultiplier,
+  roundUpToIncrement,
 } from './belt-catalog';
 
 describe('getEffectiveMinPulleyDiameters', () => {
@@ -442,5 +444,162 @@ describe('getEffectiveMinPulleyDiameters - banding info', () => {
     expect(result.banding.supported).toBe(true);
     expect(result.banding.minNoVguide).toBeUndefined();
     expect(result.banding.minWithVguide).toBe(6.0);
+  });
+});
+
+// =========================================================================
+// Phase 4: Cleat spacing multiplier tests
+// =========================================================================
+
+describe('getCleatSpacingMultiplier', () => {
+  it('should return 1.0 for 12" spacing', () => {
+    expect(getCleatSpacingMultiplier(12)).toBe(1.0);
+  });
+
+  it('should return 1.15 for 8" spacing', () => {
+    expect(getCleatSpacingMultiplier(8)).toBe(1.15);
+  });
+
+  it('should return 1.25 for 6" spacing', () => {
+    expect(getCleatSpacingMultiplier(6)).toBe(1.25);
+  });
+
+  it('should return 1.35 for 4" spacing', () => {
+    expect(getCleatSpacingMultiplier(4)).toBe(1.35);
+  });
+
+  it('should return 1.0 for spacing >= 12"', () => {
+    expect(getCleatSpacingMultiplier(15)).toBe(1.0);
+    expect(getCleatSpacingMultiplier(24)).toBe(1.0);
+  });
+
+  it('should return 1.35 for spacing <= 4"', () => {
+    expect(getCleatSpacingMultiplier(3)).toBe(1.35);
+    expect(getCleatSpacingMultiplier(2)).toBe(1.35);
+  });
+
+  it('should interpolate for intermediate values', () => {
+    // 7" is between 6" (1.25) and 8" (1.15)
+    const result = getCleatSpacingMultiplier(7);
+    expect(result).toBeCloseTo(1.2, 1);
+  });
+});
+
+describe('roundUpToIncrement', () => {
+  it('should round up to nearest 0.25', () => {
+    expect(roundUpToIncrement(3.1, 0.25)).toBe(3.25);
+    expect(roundUpToIncrement(3.0, 0.25)).toBe(3.0);
+    expect(roundUpToIncrement(3.26, 0.25)).toBe(3.5);
+    expect(roundUpToIncrement(3.51, 0.25)).toBe(3.75);
+  });
+
+  it('should round up to nearest 0.5', () => {
+    expect(roundUpToIncrement(3.1, 0.5)).toBe(3.5);
+    expect(roundUpToIncrement(3.6, 0.5)).toBe(4.0);
+  });
+});
+
+describe('getEffectiveMinPulleyDiameters - cleat method', () => {
+  const baseBelt: BeltCatalogItem = {
+    id: 'test-1',
+    catalog_key: 'TEST_BELT',
+    display_name: 'Test Belt',
+    manufacturer: 'Test Mfg',
+    material: 'PVC',
+    surface: null,
+    food_grade: false,
+    cut_resistant: false,
+    oil_resistant: false,
+    abrasion_resistant: false,
+    antistatic: false,
+    thickness_in: 0.1,
+    piw: 0.12,
+    pil: 0.08,
+    min_pulley_dia_no_vguide_in: 3.0,
+    min_pulley_dia_with_vguide_in: 4.0,
+    notes: null,
+    tags: null,
+    is_active: true,
+  };
+
+  it('should return undefined cleatMethod for legacy belt without profile', () => {
+    const belt: BeltCatalogItem = { ...baseBelt };
+
+    const result = getEffectiveMinPulleyDiameters(belt);
+
+    expect(result.cleatMethod).toBeUndefined();
+  });
+
+  it('should return undefined cleatMethod for profile without cleat_method', () => {
+    const belt: BeltCatalogItem = {
+      ...baseBelt,
+      material_profile: {
+        material_family: 'PVC',
+      },
+    };
+
+    const result = getEffectiveMinPulleyDiameters(belt);
+
+    expect(result.cleatMethod).toBeUndefined();
+  });
+
+  it('should return hot_welded cleatMethod when set in profile', () => {
+    const belt: BeltCatalogItem = {
+      ...baseBelt,
+      material_profile: {
+        material_family: 'PVC',
+        cleat_method: 'hot_welded',
+      },
+    };
+
+    const result = getEffectiveMinPulleyDiameters(belt);
+
+    expect(result.cleatMethod).toBe('hot_welded');
+  });
+
+  it('should return molded cleatMethod when set in profile', () => {
+    const belt: BeltCatalogItem = {
+      ...baseBelt,
+      material_profile: {
+        material_family: 'PU',
+        cleat_method: 'molded',
+      },
+    };
+
+    const result = getEffectiveMinPulleyDiameters(belt);
+
+    expect(result.cleatMethod).toBe('molded');
+  });
+});
+
+describe('validateMaterialProfile - cleat_method', () => {
+  it('should accept valid cleat_method values', () => {
+    const validMethods = ['hot_welded', 'molded', 'mechanical'];
+    for (const method of validMethods) {
+      const result = validateMaterialProfile({
+        material_family: 'PVC',
+        cleat_method: method,
+      });
+      expect(result.isValid).toBe(true);
+    }
+  });
+
+  it('should reject invalid cleat_method values', () => {
+    const result = validateMaterialProfile({
+      material_family: 'PVC',
+      cleat_method: 'invalid_method',
+    });
+
+    expect(result.isValid).toBe(false);
+    expect(result.errors).toContain('cleat_method must be one of: hot_welded, molded, mechanical');
+  });
+
+  it('should accept profile without cleat_method', () => {
+    const result = validateMaterialProfile({
+      material_family: 'PVC',
+      // No cleat_method
+    });
+
+    expect(result.isValid).toBe(true);
   });
 });

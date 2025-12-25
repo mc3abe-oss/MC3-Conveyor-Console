@@ -31,7 +31,7 @@ export default function InputEcho({ inputs }: Props) {
             </h4>
             <div className="space-y-1.5 text-sm">
               <EchoRow label="Length (C-C)" value={`${inputs.conveyor_length_cc_in}"`} />
-              <EchoRow label="Width" value={`${inputs.conveyor_width_in}"`} />
+              <EchoRow label="Belt Width" value={`${inputs.belt_width_in}"`} />
               <EchoRow label="Drive Pulley" value={`${inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4}"`} />
               {inputs.tail_matches_drive === false && inputs.tail_pulley_diameter_in && (
                 <EchoRow label="Tail Pulley" value={`${inputs.tail_pulley_diameter_in}"`} />

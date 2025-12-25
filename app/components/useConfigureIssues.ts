@@ -120,11 +120,11 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
     });
   }
 
-  // Part width vs conveyor width warning
-  if (inputs.part_width_in > inputs.conveyor_width_in) {
+  // Part width vs belt width warning
+  if (inputs.part_width_in > inputs.belt_width_in) {
     issues.push({
       severity: 'warning',
-      message: 'Part width exceeds conveyor width',
+      message: 'Part width exceeds belt width',
       detail: 'Part may not fit on belt or may overhang edges',
       tabKey: 'application',
       sectionKey: 'product',
@@ -172,13 +172,13 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
     });
   }
 
-  if (inputs.conveyor_width_in <= 0) {
+  if (inputs.belt_width_in <= 0) {
     issues.push({
       severity: 'error',
-      message: 'Conveyor width must be greater than 0',
+      message: 'Belt width must be greater than 0',
       tabKey: 'physical',
       sectionKey: 'geometry',
-      fieldKeys: ['conveyor_width_in'],
+      fieldKeys: ['belt_width_in'],
     });
   }
 

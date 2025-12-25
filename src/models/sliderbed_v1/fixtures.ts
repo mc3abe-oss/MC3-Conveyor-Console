@@ -103,7 +103,7 @@ export const EXAMPLE_FIXTURE: TestFixture = {
   name: 'Example Case - Basic Conveyor',
   inputs: {
     conveyor_length_cc_in: 120,
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     conveyor_incline_deg: 0,
     pulley_diameter_in: 4,
     belt_speed_fpm: 104.72,

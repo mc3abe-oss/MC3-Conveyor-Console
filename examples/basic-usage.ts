@@ -18,7 +18,7 @@ console.log('=== Example 1: Basic Calculation ===\n');
 const result1 = calculateSliderbed({
   // Geometry
   conveyor_length_cc_in: 120,
-  conveyor_width_in: 24,
+  belt_width_in: 24,
   pulley_diameter_in: 2.5,
 
   // Speed
@@ -52,7 +52,7 @@ console.log('=== Example 2: Calculation with Warnings ===\n');
 
 const result2 = calculateSliderbed({
   conveyor_length_cc_in: 150, // Long conveyor - will trigger warning
-  conveyor_width_in: 24,
+  belt_width_in: 24,
   pulley_diameter_in: 2.5,
   belt_speed_fpm: 100,
   part_weight_lbs: 5,
@@ -81,7 +81,7 @@ console.log('=== Example 3: Error Handling ===\n');
 
 const result3 = calculateSliderbed({
   conveyor_length_cc_in: 120,
-  conveyor_width_in: 24,
+  belt_width_in: 24,
   pulley_diameter_in: 2.5,
   belt_speed_fpm: 100,
   part_weight_lbs: 5,
@@ -109,7 +109,7 @@ console.log('=== Example 4: Crosswise Orientation ===\n');
 
 const result4 = calculateSliderbed({
   conveyor_length_cc_in: 120,
-  conveyor_width_in: 24,
+  belt_width_in: 24,
   pulley_diameter_in: 2.5,
   belt_speed_fpm: 100,
   part_weight_lbs: 5,
@@ -134,7 +134,7 @@ console.log('=== Example 5: Pulley Size Comparison ===\n');
 
 const pulley2_5 = calculateSliderbed({
   conveyor_length_cc_in: 100,
-  conveyor_width_in: 20,
+  belt_width_in: 20,
   pulley_diameter_in: 2.5,
   belt_speed_fpm: 80,
   part_weight_lbs: 3,
@@ -148,7 +148,7 @@ const pulley2_5 = calculateSliderbed({
 
 const pulley3_0 = calculateSliderbed({
   conveyor_length_cc_in: 100,
-  conveyor_width_in: 20,
+  belt_width_in: 20,
   pulley_diameter_in: 3.0,
   belt_speed_fpm: 80,
   part_weight_lbs: 3,

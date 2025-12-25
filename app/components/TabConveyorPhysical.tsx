@@ -43,6 +43,7 @@ import {
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
 import { getEffectiveMinPulleyDiameters } from '../../src/lib/belt-catalog';
+import { runCalculation } from '../../src/lib/calculator';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey } from './useConfigureIssues';
 
@@ -87,6 +88,7 @@ function GeometryStat({
 export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
+  // v1.11 Phase 4: Also sets belt_cleat_method for cleat spacing multiplier
   const handleBeltChange = (catalogKey: string | undefined, belt: BeltCatalogItem | undefined) => {
     updateInput('belt_catalog_key', catalogKey);
     if (belt) {
@@ -96,11 +98,14 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
       const effectiveMin = getEffectiveMinPulleyDiameters(belt);
       updateInput('belt_min_pulley_dia_no_vguide_in', effectiveMin.noVguide);
       updateInput('belt_min_pulley_dia_with_vguide_in', effectiveMin.withVguide);
+      // Set cleat method from material profile (for cleat spacing multiplier)
+      updateInput('belt_cleat_method', effectiveMin.cleatMethod);
     } else {
       updateInput('belt_piw', undefined);
       updateInput('belt_pil', undefined);
       updateInput('belt_min_pulley_dia_no_vguide_in', undefined);
       updateInput('belt_min_pulley_dia_with_vguide_in', undefined);
+      updateInput('belt_cleat_method', undefined);
     }
   };
 
@@ -110,21 +115,22 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
     ? drivePulleyDia
     : (inputs.tail_pulley_diameter_in ?? drivePulleyDia);
 
-  // Check if pulley diameter is below belt minimum
+  // v1.11 Phase 4.1: Use outputs from runCalculation as single source of truth
+  // for min pulley requirements and cleat spacing multiplier
+  const calcResult = runCalculation({ inputs });
+  const outputs = calcResult.success ? calcResult.outputs : undefined;
+
+  // Get min pulley requirements from outputs (formulas.ts is source of truth)
+  const minPulleyDriveRequired = outputs?.min_pulley_drive_required_in;
+  const minPulleyTailRequired = outputs?.min_pulley_tail_required_in;
+  const cleatSpacingMultiplier = outputs?.cleat_spacing_multiplier;
+  const drivePulleyBelowMinimum = outputs?.drive_pulley_meets_minimum === false;
+  const tailPulleyBelowMinimum = outputs?.tail_pulley_meets_minimum === false;
+
+  // Tracking method for display label
   const isVGuided =
     inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
     inputs.belt_tracking_method === 'V-guided';
-  const minPulleyDia = isVGuided
-    ? inputs.belt_min_pulley_dia_with_vguide_in
-    : inputs.belt_min_pulley_dia_no_vguide_in;
-  const drivePulleyBelowMinimum =
-    minPulleyDia !== undefined &&
-    drivePulleyDia > 0 &&
-    drivePulleyDia < minPulleyDia;
-  const tailPulleyBelowMinimum =
-    minPulleyDia !== undefined &&
-    tailPulleyDia > 0 &&
-    tailPulleyDia < minPulleyDia;
 
   // Compute derived frame height and roller values
   const effectiveFrameHeight = calculateEffectiveFrameHeight(
@@ -293,17 +299,17 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
             </p>
           </div>
 
-          {/* Conveyor Width - always shown */}
+          {/* Belt Width - always shown */}
           <div>
-            <label htmlFor="conveyor_width_in" className="label">
-              Conveyor Width (in)
+            <label htmlFor="belt_width_in" className="label">
+              Belt Width (in)
             </label>
             <input
               type="number"
-              id="conveyor_width_in"
+              id="belt_width_in"
               className="input"
-              value={inputs.conveyor_width_in}
-              onChange={(e) => updateInput('conveyor_width_in', parseFloat(e.target.value) || 0)}
+              value={inputs.belt_width_in}
+              onChange={(e) => updateInput('belt_width_in', parseFloat(e.target.value) || 0)}
               step="1"
               min="0"
               required
@@ -598,7 +604,7 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
           </h4>
 
           {/* Tracking Guidance Banner */}
-          {inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
+          {inputs.conveyor_length_cc_in > 0 && inputs.belt_width_in > 0 && (() => {
             const guidance = calculateTrackingGuidance(inputs);
             const _showWarning = guidance.riskLevel !== TrackingRiskLevel.Low &&
               inputs.belt_tracking_method !== guidance.recommendation;
@@ -786,13 +792,23 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
             </div>
             {drivePulleyBelowMinimum && (
               <p className="text-xs text-red-600 mt-1">
-                Drive pulley is below the belt minimum ({minPulleyDia}" for{' '}
+                Drive pulley is below minimum required ({minPulleyDriveRequired}" for{' '}
                 {isVGuided ? 'V-guided' : 'crowned'} tracking).
+                {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                  <span className="block text-red-500 text-xs mt-0.5">
+                    Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                  </span>
+                )}
               </p>
             )}
-            {!drivePulleyBelowMinimum && minPulleyDia !== undefined && (
+            {!drivePulleyBelowMinimum && minPulleyDriveRequired !== undefined && (
               <p className="text-xs text-gray-500 mt-1">
-                Minimum required: {minPulleyDia}" ({isVGuided ? 'V-guided' : 'crowned'})
+                Minimum required: {minPulleyDriveRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
+                {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                  <span className="block text-amber-600 text-xs mt-0.5">
+                    Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                  </span>
+                )}
               </p>
             )}
           </div>
@@ -856,13 +872,23 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
               </div>
               {tailPulleyBelowMinimum && (
                 <p className="text-xs text-red-600 mt-1">
-                  Tail pulley is below the belt minimum ({minPulleyDia}" for{' '}
+                  Tail pulley is below minimum required ({minPulleyTailRequired}" for{' '}
                   {isVGuided ? 'V-guided' : 'crowned'} tracking).
+                  {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                    <span className="block text-red-500 text-xs mt-0.5">
+                      Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                    </span>
+                  )}
                 </p>
               )}
-              {!tailPulleyBelowMinimum && minPulleyDia !== undefined && (
+              {!tailPulleyBelowMinimum && minPulleyTailRequired !== undefined && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Minimum required: {minPulleyDia}" ({isVGuided ? 'V-guided' : 'crowned'})
+                  Minimum required: {minPulleyTailRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
+                  {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                    <span className="block text-amber-600 text-xs mt-0.5">
+                      Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                    </span>
+                  )}
                 </p>
               )}
             </div>

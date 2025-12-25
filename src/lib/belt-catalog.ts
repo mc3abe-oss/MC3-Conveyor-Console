@@ -1,5 +1,5 @@
 /**
- * Belt Catalog Types (v1.11 Phase 3A)
+ * Belt Catalog Types (v1.11 Phase 4)
  *
  * Shared type definitions for belt catalog and material profiles.
  * These types are used by:
@@ -8,6 +8,7 @@
  * - Admin UI (belt management)
  *
  * Phase 3A adds head tension banding support fields.
+ * Phase 4 adds cleat_method for hot-welded cleat multiplier support.
  */
 
 /**
@@ -63,6 +64,19 @@ export interface BeltMaterialProfile {
    * Only valid when supports_banding is true.
    */
   banding_min_dia_with_vguide_in?: number;
+
+  // =========================================================================
+  // Phase 4: Cleat Method Support
+  // =========================================================================
+
+  /**
+   * Cleat attachment method for this belt material.
+   * - "hot_welded": PVC hot-welded cleats - requires min pulley diameter multiplier based on spacing
+   * - "molded": Molded cleats - no multiplier required
+   * - "mechanical": Mechanically attached cleats - no multiplier required
+   * - undefined/null: Unknown or not applicable
+   */
+  cleat_method?: 'hot_welded' | 'molded' | 'mechanical';
 }
 
 /**
@@ -119,22 +133,80 @@ export interface BandingInfo {
 }
 
 /**
+ * Cleat method type for belt materials
+ */
+export type CleatMethod = 'hot_welded' | 'molded' | 'mechanical';
+
+/**
+ * Cleat spacing multiplier table for PVC hot-welded cleats.
+ * Per PVC Hot Welded specification table.
+ */
+export const CLEAT_SPACING_MULTIPLIERS: Record<number, number> = {
+  12: 1.0,
+  8: 1.15,
+  6: 1.25,
+  4: 1.35,
+};
+
+/**
+ * Get cleat spacing multiplier for hot-welded cleats.
+ * Uses linear interpolation for non-standard spacing values.
+ *
+ * @param spacingIn - Center-to-center cleat spacing in inches
+ * @returns Multiplier to apply to base minimum pulley diameter
+ */
+export function getCleatSpacingMultiplier(spacingIn: number): number {
+  // Standard spacing values
+  if (spacingIn >= 12) return 1.0;
+  if (spacingIn <= 4) return 1.35;
+
+  // Known values
+  if (spacingIn === 8) return 1.15;
+  if (spacingIn === 6) return 1.25;
+
+  // Linear interpolation for intermediate values
+  const breakpoints = [4, 6, 8, 12];
+  const multipliers = [1.35, 1.25, 1.15, 1.0];
+
+  for (let i = 0; i < breakpoints.length - 1; i++) {
+    if (spacingIn >= breakpoints[i] && spacingIn < breakpoints[i + 1]) {
+      const t = (spacingIn - breakpoints[i]) / (breakpoints[i + 1] - breakpoints[i]);
+      return multipliers[i] + t * (multipliers[i + 1] - multipliers[i]);
+    }
+  }
+
+  return 1.0; // Fallback
+}
+
+/**
+ * Round a value UP to the nearest increment.
+ *
+ * @param value - Value to round
+ * @param increment - Increment to round to (e.g., 0.25 or 0.5)
+ * @returns Value rounded up to nearest increment
+ */
+export function roundUpToIncrement(value: number, increment: number): number {
+  return Math.ceil(value / increment) * increment;
+}
+
+/**
  * Get effective minimum pulley diameter from belt catalog item.
  *
  * Precedence:
  * 1. material_profile.min_dia_* (if present and defined)
  * 2. Legacy flat columns (min_pulley_dia_*)
  *
- * Also returns banding information if available in the profile.
+ * Also returns banding information and cleat method if available in the profile.
  *
  * @param belt - Belt catalog item
- * @returns Object with effective min diameters and banding info
+ * @returns Object with effective min diameters, banding info, and cleat method
  */
 export function getEffectiveMinPulleyDiameters(belt: BeltCatalogItem): {
   noVguide: number;
   withVguide: number;
   source: 'material_profile' | 'catalog';
   banding: BandingInfo;
+  cleatMethod: CleatMethod | undefined;
 } {
   const profile = belt.material_profile;
 
@@ -159,7 +231,10 @@ export function getEffectiveMinPulleyDiameters(belt: BeltCatalogItem): {
     minWithVguide: profile?.banding_min_dia_with_vguide_in,
   };
 
-  return { noVguide, withVguide, source, banding };
+  // Get cleat method from profile
+  const cleatMethod = profile?.cleat_method;
+
+  return { noVguide, withVguide, source, banding, cleatMethod };
 }
 
 /**
@@ -250,6 +325,16 @@ export function validateMaterialProfile(profile: unknown): {
 
   if (hasBandingMins && p.supports_banding !== true) {
     errors.push('banding_min_dia_* fields require supports_banding to be true');
+  }
+
+  // =========================================================================
+  // Phase 4: Validate cleat_method
+  // =========================================================================
+  const validCleatMethods = ['hot_welded', 'molded', 'mechanical'];
+  if (p.cleat_method !== undefined && p.cleat_method !== null) {
+    if (typeof p.cleat_method !== 'string' || !validCleatMethods.includes(p.cleat_method)) {
+      errors.push(`cleat_method must be one of: ${validCleatMethods.join(', ')}`);
+    }
   }
 
   return { isValid: errors.length === 0, errors };

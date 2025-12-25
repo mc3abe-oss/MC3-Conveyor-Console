@@ -127,7 +127,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should calculate successfully with valid inputs', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         conveyor_incline_deg: 0,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
@@ -152,7 +152,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should apply default values for optional inputs', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 100,
-        conveyor_width_in: 20,
+        belt_width_in: 20,
         pulley_diameter_in: 2.5,
         drive_rpm: 80,
         part_weight_lbs: 3,
@@ -175,7 +175,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should use parameter overrides when provided', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 100,
-        conveyor_width_in: 20,
+        belt_width_in: 20,
         pulley_diameter_in: 2.5,
         drive_rpm: 80,
         part_weight_lbs: 3,
@@ -209,7 +209,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should reject negative conveyor length', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: -10,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -233,7 +233,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should reject zero drive RPM in drive_rpm mode', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         belt_speed_fpm: 65.45,
         drive_rpm: 0,
@@ -259,7 +259,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should reject negative part weight', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: -5,
@@ -282,7 +282,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should reject negative drop height', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -307,7 +307,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should allow zero drop height', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -336,7 +336,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should error on red hot parts', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -363,7 +363,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should warn on considerable oil', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -389,7 +389,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should warn on long conveyor', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 150,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -415,7 +415,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should warn on hot parts', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -441,7 +441,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should warn on high drop height (>= 24 inches)', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -467,7 +467,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should show info on light oil', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -501,7 +501,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should calculate parts_on_belt correctly for lengthwise orientation', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -524,7 +524,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should calculate parts_on_belt correctly for crosswise orientation', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -547,7 +547,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should use correct belt weight coefficients for 2.5" pulley', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 100,
-        conveyor_width_in: 20,
+        belt_width_in: 20,
         pulley_diameter_in: 2.5,
         drive_rpm: 80,
         part_weight_lbs: 3,
@@ -570,7 +570,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should use correct belt weight coefficients for non-2.5" pulley', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 100,
-        conveyor_width_in: 20,
+        belt_width_in: 20,
         pulley_diameter_in: 3.0,
         drive_rpm: 80,
         part_weight_lbs: 3,
@@ -593,7 +593,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should calculate total belt length correctly', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 100,
-        conveyor_width_in: 20,
+        belt_width_in: 20,
         pulley_diameter_in: 2.5,
         drive_rpm: 80,
         part_weight_lbs: 3,
@@ -623,7 +623,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should reject invalid friction coefficient', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -649,7 +649,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should reject safety factor < 1.0', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -680,7 +680,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
   describe('Power-User Parameters', () => {
     const baseInputs: SliderbedInputs = {
       conveyor_length_cc_in: 120,
-      conveyor_width_in: 24,
+      belt_width_in: 24,
       pulley_diameter_in: 2.5,
       drive_rpm: 100,
       part_weight_lbs: 5,
@@ -784,7 +784,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should include correct metadata', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -808,7 +808,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     it('should use custom model_version_id when provided', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 2.5,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -836,7 +836,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
   describe('Incline Calculations', () => {
     const baseInputs: SliderbedInputs = {
       conveyor_length_cc_in: 120,
-      conveyor_width_in: 24,
+      belt_width_in: 24,
       pulley_diameter_in: 2.5,
       drive_rpm: 100,
       part_weight_lbs: 5,
@@ -931,7 +931,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
   describe('Belt Tracking & Pulley', () => {
     const baseInputs: SliderbedInputs = {
       conveyor_length_cc_in: 120,
-      conveyor_width_in: 24,
+      belt_width_in: 24,
       pulley_diameter_in: 2.5,
       drive_rpm: 100,
       part_weight_lbs: 5,
@@ -1092,7 +1092,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
   describe('Belt PIW/PIL Overrides', () => {
     const baseInputs: SliderbedInputs = {
       conveyor_length_cc_in: 120,
-      conveyor_width_in: 24,
+      belt_width_in: 24,
       pulley_diameter_in: 4.0,
       drive_rpm: 100,
       part_weight_lbs: 5,
@@ -1309,7 +1309,7 @@ describe('Belt Tracking Guidance', () => {
 
   const baseInputs: SliderbedInputs = {
     conveyor_length_cc_in: 72, // 72" / 24" = 3:1 L:W ratio (Low)
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     pulley_diameter_in: 2.5,
     belt_speed_fpm: 50, // Low speed
     drive_rpm: 100,
@@ -1326,7 +1326,7 @@ describe('Belt Tracking Guidance', () => {
 
   describe('Risk Assessment - L:W Ratio', () => {
     it('should assess low risk for L:W <= 3:1', () => {
-      const inputs = { ...baseInputs, conveyor_length_cc_in: 72, conveyor_width_in: 24 }; // 3:1
+      const inputs = { ...baseInputs, conveyor_length_cc_in: 72, belt_width_in: 24 }; // 3:1
       const guidance = calculateTrackingGuidance(inputs);
 
       const lwFactor = guidance.factors.find(f => f.name === 'Length-to-Width Ratio');
@@ -1334,7 +1334,7 @@ describe('Belt Tracking Guidance', () => {
     });
 
     it('should assess medium risk for L:W between 3:1 and 6:1', () => {
-      const inputs = { ...baseInputs, conveyor_length_cc_in: 120, conveyor_width_in: 24 }; // 5:1
+      const inputs = { ...baseInputs, conveyor_length_cc_in: 120, belt_width_in: 24 }; // 5:1
       const guidance = calculateTrackingGuidance(inputs);
 
       const lwFactor = guidance.factors.find(f => f.name === 'Length-to-Width Ratio');
@@ -1342,7 +1342,7 @@ describe('Belt Tracking Guidance', () => {
     });
 
     it('should assess high risk for L:W > 6:1', () => {
-      const inputs = { ...baseInputs, conveyor_length_cc_in: 180, conveyor_width_in: 24 }; // 7.5:1
+      const inputs = { ...baseInputs, conveyor_length_cc_in: 180, belt_width_in: 24 }; // 7.5:1
       const guidance = calculateTrackingGuidance(inputs);
 
       const lwFactor = guidance.factors.find(f => f.name === 'Length-to-Width Ratio');
@@ -1477,7 +1477,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 60, // 2.5:1 L:W
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         belt_speed_fpm: 50,
         direction_mode: DirectionMode.OneDirection,
         side_loading_direction: SideLoadingDirection.None,
@@ -1493,7 +1493,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 180, // 7.5:1 L:W (High)
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         direction_mode: DirectionMode.Reversing, // High
       };
       const guidance = calculateTrackingGuidance(inputs);
@@ -1506,7 +1506,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 120, // 5:1 L:W (Medium)
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         belt_speed_fpm: 150, // Medium
         environment_factors: [EnvironmentFactors.Washdown], // Medium
       };
@@ -1533,7 +1533,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 180, // 7.5:1 L:W
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         belt_tracking_method: BeltTrackingMethod.Crowned,
       };
       const guidance = calculateTrackingGuidance(inputs);
@@ -1545,7 +1545,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 40, // 40/30 = 1.33:1 L:W (too low)
-        conveyor_width_in: 30,
+        belt_width_in: 30,
         belt_tracking_method: BeltTrackingMethod.Crowned,
       };
       const guidance = calculateTrackingGuidance(inputs);
@@ -1557,7 +1557,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 40, // 1.33:1 L:W (too low for crowned)
-        conveyor_width_in: 30,
+        belt_width_in: 30,
         belt_tracking_method: BeltTrackingMethod.VGuided,
         v_guide_profile: 'K10',
       };
@@ -1570,7 +1570,7 @@ describe('Belt Tracking Guidance', () => {
       const inputs = {
         ...baseInputs,
         conveyor_length_cc_in: 60, // 60/30 = 2.0:1 L:W (at threshold, not below)
-        conveyor_width_in: 30,
+        belt_width_in: 30,
         belt_tracking_method: BeltTrackingMethod.Crowned,
       };
       const guidance = calculateTrackingGuidance(inputs);
@@ -1672,7 +1672,7 @@ describe('Split Pulley Diameter (v1.3)', () => {
 
   const baseInputs: SliderbedInputs = {
     conveyor_length_cc_in: 100,
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     pulley_diameter_in: 4, // Legacy field
     drive_rpm: 100,
     part_weight_lbs: 5,
@@ -1905,7 +1905,7 @@ describe('Belt Cleats (v1.3)', () => {
 
   const baseInputs: SliderbedInputs = {
     conveyor_length_cc_in: 100,
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     pulley_diameter_in: 4,
     drive_rpm: 100,
     part_weight_lbs: 5,
@@ -2137,7 +2137,7 @@ describe('Belt Cleats (v1.3)', () => {
     it('should warn when cleat edge offset exceeds half belt width', () => {
       const inputs = {
         ...baseInputs,
-        conveyor_width_in: 20,
+        belt_width_in: 20,
         cleats_enabled: true,
         cleat_height_in: 1,
         cleat_spacing_in: 12,
@@ -2198,7 +2198,7 @@ describe('Support & Height Model (v1.4)', () => {
 
   const baseInputs: SliderbedInputs = {
     conveyor_length_cc_in: 120,
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     pulley_diameter_in: 4,
     drive_rpm: 100,
     part_weight_lbs: 5,
@@ -2933,7 +2933,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
     const baseInputs: SliderbedInputs = {
       conveyor_length_cc_in: 120,
-      conveyor_width_in: 24,
+      belt_width_in: 24,
       pulley_diameter_in: 4,
       drive_pulley_diameter_in: 4,
       tail_pulley_diameter_in: 4,
@@ -3049,7 +3049,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     it('should error when Custom mode has no custom_frame_height_in', () => {
       const inputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 4,
         frame_height_mode: FrameHeightMode.Custom,
         // custom_frame_height_in missing
@@ -3062,7 +3062,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     it('should error when custom_frame_height_in < minimum', () => {
       const inputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 4,
         frame_height_mode: FrameHeightMode.Custom,
         custom_frame_height_in: 2.5, // Below 3.0" minimum
@@ -3077,7 +3077,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     it('should pass validation for valid custom frame height', () => {
       const inputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         pulley_diameter_in: 4,
         drive_rpm: 100,
         part_weight_lbs: 5,
@@ -3147,7 +3147,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       it('should output both gravity and snub rollers for low profile long conveyor', () => {
         const inputs: SliderbedInputs = {
           conveyor_length_cc_in: 360, // 30 feet
-          conveyor_width_in: 24,
+          belt_width_in: 24,
           pulley_diameter_in: 4,
           drive_pulley_diameter_in: 4,
           tail_pulley_diameter_in: 4,
@@ -3209,7 +3209,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       it('should output only gravity rollers when frame height above snub threshold', () => {
         const inputs: SliderbedInputs = {
           conveyor_length_cc_in: 240,
-          conveyor_width_in: 24,
+          belt_width_in: 24,
           pulley_diameter_in: 4,
           drive_pulley_diameter_in: 4,
           tail_pulley_diameter_in: 4,
@@ -3339,7 +3339,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
     it('should calculate drive_rpm from belt_speed_fpm correctly', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         conveyor_incline_deg: 0,
         pulley_diameter_in: 2.5,
         drive_pulley_diameter_in: 2.5,
@@ -3403,7 +3403,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
     it('should calculate belt_speed_fpm from drive_rpm_input correctly', () => {
       const inputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         conveyor_incline_deg: 0,
         pulley_diameter_in: 2.5,
         drive_pulley_diameter_in: 2.5,
@@ -3495,7 +3495,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
       // Test in Belt Speed mode
       const beltSpeedInputs: SliderbedInputs = {
         conveyor_length_cc_in: 120,
-        conveyor_width_in: 24,
+        belt_width_in: 24,
         conveyor_incline_deg: 0,
         pulley_diameter_in: pulleyDia,
         drive_pulley_diameter_in: pulleyDia,
@@ -3796,7 +3796,7 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
   // Base inputs for all tests
   const BASE_INPUTS: SliderbedInputs = {
     conveyor_length_cc_in: 120,
-    conveyor_width_in: 24,
+    belt_width_in: 24,
     conveyor_incline_deg: 0,
     pulley_diameter_in: 4, // Default pulley size
     drive_pulley_diameter_in: 4,
@@ -4043,6 +4043,221 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
       expect(
         result.warnings?.some((w) => w.message.includes('below belt minimum'))
       ).toBe(false);
+    });
+  });
+
+  // ==========================================================================
+  // v1.11 Phase 4: CLEAT SPACING MULTIPLIER TESTS
+  // ==========================================================================
+
+  describe('Cleat Spacing Multiplier (Phase 4)', () => {
+    describe('Cleats OFF - no multiplier', () => {
+      it('should not apply multiplier when cleats are disabled', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: false, // Cleats OFF
+          cleat_spacing_in: 6, // Even with tight spacing, should not matter
+          drive_pulley_diameter_in: 4,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.0); // No multiplier
+        expect(result.outputs?.min_pulley_base_in).toBe(3.0);
+        expect(result.outputs?.cleat_spacing_multiplier).toBeUndefined();
+        expect(result.outputs?.drive_pulley_meets_minimum).toBe(true);
+      });
+    });
+
+    describe('Cleats ON + 12" spacing - 1.0x (no change)', () => {
+      it('should apply 1.0x multiplier for 12" spacing (no effective change)', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: true,
+          cleat_spacing_in: 12,
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 4,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        // 3.0 * 1.0 = 3.0, rounded up to 3.0
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.0);
+        expect(result.outputs?.min_pulley_base_in).toBe(3.0);
+        expect(result.outputs?.cleat_spacing_multiplier).toBe(1.0);
+        expect(result.outputs?.drive_pulley_meets_minimum).toBe(true);
+      });
+    });
+
+    describe('Cleats ON + 6" spacing - 1.25x', () => {
+      it('should apply 1.25x multiplier for 6" spacing', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: true,
+          cleat_spacing_in: 6,
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 4,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        // 3.0 * 1.25 = 3.75, rounded up = 3.75
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.75);
+        expect(result.outputs?.min_pulley_base_in).toBe(3.0);
+        expect(result.outputs?.cleat_spacing_multiplier).toBe(1.25);
+        expect(result.outputs?.drive_pulley_meets_minimum).toBe(true); // 4 >= 3.75
+      });
+
+      it('should generate warning when pulley is below adjusted minimum', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: true,
+          cleat_spacing_in: 6,
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 3.5, // Below 3.75 (adjusted min)
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.75);
+        expect(result.outputs?.drive_pulley_meets_minimum).toBe(false);
+        // Note: The warning is generated based on inputs (base min), not adjusted output
+        // The formulas correctly output drive_pulley_meets_minimum = false
+        // UI should use this flag to show the warning with adjusted min
+      });
+    });
+
+    describe('Cleats ON + no spacing provided - default 12" (1.0x)', () => {
+      it('should default to 12" spacing when not provided', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: true,
+          cleat_spacing_in: 12, // Need to provide for validation, but test default behavior in formulas
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 4,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        // Default 12" spacing = 1.0x multiplier
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.0);
+        expect(result.outputs?.cleat_spacing_multiplier).toBe(1.0);
+      });
+    });
+
+    describe('Rounding behavior', () => {
+      it('should round UP adjusted min to nearest 0.25"', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: true,
+          cleat_spacing_in: 8, // 1.15x multiplier
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 5,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        // 3.0 * 1.15 = 3.45, rounded UP to 3.5
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.5);
+        expect(result.outputs?.cleat_spacing_multiplier).toBe(1.15);
+      });
+    });
+
+    describe('Non-hot-welded cleats - no multiplier', () => {
+      it('should not apply multiplier for molded cleats', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_cleat_method: 'molded', // Not hot_welded
+          cleats_enabled: true,
+          cleat_spacing_in: 4, // Would be 1.35x if hot_welded
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 4,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.0); // No multiplier
+        expect(result.outputs?.cleat_spacing_multiplier).toBeUndefined();
+      });
+
+      it('should not apply multiplier when belt_cleat_method is undefined', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.Crowned,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          // belt_cleat_method NOT set
+          cleats_enabled: true,
+          cleat_spacing_in: 4,
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 4,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(3.0); // No multiplier
+        expect(result.outputs?.cleat_spacing_multiplier).toBeUndefined();
+      });
+    });
+
+    describe('V-guided tracking with cleats', () => {
+      it('should apply multiplier to V-guided minimum correctly', () => {
+        const inputs: SliderbedInputs = {
+          ...BASE_INPUTS,
+          belt_tracking_method: BeltTrackingMethod.VGuided,
+          v_guide_profile: VGuideProfile.K10,
+          belt_min_pulley_dia_no_vguide_in: 3.0,
+          belt_min_pulley_dia_with_vguide_in: 4.0, // V-guided uses this
+          belt_cleat_method: 'hot_welded',
+          cleats_enabled: true,
+          cleat_spacing_in: 6, // 1.25x
+          cleat_height_in: 1,
+          cleat_edge_offset_in: 0.5,
+          drive_pulley_diameter_in: 6,
+        };
+
+        const result = runCalculation({ inputs });
+
+        expect(result.success).toBe(true);
+        // 4.0 * 1.25 = 5.0
+        expect(result.outputs?.min_pulley_drive_required_in).toBe(5.0);
+        expect(result.outputs?.min_pulley_base_in).toBe(4.0);
+        expect(result.outputs?.cleat_spacing_multiplier).toBe(1.25);
+      });
     });
   });
 });

@@ -49,7 +49,7 @@ export {
   calculatePulleyRequiresCrown,
   calculatePulleyFaceExtra,
   calculatePulleyFaceLength,
-  calculateShaftDiameter,
+  calculateShaftDiameterLegacy,
 } from '../sliderbed_v1/formulas';
 
 import { calculate as sliderbedCalculate } from '../sliderbed_v1/formulas';

@@ -8,6 +8,8 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.12 (2025-12-25): Von Mises-based shaft diameter calculation, belt_width_in rename
+ * v1.11 Phase 4 (2025-12-24): Cleat spacing multiplier for hot-welded PVC cleats
  * v1.11 (2025-12-24): Belt minimum pulley diameter outputs
  * v1.7 (2025-12-22): Chain ratio stage for bottom-mount gearmotor configuration
  * v1.6 (2025-12-22): Speed mode - Belt Speed + Motor RPM as primary inputs, derive Drive RPM
@@ -30,6 +32,8 @@ import {
   GearmotorMountingStyle,
 } from './schema';
 import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
+import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
+import { getShaftSizingFromOutputs } from './shaftCalc';
 
 // ============================================================================
 // CONSTANTS
@@ -145,7 +149,7 @@ export function calculateTotalBeltLengthSplit(
  * Calculate belt weight in lbf (pounds-force)
  *
  * Formula:
- *   belt_weight_lb = belt_coeff_piw * belt_coeff_pil * conveyor_width_in * total_belt_length_in
+ *   belt_weight_lb = belt_coeff_piw * belt_coeff_pil * belt_width_in * total_belt_length_in
  */
 export function calculateBeltWeight(
   piw: number,
@@ -465,17 +469,19 @@ export function calculatePulleyFaceExtra(
  * Calculate pulley face length in inches
  *
  * Formula:
- *   pulley_face_length_in = conveyor_width_in + pulley_face_extra_in
+ *   pulley_face_length_in = belt_width_in + pulley_face_extra_in
  */
 export function calculatePulleyFaceLength(
-  conveyorWidthIn: number,
+  beltWidthIn: number,
   pulleyFaceExtraIn: number
 ): number {
-  return conveyorWidthIn + pulleyFaceExtraIn;
+  return beltWidthIn + pulleyFaceExtraIn;
 }
 
 /**
- * Calculate shaft diameter in inches
+ * Calculate shaft diameter in inches (legacy heuristic method)
+ *
+ * @deprecated Use getShaftSizingFromOutputs from shaftCalc.ts for von Mises-based calculation
  *
  * If shaft_diameter_mode is 'Manual', use the provided value
  * If shaft_diameter_mode is 'Calculated', use a default lookup (simplified for now)
@@ -489,7 +495,7 @@ export function calculatePulleyFaceLength(
  *
  * Note: In production, this would reference a shaft selection table
  */
-export function calculateShaftDiameter(
+export function calculateShaftDiameterLegacy(
   shaftDiameterMode: ShaftDiameterMode | string,
   manualDiameter: number | undefined,
   conveyorWidthIn: number,
@@ -752,7 +758,7 @@ export function calculate(
   const beltWeightLbf = calculateBeltWeight(
     piw,
     pil,
-    inputs.conveyor_width_in,
+    inputs.belt_width_in,
     totalBeltLengthIn
   );
 
@@ -885,22 +891,36 @@ export function calculate(
   const isVGuided = calculateIsVGuided(beltTrackingMethod);
   const pulleyRequiresCrown = calculatePulleyRequiresCrown(isVGuided);
   const pulleyFaceExtraIn = calculatePulleyFaceExtra(isVGuided, parameters);
-  const pulleyFaceLengthIn = calculatePulleyFaceLength(inputs.conveyor_width_in, pulleyFaceExtraIn);
+  const pulleyFaceLengthIn = calculatePulleyFaceLength(inputs.belt_width_in, pulleyFaceExtraIn);
 
-  // Step 18: Shaft diameter calculations
+  // Step 18: Shaft diameter calculations (v1.12 - von Mises based)
   const shaftDiameterMode = inputs.shaft_diameter_mode ?? ShaftDiameterMode.Calculated;
-  const driveShaftDiameterIn = calculateShaftDiameter(
-    shaftDiameterMode,
-    inputs.drive_shaft_diameter_in,
-    inputs.conveyor_width_in,
-    torqueDriveShaftInlbf
-  );
-  const tailShaftDiameterIn = calculateShaftDiameter(
-    shaftDiameterMode,
-    inputs.tail_shaft_diameter_in,
-    inputs.conveyor_width_in,
-    torqueDriveShaftInlbf * 0.5 // Tail shaft typically sees less torque
-  );
+
+  let driveShaftDiameterIn: number;
+  let tailShaftDiameterIn: number;
+
+  if (shaftDiameterMode === ShaftDiameterMode.Manual || shaftDiameterMode === 'Manual') {
+    // Manual mode: use user-specified values
+    driveShaftDiameterIn = inputs.drive_shaft_diameter_in ?? 1.0;
+    tailShaftDiameterIn = inputs.tail_shaft_diameter_in ?? 1.0;
+  } else {
+    // Calculated mode: use von Mises-based shaft sizing
+    const driveShaftSizing = getShaftSizingFromOutputs(
+      inputs.belt_width_in,
+      drivePulleyDiameterIn,
+      totalBeltPullLb,
+      true // is drive pulley
+    );
+    const tailShaftSizing = getShaftSizingFromOutputs(
+      inputs.belt_width_in,
+      tailPulleyDiameterIn,
+      totalBeltPullLb,
+      false // is tail pulley
+    );
+
+    driveShaftDiameterIn = driveShaftSizing.required_diameter_in;
+    tailShaftDiameterIn = tailShaftSizing.required_diameter_in;
+  }
 
   // Step 19: Frame height calculations (v1.5)
   const effectiveFrameHeightIn = calculateEffectiveFrameHeight(
@@ -929,21 +949,48 @@ export function calculate(
   );
 
   // Step 21: Belt minimum pulley diameter requirements (v1.11)
-  // Determine minimum pulley diameter based on belt spec and tracking method
-  const minPulleyFromBelt = isVGuided
+  // Determine base minimum pulley diameter based on belt spec and tracking method
+  const minPulleyBaseFromBelt = isVGuided
     ? inputs.belt_min_pulley_dia_with_vguide_in
     : inputs.belt_min_pulley_dia_no_vguide_in;
 
-  // Only compute if belt has a minimum requirement (belt is selected)
-  const minPulleyDriveRequiredIn = minPulleyFromBelt;
-  const minPulleyTailRequiredIn = minPulleyFromBelt; // Same as drive in v1.11
+  // Step 21b: Apply cleat spacing multiplier for hot-welded cleats (v1.11 Phase 4)
+  // Multiplier applies when:
+  // 1. Belt has a minimum requirement (belt is selected)
+  // 2. Cleats are enabled
+  // 3. Belt uses hot_welded cleat method
+  const cleatsEnabled = inputs.cleats_enabled === true;
+  const isHotWeldedCleats = inputs.belt_cleat_method === 'hot_welded';
+  const cleatSpacingIn = inputs.cleat_spacing_in ?? 12; // Default to 12" if not specified
+
+  let cleatSpacingMultiplier: number | undefined;
+  let minPulleyDriveRequiredIn: number | undefined;
+  let minPulleyTailRequiredIn: number | undefined;
+
+  if (minPulleyBaseFromBelt !== undefined) {
+    if (cleatsEnabled && isHotWeldedCleats) {
+      // Apply multiplier and round UP to nearest 0.25"
+      cleatSpacingMultiplier = getCleatSpacingMultiplier(cleatSpacingIn);
+      const adjustedMin = roundUpToIncrement(
+        minPulleyBaseFromBelt * cleatSpacingMultiplier,
+        0.25
+      );
+      minPulleyDriveRequiredIn = adjustedMin;
+      minPulleyTailRequiredIn = adjustedMin; // Same as drive in v1.11
+    } else {
+      // No multiplier - use base value
+      cleatSpacingMultiplier = undefined;
+      minPulleyDriveRequiredIn = minPulleyBaseFromBelt;
+      minPulleyTailRequiredIn = minPulleyBaseFromBelt;
+    }
+  }
 
   // Check if current pulleys meet the minimum (undefined if no belt selected)
-  const drivePulleyMeetsMinimum = minPulleyFromBelt !== undefined
-    ? drivePulleyDiameterIn >= minPulleyFromBelt
+  const drivePulleyMeetsMinimum = minPulleyDriveRequiredIn !== undefined
+    ? drivePulleyDiameterIn >= minPulleyDriveRequiredIn
     : undefined;
-  const tailPulleyMeetsMinimum = minPulleyFromBelt !== undefined
-    ? tailPulleyDiameterIn >= minPulleyFromBelt
+  const tailPulleyMeetsMinimum = minPulleyTailRequiredIn !== undefined
+    ? tailPulleyDiameterIn >= minPulleyTailRequiredIn
     : undefined;
 
   // Return all outputs
@@ -1008,6 +1055,10 @@ export function calculate(
     min_pulley_tail_required_in: minPulleyTailRequiredIn,
     drive_pulley_meets_minimum: drivePulleyMeetsMinimum,
     tail_pulley_meets_minimum: tailPulleyMeetsMinimum,
+
+    // v1.11 Phase 4: Cleat spacing multiplier outputs
+    min_pulley_base_in: minPulleyBaseFromBelt,
+    cleat_spacing_multiplier: cleatSpacingMultiplier,
 
     // v1.3: Cleats (spec-only, no calculation impact)
     cleats_enabled: inputs.cleats_enabled ?? false,

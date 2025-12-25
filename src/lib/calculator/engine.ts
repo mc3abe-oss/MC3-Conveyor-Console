@@ -20,6 +20,28 @@ import { calculate } from '../../models/sliderbed_v1/formulas';
 import { validate } from '../../models/sliderbed_v1/rules';
 
 // ============================================================================
+// INPUT NORMALIZATION
+// ============================================================================
+
+/**
+ * Normalize inputs for backward compatibility.
+ * Handles legacy field names and applies defaults.
+ *
+ * - conveyor_width_in → belt_width_in (v1.12 rename)
+ */
+function normalizeInputs(inputs: SliderbedInputs): SliderbedInputs {
+  const normalized = { ...inputs };
+
+  // v1.12: conveyor_width_in renamed to belt_width_in
+  // Support legacy configs that use conveyor_width_in
+  if (normalized.belt_width_in === undefined && normalized.conveyor_width_in !== undefined) {
+    normalized.belt_width_in = normalized.conveyor_width_in;
+  }
+
+  return normalized;
+}
+
+// ============================================================================
 // CALCULATION ENGINE
 // ============================================================================
 
@@ -37,10 +59,13 @@ export interface CalculationRequest {
  */
 export function runCalculation(request: CalculationRequest): CalculationResult {
   const {
-    inputs,
+    inputs: rawInputs,
     parameters: parameterOverrides,
     model_version_id = 'sliderbed_v1_factory_default',
   } = request;
+
+  // Normalize inputs for backward compatibility (legacy field names)
+  const inputs = normalizeInputs(rawInputs);
 
   // Merge default parameters with any overrides
   const parameters: SliderbedParameters = {

@@ -294,22 +294,27 @@ export default function CalculationResults({ result, inputs }: Props) {
                 unit="in"
                 decimals={2}
               />
-              <ResultRow
-                label="Drive Shaft Diameter"
-                value={outputs.drive_shaft_diameter_in}
-                unit="in"
-                decimals={3}
-              />
-              <ResultRow
-                label="Tail Shaft Diameter"
-                value={outputs.tail_shaft_diameter_in}
-                unit="in"
-                decimals={3}
-              />
+              {/* Shaft diameters - only show when mode is Calculated */}
+              {inputs?.shaft_diameter_mode === 'Calculated' && (
+                <>
+                  <ResultRow
+                    label="Drive Shaft Diameter (calc)"
+                    value={outputs.drive_shaft_diameter_in}
+                    unit="in"
+                    decimals={3}
+                  />
+                  <ResultRow
+                    label="Tail Shaft Diameter (calc)"
+                    value={outputs.tail_shaft_diameter_in}
+                    unit="in"
+                    decimals={3}
+                  />
+                </>
+              )}
             </div>
 
             {/* Tracking Guidance Summary */}
-            {inputs && inputs.conveyor_length_cc_in > 0 && inputs.conveyor_width_in > 0 && (() => {
+            {inputs && inputs.conveyor_length_cc_in > 0 && inputs.belt_width_in > 0 && (() => {
               const guidance = calculateTrackingGuidance(inputs);
               const isOptimal = inputs.belt_tracking_method === guidance.recommendation;
 

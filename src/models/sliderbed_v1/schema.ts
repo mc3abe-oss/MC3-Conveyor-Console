@@ -442,8 +442,15 @@ export interface SliderbedInputs {
    */
   horizontal_run_in?: number;
 
-  /** Conveyor Width in inches */
-  conveyor_width_in: number;
+  /** Belt Width in inches (active belt surface width) */
+  belt_width_in: number;
+
+  /**
+   * @deprecated Use belt_width_in instead.
+   * Legacy field - kept for backward compatibility.
+   * If present and belt_width_in is missing, this value is used.
+   */
+  conveyor_width_in?: number;
 
   /**
    * Incline Angle in degrees (default: 0)
@@ -830,6 +837,14 @@ export interface SliderbedInputs {
 
   /** Minimum pulley diameter for selected belt (with V-guide) */
   belt_min_pulley_dia_with_vguide_in?: number;
+
+  /**
+   * Cleat attachment method for the selected belt (v1.11 Phase 4)
+   * Populated from belt.material_profile.cleat_method when belt is selected.
+   * - "hot_welded": Requires min pulley diameter multiplier based on cleat spacing
+   * - "molded" | "mechanical": No multiplier required
+   */
+  belt_cleat_method?: 'hot_welded' | 'molded' | 'mechanical';
 }
 
 // ============================================================================
@@ -1005,7 +1020,7 @@ export interface SliderbedOutputs {
   /** Extra pulley face allowance in inches (0.5 for V-guided, 2.0 for crowned) */
   pulley_face_extra_in: number;
 
-  /** Pulley face length in inches (conveyor_width_in + pulley_face_extra_in) */
+  /** Pulley face length in inches (belt_width_in + pulley_face_extra_in) */
   pulley_face_length_in: number;
 
   /** Drive shaft diameter in inches (input or calculated) */
@@ -1049,6 +1064,21 @@ export interface SliderbedOutputs {
    * Undefined if no belt selected (no requirement to check).
    */
   tail_pulley_meets_minimum?: boolean;
+
+  /**
+   * Base minimum pulley diameter before cleat spacing adjustment (inches)
+   * This is the belt-specified minimum (from material_profile or legacy columns).
+   * Undefined if no belt selected.
+   */
+  min_pulley_base_in?: number;
+
+  /**
+   * Cleat spacing multiplier applied to minimum pulley diameter.
+   * Only > 1.0 when cleats are enabled AND belt uses hot_welded cleat method.
+   * Based on cleat_spacing_in: 12"=1.0, 8"=1.15, 6"=1.25, 4"=1.35
+   * Undefined if not applicable (no cleats or non-hot-welded).
+   */
+  cleat_spacing_multiplier?: number;
 
   // CLEAT OUTPUTS (v1.3 - spec-only summary)
   /** Whether cleats are enabled */

@@ -5,6 +5,7 @@
  * Changes are versioned for rollback capability.
  *
  * v1.11: Added material_profile support
+ * v1.11 Phase 4: Added cleat_method to material_profile
  */
 
 'use client';
@@ -26,6 +27,8 @@ interface MaterialProfileFormData {
   supports_banding: boolean;
   banding_min_dia_no_vguide_in: string;
   banding_min_dia_with_vguide_in: string;
+  // Phase 4: Cleat method
+  cleat_method: 'hot_welded' | 'molded' | 'mechanical' | '';
 }
 
 interface BeltFormData {
@@ -63,6 +66,8 @@ const emptyMaterialProfile: MaterialProfileFormData = {
   supports_banding: false,
   banding_min_dia_no_vguide_in: '',
   banding_min_dia_with_vguide_in: '',
+  // Phase 4: Cleat method
+  cleat_method: '',
 };
 
 const emptyForm: BeltFormData = {
@@ -154,6 +159,8 @@ export default function AdminBeltsPage() {
             supports_banding: mp.supports_banding || false,
             banding_min_dia_no_vguide_in: mp.banding_min_dia_no_vguide_in?.toString() || '',
             banding_min_dia_with_vguide_in: mp.banding_min_dia_with_vguide_in?.toString() || '',
+            // Phase 4: Cleat method
+            cleat_method: mp.cleat_method || '',
           }
         : { ...emptyMaterialProfile },
     });
@@ -214,6 +221,8 @@ export default function AdminBeltsPage() {
           banding_min_dia_with_vguide_in: mp.supports_banding && mp.banding_min_dia_with_vguide_in
             ? parseFloat(mp.banding_min_dia_with_vguide_in)
             : undefined,
+          // Phase 4: Cleat method
+          cleat_method: mp.cleat_method || undefined,
         };
       }
 
@@ -684,6 +693,26 @@ export default function AdminBeltsPage() {
                           </div>
                         </div>
                       )}
+                    </div>
+
+                    {/* Phase 4: Cleat Method */}
+                    <div className="border-t border-gray-200 pt-3 mt-3">
+                      <label className="block text-xs font-medium text-gray-600 mb-1">
+                        Cleat Attachment Method
+                      </label>
+                      <select
+                        value={formData.material_profile.cleat_method}
+                        onChange={(e) => updateMaterialProfileField('cleat_method', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                      >
+                        <option value="">Not specified</option>
+                        <option value="hot_welded">Hot Welded (PVC - requires min pulley multiplier)</option>
+                        <option value="molded">Molded (no multiplier)</option>
+                        <option value="mechanical">Mechanical (no multiplier)</option>
+                      </select>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Hot-welded PVC cleats require larger minimum pulley diameters based on cleat spacing.
+                      </p>
                     </div>
                   </div>
                 )}

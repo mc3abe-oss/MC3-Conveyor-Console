@@ -51,10 +51,10 @@ export function validateInputs(inputs: BeltConveyorInputs): ValidationError[] {
     });
   }
 
-  if (inputs.conveyor_width_in <= 0) {
+  if (inputs.belt_width_in <= 0) {
     errors.push({
-      field: 'conveyor_width_in',
-      message: 'Conveyor Width must be greater than 0',
+      field: 'belt_width_in',
+      message: 'Belt Width must be greater than 0',
       severity: 'error',
     });
   }

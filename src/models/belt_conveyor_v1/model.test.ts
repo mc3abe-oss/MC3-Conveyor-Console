@@ -70,7 +70,7 @@ import {
 const LEGACY_SLIDERBED_INPUTS: SliderbedInputs = {
   // Geometry
   conveyor_length_cc_in: 120,
-  conveyor_width_in: 24,
+  belt_width_in: 24,
   pulley_diameter_in: 4,
   conveyor_incline_deg: 0,
 
@@ -168,7 +168,7 @@ describe('Legacy Input Migration', () => {
   it('should preserve all original fields', () => {
     const migrated = migrateLegacyInputs(LEGACY_SLIDERBED_INPUTS);
     expect(migrated.conveyor_length_cc_in).toBe(120);
-    expect(migrated.conveyor_width_in).toBe(24);
+    expect(migrated.belt_width_in).toBe(24);
     expect(migrated.part_weight_lbs).toBe(5);
   });
 });
