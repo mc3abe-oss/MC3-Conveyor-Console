@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.13 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.14 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,7 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.14 (2025-12-26): Conveyor Frame inputs (construction type, gauge, channel, pulley-to-frame gap)
  * v1.13 (2025-12-26): Belt tracking recommendation system (crowned/hybrid/v-guided)
  * v1.12 (2025-12-25): Von Mises-based shaft diameter calculation, belt_width_in rename
  * v1.11 (2025-12-24): Belt minimum pulley diameter outputs and validation
@@ -425,6 +426,63 @@ export enum FrameHeightMode {
 }
 
 // ============================================================================
+// v1.14: CONVEYOR FRAME CONSTRUCTION ENUMS
+// ============================================================================
+
+/**
+ * Frame construction type (v1.14)
+ * Determines frame side material and thickness derivation method.
+ */
+export type FrameConstructionType = 'sheet_metal' | 'structural_channel' | 'special';
+
+/**
+ * Sheet metal gauge (v1.14)
+ * Standard gauges for sheet metal frame construction.
+ * Thickness is derived from gauge via lookup table.
+ */
+export type SheetMetalGauge = '10_GA' | '12_GA' | '14_GA' | '16_GA' | '18_GA';
+
+/**
+ * Structural channel series (v1.14)
+ * Standard C-channel and MC-channel series for structural frame construction.
+ * Thickness is derived from series via lookup table.
+ */
+export type StructuralChannelSeries = 'C3' | 'C4' | 'C5' | 'C6' | 'MC6' | 'MC8';
+
+/**
+ * Display labels for FrameConstructionType
+ */
+export const FRAME_CONSTRUCTION_TYPE_LABELS: Record<FrameConstructionType, string> = {
+  sheet_metal: 'Sheet Metal',
+  structural_channel: 'Structural Channel',
+  special: 'Special',
+};
+
+/**
+ * Display labels for SheetMetalGauge
+ * Format: "{gauge} ga" for dropdown display
+ */
+export const SHEET_METAL_GAUGE_LABELS: Record<SheetMetalGauge, string> = {
+  '10_GA': '10 ga',
+  '12_GA': '12 ga',
+  '14_GA': '14 ga',
+  '16_GA': '16 ga',
+  '18_GA': '18 ga',
+};
+
+/**
+ * Display labels for StructuralChannelSeries
+ */
+export const STRUCTURAL_CHANNEL_SERIES_LABELS: Record<StructuralChannelSeries, string> = {
+  C3: 'C3 (3" depth)',
+  C4: 'C4 (4" depth)',
+  C5: 'C5 (5" depth)',
+  C6: 'C6 (6" depth)',
+  MC6: 'MC6 (6" depth)',
+  MC8: 'MC8 (8" depth)',
+};
+
+// ============================================================================
 // PULLEY PRESETS
 // ============================================================================
 
@@ -704,6 +762,39 @@ export interface SliderbedInputs {
 
   /** Custom frame height in inches (required if frame_height_mode = Custom) */
   custom_frame_height_in?: number;
+
+  // =========================================================================
+  // v1.14: CONVEYOR FRAME CONSTRUCTION
+  // =========================================================================
+
+  /**
+   * Frame construction type (v1.14)
+   * Determines frame side material and thickness derivation method.
+   * Default: 'sheet_metal'
+   */
+  frame_construction_type?: FrameConstructionType;
+
+  /**
+   * Sheet metal gauge (v1.14)
+   * Required when frame_construction_type = 'sheet_metal'.
+   * Thickness derived from gauge via lookup table.
+   */
+  frame_sheet_metal_gauge?: SheetMetalGauge;
+
+  /**
+   * Structural channel series (v1.14)
+   * Required when frame_construction_type = 'structural_channel'.
+   * Thickness derived from series via lookup table.
+   */
+  frame_structural_channel_series?: StructuralChannelSeries;
+
+  /**
+   * Pulley end to frame inside distance in inches (v1.14)
+   * Distance from end of pulley face to inside of frame side.
+   * Used for between-frame (BF) calculations in future versions.
+   * Default: 0.5"
+   */
+  pulley_end_to_frame_inside_in?: number;
 
   /** Field Wiring Required */
   field_wiring_required: FieldWiringRequired | string;
@@ -1204,6 +1295,28 @@ export interface SliderbedOutputs {
   snub_roller_quantity?: number;
 
   // =========================================================================
+  // v1.14: CONVEYOR FRAME CONSTRUCTION OUTPUTS
+  // =========================================================================
+
+  /**
+   * Frame construction type (echo of input) (v1.14)
+   */
+  frame_construction_type?: FrameConstructionType;
+
+  /**
+   * Frame side thickness in inches (v1.14)
+   * Derived from gauge (sheet_metal) or channel series (structural_channel).
+   * Null for 'special' construction type.
+   */
+  frame_side_thickness_in?: number | null;
+
+  /**
+   * Pulley end to frame inside distance (echo of input) (v1.14)
+   * Used for downstream BF calculations.
+   */
+  pulley_end_to_frame_inside_out_in?: number;
+
+  // =========================================================================
   // v1.13: TRACKING RECOMMENDATION OUTPUTS
   // =========================================================================
 
@@ -1363,6 +1476,11 @@ export const DEFAULT_INPUT_VALUES = {
 
   // Frame height defaults (v1.5)
   frame_height_mode: FrameHeightMode.Standard,
+
+  // Conveyor frame construction defaults (v1.14)
+  frame_construction_type: 'sheet_metal' as FrameConstructionType,
+  frame_sheet_metal_gauge: '12_GA' as SheetMetalGauge,
+  pulley_end_to_frame_inside_in: 0.5,
 
   // Speed mode defaults (v1.6)
   speed_mode: SpeedMode.BeltSpeed,
