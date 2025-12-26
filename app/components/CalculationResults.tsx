@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { CalculationResult, SliderbedInputs, SpeedMode } from '../../src/models/sliderbed_v1/schema';
 import {
-  calculateTrackingGuidance,
-  getRiskLevelColor,
-  TrackingRiskLevel,
-} from '../../src/models/sliderbed_v1/tracking-guidance';
+  CalculationResult,
+  SliderbedInputs,
+  SpeedMode,
+  TRACKING_MODE_LABELS,
+  TrackingMode,
+} from '../../src/models/sliderbed_v1/schema';
 import clsx from 'clsx';
 import SaveRecipeModal from './SaveRecipeModal';
 
@@ -323,7 +324,7 @@ export default function CalculationResults({ result, inputs }: Props) {
             </h4>
             <div className="space-y-1.5 text-sm">
               <div className="flex justify-between items-center text-gray-700">
-                <span>Tracking Method:</span>
+                <span>Current Selection:</span>
                 <span className="font-mono font-semibold">
                   {outputs.is_v_guided ? 'V-Guided' : 'Crowned'}
                 </span>
@@ -353,36 +354,31 @@ export default function CalculationResults({ result, inputs }: Props) {
               )}
             </div>
 
-            {/* Tracking Guidance Summary */}
-            {inputs && inputs.conveyor_length_cc_in > 0 && inputs.belt_width_in > 0 && (() => {
-              const guidance = calculateTrackingGuidance(inputs);
-              const isOptimal = inputs.belt_tracking_method === guidance.recommendation;
-
-              return (
-                <div className={`mt-3 p-2 rounded text-xs ${
-                  isOptimal
-                    ? 'bg-green-50 border border-green-200'
-                    : guidance.riskLevel === TrackingRiskLevel.High
-                    ? 'bg-red-50 border border-red-200'
-                    : 'bg-yellow-50 border border-yellow-200'
-                }`}>
-                  <div className="flex items-center gap-2">
-                    <span className={`px-1.5 py-0.5 rounded text-xs font-medium ${getRiskLevelColor(guidance.riskLevel)}`}>
-                      {guidance.riskLevel} Risk
-                    </span>
-                    {isOptimal ? (
-                      <span className="text-green-700">
-                        Current selection matches recommendation
-                      </span>
-                    ) : (
-                      <span className={guidance.riskLevel === TrackingRiskLevel.High ? 'text-red-700' : 'text-yellow-700'}>
-                        Recommended: {guidance.recommendation}
-                      </span>
+            {/* v1.13: Tracking Recommendation (from model outputs) */}
+            {outputs.tracking_mode_recommended && (
+              <div className="mt-3 p-3 rounded-md bg-blue-50 border border-blue-200">
+                <div className="flex items-start gap-2">
+                  <svg className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                  <div className="flex-1">
+                    <div className="text-sm font-medium text-blue-900">
+                      Recommended: {TRACKING_MODE_LABELS[outputs.tracking_mode_recommended as TrackingMode] ?? outputs.tracking_mode_recommended}
+                    </div>
+                    {outputs.tracking_recommendation_rationale && (
+                      <p className="mt-1 text-xs text-blue-800">
+                        {outputs.tracking_recommendation_rationale}
+                      </p>
+                    )}
+                    {outputs.tracking_recommendation_note && (
+                      <p className="mt-1 text-xs text-blue-700 italic">
+                        {outputs.tracking_recommendation_note}
+                      </p>
                     )}
                   </div>
                 </div>
-              );
-            })()}
+              </div>
+            )}
           </div>
 
           {/* Throughput Outputs */}

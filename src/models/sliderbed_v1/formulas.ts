@@ -34,6 +34,7 @@ import {
 import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
 import { getShaftSizingFromOutputs } from './shaftCalc';
+import { calculateTrackingRecommendation } from '../../lib/tracking';
 
 // ============================================================================
 // CONSTANTS
@@ -993,6 +994,20 @@ export function calculate(
     ? tailPulleyDiameterIn >= minPulleyTailRequiredIn
     : undefined;
 
+  // Step 22: Tracking recommendation (v1.13)
+  const trackingRecommendation = calculateTrackingRecommendation({
+    conveyor_length_cc_in: inputs.conveyor_length_cc_in,
+    belt_width_in: inputs.belt_width_in,
+    application_class: inputs.application_class,
+    belt_construction: inputs.belt_construction,
+    reversing_operation: inputs.reversing_operation,
+    disturbance_side_loading: inputs.disturbance_side_loading,
+    disturbance_load_variability: inputs.disturbance_load_variability,
+    disturbance_environment: inputs.disturbance_environment,
+    disturbance_installation_risk: inputs.disturbance_installation_risk,
+    tracking_preference: inputs.tracking_preference,
+  });
+
   // Return all outputs
   return {
     // Intermediate outputs
@@ -1073,5 +1088,15 @@ export function calculate(
     gravity_roller_quantity: gravityRollerQuantity,
     gravity_roller_spacing_in: GRAVITY_ROLLER_SPACING_IN,
     snub_roller_quantity: snubRollerQuantity,
+
+    // v1.13: Tracking recommendation outputs
+    tracking_lw_ratio: trackingRecommendation.tracking_lw_ratio,
+    tracking_lw_band: trackingRecommendation.tracking_lw_band,
+    tracking_disturbance_count: trackingRecommendation.tracking_disturbance_count,
+    tracking_disturbance_severity_raw: trackingRecommendation.tracking_disturbance_severity_raw,
+    tracking_disturbance_severity_modified: trackingRecommendation.tracking_disturbance_severity_modified,
+    tracking_mode_recommended: trackingRecommendation.tracking_mode_recommended,
+    tracking_recommendation_note: trackingRecommendation.tracking_recommendation_note,
+    tracking_recommendation_rationale: trackingRecommendation.tracking_recommendation_rationale,
   };
 }

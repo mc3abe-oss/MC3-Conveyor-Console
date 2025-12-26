@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.11 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.13 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,8 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.13 (2025-12-26): Belt tracking recommendation system (crowned/hybrid/v-guided)
+ * v1.12 (2025-12-25): Von Mises-based shaft diameter calculation, belt_width_in rename
  * v1.11 (2025-12-24): Belt minimum pulley diameter outputs and validation
  * v1.10 (2025-12-24): Geometry mode - L_ANGLE, H_ANGLE, H_TOB modes; horizontal_run_in field
  * v1.9 (2025-12-24): Environment factors multi-select
@@ -22,6 +24,28 @@
  * v1.1 (2025-12-19): Fix open-belt wrap length: use πD not 2πD
  * v1.0 (2024-12-19): Initial implementation
  */
+
+// ============================================================================
+// v1.13: TRACKING RECOMMENDATION TYPES (re-exported from shared module)
+// ============================================================================
+
+export {
+  ApplicationClass,
+  BeltConstruction,
+  TrackingPreference,
+  TrackingMode,
+  LwBand,
+  DisturbanceSeverity,
+  type TrackingRecommendationInput,
+  type TrackingRecommendationOutput,
+  TRACKING_MODE_LABELS,
+  TRACKING_MODE_SHORT_LABELS,
+  APPLICATION_CLASS_LABELS,
+  BELT_CONSTRUCTION_LABELS,
+  TRACKING_PREFERENCE_LABELS,
+  LW_BAND_LABELS,
+  DISTURBANCE_SEVERITY_LABELS,
+} from '../../lib/tracking';
 
 // ============================================================================
 // ENUMS
@@ -845,6 +869,65 @@ export interface SliderbedInputs {
    * - "molded" | "mechanical": No multiplier required
    */
   belt_cleat_method?: 'hot_welded' | 'molded' | 'mechanical';
+
+  // =========================================================================
+  // v1.13: TRACKING RECOMMENDATION INPUTS
+  // =========================================================================
+
+  /**
+   * Application class (v1.13)
+   * Affects tracking sensitivity. Bulk handling nudges severity worse.
+   * Default: unit_handling
+   */
+  application_class?: string;
+
+  /**
+   * Belt construction type (v1.13)
+   * Affects tracking sensitivity. Stiff/profiled belts nudge severity worse.
+   * Default: general
+   */
+  belt_construction?: string;
+
+  /**
+   * Reversing operation disturbance (v1.13)
+   * Default: false
+   */
+  reversing_operation?: boolean;
+
+  /**
+   * Side loading disturbance (v1.13)
+   * Includes: side feed, plows, aggressive transfers, lateral forces
+   * Default: false
+   */
+  disturbance_side_loading?: boolean;
+
+  /**
+   * Load variability disturbance (v1.13)
+   * Includes: inconsistent placement/weight, uneven loading, shifting
+   * Default: false
+   */
+  disturbance_load_variability?: boolean;
+
+  /**
+   * Environment disturbance (v1.13)
+   * Includes: dirty/wet/outdoor/temperature swings
+   * Default: false
+   */
+  disturbance_environment?: boolean;
+
+  /**
+   * Installation risk disturbance (v1.13)
+   * Includes: long frames, site-built, tolerance stack-up, low install control
+   * Default: false
+   */
+  disturbance_installation_risk?: boolean;
+
+  /**
+   * User tracking preference (v1.13)
+   * If not 'auto', overrides computed recommendation but shows margin note.
+   * Default: auto
+   */
+  tracking_preference?: string;
 }
 
 // ============================================================================
@@ -1119,6 +1202,34 @@ export interface SliderbedOutputs {
 
   /** Number of snub rollers (0 if not required, typically 2 if required) */
   snub_roller_quantity?: number;
+
+  // =========================================================================
+  // v1.13: TRACKING RECOMMENDATION OUTPUTS
+  // =========================================================================
+
+  /** L/W ratio (rounded to 0.1) */
+  tracking_lw_ratio?: number;
+
+  /** L/W band classification (low, medium, high) */
+  tracking_lw_band?: string;
+
+  /** Count of disturbance factors */
+  tracking_disturbance_count?: number;
+
+  /** Raw severity before modifiers (minimal, moderate, significant) */
+  tracking_disturbance_severity_raw?: string;
+
+  /** Modified severity after belt/application modifiers */
+  tracking_disturbance_severity_modified?: string;
+
+  /** Recommended tracking mode (crowned, hybrid, v_guided) */
+  tracking_mode_recommended?: string;
+
+  /** Short recommendation note (for "with note" cases or override conflicts) */
+  tracking_recommendation_note?: string | null;
+
+  /** 1-2 sentence rationale */
+  tracking_recommendation_rationale?: string;
 }
 
 // ============================================================================
@@ -1258,6 +1369,16 @@ export const DEFAULT_INPUT_VALUES = {
   // Note: belt_speed_fpm and motor_rpm are required inputs, not listed here
   // drive_rpm_input only used in drive_rpm mode, defaults to 100 RPM
   drive_rpm_input: 100,
+
+  // Tracking recommendation defaults (v1.13)
+  application_class: 'unit_handling',
+  belt_construction: 'general',
+  reversing_operation: false,
+  disturbance_side_loading: false,
+  disturbance_load_variability: false,
+  disturbance_environment: false,
+  disturbance_installation_risk: false,
+  tracking_preference: 'auto',
 };
 
 // ============================================================================
