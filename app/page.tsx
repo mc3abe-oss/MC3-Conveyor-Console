@@ -233,8 +233,8 @@ export default function CalculatorPage() {
     console.log('[Calculate] Success - payload snapshot saved', calculatedPayload);
     setIsCalculating(false);
 
-    // Switch to results view after successful calculation
-    setViewMode('results');
+    // Show feedback without forcing navigation
+    showToast('Results updated');
   };
 
   const handleInputsChange = useCallback((newInputs: SliderbedInputs) => {

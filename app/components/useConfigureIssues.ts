@@ -5,10 +5,18 @@
  * - Issue model with severity, message, tabKey, sectionKey
  * - Aggregated counts by section and tab
  * - Helper functions for indicator display
+ * - Pre-calc tracking recommendation and min pulley checks
  */
 
 import { useMemo } from 'react';
-import { SliderbedInputs, LacingStyle } from '../../src/models/sliderbed_v1/schema';
+import { SliderbedInputs, LacingStyle, BeltTrackingMethod } from '../../src/models/sliderbed_v1/schema';
+import {
+  calculateTrackingRecommendation,
+  TrackingMode,
+  TRACKING_MODE_LABELS,
+  TrackingRecommendationOutput,
+} from '../../src/lib/tracking';
+import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../src/lib/belt-catalog';
 
 // ============================================================================
 // TAB AND SECTION KEYS
@@ -32,10 +40,25 @@ export type BuildSectionKey = typeof BUILD_SECTIONS[number];
 export type SectionKey = ApplicationSectionKey | PhysicalSectionKey | DriveSectionKey | BuildSectionKey;
 
 // ============================================================================
+// ISSUE CODES
+// ============================================================================
+
+/**
+ * Issue codes for programmatic identification
+ */
+export enum IssueCode {
+  // Tracking issues
+  TRACKING_RECOMMENDATION = 'TRACKING_RECOMMENDATION',
+  // Min pulley issues
+  MIN_PULLEY_DRIVE_TOO_SMALL = 'MIN_PULLEY_DRIVE_TOO_SMALL',
+  MIN_PULLEY_TAIL_TOO_SMALL = 'MIN_PULLEY_TAIL_TOO_SMALL',
+}
+
+// ============================================================================
 // ISSUE MODEL
 // ============================================================================
 
-export type IssueSeverity = 'error' | 'warning';
+export type IssueSeverity = 'error' | 'warning' | 'info';
 
 export interface Issue {
   severity: IssueSeverity;
@@ -44,6 +67,17 @@ export interface Issue {
   tabKey: ConfigureTabKey;
   sectionKey: SectionKey;
   fieldKeys?: (keyof SliderbedInputs)[];
+  /** Optional code for programmatic identification */
+  code?: IssueCode | string;
+  /** Optional tracking recommendation data (for TRACKING_RECOMMENDATION issues) */
+  trackingData?: TrackingRecommendationOutput;
+  /** Optional min pulley data */
+  minPulleyData?: {
+    requiredIn: number;
+    currentIn: number;
+    isVGuided: boolean;
+    cleatMultiplier?: number;
+  };
 }
 
 // ============================================================================
@@ -70,6 +104,10 @@ export interface IssueAggregation {
   tabCounts: Record<ConfigureTabKey, TabCounts>;
   getIssuesForSection: (sectionKey: SectionKey) => Issue[];
   getIssuesForTab: (tabKey: ConfigureTabKey) => Issue[];
+  /** Get tracking recommendation issue (for banner display) */
+  getTrackingIssue: () => Issue | undefined;
+  /** Get min pulley issues (for banner display) */
+  getMinPulleyIssues: () => Issue[];
 }
 
 // ============================================================================
@@ -324,9 +362,114 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
     });
   }
 
-  // NOTE: Tracking recommendation is now handled by v1.13 model outputs
-  // (tracking_mode_recommended, tracking_recommendation_rationale, etc.)
-  // and displayed directly in the UI. No advisory warnings needed here.
+  // ---------------------------------------------------------------------------
+  // PHYSICAL TAB - Tracking Recommendation (PRE-CALC)
+  // ---------------------------------------------------------------------------
+
+  // Calculate tracking recommendation from inputs only (no outputs needed)
+  if (inputs.conveyor_length_cc_in > 0 && inputs.belt_width_in > 0) {
+    const trackingResult = calculateTrackingRecommendation({
+      conveyor_length_cc_in: inputs.conveyor_length_cc_in,
+      belt_width_in: inputs.belt_width_in,
+      application_class: inputs.application_class,
+      belt_construction: inputs.belt_construction,
+      reversing_operation: inputs.reversing_operation,
+      disturbance_side_loading: inputs.disturbance_side_loading,
+      disturbance_load_variability: inputs.disturbance_load_variability,
+      disturbance_environment: inputs.disturbance_environment,
+      disturbance_installation_risk: inputs.disturbance_installation_risk,
+      tracking_preference: inputs.tracking_preference,
+    });
+
+    // Always add tracking recommendation as info issue for UI display
+    issues.push({
+      severity: 'info',
+      code: IssueCode.TRACKING_RECOMMENDATION,
+      message: `Recommended: ${TRACKING_MODE_LABELS[trackingResult.tracking_mode_recommended] ?? trackingResult.tracking_mode_recommended}`,
+      detail: trackingResult.tracking_recommendation_rationale ?? undefined,
+      tabKey: 'physical',
+      sectionKey: 'beltPulleys',
+      trackingData: trackingResult,
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHYSICAL TAB - Min Pulley Diameter Checks (PRE-CALC)
+  // ---------------------------------------------------------------------------
+
+  // Determine if V-guided tracking
+  const isVGuided =
+    inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+    inputs.belt_tracking_method === 'V-guided';
+
+  // Get min pulley requirement from belt metadata
+  const minPulleyBaseFromBelt = isVGuided
+    ? inputs.belt_min_pulley_dia_with_vguide_in
+    : inputs.belt_min_pulley_dia_no_vguide_in;
+
+  // Calculate min pulley with cleat multiplier if applicable
+  let minPulleyRequired: number | undefined;
+  let cleatMultiplier: number | undefined;
+
+  if (minPulleyBaseFromBelt !== undefined) {
+    const cleatsEnabled = inputs.cleats_enabled === true;
+    const isHotWeldedCleats = inputs.belt_cleat_method === 'hot_welded';
+
+    if (cleatsEnabled && isHotWeldedCleats) {
+      const cleatSpacingIn = inputs.cleat_spacing_in ?? 12;
+      cleatMultiplier = getCleatSpacingMultiplier(cleatSpacingIn);
+      minPulleyRequired = roundUpToIncrement(
+        minPulleyBaseFromBelt * cleatMultiplier,
+        0.25
+      );
+    } else {
+      minPulleyRequired = minPulleyBaseFromBelt;
+    }
+
+    // Check drive pulley
+    const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
+    if (drivePulleyDia < minPulleyRequired) {
+      issues.push({
+        severity: 'warning',
+        code: IssueCode.MIN_PULLEY_DRIVE_TOO_SMALL,
+        message: `Drive pulley below minimum (${minPulleyRequired}")`,
+        detail: `Current: ${drivePulleyDia}", Required: ${minPulleyRequired}" for ${isVGuided ? 'V-guided' : 'crowned'} tracking`,
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
+        fieldKeys: ['drive_pulley_diameter_in'],
+        minPulleyData: {
+          requiredIn: minPulleyRequired,
+          currentIn: drivePulleyDia,
+          isVGuided,
+          cleatMultiplier,
+        },
+      });
+    }
+
+    // Check tail pulley
+    const tailMatchesDrive = inputs.tail_matches_drive !== false;
+    const tailPulleyDia = tailMatchesDrive
+      ? drivePulleyDia
+      : (inputs.tail_pulley_diameter_in ?? drivePulleyDia);
+
+    if (tailPulleyDia < minPulleyRequired) {
+      issues.push({
+        severity: 'warning',
+        code: IssueCode.MIN_PULLEY_TAIL_TOO_SMALL,
+        message: `Tail pulley below minimum (${minPulleyRequired}")`,
+        detail: `Current: ${tailPulleyDia}", Required: ${minPulleyRequired}" for ${isVGuided ? 'V-guided' : 'crowned'} tracking`,
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
+        fieldKeys: ['tail_pulley_diameter_in'],
+        minPulleyData: {
+          requiredIn: minPulleyRequired,
+          currentIn: tailPulleyDia,
+          isVGuided,
+          cleatMultiplier,
+        },
+      });
+    }
+  }
 
   return issues;
 }
@@ -368,24 +511,26 @@ export function useConfigureIssues(inputs: SliderbedInputs): IssueAggregation {
   return useMemo(() => {
     const issues = computeIssues(inputs);
 
-    // Aggregate by section
+    // Aggregate by section (info severity doesn't count toward warnings)
     const sectionCounts = initSectionCounts();
     for (const issue of issues) {
       if (issue.severity === 'error') {
         sectionCounts[issue.sectionKey].errors++;
-      } else {
+      } else if (issue.severity === 'warning') {
         sectionCounts[issue.sectionKey].warnings++;
       }
+      // 'info' severity is not counted in error/warning counts
     }
 
-    // Aggregate by tab
+    // Aggregate by tab (info severity doesn't count toward warnings)
     const tabCounts = initTabCounts();
     for (const issue of issues) {
       if (issue.severity === 'error') {
         tabCounts[issue.tabKey].errors++;
-      } else {
+      } else if (issue.severity === 'warning') {
         tabCounts[issue.tabKey].warnings++;
       }
+      // 'info' severity is not counted in error/warning counts
     }
 
     // Helper functions
@@ -395,12 +540,26 @@ export function useConfigureIssues(inputs: SliderbedInputs): IssueAggregation {
     const getIssuesForTab = (tabKey: ConfigureTabKey) =>
       issues.filter((i) => i.tabKey === tabKey);
 
+    // Get tracking recommendation issue (for banner display)
+    const getTrackingIssue = () =>
+      issues.find((i) => i.code === IssueCode.TRACKING_RECOMMENDATION);
+
+    // Get min pulley issues (for banner display)
+    const getMinPulleyIssues = () =>
+      issues.filter(
+        (i) =>
+          i.code === IssueCode.MIN_PULLEY_DRIVE_TOO_SMALL ||
+          i.code === IssueCode.MIN_PULLEY_TAIL_TOO_SMALL
+      );
+
     return {
       issues,
       sectionCounts,
       tabCounts,
       getIssuesForSection,
       getIssuesForTab,
+      getTrackingIssue,
+      getMinPulleyIssues,
     };
   }, [inputs]);
 }

@@ -176,8 +176,8 @@ export default function CalculatorForm({
     setInputs((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Compute validation issues
-  const { sectionCounts, tabCounts } = useConfigureIssues(inputs);
+  // Compute validation issues (includes pre-calc tracking and min pulley checks)
+  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues } = useConfigureIssues(inputs);
 
   // Handle Enter key press to trigger recalculation
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -237,7 +237,13 @@ export default function CalculatorForm({
 
           {/* Physical Tab */}
           {activeTab === 'physical' && (
-            <TabConveyorPhysical inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+            <TabConveyorPhysical
+              inputs={inputs}
+              updateInput={updateInput}
+              sectionCounts={sectionCounts}
+              getTrackingIssue={getTrackingIssue}
+              getMinPulleyIssues={getMinPulleyIssues}
+            />
           )}
 
           {/* Drive & Controls Tab */}

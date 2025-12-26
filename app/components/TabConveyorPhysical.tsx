@@ -39,15 +39,18 @@ import {
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
-import { getEffectiveMinPulleyDiameters } from '../../src/lib/belt-catalog';
-import { runCalculation } from '../../src/lib/calculator';
+import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
-import { SectionCounts, SectionKey } from './useConfigureIssues';
+import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
 
 interface TabConveyorPhysicalProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
   sectionCounts: Record<SectionKey, SectionCounts>;
+  /** Get tracking recommendation issue (pre-calc) */
+  getTrackingIssue: () => Issue | undefined;
+  /** Get min pulley issues (pre-calc) */
+  getMinPulleyIssues: () => Issue[];
 }
 
 /**
@@ -82,7 +85,13 @@ function GeometryStat({
   );
 }
 
-export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts }: TabConveyorPhysicalProps) {
+export default function TabConveyorPhysical({
+  inputs,
+  updateInput,
+  sectionCounts,
+  getTrackingIssue,
+  getMinPulleyIssues,
+}: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
   // v1.11 Phase 4: Also sets belt_cleat_method for cleat spacing multiplier
@@ -112,17 +121,39 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
     ? drivePulleyDia
     : (inputs.tail_pulley_diameter_in ?? drivePulleyDia);
 
-  // v1.11 Phase 4.1: Use outputs from runCalculation as single source of truth
-  // for min pulley requirements and cleat spacing multiplier
-  const calcResult = runCalculation({ inputs });
-  const outputs = calcResult.success ? calcResult.outputs : undefined;
+  // Get pre-calc tracking and min pulley issues from useConfigureIssues (no stealth calc needed)
+  const trackingIssue = getTrackingIssue();
+  const minPulleyIssues = getMinPulleyIssues();
+  const drivePulleyIssue = minPulleyIssues.find(i => i.code === IssueCode.MIN_PULLEY_DRIVE_TOO_SMALL);
+  const tailPulleyIssue = minPulleyIssues.find(i => i.code === IssueCode.MIN_PULLEY_TAIL_TOO_SMALL);
 
-  // Get min pulley requirements from outputs (formulas.ts is source of truth)
-  const minPulleyDriveRequired = outputs?.min_pulley_drive_required_in;
-  const minPulleyTailRequired = outputs?.min_pulley_tail_required_in;
-  const cleatSpacingMultiplier = outputs?.cleat_spacing_multiplier;
-  const drivePulleyBelowMinimum = outputs?.drive_pulley_meets_minimum === false;
-  const tailPulleyBelowMinimum = outputs?.tail_pulley_meets_minimum === false;
+  // Compute min pulley and cleat multiplier locally for display (matches useConfigureIssues logic)
+  const minPulleyBaseFromBelt = (inputs.belt_tracking_method === BeltTrackingMethod.VGuided || inputs.belt_tracking_method === 'V-guided')
+    ? inputs.belt_min_pulley_dia_with_vguide_in
+    : inputs.belt_min_pulley_dia_no_vguide_in;
+
+  let minPulleyRequired: number | undefined;
+  let cleatSpacingMultiplier: number | undefined;
+
+  if (minPulleyBaseFromBelt !== undefined) {
+    const cleatsEnabled = inputs.cleats_enabled === true;
+    const isHotWeldedCleats = inputs.belt_cleat_method === 'hot_welded';
+
+    if (cleatsEnabled && isHotWeldedCleats) {
+      const cleatSpacingIn = inputs.cleat_spacing_in ?? 12;
+      cleatSpacingMultiplier = getCleatSpacingMultiplier(cleatSpacingIn);
+    }
+    // Use issue data for min pulley required if available, otherwise compute
+    minPulleyRequired = drivePulleyIssue?.minPulleyData?.requiredIn ?? tailPulleyIssue?.minPulleyData?.requiredIn ?? minPulleyBaseFromBelt;
+  }
+
+  // Both drive and tail use same min pulley value
+  const minPulleyDriveRequired = minPulleyRequired;
+  const minPulleyTailRequired = minPulleyRequired;
+
+  // Derive warning states from issues
+  const drivePulleyBelowMinimum = !!drivePulleyIssue;
+  const tailPulleyBelowMinimum = !!tailPulleyIssue;
 
   // Tracking method for display label
   const isVGuided =
@@ -600,8 +631,8 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
             Tracking
           </h4>
 
-          {/* v1.13: Tracking Recommendation Banner (from model outputs) */}
-          {outputs?.tracking_mode_recommended && (
+          {/* Tracking Recommendation Banner (pre-calc from useConfigureIssues) */}
+          {trackingIssue?.trackingData && (
             <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
               <div className="flex items-start">
                 <div className="flex-shrink-0">
@@ -611,16 +642,16 @@ export default function TabConveyorPhysical({ inputs, updateInput, sectionCounts
                 </div>
                 <div className="ml-3 flex-1">
                   <h4 className="text-sm font-medium text-blue-900">
-                    Recommended: {TRACKING_MODE_LABELS[outputs.tracking_mode_recommended as TrackingMode] ?? outputs.tracking_mode_recommended}
+                    Recommended: {TRACKING_MODE_LABELS[trackingIssue.trackingData.tracking_mode_recommended as TrackingMode] ?? trackingIssue.trackingData.tracking_mode_recommended}
                   </h4>
-                  {outputs.tracking_recommendation_rationale && (
+                  {trackingIssue.trackingData.tracking_recommendation_rationale && (
                     <p className="mt-1 text-sm text-blue-800">
-                      {outputs.tracking_recommendation_rationale}
+                      {trackingIssue.trackingData.tracking_recommendation_rationale}
                     </p>
                   )}
-                  {outputs.tracking_recommendation_note && (
+                  {trackingIssue.trackingData.tracking_recommendation_note && (
                     <p className="mt-1 text-xs text-blue-700 italic">
-                      {outputs.tracking_recommendation_note}
+                      {trackingIssue.trackingData.tracking_recommendation_note}
                     </p>
                   )}
                 </div>
