@@ -4429,6 +4429,70 @@ describe('Frame Construction Validation (v1.14)', () => {
 
     expect(result.success).toBe(true);
   });
+
+  // Output tests
+  it('should derive thickness from sheet metal gauge (12_GA)', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'sheet_metal',
+      frame_sheet_metal_gauge: '12_GA',
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.frame_construction_type).toBe('sheet_metal');
+    expect(result.outputs?.frame_side_thickness_in).toBe(0.1046);
+  });
+
+  it('should derive thickness from sheet metal gauge (16_GA)', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'sheet_metal',
+      frame_sheet_metal_gauge: '16_GA',
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.frame_side_thickness_in).toBe(0.0598);
+  });
+
+  it('should derive thickness from structural channel (C4)', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'structural_channel',
+      frame_structural_channel_series: 'C4',
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.frame_construction_type).toBe('structural_channel');
+    expect(result.outputs?.frame_side_thickness_in).toBe(0.184);
+  });
+
+  it('should return null thickness for special construction type', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'special',
+      frame_sheet_metal_gauge: undefined,
+      frame_structural_channel_series: undefined,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.frame_construction_type).toBe('special');
+    expect(result.outputs?.frame_side_thickness_in).toBeNull();
+  });
+
+  it('should echo pulley_end_to_frame_inside_in as output', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      pulley_end_to_frame_inside_in: 0.75,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.pulley_end_to_frame_inside_out_in).toBe(0.75);
+  });
 });
 
 // ============================================================================

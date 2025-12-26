@@ -30,11 +30,18 @@ import {
   FrameHeightMode,
   SpeedMode,
   GearmotorMountingStyle,
+  FrameConstructionType,
+  SheetMetalGauge,
+  StructuralChannelSeries,
 } from './schema';
 import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
 import { getShaftSizingFromOutputs } from './shaftCalc';
 import { calculateTrackingRecommendation } from '../../lib/tracking';
+import {
+  SHEET_METAL_GAUGE_THICKNESS,
+  STRUCTURAL_CHANNEL_THICKNESS,
+} from '../../lib/frame-catalog';
 
 // ============================================================================
 // CONSTANTS
@@ -609,6 +616,48 @@ export function calculateRequiresSnubRollers(
   return effectiveFrameHeightIn < (largestPulleyDiameter + SNUB_ROLLER_CLEARANCE_THRESHOLD_IN);
 }
 
+// ============================================================================
+// v1.14: FRAME CONSTRUCTION THICKNESS
+// ============================================================================
+
+/**
+ * Resolve frame side thickness from construction type
+ *
+ * @param constructionType - Frame construction type
+ * @param gauge - Sheet metal gauge (required if sheet_metal)
+ * @param channelSeries - Structural channel series (required if structural_channel)
+ * @returns Thickness in inches, or null for special construction
+ */
+export function resolveFrameThickness(
+  constructionType: FrameConstructionType | undefined,
+  gauge: SheetMetalGauge | undefined,
+  channelSeries: StructuralChannelSeries | undefined
+): number | null {
+  // Default to sheet_metal if not specified
+  const type = constructionType ?? 'sheet_metal';
+
+  if (type === 'sheet_metal') {
+    // Use gauge to derive thickness
+    if (gauge && gauge in SHEET_METAL_GAUGE_THICKNESS) {
+      return SHEET_METAL_GAUGE_THICKNESS[gauge];
+    }
+    // Default to 12 gauge if gauge not specified
+    return SHEET_METAL_GAUGE_THICKNESS['12_GA'];
+  }
+
+  if (type === 'structural_channel') {
+    // Use channel series to derive thickness
+    if (channelSeries && channelSeries in STRUCTURAL_CHANNEL_THICKNESS) {
+      return STRUCTURAL_CHANNEL_THICKNESS[channelSeries];
+    }
+    // Default to C4 if channel not specified
+    return STRUCTURAL_CHANNEL_THICKNESS['C4'];
+  }
+
+  // Special construction type - thickness unknown
+  return null;
+}
+
 /**
  * Gravity return roller spacing constant (inches)
  * Standard spacing for gravity return rollers under the belt return path
@@ -1098,5 +1147,14 @@ export function calculate(
     tracking_mode_recommended: trackingRecommendation.tracking_mode_recommended,
     tracking_recommendation_note: trackingRecommendation.tracking_recommendation_note,
     tracking_recommendation_rationale: trackingRecommendation.tracking_recommendation_rationale,
+
+    // v1.14: Frame construction outputs
+    frame_construction_type: inputs.frame_construction_type,
+    frame_side_thickness_in: resolveFrameThickness(
+      inputs.frame_construction_type,
+      inputs.frame_sheet_metal_gauge,
+      inputs.frame_structural_channel_series
+    ),
+    pulley_end_to_frame_inside_out_in: inputs.pulley_end_to_frame_inside_in,
   };
 }
