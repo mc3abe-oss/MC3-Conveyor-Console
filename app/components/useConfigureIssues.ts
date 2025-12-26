@@ -9,10 +9,6 @@
 
 import { useMemo } from 'react';
 import { SliderbedInputs, LacingStyle } from '../../src/models/sliderbed_v1/schema';
-import {
-  calculateTrackingGuidance,
-  TrackingRiskLevel,
-} from '../../src/models/sliderbed_v1/tracking-guidance';
 
 // ============================================================================
 // TAB AND SECTION KEYS
@@ -328,28 +324,9 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
     });
   }
 
-  // ---------------------------------------------------------------------------
-  // PHYSICAL TAB - Belt & Pulleys (Tracking Guidance Advisory)
-  // ---------------------------------------------------------------------------
-
-  const trackingGuidance = calculateTrackingGuidance(inputs);
-  if (trackingGuidance.riskLevel === TrackingRiskLevel.High) {
-    issues.push({
-      severity: 'warning',
-      message: 'Tracking guidance: V-guided recommended (High Risk)',
-      detail: trackingGuidance.summary,
-      tabKey: 'physical',
-      sectionKey: 'beltPulleys',
-    });
-  } else if (trackingGuidance.riskLevel === TrackingRiskLevel.Medium) {
-    issues.push({
-      severity: 'warning',
-      message: 'Tracking guidance: Consider V-guided (Medium Risk)',
-      detail: trackingGuidance.summary,
-      tabKey: 'physical',
-      sectionKey: 'beltPulleys',
-    });
-  }
+  // NOTE: Tracking recommendation is now handled by v1.13 model outputs
+  // (tracking_mode_recommended, tracking_recommendation_rationale, etc.)
+  // and displayed directly in the UI. No advisory warnings needed here.
 
   return issues;
 }
