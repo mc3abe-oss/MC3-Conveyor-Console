@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.10 - INPUT MIGRATION
+ * SLIDERBED CONVEYOR v1.14 - INPUT MIGRATION
  *
  * Handles migration of legacy inputs to the new schema.
  *
@@ -36,6 +36,11 @@
  * - Derive horizontal_run_in from conveyor_length_cc_in and angle if missing
  * - Deprecated helpers calculateImpliedAngleDeg/calculateOppositeTob
  *   remain for backward compatibility but are incorrect for inclined conveyors
+ *
+ * FRAME CONSTRUCTION MIGRATION (v1.14):
+ * - Legacy configs may not have frame_construction_type field
+ * - Default to 'sheet_metal' with gauge '12_GA' (standard build)
+ * - This ensures frame_side_thickness_in can be derived in formulas
  */
 
 import {
@@ -46,6 +51,8 @@ import {
   TOB_FIELDS,
   SpeedMode,
   GeometryMode,
+  FrameConstructionType,
+  SheetMetalGauge,
 } from './schema';
 import { horizontalFromAxis, normalizeGeometry, DerivedGeometry } from './geometry';
 
@@ -217,6 +224,41 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
     if (axisLength > 0) {
       migrated.horizontal_run_in = horizontalFromAxis(axisLength, angleDeg);
     }
+  }
+
+  // =========================================================================
+  // FRAME CONSTRUCTION MIGRATION (v1.14)
+  // =========================================================================
+
+  // Legacy configs may not have frame construction fields
+  // Default to sheet_metal with 12 gauge (standard build)
+  if (migrated.frame_construction_type === undefined) {
+    migrated.frame_construction_type = 'sheet_metal' as FrameConstructionType;
+    // Only set gauge if not already set
+    if (migrated.frame_sheet_metal_gauge === undefined) {
+      migrated.frame_sheet_metal_gauge = '12_GA' as SheetMetalGauge;
+    }
+  }
+
+  // Ensure appropriate sub-field is set based on construction type
+  if (migrated.frame_construction_type === 'sheet_metal') {
+    // Default gauge if missing
+    if (migrated.frame_sheet_metal_gauge === undefined) {
+      migrated.frame_sheet_metal_gauge = '12_GA' as SheetMetalGauge;
+    }
+    // Clear channel field since not applicable
+    migrated.frame_structural_channel_series = undefined;
+  } else if (migrated.frame_construction_type === 'structural_channel') {
+    // Default channel if missing
+    if (migrated.frame_structural_channel_series === undefined) {
+      migrated.frame_structural_channel_series = 'C4';
+    }
+    // Clear gauge field since not applicable
+    migrated.frame_sheet_metal_gauge = undefined;
+  } else if (migrated.frame_construction_type === 'special') {
+    // Special construction - clear both sub-fields
+    migrated.frame_sheet_metal_gauge = undefined;
+    migrated.frame_structural_channel_series = undefined;
   }
 
   return migrated;

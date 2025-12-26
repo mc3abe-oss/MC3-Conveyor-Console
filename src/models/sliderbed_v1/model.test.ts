@@ -4496,6 +4496,110 @@ describe('Frame Construction Validation (v1.14)', () => {
 });
 
 // ============================================================================
+// FRAME CONSTRUCTION MIGRATION (v1.14)
+// ============================================================================
+
+describe('Frame Construction Migration (v1.14)', () => {
+  // Minimal inputs for migration testing (no frame construction fields = legacy config)
+  const LEGACY_INPUTS: Partial<SliderbedInputs> = {
+    conveyor_length_cc_in: 120,
+    belt_width_in: 18,
+    belt_speed_fpm: 50,
+    drive_pulley_diameter_in: 6,
+    tail_pulley_diameter_in: 6,
+    tail_matches_drive: true,
+    tail_support_type: EndSupportType.External,
+    drive_support_type: EndSupportType.External,
+    speed_mode: SpeedMode.BeltSpeed,
+  };
+
+  it('should default legacy configs to sheet_metal with 12_GA', () => {
+    // Legacy config without any frame construction fields
+    const legacyInputs = {
+      ...LEGACY_INPUTS,
+      // No frame_construction_type, no gauge, no channel
+    };
+
+    const migrated = migrateInputs(legacyInputs);
+
+    expect(migrated.frame_construction_type).toBe('sheet_metal');
+    expect(migrated.frame_sheet_metal_gauge).toBe('12_GA');
+    expect(migrated.frame_structural_channel_series).toBeUndefined();
+  });
+
+  it('should preserve existing frame_construction_type', () => {
+    const inputs = {
+      ...LEGACY_INPUTS,
+      frame_construction_type: 'structural_channel' as const,
+      frame_structural_channel_series: 'C6' as const,
+    };
+
+    const migrated = migrateInputs(inputs);
+
+    expect(migrated.frame_construction_type).toBe('structural_channel');
+    expect(migrated.frame_structural_channel_series).toBe('C6');
+    expect(migrated.frame_sheet_metal_gauge).toBeUndefined();
+  });
+
+  it('should default channel to C4 when structural_channel missing series', () => {
+    const inputs = {
+      ...LEGACY_INPUTS,
+      frame_construction_type: 'structural_channel' as const,
+      // No channel series specified
+    };
+
+    const migrated = migrateInputs(inputs);
+
+    expect(migrated.frame_construction_type).toBe('structural_channel');
+    expect(migrated.frame_structural_channel_series).toBe('C4');
+    expect(migrated.frame_sheet_metal_gauge).toBeUndefined();
+  });
+
+  it('should clear gauge when switching to structural_channel', () => {
+    const inputs = {
+      ...LEGACY_INPUTS,
+      frame_construction_type: 'structural_channel' as const,
+      frame_sheet_metal_gauge: '10_GA' as const, // Should be cleared
+    };
+
+    const migrated = migrateInputs(inputs);
+
+    expect(migrated.frame_construction_type).toBe('structural_channel');
+    expect(migrated.frame_sheet_metal_gauge).toBeUndefined();
+    expect(migrated.frame_structural_channel_series).toBe('C4'); // Default
+  });
+
+  it('should clear both sub-fields for special construction', () => {
+    const inputs = {
+      ...LEGACY_INPUTS,
+      frame_construction_type: 'special' as const,
+      frame_sheet_metal_gauge: '10_GA' as const,
+      frame_structural_channel_series: 'C6' as const,
+    };
+
+    const migrated = migrateInputs(inputs);
+
+    expect(migrated.frame_construction_type).toBe('special');
+    expect(migrated.frame_sheet_metal_gauge).toBeUndefined();
+    expect(migrated.frame_structural_channel_series).toBeUndefined();
+  });
+
+  it('should preserve existing gauge for sheet_metal', () => {
+    const inputs = {
+      ...LEGACY_INPUTS,
+      frame_construction_type: 'sheet_metal' as const,
+      frame_sheet_metal_gauge: '16_GA' as const,
+    };
+
+    const migrated = migrateInputs(inputs);
+
+    expect(migrated.frame_construction_type).toBe('sheet_metal');
+    expect(migrated.frame_sheet_metal_gauge).toBe('16_GA');
+    expect(migrated.frame_structural_channel_series).toBeUndefined();
+  });
+});
+
+// ============================================================================
 // EXCEL PARITY TEST FIXTURES
 // ============================================================================
 
