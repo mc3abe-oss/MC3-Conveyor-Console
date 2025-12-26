@@ -24,6 +24,12 @@ import {
   GeometryMode,
   TRACKING_MODE_LABELS,
   TrackingMode,
+  FrameConstructionType,
+  SheetMetalGauge,
+  StructuralChannelSeries,
+  FRAME_CONSTRUCTION_TYPE_LABELS,
+  SHEET_METAL_GAUGE_LABELS,
+  STRUCTURAL_CHANNEL_SERIES_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateEffectiveFrameHeight,
@@ -40,6 +46,7 @@ import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
 import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
+import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
 
@@ -1062,6 +1069,130 @@ export default function TabConveyorPhysical({
         issueCounts={sectionCounts.frame}
       >
         <div className="grid grid-cols-1 gap-4">
+          {/* ===== v1.14: FRAME CONSTRUCTION SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">
+            Frame Construction
+          </h4>
+
+          {/* Frame Construction Type */}
+          <div>
+            <label htmlFor="frame_construction_type" className="label">
+              Frame Construction Type
+            </label>
+            <select
+              id="frame_construction_type"
+              className="input"
+              value={inputs.frame_construction_type ?? 'sheet_metal'}
+              onChange={(e) => {
+                const type = e.target.value as FrameConstructionType;
+                updateInput('frame_construction_type', type);
+                // Clear related fields when changing type
+                if (type !== 'sheet_metal') {
+                  updateInput('frame_sheet_metal_gauge', undefined);
+                }
+                if (type !== 'structural_channel') {
+                  updateInput('frame_structural_channel_series', undefined);
+                }
+              }}
+            >
+              {(Object.keys(FRAME_CONSTRUCTION_TYPE_LABELS) as FrameConstructionType[]).map((type) => (
+                <option key={type} value={type}>
+                  {FRAME_CONSTRUCTION_TYPE_LABELS[type]}
+                </option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Sheet metal for standard builds. Structural channel for heavy-duty applications.
+            </p>
+          </div>
+
+          {/* Sheet Metal Gauge (conditional) */}
+          {(inputs.frame_construction_type === 'sheet_metal' || inputs.frame_construction_type === undefined) && (
+            <div className="ml-4 pl-4 border-l-2 border-gray-200">
+              <label htmlFor="frame_sheet_metal_gauge" className="label">
+                Sheet Metal Gauge <span className="text-gray-500">(required)</span>
+              </label>
+              <select
+                id="frame_sheet_metal_gauge"
+                className="input"
+                value={inputs.frame_sheet_metal_gauge ?? '12_GA'}
+                onChange={(e) => updateInput('frame_sheet_metal_gauge', e.target.value as SheetMetalGauge)}
+                required
+              >
+                {(Object.keys(SHEET_METAL_GAUGE_LABELS) as SheetMetalGauge[]).map((gauge) => (
+                  <option key={gauge} value={gauge}>
+                    {formatGaugeWithThickness(gauge)}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                Lower gauge = thicker material. 12 ga is standard for most applications.
+              </p>
+            </div>
+          )}
+
+          {/* Structural Channel Series (conditional) */}
+          {inputs.frame_construction_type === 'structural_channel' && (
+            <div className="ml-4 pl-4 border-l-2 border-gray-200">
+              <label htmlFor="frame_structural_channel_series" className="label">
+                Channel Series <span className="text-gray-500">(required)</span>
+              </label>
+              <select
+                id="frame_structural_channel_series"
+                className="input"
+                value={inputs.frame_structural_channel_series ?? 'C4'}
+                onChange={(e) => updateInput('frame_structural_channel_series', e.target.value as StructuralChannelSeries)}
+                required
+              >
+                {(Object.keys(STRUCTURAL_CHANNEL_SERIES_LABELS) as StructuralChannelSeries[]).map((series) => (
+                  <option key={series} value={series}>
+                    {STRUCTURAL_CHANNEL_SERIES_LABELS[series]}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                C-channels for standard structural frames. MC-channels for heavier loads.
+              </p>
+            </div>
+          )}
+
+          {/* Special Construction Note */}
+          {inputs.frame_construction_type === 'special' && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <p className="text-sm text-yellow-800">
+                <strong>Special Construction:</strong> Frame thickness is not auto-calculated.
+                Between-frame outputs may be limited. Verify build intent with engineering.
+              </p>
+            </div>
+          )}
+
+          {/* Pulley End to Frame Inside */}
+          <div>
+            <label htmlFor="pulley_end_to_frame_inside_in" className="label">
+              Pulley End to Frame Inside (in)
+            </label>
+            <input
+              type="number"
+              id="pulley_end_to_frame_inside_in"
+              className="input"
+              value={inputs.pulley_end_to_frame_inside_in ?? 0.5}
+              onChange={(e) =>
+                updateInput('pulley_end_to_frame_inside_in', parseFloat(e.target.value) || 0)
+              }
+              step="0.125"
+              min="0"
+              max="6"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Distance from pulley face end to inside of frame side. Used for between-frame (BF) calculations.
+            </p>
+          </div>
+
+          {/* ===== FRAME HEIGHT SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
+            Frame Height
+          </h4>
+
           {/* Frame Height Mode */}
           <div>
             <label htmlFor="frame_height_mode" className="label">
