@@ -5,13 +5,39 @@
  * Query params:
  *   - configuration_id: Required UUID
  *   - include_data: Optional boolean - if true, includes full inputs/application/outputs
+ *
+ * Uses calc_recipes instead of configuration_revisions table.
+ * In calc_recipes, there's only one "revision" per recipe (no history).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../../../src/lib/supabase/client';
+import { createClient } from '../../../../src/lib/supabase/server';
+import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+
+/**
+ * Parse a config slug back to reference fields
+ * Slug format: config:{reference_type}:{reference_number}:{reference_line}
+ */
+function parseConfigSlug(slug: string): { reference_type: string; reference_number: string; reference_line: number } | null {
+  if (!slug?.startsWith('config:')) return null;
+  const parts = slug.split(':');
+  if (parts.length < 4) return null;
+  return {
+    reference_type: parts[1].toUpperCase(),
+    reference_number: parts[2],
+    reference_line: parseInt(parts[3], 10) || 1,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
+    if (!isSupabaseConfigured()) {
+      return NextResponse.json(
+        { error: 'Supabase not configured' },
+        { status: 503 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const configuration_id = searchParams.get('configuration_id');
     const includeData = searchParams.get('include_data') === 'true';
@@ -23,53 +49,65 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // First, get the configuration details
-    const { data: configuration, error: configError } = await supabase
-      .from('configurations')
-      .select('id, reference_type, reference_number, reference_line, model_key, title, created_at, updated_at')
+    // Create authenticated Supabase client
+    const supabase = await createClient();
+
+    // Get the recipe by ID (configuration_id = recipe.id in new schema)
+    const { data: recipe, error: recipeError } = await supabase
+      .from('calc_recipes')
+      .select('*')
       .eq('id', configuration_id)
       .single();
 
-    if (configError) {
-      console.error('Configuration fetch error:', configError);
+    if (recipeError) {
+      console.error('Recipe fetch error:', recipeError);
       return NextResponse.json(
-        { error: 'Configuration not found', details: configError.message },
+        { error: 'Configuration not found', details: recipeError.message },
         { status: 404 }
       );
     }
 
-    // Build select clause based on include_data flag
-    const selectClause = includeData
-      ? 'id, revision_number, created_at, created_by_user_id, change_note, inputs_json, application_json, outputs_json'
-      : 'id, revision_number, created_at, created_by_user_id, change_note';
+    // Extract config data from the inputs JSONB
+    const inputs = recipe.inputs || {};
+    const configData = inputs._config || {};
+    const slugData = parseConfigSlug(recipe.slug);
 
-    // Get all revisions for this configuration
-    const { data: revisions, error } = await supabase
-      .from('configuration_revisions')
-      .select(selectClause)
-      .eq('configuration_id', configuration_id)
-      .order('revision_number', { ascending: false });
+    // Build backward-compatible configuration object
+    const configuration = {
+      id: recipe.id,
+      model_key: recipe.model_key,
+      reference_type: slugData?.reference_type || configData.reference_type || 'QUOTE',
+      reference_number: slugData?.reference_number || configData.reference_number || '',
+      reference_line: slugData?.reference_line || configData.reference_line || 1,
+      title: configData.title || recipe.name,
+      created_at: recipe.created_at,
+      updated_at: recipe.updated_at,
+    };
 
-    if (error) {
-      console.error('Revisions fetch error:', error);
-      return NextResponse.json(
-        { error: 'Failed to load revisions', details: error.message },
-        { status: 500 }
-      );
+    // Build inputs_json without the _config metadata
+    const { _config, ...inputs_json } = inputs;
+
+    // Build single revision (calc_recipes doesn't track revision history)
+    const revision: Record<string, unknown> = {
+      id: recipe.id,
+      revision_number: 1,
+      created_at: recipe.created_at,
+      created_by_user_id: recipe.created_by,
+      change_note: recipe.notes,
+    };
+
+    // Include full data if requested
+    if (includeData) {
+      revision.inputs_json = inputs_json;
+      revision.application_json = configData.application_json || {};
+      revision.outputs_json = recipe.expected_outputs || null;
     }
 
-    // If we have full data, compute diffs between consecutive revisions
-    if (includeData && revisions && revisions.length > 1) {
-      for (let i = 0; i < revisions.length - 1; i++) {
-        const current = revisions[i] as any;
-        const previous = revisions[i + 1] as any;
-
-        const diff_summary = computeDiff(previous, current);
-        current.diff_summary = diff_summary;
-      }
-    }
-
-    return NextResponse.json({ configuration, revisions });
+    // Return single revision in array for backward compatibility
+    return NextResponse.json({
+      configuration,
+      revisions: [revision],
+    });
   } catch (error) {
     console.error('Get revisions error:', error);
     return NextResponse.json(
@@ -77,43 +115,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-}
-
-/**
- * Compute shallow diff between two revisions
- */
-function computeDiff(
-  prev: { inputs_json?: any; application_json?: any },
-  curr: { inputs_json?: any; application_json?: any }
-): { inputs_changed: Array<{ key: string; from: any; to: any }>; application_changed: Array<{ key: string; from: any; to: any }> } {
-  const inputs_changed: Array<{ key: string; from: any; to: any }> = [];
-  const application_changed: Array<{ key: string; from: any; to: any }> = [];
-
-  // Compare inputs
-  const prevInputs = prev.inputs_json || {};
-  const currInputs = curr.inputs_json || {};
-  const allInputKeys = new Set([...Object.keys(prevInputs), ...Object.keys(currInputs)]);
-
-  allInputKeys.forEach((key) => {
-    const from = prevInputs[key];
-    const to = currInputs[key];
-    if (JSON.stringify(from) !== JSON.stringify(to)) {
-      inputs_changed.push({ key, from, to });
-    }
-  });
-
-  // Compare application fields
-  const prevApp = prev.application_json || {};
-  const currApp = curr.application_json || {};
-  const allAppKeys = new Set([...Object.keys(prevApp), ...Object.keys(currApp)]);
-
-  allAppKeys.forEach((key) => {
-    const from = prevApp[key];
-    const to = currApp[key];
-    if (JSON.stringify(from) !== JSON.stringify(to)) {
-      application_changed.push({ key, from, to });
-    }
-  });
-
-  return { inputs_changed, application_changed };
 }

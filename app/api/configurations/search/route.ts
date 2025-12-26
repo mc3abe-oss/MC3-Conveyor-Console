@@ -4,12 +4,31 @@
  * Search configurations by reference_number and title
  * Query params:
  * - reference_type: QUOTE | SALES_ORDER | ALL (default: ALL)
- * - q: search query (searches reference_number and title using ILIKE)
+ * - q: search query (searches source_ref/slug and name using ILIKE)
  * - limit: max results (default: 20, max: 100)
+ *
+ * Uses calc_recipes instead of configurations table to avoid RLS issues.
+ * Only returns recipes with slug starting with "config:" (user configurations).
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createClient } from '../../../../src/lib/supabase/server';
+import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+
+/**
+ * Parse a config slug back to reference fields
+ * Slug format: config:{reference_type}:{reference_number}:{reference_line}
+ */
+function parseConfigSlug(slug: string): { reference_type: string; reference_number: string; reference_line: number } | null {
+  if (!slug?.startsWith('config:')) return null;
+  const parts = slug.split(':');
+  if (parts.length < 4) return null;
+  return {
+    reference_type: parts[1].toUpperCase(),
+    reference_number: parts[2],
+    reference_line: parseInt(parts[3], 10) || 1,
+  };
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,33 +49,38 @@ export async function GET(request: NextRequest) {
     const limitParam = searchParams.get('limit');
     const limit = limitParam ? Math.min(parseInt(limitParam), 100) : 20;
 
-    // Build query
+    // Create authenticated Supabase client
+    const supabase = await createClient();
+
+    // Build query - filter by config: slug prefix
     let queryBuilder = supabase
-      .from('configurations')
+      .from('calc_recipes')
       .select(`
         id,
+        slug,
+        name,
         model_key,
-        reference_type,
-        reference_number,
-        line_key,
-        title,
+        source_ref,
+        inputs,
         updated_at,
         created_at
-      `);
+      `)
+      .like('slug', 'config:%');
 
     // Filter by reference_type if not ALL
+    // Slug format is config:{type}:{number}:{line}
     if (referenceType !== 'ALL') {
-      queryBuilder = queryBuilder.eq('reference_type', referenceType);
+      queryBuilder = queryBuilder.like('slug', `config:${referenceType.toLowerCase()}:%`);
     }
 
-    // Search by reference_number or title
+    // Search by source_ref (reference_number) or name (title)
     if (query) {
       queryBuilder = queryBuilder.or(
-        `reference_number.ilike.%${query}%,title.ilike.%${query}%`
+        `source_ref.ilike.%${query}%,name.ilike.%${query}%,slug.ilike.%${query}%`
       );
     }
 
-    const { data: configurations, error } = await queryBuilder
+    const { data: recipes, error } = await queryBuilder
       .order('updated_at', { ascending: false })
       .limit(limit);
 
@@ -68,25 +92,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // For each configuration, fetch the latest revision number
-    const configurationsWithRevision = await Promise.all(
-      (configurations || []).map(async (config) => {
-        const { data: latestRevision } = await supabase
-          .from('configuration_revisions')
-          .select('revision_number')
-          .eq('configuration_id', config.id)
-          .order('revision_number', { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    // Transform recipes to configuration format
+    const configurations = (recipes || []).map((recipe) => {
+      const slugData = parseConfigSlug(recipe.slug);
+      const configData = recipe.inputs?._config || {};
 
-        return {
-          ...config,
-          latest_revision_number: latestRevision?.revision_number || 0,
-        };
-      })
-    );
+      return {
+        id: recipe.id,
+        model_key: recipe.model_key,
+        reference_type: slugData?.reference_type || configData.reference_type || 'QUOTE',
+        reference_number: slugData?.reference_number || configData.reference_number || recipe.source_ref || '',
+        line_key: String(slugData?.reference_line || configData.reference_line || 1),
+        title: configData.title || recipe.name,
+        updated_at: recipe.updated_at,
+        created_at: recipe.created_at,
+        latest_revision_number: 1, // calc_recipes doesn't track revisions
+      };
+    });
 
-    return NextResponse.json(configurationsWithRevision);
+    return NextResponse.json(configurations);
   } catch (error) {
     console.error('Search configurations API error:', error);
     return NextResponse.json(

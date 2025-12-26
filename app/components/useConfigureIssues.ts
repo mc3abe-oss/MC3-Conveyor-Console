@@ -12,7 +12,6 @@ import { useMemo } from 'react';
 import { SliderbedInputs, LacingStyle, BeltTrackingMethod } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateTrackingRecommendation,
-  TrackingMode,
   TRACKING_MODE_LABELS,
   TrackingRecommendationOutput,
 } from '../../src/lib/tracking';

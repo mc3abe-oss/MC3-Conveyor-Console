@@ -1,14 +1,17 @@
 /**
  * POST /api/configurations/save
  *
- * Save or update a configuration with a new revision
- * Includes deduplication: identical payloads will not create new revisions
+ * Save or update a configuration using calc_recipes table.
+ * Includes deduplication: identical payloads will not trigger updates.
+ *
+ * Uses calc_recipes instead of configurations table to avoid RLS issues.
+ * Config data is stored in the inputs JSONB field.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
-import { getCurrentUserId } from '../../../../src/lib/supabase/server';
-import { computePayloadHash, payloadsEqual } from '../../../../src/lib/payload-hash';
+import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { hashCanonical, stripUndefined } from '../../../../src/lib/recipes/hash';
 
 interface SaveRequestBody {
   reference_type: 'QUOTE' | 'SALES_ORDER';
@@ -22,6 +25,13 @@ interface SaveRequestBody {
   outputs_json?: any;
   warnings_json?: any;
   change_note?: string;
+}
+
+/**
+ * Build a unique slug for the recipe from reference fields
+ */
+function buildRecipeSlug(referenceType: string, referenceNumber: string, referenceLine: number): string {
+  return `config:${referenceType.toLowerCase()}:${referenceNumber}:${referenceLine}`;
 }
 
 export async function POST(request: NextRequest) {
@@ -87,174 +97,142 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Compute payload hash for deduplication
-    const payload = { inputs_json, parameters_json, application_json };
-    const payloadHash = computePayloadHash(payload);
+    // Create authenticated Supabase client
+    const supabase = await createClient();
 
-    // Upsert configuration
-    const { data: config, error: configError } = await supabase
-      .from('configurations')
-      .upsert(
-        {
-          model_key,
-          reference_type,
-          reference_number,
-          reference_line: lineNumber,
-          title,
-          created_by_user_id: userId,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'reference_type,reference_number,reference_line',
-          ignoreDuplicates: false,
-        }
-      )
-      .select()
-      .single();
+    // Build unique slug for this configuration
+    const slug = buildRecipeSlug(reference_type, reference_number, lineNumber);
 
-    if (configError) {
-      console.error('Configuration upsert error:', configError);
-      return NextResponse.json(
-        { error: 'Failed to save configuration', details: configError.message },
-        { status: 500 }
-      );
-    }
+    // Build the combined inputs object (stores all config data)
+    const combinedInputs = stripUndefined({
+      ...inputs_json,
+      _config: {
+        reference_type,
+        reference_number,
+        reference_line: lineNumber,
+        title,
+        parameters_json,
+        application_json,
+      },
+    });
 
-    // Check for duplicate payload by fetching latest revision
-    const { data: latestRevision, error: latestError } = await supabase
-      .from('configuration_revisions')
-      .select('id, revision_number, payload_hash, inputs_json, parameters_json, application_json')
-      .eq('configuration_id', config.id)
-      .order('revision_number', { ascending: false })
-      .limit(1)
+    // Compute inputs hash for deduplication
+    const inputsHash = hashCanonical(combinedInputs);
+
+    // Check if recipe with this slug already exists
+    const { data: existingRecipe, error: fetchError } = await supabase
+      .from('calc_recipes')
+      .select('id, inputs_hash, updated_at')
+      .eq('slug', slug)
       .maybeSingle();
 
-    if (latestError) {
-      console.error('Error fetching latest revision:', latestError);
-      // Continue anyway - this is just for deduplication
-    }
-
-    // Check if payload is identical to latest revision
-    if (latestRevision) {
-      let isDuplicate = false;
-
-      // If latest revision has payload_hash, compare hashes
-      if (latestRevision.payload_hash) {
-        isDuplicate = latestRevision.payload_hash === payloadHash;
-      } else {
-        // Fallback: deep equality check for old revisions without hash
-        const latestPayload = {
-          inputs_json: latestRevision.inputs_json,
-          parameters_json: latestRevision.parameters_json,
-          application_json: latestRevision.application_json,
-        };
-        isDuplicate = payloadsEqual(payload, latestPayload);
-      }
-
-      if (isDuplicate) {
-        // No change detected - return existing revision without creating new one
-        return NextResponse.json({
-          status: 'no_change',
-          message: 'No changes detected. Revision not created.',
-          configuration: config,
-          revision: {
-            id: latestRevision.id,
-            revision_number: latestRevision.revision_number,
-          },
-        });
-      }
-    }
-
-    // Get next revision number
-    const { data: revisionNumberData, error: revisionNumberError } = await supabase
-      .rpc('get_next_revision_number', { p_configuration_id: config.id });
-
-    if (revisionNumberError) {
-      console.error('Get next revision number error:', revisionNumberError);
+    if (fetchError) {
+      console.error('Error fetching existing recipe:', fetchError);
       return NextResponse.json(
-        { error: 'Failed to get next revision number', details: revisionNumberError.message },
+        { error: 'Failed to check existing configuration', details: fetchError.message },
         { status: 500 }
       );
     }
 
-    const nextRevisionNumber = revisionNumberData as number;
+    // Check for duplicate - if hash matches, no update needed
+    if (existingRecipe && existingRecipe.inputs_hash === inputsHash) {
+      return NextResponse.json({
+        status: 'no_change',
+        message: 'No changes detected.',
+        recipe: {
+          id: existingRecipe.id,
+          slug,
+          updated_at: existingRecipe.updated_at,
+        },
+      });
+    }
 
-    // Create new revision with payload_hash
-    let revision;
-    let revisionError;
+    // Build recipe name for display
+    const recipeName = title || `${reference_type} ${reference_number} Line ${lineNumber}`;
 
-    try {
+    // Build the recipe row
+    const recipeRow: Record<string, unknown> = {
+      slug,
+      name: recipeName,
+      recipe_type: 'reference',
+      recipe_tier: 'regression',
+      recipe_status: 'active',
+      model_key,
+      model_version_id: 'v1.13.0', // Current version
+      inputs: combinedInputs,
+      inputs_hash: inputsHash,
+      source: 'calculator',
+      source_ref: reference_number,
+      notes: change_note || null,
+      tolerance_policy: 'default_fallback',
+      updated_by: userId,
+    };
+
+    // Store outputs if provided
+    if (outputs_json) {
+      recipeRow.expected_outputs = stripUndefined(outputs_json);
+    }
+
+    // Store warnings/issues if provided
+    if (warnings_json) {
+      recipeRow.expected_issues = warnings_json;
+    }
+
+    let recipe;
+    let recipeError;
+
+    if (existingRecipe) {
+      // Update existing recipe
       const result = await supabase
-        .from('configuration_revisions')
-        .insert({
-          configuration_id: config.id,
-          revision_number: nextRevisionNumber,
-          inputs_json,
-          parameters_json,
-          application_json,
-          outputs_json,
-          warnings_json,
-          payload_hash: payloadHash,
-          change_note,
-          created_by_user_id: userId,
-        })
+        .from('calc_recipes')
+        .update(recipeRow)
+        .eq('id', existingRecipe.id)
         .select()
         .single();
 
-      revision = result.data;
-      revisionError = result.error;
-    } catch (insertError: any) {
-      revisionError = insertError;
+      recipe = result.data;
+      recipeError = result.error;
+    } else {
+      // Insert new recipe
+      recipeRow.created_by = userId;
+      const result = await supabase
+        .from('calc_recipes')
+        .insert(recipeRow)
+        .select()
+        .single();
+
+      recipe = result.data;
+      recipeError = result.error;
     }
 
-    if (revisionError) {
-      // Check if this is a unique constraint violation on payload_hash
-      const errorCode = revisionError.code;
-      const errorMessage = revisionError.message || '';
-      const isPayloadHashDuplicate =
-        errorCode === '23505' &&
-        (errorMessage.includes('ux_revision_payload_hash') ||
-         errorMessage.includes('idx_configuration_revisions_payload_hash'));
-
-      if (isPayloadHashDuplicate) {
-        // Duplicate detected by unique constraint - fetch latest revision
-        console.log('Duplicate payload_hash detected by unique constraint');
-
-        const { data: existingRevision } = await supabase
-          .from('configuration_revisions')
-          .select('id, revision_number, created_at, created_by_user_id')
-          .eq('configuration_id', config.id)
-          .order('revision_number', { ascending: false })
-          .limit(1)
-          .single();
-
-        return NextResponse.json({
-          status: 'no_change',
-          message: 'No changes to save',
-          configuration: config,
-          revision: existingRevision || {
-            id: latestRevision?.id,
-            revision_number: latestRevision?.revision_number,
-          },
-        });
-      }
-
-      // Other error - return 500
-      console.error('Revision insert error:', revisionError);
+    if (recipeError) {
+      console.error('Recipe save error:', recipeError);
       return NextResponse.json(
-        { error: 'Failed to create revision', details: revisionError.message },
+        { error: 'Failed to save configuration', details: recipeError.message },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
-      status: 'created',
-      configuration: config,
+      status: existingRecipe ? 'updated' : 'created',
+      recipe: {
+        id: recipe.id,
+        slug: recipe.slug,
+        name: recipe.name,
+        created_at: recipe.created_at,
+        updated_at: recipe.updated_at,
+      },
+      // Backward compatibility fields
+      configuration: {
+        id: recipe.id,
+        reference_type,
+        reference_number,
+        reference_line: lineNumber,
+        title: recipe.name,
+      },
       revision: {
-        id: revision.id,
-        revision_number: revision.revision_number,
-        created_at: revision.created_at,
-        created_by_user_id: revision.created_by_user_id,
+        id: recipe.id,
+        revision_number: 1, // calc_recipes doesn't track revisions
       },
     });
   } catch (error) {

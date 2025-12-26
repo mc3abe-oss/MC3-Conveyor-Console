@@ -1,13 +1,23 @@
 /**
  * GET /api/configurations/load
  *
- * Load a configuration with its latest revision
+ * Load a configuration from calc_recipes table.
  * Query params: reference_type, reference_number, reference_line (optional, default 1)
+ *
+ * Uses calc_recipes instead of configurations table to avoid RLS issues.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createClient } from '../../../../src/lib/supabase/server';
+import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { normalizeEnvironmentFactors } from '../../../../src/models/sliderbed_v1/schema';
+
+/**
+ * Build a unique slug for the recipe from reference fields
+ */
+function buildRecipeSlug(referenceType: string, referenceNumber: string, referenceLine: number): string {
+  return `config:${referenceType.toLowerCase()}:${referenceNumber}:${referenceLine}`;
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -51,57 +61,78 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Find configuration
-    const { data: config, error: configError } = await supabase
-      .from('configurations')
-      .select('*')
-      .eq('reference_type', reference_type)
-      .eq('reference_number', reference_number)
-      .eq('reference_line', reference_line)
-      .single();
+    // Create authenticated Supabase client
+    const supabase = await createClient();
 
-    if (configError) {
-      if (configError.code === 'PGRST116') {
-        // No rows returned
-        return NextResponse.json(
-          { error: 'Configuration not found' },
-          { status: 404 }
-        );
-      }
-      console.error('Configuration fetch error:', configError);
+    // Build slug to find the recipe
+    const slug = buildRecipeSlug(reference_type, reference_number, reference_line);
+
+    // Find recipe by slug
+    const { data: recipe, error: recipeError } = await supabase
+      .from('calc_recipes')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (recipeError) {
+      console.error('Recipe fetch error:', recipeError);
       return NextResponse.json(
-        { error: 'Failed to load configuration', details: configError.message },
+        { error: 'Failed to load configuration', details: recipeError.message },
         { status: 500 }
       );
     }
 
-    // Get latest revision
-    const { data: revision, error: revisionError } = await supabase
-      .from('configuration_revisions')
-      .select('*')
-      .eq('configuration_id', config.id)
-      .order('revision_number', { ascending: false })
-      .limit(1)
-      .single();
-
-    if (revisionError) {
-      console.error('Revision fetch error:', revisionError);
+    if (!recipe) {
       return NextResponse.json(
-        { error: 'Failed to load revision', details: revisionError.message },
-        { status: 500 }
+        { error: 'Configuration not found' },
+        { status: 404 }
       );
     }
+
+    // Extract config data from the inputs JSONB
+    const inputs = recipe.inputs || {};
+    const configData = inputs._config || {};
+
+    // Build inputs_json without the _config metadata
+    const { _config, ...inputs_json } = inputs;
 
     // Normalize environment_factors for backward compatibility (v1.9)
-    // Old configs stored a single string, new ones store an array
-    if (revision.inputs_json && revision.inputs_json.environment_factors !== undefined) {
-      revision.inputs_json.environment_factors = normalizeEnvironmentFactors(
-        revision.inputs_json.environment_factors
+    if (inputs_json.environment_factors !== undefined) {
+      inputs_json.environment_factors = normalizeEnvironmentFactors(
+        inputs_json.environment_factors
       );
     }
 
+    // Build backward-compatible response
+    const configuration = {
+      id: recipe.id,
+      model_key: recipe.model_key,
+      reference_type: configData.reference_type || reference_type,
+      reference_number: configData.reference_number || reference_number,
+      reference_line: configData.reference_line || reference_line,
+      line_key: String(configData.reference_line || reference_line),
+      title: configData.title || recipe.name,
+      created_by_user_id: recipe.created_by,
+      created_at: recipe.created_at,
+      updated_at: recipe.updated_at,
+    };
+
+    const revision = {
+      id: recipe.id,
+      configuration_id: recipe.id,
+      revision_number: 1, // calc_recipes doesn't track revisions
+      inputs_json,
+      parameters_json: configData.parameters_json || {},
+      application_json: configData.application_json || {},
+      outputs_json: recipe.expected_outputs || null,
+      warnings_json: recipe.expected_issues || null,
+      change_note: recipe.notes,
+      created_by_user_id: recipe.created_by,
+      created_at: recipe.created_at,
+    };
+
     return NextResponse.json({
-      configuration: config,
+      configuration,
       revision,
     });
   } catch (error) {
