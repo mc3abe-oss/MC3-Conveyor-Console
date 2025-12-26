@@ -15,7 +15,9 @@
     "lint": "next lint",
     "format": "prettier --write \"**/*.{ts,tsx}\"",
     "type-check": "tsc --noEmit",
-    "example": "npm run build:lib && node dist/examples/basic-usage.js"
+    "example": "npm run build:lib && node dist/examples/basic-usage.js",
+    "recipes:test": "npx ts-node scripts/recipes-test.ts",
+    "recipes:drift": "npx ts-node scripts/recipes-drift.ts"
   },
   "keywords": [
     "conveyor",

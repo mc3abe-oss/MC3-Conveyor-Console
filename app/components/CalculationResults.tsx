@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import { CalculationResult, SliderbedInputs, SpeedMode } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateTrackingGuidance,
@@ -7,6 +8,7 @@ import {
   TrackingRiskLevel,
 } from '../../src/models/sliderbed_v1/tracking-guidance';
 import clsx from 'clsx';
+import SaveRecipeModal from './SaveRecipeModal';
 
 interface Props {
   result: CalculationResult;
@@ -14,6 +16,44 @@ interface Props {
 }
 
 export default function CalculationResults({ result, inputs }: Props) {
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
+  const [isSavingRecipe, setIsSavingRecipe] = useState(false);
+  const [recipeToast, setRecipeToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const handleSaveRecipe = async (data: { name: string; recipe_type: 'golden' | 'reference'; notes: string }) => {
+    if (!inputs || !result.outputs) {
+      throw new Error('Missing inputs or outputs');
+    }
+
+    setIsSavingRecipe(true);
+    try {
+      const response = await fetch('/api/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          recipe_type: data.recipe_type,
+          notes: data.notes || null,
+          inputs: inputs,
+          outputs: result.outputs,
+          model_key: result.metadata.model_key,
+          model_version_id: result.metadata.model_version_id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save recipe');
+      }
+
+      const savedRecipe = await response.json();
+      setRecipeToast({ type: 'success', message: `Recipe "${savedRecipe.name}" saved` });
+      setTimeout(() => setRecipeToast(null), 3000);
+    } finally {
+      setIsSavingRecipe(false);
+    }
+  };
+
   if (!result.success) {
     return (
       <div className="card">
@@ -511,6 +551,39 @@ export default function CalculationResults({ result, inputs }: Props) {
         <br />
         Calculated at: {new Date(result.metadata.calculated_at).toLocaleString()}
       </div>
+
+      {/* Save as Recipe Button */}
+      {inputs && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <button
+            type="button"
+            onClick={() => setIsRecipeModalOpen(true)}
+            className="w-full px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Save as Recipe
+          </button>
+        </div>
+      )}
+
+      {/* Recipe Toast */}
+      {recipeToast && (
+        <div className={`fixed bottom-4 right-4 z-50 px-4 py-2 rounded-md shadow-lg ${
+          recipeToast.type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'
+        }`}>
+          {recipeToast.message}
+        </div>
+      )}
+
+      {/* Save Recipe Modal */}
+      <SaveRecipeModal
+        isOpen={isRecipeModalOpen}
+        onClose={() => setIsRecipeModalOpen(false)}
+        onSave={handleSaveRecipe}
+        isSaving={isSavingRecipe}
+      />
     </div>
   );
 }
