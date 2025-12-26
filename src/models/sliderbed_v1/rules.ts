@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.11 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.14 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.14 (2025-12-26): Conveyor frame construction validation (gauge/channel conditional requirements)
  * v1.11 (2025-12-24): Belt minimum pulley diameter warnings
  * v1.10 (2025-12-24): Geometry mode validation (L_ANGLE, H_ANGLE, H_TOB)
  * v1.7 (2025-12-22): Sprocket validation for bottom-mount gearmotor configuration
@@ -694,6 +695,54 @@ export function validateInputs(
       errors.push({
         field: 'custom_frame_height_in',
         message: 'Custom frame height must be > 0"',
+        severity: 'error',
+      });
+    }
+  }
+
+  // =========================================================================
+  // v1.14: FRAME CONSTRUCTION VALIDATION
+  // =========================================================================
+
+  // Only validate frame construction fields when explicitly set
+  // This maintains backward compatibility with legacy configs
+  const frameConstructionType = inputs.frame_construction_type;
+
+  // Sheet metal gauge required when construction type is explicitly set to sheet_metal
+  if (frameConstructionType === 'sheet_metal') {
+    if (!inputs.frame_sheet_metal_gauge) {
+      errors.push({
+        field: 'frame_sheet_metal_gauge',
+        message: 'Sheet metal gauge is required when frame construction type is Sheet Metal',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Structural channel series required when construction type is structural_channel
+  if (frameConstructionType === 'structural_channel') {
+    if (!inputs.frame_structural_channel_series) {
+      errors.push({
+        field: 'frame_structural_channel_series',
+        message: 'Channel series is required when frame construction type is Structural Channel',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Pulley end to frame inside distance validation
+  if (inputs.pulley_end_to_frame_inside_in !== undefined) {
+    if (inputs.pulley_end_to_frame_inside_in < 0) {
+      errors.push({
+        field: 'pulley_end_to_frame_inside_in',
+        message: 'Pulley end to frame inside distance must be >= 0"',
+        severity: 'error',
+      });
+    }
+    if (inputs.pulley_end_to_frame_inside_in > 6) {
+      errors.push({
+        field: 'pulley_end_to_frame_inside_in',
+        message: 'Pulley end to frame inside distance must be <= 6" (unusually large value)',
         severity: 'error',
       });
     }

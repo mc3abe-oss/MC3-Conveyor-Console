@@ -4263,6 +4263,175 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
 });
 
 // ============================================================================
+// v1.14: FRAME CONSTRUCTION VALIDATION TESTS
+// ============================================================================
+
+describe('Frame Construction Validation (v1.14)', () => {
+  const BASE_FRAME_INPUTS: SliderbedInputs = {
+    conveyor_length_cc_in: 120,
+    belt_width_in: 24,
+    conveyor_incline_deg: 0,
+    pulley_diameter_in: 4,
+    drive_pulley_diameter_in: 4,
+    belt_speed_fpm: 50,
+    drive_rpm: 100,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0.5,
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: [EnvironmentFactors.Indoor],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    tail_matches_drive: true,
+    cleats_enabled: false,
+    frame_height_mode: FrameHeightMode.Standard,
+    speed_mode: SpeedMode.BeltSpeed,
+    // v1.14: Frame construction defaults
+    frame_construction_type: 'sheet_metal',
+    frame_sheet_metal_gauge: '12_GA',
+  };
+
+  it('should require gauge when construction type is sheet_metal', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'sheet_metal',
+      frame_sheet_metal_gauge: undefined,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(false);
+    expect(
+      result.errors?.some(
+        (e) => e.field === 'frame_sheet_metal_gauge'
+      )
+    ).toBe(true);
+  });
+
+  it('should require channel series when construction type is structural_channel', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'structural_channel',
+      frame_structural_channel_series: undefined,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(false);
+    expect(
+      result.errors?.some(
+        (e) => e.field === 'frame_structural_channel_series'
+      )
+    ).toBe(true);
+  });
+
+  it('should allow special type without gauge or channel', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'special',
+      frame_sheet_metal_gauge: undefined,
+      frame_structural_channel_series: undefined,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should allow sheet_metal with valid gauge', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'sheet_metal',
+      frame_sheet_metal_gauge: '12_GA',
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should allow structural_channel with valid series', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      frame_construction_type: 'structural_channel',
+      frame_structural_channel_series: 'C4',
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject negative pulley_end_to_frame_inside_in', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      pulley_end_to_frame_inside_in: -0.5,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(false);
+    expect(
+      result.errors?.some(
+        (e) => e.field === 'pulley_end_to_frame_inside_in'
+      )
+    ).toBe(true);
+  });
+
+  it('should reject excessive pulley_end_to_frame_inside_in (> 6)', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      pulley_end_to_frame_inside_in: 7,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(false);
+    expect(
+      result.errors?.some(
+        (e) => e.field === 'pulley_end_to_frame_inside_in'
+      )
+    ).toBe(true);
+  });
+
+  it('should allow valid pulley_end_to_frame_inside_in', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_FRAME_INPUTS,
+      pulley_end_to_frame_inside_in: 0.5,
+    };
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+  });
+});
+
+// ============================================================================
 // EXCEL PARITY TEST FIXTURES
 // ============================================================================
 
