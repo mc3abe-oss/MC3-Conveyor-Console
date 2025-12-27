@@ -23,6 +23,16 @@ export default function AdminPage() {
           </Link>
 
           <Link
+            href="/admin/pulleys"
+            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pulley Catalog Admin</h2>
+            <p className="text-sm text-gray-600">
+              Manage pulley catalog entries (internal bearings = tail only)
+            </p>
+          </Link>
+
+          <Link
             href="/admin/environment-factors"
             className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
           >
