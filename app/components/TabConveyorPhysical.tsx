@@ -45,6 +45,8 @@ import {
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
+import PulleySelect from './PulleySelect';
+import { PulleyCatalogItem, getEffectiveDiameter, PulleyStation } from '../../src/lib/pulley-catalog';
 import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
@@ -119,6 +121,34 @@ export default function TabConveyorPhysical({
       updateInput('belt_min_pulley_dia_no_vguide_in', undefined);
       updateInput('belt_min_pulley_dia_with_vguide_in', undefined);
       updateInput('belt_cleat_method', undefined);
+    }
+  };
+
+  // v1.15: Handle head pulley catalog selection
+  const handleHeadPulleyChange = (catalogKey: string | undefined, pulley: PulleyCatalogItem | undefined) => {
+    updateInput('head_pulley_catalog_key', catalogKey);
+    if (pulley) {
+      // Update drive pulley diameter from catalog
+      const effectiveDia = getEffectiveDiameter(pulley);
+      updateInput('drive_pulley_diameter_in', effectiveDia);
+      updateInput('pulley_diameter_in', effectiveDia);
+      updateInput('drive_pulley_preset', 'custom');
+      // If tail matches drive, also update tail
+      if (inputs.tail_matches_drive !== false) {
+        updateInput('tail_pulley_diameter_in', effectiveDia);
+        updateInput('tail_pulley_preset', 'custom');
+      }
+    }
+  };
+
+  // v1.15: Handle tail pulley catalog selection
+  const handleTailPulleyChange = (catalogKey: string | undefined, pulley: PulleyCatalogItem | undefined) => {
+    updateInput('tail_pulley_catalog_key', catalogKey);
+    if (pulley) {
+      // Update tail pulley diameter from catalog
+      const effectiveDia = getEffectiveDiameter(pulley);
+      updateInput('tail_pulley_diameter_in', effectiveDia);
+      updateInput('tail_pulley_preset', 'custom');
     }
   };
 
@@ -716,6 +746,46 @@ export default function TabConveyorPhysical({
           <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
             Pulleys
           </h4>
+
+          {/* v1.15: Head/Drive Pulley Catalog Selection */}
+          <div>
+            <label htmlFor="head_pulley_catalog_key" className="label">
+              Head/Drive Pulley (from catalog)
+            </label>
+            <PulleySelect
+              id="head_pulley_catalog_key"
+              value={inputs.head_pulley_catalog_key}
+              onChange={handleHeadPulleyChange}
+              station={'head_drive' as PulleyStation}
+              showDetails={true}
+              faceWidthRequired={inputs.belt_width_in}
+              beltSpeedFpm={inputs.belt_speed_fpm}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select from catalog to auto-populate diameter. Or use manual selection below.
+            </p>
+          </div>
+
+          {/* v1.15: Tail Pulley Catalog Selection (only when not matching drive) */}
+          {inputs.tail_matches_drive === false && (
+            <div>
+              <label htmlFor="tail_pulley_catalog_key" className="label">
+                Tail Pulley (from catalog)
+              </label>
+              <PulleySelect
+                id="tail_pulley_catalog_key"
+                value={inputs.tail_pulley_catalog_key}
+                onChange={handleTailPulleyChange}
+                station={'tail' as PulleyStation}
+                showDetails={true}
+                faceWidthRequired={inputs.belt_width_in}
+                beltSpeedFpm={inputs.belt_speed_fpm}
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Tail position supports internal bearing pulleys. Or use manual selection below.
+              </p>
+            </div>
+          )}
 
           {/* Drive Pulley Diameter */}
           <div>

@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.14 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.15 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,7 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.15 (2025-12-26): Pulley Catalog integration (head_pulley_catalog_key, tail_pulley_catalog_key)
  * v1.14 (2025-12-26): Conveyor Frame inputs (construction type, gauge, channel, pulley-to-frame gap)
  * v1.13 (2025-12-26): Belt tracking recommendation system (crowned/hybrid/v-guided)
  * v1.12 (2025-12-25): Von Mises-based shaft diameter calculation, belt_width_in rename
@@ -934,6 +935,25 @@ export interface SliderbedInputs {
 
   /** Belt catalog key - references belt_catalog table */
   belt_catalog_key?: string;
+
+  // =========================================================================
+  // v1.15: PULLEY SELECTION
+  // =========================================================================
+
+  /**
+   * Head/Drive pulley catalog key (v1.15)
+   * References pulley_catalog table.
+   * Selected pulley must be compatible with head_drive station.
+   */
+  head_pulley_catalog_key?: string;
+
+  /**
+   * Tail pulley catalog key (v1.15)
+   * References pulley_catalog table.
+   * Selected pulley must be compatible with tail station.
+   * INTERNAL_BEARINGS pulleys can ONLY be used here.
+   */
+  tail_pulley_catalog_key?: string;
 
   /** Belt PIW from catalog (populated when belt is selected) */
   belt_piw?: number;

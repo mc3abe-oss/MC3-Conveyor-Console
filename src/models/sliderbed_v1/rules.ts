@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.14 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.15 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.15 (2025-12-26): Pulley catalog selection info messages
  * v1.14 (2025-12-26): Conveyor frame construction validation (gauge/channel conditional requirements)
  * v1.11 (2025-12-24): Belt minimum pulley diameter warnings
  * v1.10 (2025-12-24): Geometry mode validation (L_ANGLE, H_ANGLE, H_TOB)
@@ -1063,6 +1064,27 @@ export function applyApplicationRules(
         severity: 'error',
       });
     }
+  }
+
+  // =========================================================================
+  // v1.15: PULLEY CATALOG SELECTION INFO
+  // =========================================================================
+
+  // Info when pulley catalog is used
+  if (inputs.head_pulley_catalog_key) {
+    warnings.push({
+      field: 'head_pulley_catalog_key',
+      message: `Head pulley selected from catalog: ${inputs.head_pulley_catalog_key}`,
+      severity: 'info',
+    });
+  }
+
+  if (inputs.tail_pulley_catalog_key) {
+    warnings.push({
+      field: 'tail_pulley_catalog_key',
+      message: `Tail pulley selected from catalog: ${inputs.tail_pulley_catalog_key}`,
+      severity: 'info',
+    });
   }
 
   // =========================================================================
