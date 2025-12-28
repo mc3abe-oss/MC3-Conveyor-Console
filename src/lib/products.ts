@@ -7,7 +7,7 @@
  * 2. Create /app/console/<product>/page.tsx
  */
 
-export type ProductKey = 'sliderbed_v1';
+export type ProductKey = 'belt_conveyor_v1';
 
 export type ProductStatus = 'active' | 'beta' | 'deprecated';
 
@@ -24,10 +24,10 @@ export interface ProductDef {
  */
 export const PRODUCTS: ProductDef[] = [
   {
-    key: 'sliderbed_v1',
-    name: 'Slider Bed Conveyor',
-    description: 'Belt conveyor calculator with versioned configurations',
-    href: '/console/sliderbed',
+    key: 'belt_conveyor_v1',
+    name: 'Belt Conveyor',
+    description: 'Slider bed or roller bed configurations',
+    href: '/console/belt',
     status: 'active',
   },
 ];

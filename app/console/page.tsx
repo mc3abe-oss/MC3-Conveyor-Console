@@ -3,8 +3,8 @@ import { redirect } from 'next/navigation';
 /**
  * Console landing page - redirects to the default product.
  *
- * /console → /console/sliderbed
+ * /console → /console/belt
  */
 export default function ConsolePage() {
-  redirect('/console/sliderbed');
+  redirect('/console/belt');
 }

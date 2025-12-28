@@ -21,12 +21,12 @@ interface Configuration {
 }
 
 /**
- * SliderbedCalculatorApp - The main calculator application component.
+ * BeltConveyorCalculatorApp - The main calculator application component.
  *
- * This is extracted from the original page.tsx to allow embedding in the console shell.
+ * Supports both slider bed and roller bed configurations.
  * All internal state keys and logic remain unchanged.
  */
-export default function SliderbedCalculatorApp() {
+export default function BeltConveyorCalculatorApp() {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [inputs, setInputs] = useState<SliderbedInputs | null>(null);
@@ -342,7 +342,7 @@ export default function SliderbedCalculatorApp() {
           metadata: {
             model_version_id: '1.0.0',
             calculated_at: revision.created_at || new Date().toISOString(),
-            model_key: 'sliderbed_conveyor_v1',
+            model_key: 'belt_conveyor_v1',
           },
         });
         setCalcStatus('ok');
@@ -452,7 +452,7 @@ export default function SliderbedCalculatorApp() {
       reference_type: referenceType,
       reference_number: referenceNumber,
       reference_line: parseInt(lineKey),
-      model_key: 'sliderbed_conveyor_v1',
+      model_key: 'belt_conveyor_v1',
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, conveyorQty),
@@ -577,7 +577,7 @@ export default function SliderbedCalculatorApp() {
           metadata: {
             model_version_id: '1.0.0',
             calculated_at: revision.created_at || new Date().toISOString(),
-            model_key: 'sliderbed_conveyor_v1',
+            model_key: 'belt_conveyor_v1',
           },
         });
         setCalcStatus('ok');

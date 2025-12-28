@@ -27,7 +27,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const href = e.target.value;
     if (href) {
-      router.push(href as '/console/sliderbed');
+      router.push(href as '/console/belt');
     }
   };
 
@@ -40,7 +40,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
             {/* Left: Logo + Product Selector */}
             <div className="flex items-center gap-6">
               <Link href="/console" className="flex items-center">
-                <MC3Logo variant="white" size={90} />
+                <MC3Logo size={90} />
               </Link>
 
               {/* Product Selector */}
@@ -64,9 +64,9 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
             {/* Right: Global Actions */}
             <nav className="flex items-center space-x-1">
               <Link
-                href="/console/sliderbed"
+                href="/console/belt"
                 className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                  pathname.startsWith('/console/sliderbed')
+                  pathname.startsWith('/console/belt')
                     ? 'bg-mc3-blue text-white'
                     : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
                 }`}

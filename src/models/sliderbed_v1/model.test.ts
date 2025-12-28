@@ -806,7 +806,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
 
       const result = runCalculation({ inputs });
 
-      expect(result.metadata.model_key).toBe('sliderbed_conveyor_v1');
+      expect(result.metadata.model_key).toBe('belt_conveyor_v1');
       expect(result.metadata.model_version_id).toBeDefined();
       expect(result.metadata.calculated_at).toBeDefined();
     });

@@ -85,7 +85,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
       metadata: {
         model_version_id,
         calculated_at: new Date().toISOString(),
-        model_key: 'sliderbed_conveyor_v1',
+        model_key: 'belt_conveyor_v1',
       },
     };
   }
@@ -101,7 +101,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
     metadata: {
       model_version_id,
       calculated_at: new Date().toISOString(),
-      model_key: 'sliderbed_conveyor_v1',
+      model_key: 'belt_conveyor_v1',
     },
   };
 }

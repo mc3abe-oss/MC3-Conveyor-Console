@@ -1388,7 +1388,7 @@ export interface ValidationWarning {
 export interface CalculationMetadata {
   model_version_id: string;
   calculated_at: string; // ISO 8601 timestamp
-  model_key: 'sliderbed_conveyor_v1';
+  model_key: 'belt_conveyor_v1';
 }
 
 // ============================================================================
