@@ -1,12 +1,13 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
+import { APP_NAME, APP_DESCRIPTION } from '../src/lib/brand';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Belt Conveyor Calculator',
-  description: 'Professional belt conveyor application design calculator with versioned calculations',
+  title: APP_NAME,
+  description: APP_DESCRIPTION,
 };
 
 export default function RootLayout({

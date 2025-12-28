@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '../../src/lib/supabase/browser';
+import { APP_NAME } from '../../src/lib/brand';
 
 interface HeaderProps {
   loadedConfigurationId: string | null;
@@ -24,7 +25,7 @@ export default function Header({ loadedConfigurationId }: HeaderProps) {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Belt Conveyor Calculator
+              {APP_NAME}
             </h1>
             <p className="text-sm text-gray-500 mt-1">
               Model v1 - Factory Default

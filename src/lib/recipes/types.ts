@@ -19,6 +19,32 @@ export type RecipeTier = 'smoke' | 'regression' | 'edge' | 'longtail';
 
 export type RecipeStatus = 'draft' | 'active' | 'locked' | 'deprecated';
 
+/**
+ * Recipe Role - Mutable lifecycle role for engineering references.
+ *
+ * - reference: Exploratory/informational, not used in automated tests
+ * - regression: Included in regression test suite
+ * - golden: Canonical reference, protected (admin-only to downgrade)
+ * - deprecated: Kept for history, excluded from tests
+ */
+export type RecipeRole = 'reference' | 'regression' | 'golden' | 'deprecated';
+
+export const RECIPE_ROLES: RecipeRole[] = ['reference', 'regression', 'golden', 'deprecated'];
+
+/**
+ * Derive role from legacy recipe_type + recipe_status fields.
+ * Used for backward compatibility when role column doesn't exist.
+ */
+export function deriveRoleFromLegacy(
+  recipeType: RecipeType,
+  recipeStatus: RecipeStatus
+): RecipeRole {
+  if (recipeType === 'golden') return 'golden';
+  if (recipeStatus === 'deprecated') return 'deprecated';
+  if (recipeStatus === 'active') return 'regression';
+  return 'reference';
+}
+
 export type TolerancePolicy = 'explicit' | 'default_fallback';
 
 export type ComparisonMode = 'expected' | 'baseline' | 'legacy' | 'previous';
@@ -106,6 +132,9 @@ export interface Recipe {
   name: string;
   slug: string | null;
 
+  // Role (new unified lifecycle field, may be null for legacy records)
+  role: RecipeRole | null;
+
   // Model binding
   model_key: string;
   model_version_id: string;
@@ -139,6 +168,19 @@ export interface Recipe {
   created_by: string | null;
   updated_at: string;
   updated_by: string | null;
+}
+
+/**
+ * Input for updating recipe metadata (not inputs/outputs).
+ * Inputs and expected_outputs are immutable - use duplicate to create variant.
+ */
+export interface RecipeUpdateInput {
+  name?: string;
+  notes?: string | null;
+  role?: RecipeRole;
+  tags?: string[] | null;
+  /** Reason required when upgrading to golden or downgrading from golden */
+  role_change_reason?: string;
 }
 
 /**
