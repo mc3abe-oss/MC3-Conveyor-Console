@@ -3,13 +3,39 @@
 @tailwind utilities;
 
 @layer base {
+  :root {
+    --mc3-bg: 255 255 255;
+    --mc3-fg: 24 25 36;
+    --mc3-brand: 43 93 133;
+    --mc3-navy: 46 54 78;
+    --mc3-accent: 243 210 115;
+    --mc3-mist: 223 230 243;
+    --mc3-line: 210 218 230;
+  }
+
   * {
     @apply border-gray-200;
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    @apply text-gray-900;
+    background-color: rgb(var(--mc3-bg));
+    color: rgb(var(--mc3-fg));
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  a {
+    color: #2B5D85;
+    transition: color 150ms;
+  }
+
+  a:hover {
+    color: #2E364E;
+  }
+
+  :focus-visible {
+    outline: 2px solid #F3D273;
+    outline-offset: 2px;
   }
 }
 
@@ -68,5 +94,20 @@
 
   .badge-info {
     @apply bg-blue-100 text-blue-800;
+  }
+
+  /* MC3 Brand Utilities */
+  .mc3-surface {
+    @apply bg-white rounded-lg shadow-sm;
+    border: 1px solid #D2DAE6;
+  }
+
+  .mc3-section-title {
+    @apply font-semibold;
+    color: #2E364E;
+  }
+
+  .mc3-subtle {
+    @apply text-gray-500;
   }
 }
