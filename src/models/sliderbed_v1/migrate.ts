@@ -55,6 +55,7 @@ import {
   SheetMetalGauge,
 } from './schema';
 import { horizontalFromAxis, normalizeGeometry, DerivedGeometry } from './geometry';
+import { getEffectiveDiameterByKey } from '../../lib/pulley-catalog';
 
 const DEFAULT_PULLEY_DIAMETER_IN = 4;
 
@@ -80,17 +81,14 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
     const diameter = legacyPulleyDia && legacyPulleyDia > 0 ? legacyPulleyDia : DEFAULT_PULLEY_DIAMETER_IN;
     migrated.drive_pulley_diameter_in = diameter;
     migrated.tail_pulley_diameter_in = diameter;
-    migrated.tail_matches_drive = true;
     migrated.drive_pulley_preset = undefined; // Custom since migrated
     migrated.tail_pulley_preset = undefined;
   } else if (hasDrive && !hasTail) {
-    // Drive exists but tail missing - set tail = drive
-    migrated.tail_pulley_diameter_in = migrated.drive_pulley_diameter_in;
-    migrated.tail_matches_drive = true;
+    // Drive exists but tail missing - tail compat shim will handle later
+    // (see v1.16 TAIL MATCHES DRIVE COMPATIBILITY SHIM section below)
   } else if (!hasDrive && hasTail) {
     // Tail exists but drive missing - set drive = tail
     migrated.drive_pulley_diameter_in = migrated.tail_pulley_diameter_in;
-    migrated.tail_matches_drive = true;
   }
   // If both exist, keep them as-is
 
@@ -116,20 +114,23 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
   }
 
   // =========================================================================
-  // TAIL MATCHES DRIVE SYNC
+  // v1.16: TAIL MATCHES DRIVE COMPATIBILITY SHIM
   // =========================================================================
+  // Legacy configs may have tail_matches_drive = true (or undefined, which meant true).
+  // When this is the case and tail_pulley_diameter_in is not explicitly set,
+  // we set tail = drive to preserve the old behavior.
+  // After migration, we delete tail_matches_drive so it doesn't persist forward.
 
-  // If tail_matches_drive is true, ensure tail actually matches drive
-  if (migrated.tail_matches_drive === true && migrated.drive_pulley_diameter_in !== undefined) {
+  if (
+    (migrated.tail_matches_drive === true || migrated.tail_matches_drive === undefined) &&
+    migrated.tail_pulley_diameter_in === undefined &&
+    migrated.drive_pulley_diameter_in !== undefined
+  ) {
     migrated.tail_pulley_diameter_in = migrated.drive_pulley_diameter_in;
   }
 
-  // Default tail_matches_drive if not set
-  if (migrated.tail_matches_drive === undefined) {
-    // Check if they're equal
-    migrated.tail_matches_drive =
-      migrated.drive_pulley_diameter_in === migrated.tail_pulley_diameter_in;
-  }
+  // Delete the deprecated field so it doesn't persist in new saves
+  delete migrated.tail_matches_drive;
 
   // =========================================================================
   // v1.4: SUPPORT OPTION MIGRATION
@@ -269,6 +270,10 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
  *
  * This ensures all required pulley diameter fields are populated.
  * Call this at the start of calculate() to handle any legacy configs.
+ *
+ * v1.16: CATALOG AUTHORITY RULE
+ * If a catalog key is selected for a station, that catalog's effective diameter
+ * is the source of truth. Manual diameter is only used when no catalog is selected.
  */
 export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
   drivePulleyDiameterIn: number;
@@ -277,9 +282,16 @@ export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
   // Apply migration if needed
   const migrated = migrateInputs(inputs);
 
-  // At this point, both should be defined
-  const drivePulleyDiameterIn = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
-  const tailPulleyDiameterIn = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
+  // v1.16: Catalog diameter takes precedence over manual
+  // For drive: check head_pulley_catalog_key first
+  const catalogDriveDia = getEffectiveDiameterByKey(migrated.head_pulley_catalog_key);
+  const manualDriveDia = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
+  const drivePulleyDiameterIn = catalogDriveDia ?? manualDriveDia;
+
+  // For tail: check tail_pulley_catalog_key first
+  const catalogTailDia = getEffectiveDiameterByKey(migrated.tail_pulley_catalog_key);
+  const manualTailDia = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
+  const tailPulleyDiameterIn = catalogTailDia ?? manualTailDia;
 
   return { drivePulleyDiameterIn, tailPulleyDiameterIn };
 }
@@ -289,6 +301,10 @@ export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
  *
  * Extended version that includes geometry normalization.
  * Returns pulley diameters AND derived geometry values.
+ *
+ * v1.16: CATALOG AUTHORITY RULE
+ * If a catalog key is selected for a station, that catalog's effective diameter
+ * is the source of truth. Manual diameter is only used when no catalog is selected.
  */
 export function normalizeInputsForCalculationV2(inputs: SliderbedInputs): {
   drivePulleyDiameterIn: number;
@@ -299,9 +315,16 @@ export function normalizeInputsForCalculationV2(inputs: SliderbedInputs): {
   // Apply migration if needed
   const migrated = migrateInputs(inputs);
 
-  // Normalize pulley diameters
-  const drivePulleyDiameterIn = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
-  const tailPulleyDiameterIn = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
+  // v1.16: Catalog diameter takes precedence over manual
+  // For drive: check head_pulley_catalog_key first
+  const catalogDriveDia = getEffectiveDiameterByKey(migrated.head_pulley_catalog_key);
+  const manualDriveDia = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
+  const drivePulleyDiameterIn = catalogDriveDia ?? manualDriveDia;
+
+  // For tail: check tail_pulley_catalog_key first
+  const catalogTailDia = getEffectiveDiameterByKey(migrated.tail_pulley_catalog_key);
+  const manualTailDia = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
+  const tailPulleyDiameterIn = catalogTailDia ?? manualTailDia;
 
   // Normalize geometry (v1.10)
   const { normalized, derived } = normalizeGeometry(migrated);

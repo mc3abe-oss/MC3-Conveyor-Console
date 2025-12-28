@@ -70,6 +70,12 @@ import {
 } from './migrate';
 import { validateTob, validateForCommit } from './rules';
 import {
+  setCachedPulleys,
+  clearPulleyCatalogCache,
+  PulleyCatalogItem,
+} from '../../lib/pulley-catalog';
+import { normalizeInputsForCalculation } from './migrate';
+import {
   calculateTrackingGuidance,
   getTrackingTooltip,
   isTrackingSelectionOptimal,
@@ -1701,7 +1707,6 @@ describe('Split Pulley Diameter (v1.3)', () => {
         pulley_diameter_in: 4,
         drive_pulley_diameter_in: 4,
         tail_pulley_diameter_in: 4,
-        tail_matches_drive: true,
       };
       const v13Result = runCalculation({ inputs: v13Inputs });
 
@@ -1761,7 +1766,6 @@ describe('Split Pulley Diameter (v1.3)', () => {
         conveyor_length_cc_in: 100,
         drive_pulley_diameter_in: 4,
         tail_pulley_diameter_in: 6,
-        tail_matches_drive: false,
       };
       const result = runCalculation({ inputs });
 
@@ -1778,7 +1782,6 @@ describe('Split Pulley Diameter (v1.3)', () => {
         ...baseInputs,
         drive_pulley_diameter_in: 5,
         tail_pulley_diameter_in: 8,
-        tail_matches_drive: false,
       };
       const result = runCalculation({ inputs });
 
@@ -1806,7 +1809,6 @@ describe('Split Pulley Diameter (v1.3)', () => {
         ...baseInputs,
         drive_pulley_diameter_in: 4,
         tail_pulley_diameter_in: 2,
-        tail_matches_drive: false,
       };
       const result = runCalculation({ inputs });
 
@@ -1831,7 +1833,6 @@ describe('Split Pulley Diameter (v1.3)', () => {
         ...baseInputs,
         drive_pulley_diameter_in: 4,
         tail_pulley_diameter_in: 6,
-        tail_matches_drive: false,
       };
       const result = runCalculation({ inputs });
 
@@ -3959,7 +3960,6 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
         belt_tracking_method: BeltTrackingMethod.Crowned,
         belt_min_pulley_dia_no_vguide_in: 4.0, // Belt requires 4"
         drive_pulley_diameter_in: 5, // Drive meets minimum
-        tail_matches_drive: false,
         tail_pulley_diameter_in: 3, // Tail is below minimum
       };
 
@@ -3981,28 +3981,34 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
       ).toBe(false);
     });
 
-    it('should not warn for tail pulley when tail_matches_drive is true', () => {
+    // v1.16: Both pulleys now validated independently (tail_matches_drive removed)
+    it('should warn for both pulleys when both are below minimum', () => {
       const inputs: SliderbedInputs = {
         ...BASE_INPUTS,
         belt_tracking_method: BeltTrackingMethod.Crowned,
         belt_min_pulley_dia_no_vguide_in: 5.0, // Belt requires 5"
         drive_pulley_diameter_in: 4, // Drive is below minimum
-        tail_matches_drive: true, // Default, tail inherits drive
+        tail_pulley_diameter_in: 4, // Tail is also below minimum
       };
 
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      // Both pulleys are 4" (same as drive)
+      // Both pulleys are 4" - both below the 5" minimum
       expect(result.outputs?.drive_pulley_meets_minimum).toBe(false);
       expect(result.outputs?.tail_pulley_meets_minimum).toBe(false);
-      // Should have warning for drive pulley only (not separate tail warning)
+      // Should have warnings for BOTH pulleys independently
       expect(
         result.warnings?.filter((w) => w.message.includes('below belt minimum')).length
-      ).toBe(1);
+      ).toBe(2);
       expect(
         result.warnings?.some(
           (w) => w.field === 'drive_pulley_diameter_in' && w.message.includes('below belt minimum')
+        )
+      ).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.field === 'tail_pulley_diameter_in' && w.message.includes('below belt minimum')
         )
       ).toBe(true);
     });
@@ -4315,7 +4321,6 @@ describe('Frame Construction Validation (v1.14)', () => {
     drive_hand: DriveHand.RightHand,
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
-    tail_matches_drive: true,
     cleats_enabled: false,
     frame_height_mode: FrameHeightMode.Standard,
     speed_mode: SpeedMode.BeltSpeed,
@@ -4507,7 +4512,6 @@ describe('Frame Construction Migration (v1.14)', () => {
     belt_speed_fpm: 50,
     drive_pulley_diameter_in: 6,
     tail_pulley_diameter_in: 6,
-    tail_matches_drive: true,
     tail_support_type: EndSupportType.External,
     drive_support_type: EndSupportType.External,
     speed_mode: SpeedMode.BeltSpeed,
@@ -4596,6 +4600,244 @@ describe('Frame Construction Migration (v1.14)', () => {
     expect(migrated.frame_construction_type).toBe('sheet_metal');
     expect(migrated.frame_sheet_metal_gauge).toBe('16_GA');
     expect(migrated.frame_structural_channel_series).toBeUndefined();
+  });
+});
+
+// ============================================================================
+// v1.16: CATALOG DIAMETER AUTHORITY TESTS
+// ============================================================================
+
+describe('v1.16 Catalog Diameter Authority', () => {
+  // Minimal BASE_INPUTS for these tests
+  const BASE_INPUTS: SliderbedInputs = {
+    belt_width_in: 18,
+    length_ft: 20,
+    incline_deg: 0,
+    belt_speed_fpm: 50,
+    motor_rpm: 1750,
+    drive_rpm: 0,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0.5,
+    speed_mode: SpeedMode.BeltSpeed,
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: [EnvironmentFactors.Indoor],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    support_option: SupportOption.FloorMounted,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  // Test pulley catalog items
+  const TEST_DRIVE_PULLEY: PulleyCatalogItem = {
+    id: 'test-drive-1',
+    catalog_key: 'DRIVE-6IN',
+    display_name: 'Test Drive Pulley 6"',
+    manufacturer: 'Test',
+    part_number: 'TP-DRIVE-6',
+    diameter_in: 5.5, // 5.5" nominal + 0.25" lagging each side = 6" effective
+    face_width_max_in: 24,
+    face_width_min_in: 6,
+    crown_height_in: 0.125,
+    construction: 'DRUM',
+    shell_material: 'Steel',
+    is_lagged: true,
+    lagging_type: 'Rubber',
+    lagging_thickness_in: 0.25,
+    shaft_arrangement: 'THROUGH_SHAFT_EXTERNAL_BEARINGS',
+    hub_connection: 'KEYED',
+    allow_head_drive: true,
+    allow_tail: true,
+    allow_snub: false,
+    allow_bend: false,
+    allow_takeup: false,
+    dirty_side_ok: false,
+    max_shaft_rpm: null,
+    max_belt_speed_fpm: null,
+    max_tension_pli: null,
+    is_preferred: true,
+    is_active: true,
+    notes: null,
+    tags: null,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
+  };
+
+  const TEST_TAIL_PULLEY: PulleyCatalogItem = {
+    id: 'test-tail-1',
+    catalog_key: 'TAIL-5IN',
+    display_name: 'Test Tail Pulley 5"',
+    manufacturer: 'Test',
+    part_number: 'TP-TAIL-5',
+    diameter_in: 5, // 5" nominal, no lagging
+    face_width_max_in: 24,
+    face_width_min_in: 6,
+    crown_height_in: 0,
+    construction: 'DRUM',
+    shell_material: 'Steel',
+    is_lagged: false,
+    lagging_type: null,
+    lagging_thickness_in: null,
+    shaft_arrangement: 'THROUGH_SHAFT_EXTERNAL_BEARINGS',
+    hub_connection: 'KEYED',
+    allow_head_drive: false,
+    allow_tail: true,
+    allow_snub: false,
+    allow_bend: false,
+    allow_takeup: false,
+    dirty_side_ok: false,
+    max_shaft_rpm: null,
+    max_belt_speed_fpm: null,
+    max_tension_pli: null,
+    is_preferred: true,
+    is_active: true,
+    notes: null,
+    tags: null,
+    created_at: '2024-01-01',
+    updated_at: '2024-01-01',
+  };
+
+  beforeEach(() => {
+    // Set up the cache with test pulleys before each test
+    setCachedPulleys([TEST_DRIVE_PULLEY, TEST_TAIL_PULLEY]);
+  });
+
+  afterEach(() => {
+    // Clear the cache after each test
+    clearPulleyCatalogCache();
+  });
+
+  // Test A: Drive catalog overrides manual
+  it('should use catalog effective diameter for drive when catalog key is selected', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_INPUTS,
+      drive_pulley_diameter_in: 4, // Manual says 4"
+      head_pulley_catalog_key: 'DRIVE-6IN', // Catalog pulley has 6" effective
+    };
+
+    const { drivePulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+
+    // Catalog diameter (5.5 + 0.25*2 = 6) should override manual (4)
+    expect(drivePulleyDiameterIn).toBe(6);
+  });
+
+  // Test B: Tail catalog overrides manual
+  it('should use catalog effective diameter for tail when catalog key is selected', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_INPUTS,
+      tail_pulley_diameter_in: 4, // Manual says 4"
+      tail_pulley_catalog_key: 'TAIL-5IN', // Catalog pulley has 5" effective (no lagging)
+    };
+
+    const { tailPulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+
+    // Catalog diameter (5, no lagging) should override manual (4)
+    expect(tailPulleyDiameterIn).toBe(5);
+  });
+
+  // Test C: Manual used when no catalog selected
+  it('should use manual diameter when no catalog key is selected', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_INPUTS,
+      drive_pulley_diameter_in: 4,
+      tail_pulley_diameter_in: 3,
+      // No catalog keys set
+    };
+
+    const { drivePulleyDiameterIn, tailPulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+
+    // Manual diameters should be used
+    expect(drivePulleyDiameterIn).toBe(4);
+    expect(tailPulleyDiameterIn).toBe(3);
+  });
+
+  // Test D: Catalog key missing falls back to manual with warning
+  it('should fall back to manual diameter when catalog key is invalid', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_INPUTS,
+      drive_pulley_diameter_in: 4,
+      head_pulley_catalog_key: 'NON-EXISTENT-KEY', // Key doesn't exist in catalog
+    };
+
+    const { drivePulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+
+    // Should fall back to manual diameter (4) when catalog key not found
+    expect(drivePulleyDiameterIn).toBe(4);
+
+    // Also verify the warning is produced in rules
+    const result = runCalculation({ inputs });
+    expect(result.success).toBe(true);
+    expect(
+      result.warnings?.some(
+        (w) => w.field === 'head_pulley_catalog_key' && w.message.includes('not found in catalog')
+      )
+    ).toBe(true);
+  });
+
+  // Test: Both drive and tail from catalog
+  it('should use catalog diameters for both when both catalog keys are selected', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_INPUTS,
+      drive_pulley_diameter_in: 4, // Manual says 4"
+      tail_pulley_diameter_in: 4, // Manual says 4"
+      head_pulley_catalog_key: 'DRIVE-6IN', // Catalog: 6" effective
+      tail_pulley_catalog_key: 'TAIL-5IN', // Catalog: 5" effective
+    };
+
+    const { drivePulleyDiameterIn, tailPulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+
+    // Both should use catalog diameters
+    expect(drivePulleyDiameterIn).toBe(6);
+    expect(tailPulleyDiameterIn).toBe(5);
+  });
+
+  // Test: Calculation uses catalog diameters in outputs
+  it('should produce correct outputs using catalog diameters', () => {
+    const inputs: SliderbedInputs = {
+      ...BASE_INPUTS,
+      drive_pulley_diameter_in: 4, // Manual says 4"
+      head_pulley_catalog_key: 'DRIVE-6IN', // Catalog: 6" effective
+      tail_pulley_catalog_key: 'TAIL-5IN', // Catalog: 5" effective
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    // Verify the outputs reflect catalog diameters
+    expect(result.outputs?.drive_pulley_diameter_in).toBe(6);
+    expect(result.outputs?.tail_pulley_diameter_in).toBe(5);
   });
 });
 

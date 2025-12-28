@@ -559,7 +559,11 @@ export interface SliderbedInputs {
   /** Tail pulley diameter in inches */
   tail_pulley_diameter_in?: number;
 
-  /** Whether tail pulley matches drive pulley (UI state, default: true) */
+  /**
+   * @deprecated v1.16: Removed from UI. Kept for backward compatibility with saved configs.
+   * Migration shim in migrate.ts handles old configs by setting tail_pulley_diameter_in = drive_pulley_diameter_in
+   * when this field is true or undefined.
+   */
   tail_matches_drive?: boolean;
 
   /** Drive pulley preset selection (UI state only) */
@@ -1482,8 +1486,7 @@ export const DEFAULT_INPUT_VALUES = {
   // Belt selection defaults (no belt selected by default)
   belt_catalog_key: undefined,
 
-  // Pulley diameter defaults (v1.3)
-  tail_matches_drive: true,
+  // Pulley diameter defaults (v1.3, v1.16: tail_matches_drive removed)
   drive_pulley_preset: 4 as PulleyDiameterPreset, // 4" is common default
   tail_pulley_preset: 4 as PulleyDiameterPreset,
 

@@ -445,11 +445,8 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       });
     }
 
-    // Check tail pulley
-    const tailMatchesDrive = inputs.tail_matches_drive !== false;
-    const tailPulleyDia = tailMatchesDrive
-      ? drivePulleyDia
-      : (inputs.tail_pulley_diameter_in ?? drivePulleyDia);
+    // v1.16: Check tail pulley independently (always)
+    const tailPulleyDia = inputs.tail_pulley_diameter_in ?? drivePulleyDia;
 
     if (tailPulleyDia < minPulleyRequired) {
       issues.push({

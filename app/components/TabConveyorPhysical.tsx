@@ -133,11 +133,6 @@ export default function TabConveyorPhysical({
       updateInput('drive_pulley_diameter_in', effectiveDia);
       updateInput('pulley_diameter_in', effectiveDia);
       updateInput('drive_pulley_preset', 'custom');
-      // If tail matches drive, also update tail
-      if (inputs.tail_matches_drive !== false) {
-        updateInput('tail_pulley_diameter_in', effectiveDia);
-        updateInput('tail_pulley_preset', 'custom');
-      }
     }
   };
 
@@ -152,11 +147,13 @@ export default function TabConveyorPhysical({
     }
   };
 
+  // v1.16: Catalog authority - when catalog selected, it's the source of truth
+  const driveFromCatalog = Boolean(inputs.head_pulley_catalog_key);
+  const tailFromCatalog = Boolean(inputs.tail_pulley_catalog_key);
+
   // Get effective pulley diameters
   const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
-  const tailPulleyDia = inputs.tail_matches_drive !== false
-    ? drivePulleyDia
-    : (inputs.tail_pulley_diameter_in ?? drivePulleyDia);
+  const tailPulleyDia = inputs.tail_pulley_diameter_in ?? drivePulleyDia;
 
   // Get pre-calc tracking and min pulley issues from useConfigureIssues (no stealth calc needed)
   const trackingIssue = getTrackingIssue();
@@ -265,10 +262,6 @@ export default function TabConveyorPhysical({
       updateInput('drive_pulley_preset', value as PulleyDiameterPreset);
       updateInput('drive_pulley_diameter_in', value);
       updateInput('pulley_diameter_in', value);
-      if (inputs.tail_matches_drive !== false) {
-        updateInput('tail_pulley_diameter_in', value);
-        updateInput('tail_pulley_preset', value as PulleyDiameterPreset);
-      }
     }
   };
 
@@ -279,14 +272,6 @@ export default function TabConveyorPhysical({
       const value = parseFloat(preset);
       updateInput('tail_pulley_preset', value as PulleyDiameterPreset);
       updateInput('tail_pulley_diameter_in', value);
-    }
-  };
-
-  const handleTailMatchesDriveChange = (matches: boolean) => {
-    updateInput('tail_matches_drive', matches);
-    if (matches) {
-      updateInput('tail_pulley_diameter_in', drivePulleyDia);
-      updateInput('tail_pulley_preset', inputs.drive_pulley_preset);
     }
   };
 
@@ -766,177 +751,183 @@ export default function TabConveyorPhysical({
             </p>
           </div>
 
-          {/* v1.15: Tail Pulley Catalog Selection (only when not matching drive) */}
-          {inputs.tail_matches_drive === false && (
-            <div>
-              <label htmlFor="tail_pulley_catalog_key" className="label">
-                Tail Pulley (from catalog)
-              </label>
-              <PulleySelect
-                id="tail_pulley_catalog_key"
-                value={inputs.tail_pulley_catalog_key}
-                onChange={handleTailPulleyChange}
-                station={'tail' as PulleyStation}
-                showDetails={true}
-                faceWidthRequired={inputs.belt_width_in}
-                beltSpeedFpm={inputs.belt_speed_fpm}
-              />
-              <p className="text-xs text-gray-500 mt-1">
-                Tail position supports internal bearing pulleys. Or use manual selection below.
-              </p>
-            </div>
-          )}
+          {/* v1.16: Tail Pulley Catalog Selection (always visible) */}
+          <div>
+            <label htmlFor="tail_pulley_catalog_key" className="label">
+              Tail Pulley (from catalog)
+            </label>
+            <PulleySelect
+              id="tail_pulley_catalog_key"
+              value={inputs.tail_pulley_catalog_key}
+              onChange={handleTailPulleyChange}
+              station={'tail' as PulleyStation}
+              showDetails={true}
+              faceWidthRequired={inputs.belt_width_in}
+              beltSpeedFpm={inputs.belt_speed_fpm}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Tail position supports internal bearing pulleys. Or use manual selection below.
+            </p>
+          </div>
 
           {/* Drive Pulley Diameter */}
           <div>
             <label htmlFor="drive_pulley_preset" className="label">
               Drive Pulley Diameter (in)
-            </label>
-            <div className="flex gap-2">
-              <select
-                id="drive_pulley_preset"
-                className={`input flex-1 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
-                value={
-                  inputs.drive_pulley_preset === 'custom'
-                    ? 'custom'
-                    : PULLEY_DIAMETER_PRESETS.includes(drivePulleyDia as any)
-                    ? drivePulleyDia.toString()
-                    : 'custom'
-                }
-                onChange={(e) => handleDrivePulleyPresetChange(e.target.value)}
-              >
-                {PULLEY_DIAMETER_PRESETS.map((size) => (
-                  <option key={size} value={size.toString()}>
-                    {size}"
-                  </option>
-                ))}
-                <option value="custom">Custom...</option>
-              </select>
-              {(inputs.drive_pulley_preset === 'custom' ||
-                !PULLEY_DIAMETER_PRESETS.includes(drivePulleyDia as any)) && (
-                <input
-                  type="number"
-                  id="drive_pulley_diameter_in"
-                  className={`input w-24 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
-                  value={drivePulleyDia}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    updateInput('drive_pulley_diameter_in', value);
-                    updateInput('pulley_diameter_in', value);
-                    if (inputs.tail_matches_drive !== false) {
-                      updateInput('tail_pulley_diameter_in', value);
-                    }
-                  }}
-                  step="0.1"
-                  min="2.5"
-                  max="12"
-                  required
-                />
+              {driveFromCatalog && (
+                <span className="ml-2 text-xs font-normal text-blue-600">
+                  ({drivePulleyDia}" from catalog)
+                </span>
               )}
-            </div>
-            {drivePulleyBelowMinimum && (
-              <p className="text-xs text-red-600 mt-1">
-                Drive pulley is below minimum required ({minPulleyDriveRequired}" for{' '}
-                {isVGuided ? 'V-guided' : 'crowned'} tracking).
-                {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                  <span className="block text-red-500 text-xs mt-0.5">
-                    Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                  </span>
-                )}
-              </p>
-            )}
-            {!drivePulleyBelowMinimum && minPulleyDriveRequired !== undefined && (
+            </label>
+            {driveFromCatalog ? (
               <p className="text-xs text-gray-500 mt-1">
-                Minimum required: {minPulleyDriveRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
-                {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                  <span className="block text-amber-600 text-xs mt-0.5">
-                    Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                  </span>
-                )}
+                Derived from selected drive pulley. Clear catalog selection to set manually.
               </p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <select
+                    id="drive_pulley_preset"
+                    className={`input flex-1 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
+                    value={
+                      inputs.drive_pulley_preset === 'custom'
+                        ? 'custom'
+                        : PULLEY_DIAMETER_PRESETS.includes(drivePulleyDia as any)
+                        ? drivePulleyDia.toString()
+                        : 'custom'
+                    }
+                    onChange={(e) => handleDrivePulleyPresetChange(e.target.value)}
+                  >
+                    {PULLEY_DIAMETER_PRESETS.map((size) => (
+                      <option key={size} value={size.toString()}>
+                        {size}"
+                      </option>
+                    ))}
+                    <option value="custom">Custom...</option>
+                  </select>
+                  {(inputs.drive_pulley_preset === 'custom' ||
+                    !PULLEY_DIAMETER_PRESETS.includes(drivePulleyDia as any)) && (
+                    <input
+                      type="number"
+                      id="drive_pulley_diameter_in"
+                      className={`input w-24 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
+                      value={drivePulleyDia}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateInput('drive_pulley_diameter_in', value);
+                        updateInput('pulley_diameter_in', value);
+                      }}
+                      step="0.1"
+                      min="2.5"
+                      max="12"
+                      required
+                    />
+                  )}
+                </div>
+                {drivePulleyBelowMinimum && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Drive pulley is below minimum required ({minPulleyDriveRequired}" for{' '}
+                    {isVGuided ? 'V-guided' : 'crowned'} tracking).
+                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                      <span className="block text-red-500 text-xs mt-0.5">
+                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                      </span>
+                    )}
+                  </p>
+                )}
+                {!drivePulleyBelowMinimum && minPulleyDriveRequired !== undefined && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Minimum required: {minPulleyDriveRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
+                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                      <span className="block text-amber-600 text-xs mt-0.5">
+                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                      </span>
+                    )}
+                  </p>
+                )}
+              </>
             )}
           </div>
 
-          {/* Tail Matches Drive toggle */}
+          {/* v1.16: Tail Pulley Diameter (always visible) */}
           <div>
-            <label className="label flex items-center gap-2">
-              <input
-                type="checkbox"
-                checked={inputs.tail_matches_drive !== false}
-                onChange={(e) => handleTailMatchesDriveChange(e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              Tail pulley matches drive pulley
+            <label htmlFor="tail_pulley_preset" className="label">
+              Tail Pulley Diameter (in)
+              {tailFromCatalog && (
+                <span className="ml-2 text-xs font-normal text-blue-600">
+                  ({tailPulleyDia}" from catalog)
+                </span>
+              )}
             </label>
-          </div>
-
-          {/* Tail Pulley Diameter - only show if different from drive */}
-          {inputs.tail_matches_drive === false && (
-            <div className="ml-4 pl-4 border-l-2 border-gray-200">
-              <label htmlFor="tail_pulley_preset" className="label">
-                Tail Pulley Diameter (in)
-              </label>
-              <div className="flex gap-2">
-                <select
-                  id="tail_pulley_preset"
-                  className={`input flex-1 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
-                  value={
-                    inputs.tail_pulley_preset === 'custom'
-                      ? 'custom'
-                      : PULLEY_DIAMETER_PRESETS.includes(tailPulleyDia as any)
-                      ? tailPulleyDia.toString()
-                      : 'custom'
-                  }
-                  onChange={(e) => handleTailPulleyPresetChange(e.target.value)}
-                >
-                  {PULLEY_DIAMETER_PRESETS.map((size) => (
-                    <option key={size} value={size.toString()}>
-                      {size}"
-                    </option>
-                  ))}
-                  <option value="custom">Custom...</option>
-                </select>
-                {(inputs.tail_pulley_preset === 'custom' ||
-                  !PULLEY_DIAMETER_PRESETS.includes(tailPulleyDia as any)) && (
-                  <input
-                    type="number"
-                    id="tail_pulley_diameter_in"
-                    className={`input w-24 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
-                    value={tailPulleyDia}
-                    onChange={(e) => {
-                      const value = parseFloat(e.target.value) || 0;
-                      updateInput('tail_pulley_diameter_in', value);
-                    }}
-                    step="0.1"
-                    min="2.5"
-                    max="12"
-                    required
-                  />
+            {tailFromCatalog ? (
+              <p className="text-xs text-gray-500 mt-1">
+                Derived from selected tail pulley. Clear catalog selection to set manually.
+              </p>
+            ) : (
+              <>
+                <div className="flex gap-2">
+                  <select
+                    id="tail_pulley_preset"
+                    className={`input flex-1 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
+                    value={
+                      inputs.tail_pulley_preset === 'custom'
+                        ? 'custom'
+                        : PULLEY_DIAMETER_PRESETS.includes(tailPulleyDia as any)
+                        ? tailPulleyDia.toString()
+                        : 'custom'
+                    }
+                    onChange={(e) => handleTailPulleyPresetChange(e.target.value)}
+                  >
+                    {PULLEY_DIAMETER_PRESETS.map((size) => (
+                      <option key={size} value={size.toString()}>
+                        {size}"
+                      </option>
+                    ))}
+                    <option value="custom">Custom...</option>
+                  </select>
+                  {(inputs.tail_pulley_preset === 'custom' ||
+                    !PULLEY_DIAMETER_PRESETS.includes(tailPulleyDia as any)) && (
+                    <input
+                      type="number"
+                      id="tail_pulley_diameter_in"
+                      className={`input w-24 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
+                      value={tailPulleyDia}
+                      onChange={(e) => {
+                        const value = parseFloat(e.target.value) || 0;
+                        updateInput('tail_pulley_diameter_in', value);
+                      }}
+                      step="0.1"
+                      min="2.5"
+                      max="12"
+                      required
+                    />
+                  )}
+                </div>
+                {tailPulleyBelowMinimum && (
+                  <p className="text-xs text-red-600 mt-1">
+                    Tail pulley is below minimum required ({minPulleyTailRequired}" for{' '}
+                    {isVGuided ? 'V-guided' : 'crowned'} tracking).
+                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                      <span className="block text-red-500 text-xs mt-0.5">
+                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                      </span>
+                    )}
+                  </p>
                 )}
-              </div>
-              {tailPulleyBelowMinimum && (
-                <p className="text-xs text-red-600 mt-1">
-                  Tail pulley is below minimum required ({minPulleyTailRequired}" for{' '}
-                  {isVGuided ? 'V-guided' : 'crowned'} tracking).
-                  {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                    <span className="block text-red-500 text-xs mt-0.5">
-                      Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                    </span>
-                  )}
-                </p>
-              )}
-              {!tailPulleyBelowMinimum && minPulleyTailRequired !== undefined && (
-                <p className="text-xs text-gray-500 mt-1">
-                  Minimum required: {minPulleyTailRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
-                  {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                    <span className="block text-amber-600 text-xs mt-0.5">
-                      Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                    </span>
-                  )}
-                </p>
-              )}
-            </div>
-          )}
+                {!tailPulleyBelowMinimum && minPulleyTailRequired !== undefined && (
+                  <p className="text-xs text-gray-500 mt-1">
+                    Minimum required: {minPulleyTailRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
+                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                      <span className="block text-amber-600 text-xs mt-0.5">
+                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
+                      </span>
+                    )}
+                  </p>
+                )}
+              </>
+            )}
+          </div>
 
           {/* Pulley Surface Type */}
           <div>

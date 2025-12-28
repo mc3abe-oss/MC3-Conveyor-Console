@@ -479,3 +479,33 @@ export function setCachedPulleys(pulleys: PulleyCatalogItem[]): void {
 export function getCachedPulleys(): PulleyCatalogItem[] | null {
   return pulleyCatalogCache;
 }
+
+/**
+ * v1.16: Look up a pulley by catalog key and return its effective diameter.
+ * Returns undefined if catalog key is not set, pulley not found, or cache not loaded.
+ *
+ * This is the SOURCE OF TRUTH for diameter when catalog is selected.
+ */
+export function getEffectiveDiameterByKey(catalogKey: string | undefined): number | undefined {
+  if (!catalogKey) return undefined;
+
+  const cache = getCachedPulleys();
+  if (!cache) return undefined;
+
+  const pulley = cache.find((p) => p.catalog_key === catalogKey);
+  if (!pulley) return undefined;
+
+  return getEffectiveDiameter(pulley);
+}
+
+/**
+ * v1.16: Check if a catalog key exists in the loaded catalog.
+ */
+export function isPulleyKeyValid(catalogKey: string | undefined): boolean {
+  if (!catalogKey) return false;
+
+  const cache = getCachedPulleys();
+  if (!cache) return false;
+
+  return cache.some((p) => p.catalog_key === catalogKey);
+}

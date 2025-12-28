@@ -53,6 +53,7 @@ import {
   calculateEffectiveFrameHeight,
   calculateRequiresSnubRollers,
 } from './formulas';
+import { isPulleyKeyValid } from '../../lib/pulley-catalog';
 
 // ============================================================================
 // INPUT VALIDATION
@@ -954,8 +955,8 @@ export function applyApplicationRules(
       });
     }
 
-    // Check tail pulley (only if different from drive)
-    if (inputs.tail_matches_drive === false && tailPulley !== undefined && tailPulley < minPulleyRequired) {
+    // v1.16: Check tail pulley independently (always)
+    if (tailPulley !== undefined && tailPulley < minPulleyRequired) {
       warnings.push({
         field: 'tail_pulley_diameter_in',
         message: `Tail pulley (${tailPulley}") is below belt minimum (${minPulleyRequired}" for ${trackingType} tracking). Belt may not track properly or could be damaged.`,
@@ -1068,23 +1069,40 @@ export function applyApplicationRules(
 
   // =========================================================================
   // v1.15: PULLEY CATALOG SELECTION INFO
+  // v1.16: Add warnings for missing catalog pulleys
   // =========================================================================
 
-  // Info when pulley catalog is used
+  // Info/warning when pulley catalog is used
   if (inputs.head_pulley_catalog_key) {
-    warnings.push({
-      field: 'head_pulley_catalog_key',
-      message: `Head pulley selected from catalog: ${inputs.head_pulley_catalog_key}`,
-      severity: 'info',
-    });
+    if (isPulleyKeyValid(inputs.head_pulley_catalog_key)) {
+      warnings.push({
+        field: 'head_pulley_catalog_key',
+        message: `Head pulley selected from catalog: ${inputs.head_pulley_catalog_key}`,
+        severity: 'info',
+      });
+    } else {
+      warnings.push({
+        field: 'head_pulley_catalog_key',
+        message: `Selected drive pulley not found in catalog (${inputs.head_pulley_catalog_key}). Using manual diameter.`,
+        severity: 'warning',
+      });
+    }
   }
 
   if (inputs.tail_pulley_catalog_key) {
-    warnings.push({
-      field: 'tail_pulley_catalog_key',
-      message: `Tail pulley selected from catalog: ${inputs.tail_pulley_catalog_key}`,
-      severity: 'info',
-    });
+    if (isPulleyKeyValid(inputs.tail_pulley_catalog_key)) {
+      warnings.push({
+        field: 'tail_pulley_catalog_key',
+        message: `Tail pulley selected from catalog: ${inputs.tail_pulley_catalog_key}`,
+        severity: 'info',
+      });
+    } else {
+      warnings.push({
+        field: 'tail_pulley_catalog_key',
+        message: `Selected tail pulley not found in catalog (${inputs.tail_pulley_catalog_key}). Using manual diameter.`,
+        severity: 'warning',
+      });
+    }
   }
 
   // =========================================================================
