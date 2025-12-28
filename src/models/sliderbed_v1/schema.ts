@@ -959,6 +959,20 @@ export interface SliderbedInputs {
    */
   tail_pulley_catalog_key?: string;
 
+  /**
+   * Drive pulley manual override (v1.17)
+   * When true, use drive_pulley_diameter_in instead of catalog diameter.
+   * When false (default), diameter comes from head_pulley_catalog_key.
+   */
+  drive_pulley_manual_override?: boolean;
+
+  /**
+   * Tail pulley manual override (v1.17)
+   * When true, use tail_pulley_diameter_in instead of catalog diameter.
+   * When false (default), diameter comes from tail_pulley_catalog_key.
+   */
+  tail_pulley_manual_override?: boolean;
+
   /** Belt PIW from catalog (populated when belt is selected) */
   belt_piw?: number;
 
@@ -1436,7 +1450,7 @@ export const DEFAULT_INPUT_VALUES = {
   material_type: MaterialType.Steel,
   process_type: ProcessType.Assembly,
   parts_sharp: PartsSharp.No,
-  environment_factors: [EnvironmentFactors.Indoor], // v1.9: Multi-select array
+  environment_factors: [], // v1.9: Multi-select array, empty by default
   ambient_temperature: AmbientTemperature.Normal, // Deprecated, kept for backward compatibility
   ambient_temperature_class: AmbientTemperatureClass.Normal,
   power_feed: PowerFeed.V480_3Ph,
@@ -1489,6 +1503,10 @@ export const DEFAULT_INPUT_VALUES = {
   // Pulley diameter defaults (v1.3, v1.16: tail_matches_drive removed)
   drive_pulley_preset: 4 as PulleyDiameterPreset, // 4" is common default
   tail_pulley_preset: 4 as PulleyDiameterPreset,
+
+  // Pulley manual override defaults (v1.17)
+  drive_pulley_manual_override: false,
+  tail_pulley_manual_override: false,
 
   // Cleat defaults (v1.3)
   cleats_enabled: false,
@@ -1566,47 +1584,68 @@ export const TOB_FIELDS = [
 // ============================================================================
 
 /**
+ * Legacy environment factor keys to remove from inputs.
+ * These are stripped on load and never included in saved configurations.
+ */
+export const ENVIRONMENT_FACTOR_BLOCKLIST = new Set([
+  'indoor',
+  'Indoor',
+  'indoors',
+  'Indoors',
+  'indoor_inactive',
+  'Indoor_Inactive',
+]);
+
+/**
  * Normalize environment_factors to array format (v1.9)
  *
  * Handles backward compatibility for old configs that stored a single string.
+ * Automatically strips blocked/legacy keys like "Indoor".
+ *
  * Rules:
- * - array → return deduplicated, sorted array
- * - string → [string]
- * - null/undefined/other → ["Indoor"]
+ * - array → filter blocked keys, dedupe, sort
+ * - string (not blocked) → [string]
+ * - null/undefined/other/blocked → []
  *
  * @param value - The raw environment_factors value from inputs
  * @returns Normalized string array, deduplicated and sorted
  */
 export function normalizeEnvironmentFactors(value: unknown): string[] {
-  const defaultValue = [EnvironmentFactors.Indoor];
-
   if (Array.isArray(value)) {
-    // Filter to valid strings, dedupe, sort
+    // Filter to valid strings, remove blocked keys, dedupe, sort
     const validStrings = value.filter(
-      (v): v is string => typeof v === 'string' && v.trim() !== ''
+      (v): v is string =>
+        typeof v === 'string' &&
+        v.trim() !== '' &&
+        !ENVIRONMENT_FACTOR_BLOCKLIST.has(v)
     );
-    if (validStrings.length === 0) {
-      return defaultValue;
-    }
     return Array.from(new Set(validStrings)).sort();
   }
 
   if (typeof value === 'string' && value.trim() !== '') {
+    // Single string - check if blocked
+    if (ENVIRONMENT_FACTOR_BLOCKLIST.has(value)) {
+      return [];
+    }
     return [value];
   }
 
-  return defaultValue;
+  return [];
 }
 
 /**
- * Prepare environment_factors for save (dedupe + sort)
+ * Prepare environment_factors for save (dedupe + sort, remove blocked)
  *
  * @param factors - Array of environment factor keys
- * @returns Deduplicated and sorted array
+ * @returns Deduplicated, sorted array with blocked keys removed
  */
 export function prepareEnvironmentFactorsForSave(factors: string[]): string[] {
-  if (!Array.isArray(factors) || factors.length === 0) {
-    return [EnvironmentFactors.Indoor];
+  if (!Array.isArray(factors)) {
+    return [];
   }
-  return Array.from(new Set(factors)).sort();
+  // Filter out blocked keys, dedupe, sort
+  const valid = factors.filter(
+    (f) => typeof f === 'string' && f.trim() !== '' && !ENVIRONMENT_FACTOR_BLOCKLIST.has(f)
+  );
+  return Array.from(new Set(valid)).sort();
 }

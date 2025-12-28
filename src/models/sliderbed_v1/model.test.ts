@@ -89,7 +89,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -518,7 +518,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
         part_spacing_in: 12, // 12 inches
-        environment_factors: [EnvironmentFactors.Indoor],
+        environment_factors: [],
       };
 
       const result = runCalculation({ inputs });
@@ -541,7 +541,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Crosswise,
         part_spacing_in: 12, // 12 inches
-        environment_factors: [EnvironmentFactors.Indoor],
+        environment_factors: [],
       };
 
       const result = runCalculation({ inputs });
@@ -1281,7 +1281,7 @@ describe('Belt Tracking Guidance', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -1409,8 +1409,8 @@ describe('Belt Tracking Guidance', () => {
   });
 
   describe('Risk Assessment - Environment', () => {
-    it('should assess low risk for indoor environment', () => {
-      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Indoor] };
+    it('should assess low risk for no environment factors', () => {
+      const inputs = { ...baseInputs, environment_factors: [] };
       const guidance = calculateTrackingGuidance(inputs);
 
       const envFactor = guidance.factors.find(f => f.name === 'Environment');
@@ -1435,16 +1435,16 @@ describe('Belt Tracking Guidance', () => {
 
     // v1.9: Multi-select environment tests
     it('should assess highest risk when multiple environments selected', () => {
-      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Indoor, EnvironmentFactors.Washdown] };
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Outdoor, EnvironmentFactors.Washdown] };
       const guidance = calculateTrackingGuidance(inputs);
 
       const envFactor = guidance.factors.find(f => f.name === 'Environment');
-      // Washdown is Medium, Indoor is Low - should take highest (Medium)
+      // Washdown is Medium, Outdoor is Low - should take highest (Medium)
       expect(envFactor?.risk).toBe(TrackingRiskLevel.Medium);
     });
 
     it('should handle all low-risk environments as low risk', () => {
-      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Indoor, EnvironmentFactors.Outdoor] };
+      const inputs = { ...baseInputs, environment_factors: [EnvironmentFactors.Outdoor] };
       const guidance = calculateTrackingGuidance(inputs);
 
       const envFactor = guidance.factors.find(f => f.name === 'Environment');
@@ -1487,7 +1487,7 @@ describe('Belt Tracking Guidance', () => {
         belt_speed_fpm: 50,
         direction_mode: DirectionMode.OneDirection,
         side_loading_direction: SideLoadingDirection.None,
-        environment_factors: [EnvironmentFactors.Indoor],
+        environment_factors: [],
       };
       const guidance = calculateTrackingGuidance(inputs);
 
@@ -1644,7 +1644,7 @@ describe('Split Pulley Diameter (v1.3)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -1872,7 +1872,7 @@ describe('Belt Cleats (v1.3)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -2166,7 +2166,7 @@ describe('Support & Height Model (v1.4)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -2901,7 +2901,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       material_type: MaterialType.Steel,
       process_type: ProcessType.Assembly,
       parts_sharp: PartsSharp.No,
-      environment_factors: [EnvironmentFactors.Indoor],
+      environment_factors: [],
       ambient_temperature: AmbientTemperature.Normal,
       power_feed: PowerFeed.V480_3Ph,
       controls_package: ControlsPackage.StartStop,
@@ -3166,7 +3166,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           material_type: MaterialType.Steel,
           process_type: ProcessType.Assembly,
           parts_sharp: PartsSharp.No,
-          environment_factors: [EnvironmentFactors.Indoor],
+          environment_factors: [],
           ambient_temperature: AmbientTemperature.Normal,
           power_feed: PowerFeed.V480_3Ph,
           controls_package: ControlsPackage.StartStop,
@@ -3229,7 +3229,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           material_type: MaterialType.Steel,
           process_type: ProcessType.Assembly,
           parts_sharp: PartsSharp.No,
-          environment_factors: [EnvironmentFactors.Indoor],
+          environment_factors: [],
           ambient_temperature: AmbientTemperature.Normal,
           power_feed: PowerFeed.V480_3Ph,
           controls_package: ControlsPackage.StartStop,
@@ -3282,7 +3282,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -3562,7 +3562,7 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -3814,7 +3814,7 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -4292,7 +4292,7 @@ describe('Frame Construction Validation (v1.14)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -4628,7 +4628,7 @@ describe('v1.16 Catalog Diameter Authority', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [EnvironmentFactors.Indoor],
+    environment_factors: [],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -4838,6 +4838,141 @@ describe('v1.16 Catalog Diameter Authority', () => {
     // Verify the outputs reflect catalog diameters
     expect(result.outputs?.drive_pulley_diameter_in).toBe(6);
     expect(result.outputs?.tail_pulley_diameter_in).toBe(5);
+  });
+});
+
+// ============================================================================
+// v1.17: PULLEY DIAMETER OVERRIDE TESTS
+// ============================================================================
+
+describe('v1.17 Pulley Diameter Override', () => {
+  // Import the effective diameter helper from formulas
+  const { getEffectivePulleyDiameters } = require('./formulas');
+
+  // Minimal base inputs for override tests
+  const OVERRIDE_BASE: SliderbedInputs = {
+    conveyor_length_cc_in: 120,
+    belt_width_in: 18,
+    belt_speed_fpm: 50,
+    part_length_in: 12,
+    part_width_in: 6,
+    part_weight_lbs: 5,
+    orientation: Orientation.Lengthwise,
+    environment_factors: [],
+  };
+
+  // Case A: No catalog key, override=false → undefined (catalog lookup fails)
+  it('should return undefined when no catalog and override is false (Case A)', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      head_pulley_catalog_key: undefined, // No catalog
+      drive_pulley_manual_override: false,
+      drive_pulley_diameter_in: 4, // Manual value ignored when override=false
+    };
+
+    const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+
+    // No catalog, override=false → undefined
+    expect(effectiveDrivePulleyDiameterIn).toBeUndefined();
+  });
+
+  // Case B: override=true, manual set → effective = manual (ignores catalog)
+  it('should use manual diameter when override is true (Case B)', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      head_pulley_catalog_key: undefined, // Catalog doesn't matter when override=true
+      drive_pulley_manual_override: true,
+      drive_pulley_diameter_in: 5, // Manual value used
+    };
+
+    const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+
+    // Should use manual diameter (5")
+    expect(effectiveDrivePulleyDiameterIn).toBe(5);
+  });
+
+  // Case C: no catalog, override=false → validation warning present
+  it('should produce warning when no catalog and override is false (Case C)', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      head_pulley_catalog_key: undefined, // No catalog
+      drive_pulley_manual_override: false, // Override disabled
+    };
+
+    const result = runCalculation({ inputs });
+
+    // Should have warning for missing configuration
+    const hasWarning = result.warnings?.some(
+      (w) => w.field === 'head_pulley_catalog_key' &&
+            w.message.includes('Select a')
+    );
+    expect(hasWarning).toBe(true);
+  });
+
+  // Case D: no catalog, override=true, manual set → effective = manual
+  it('should use manual diameter when override is true and no catalog (Case D)', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      head_pulley_catalog_key: undefined, // No catalog
+      drive_pulley_manual_override: true,
+      drive_pulley_diameter_in: 5,
+    };
+
+    const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+
+    // Should use manual diameter
+    expect(effectiveDrivePulleyDiameterIn).toBe(5);
+  });
+
+  // Case E: override=true, manual missing → validation warning; effective undefined
+  it('should produce warning and undefined diameter when override is true but manual missing (Case E)', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      head_pulley_catalog_key: undefined,
+      drive_pulley_manual_override: true,
+      drive_pulley_diameter_in: undefined, // Manual not set!
+    };
+
+    const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+
+    // Effective should be undefined
+    expect(effectiveDrivePulleyDiameterIn).toBeUndefined();
+
+    // Should have warning for missing diameter
+    const result = runCalculation({ inputs });
+    const hasWarning = result.warnings?.some(
+      (w) => w.field === 'drive_pulley_diameter_in' &&
+            w.message.includes('Override enabled')
+    );
+    expect(hasWarning).toBe(true);
+  });
+
+  // Tail pulley: no catalog, override=false → undefined
+  it('should return undefined for tail when no catalog and override is false', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      tail_pulley_catalog_key: undefined,
+      tail_pulley_manual_override: false,
+      tail_pulley_diameter_in: 4, // Manual value ignored
+    };
+
+    const { effectiveTailPulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+
+    expect(effectiveTailPulleyDiameterIn).toBeUndefined();
+  });
+
+  // Tail pulley: override=true → manual diameter
+  it('should use tail manual diameter when tail override is true', () => {
+    const inputs: SliderbedInputs = {
+      ...OVERRIDE_BASE,
+      tail_pulley_catalog_key: undefined,
+      tail_pulley_manual_override: true,
+      tail_pulley_diameter_in: 6, // Manual value used
+    };
+
+    const { effectiveTailPulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+
+    expect(effectiveTailPulleyDiameterIn).toBe(6);
   });
 });
 

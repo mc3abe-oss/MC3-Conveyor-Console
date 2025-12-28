@@ -34,7 +34,7 @@ import {
   SheetMetalGauge,
   StructuralChannelSeries,
 } from './schema';
-import { normalizeInputsForCalculation, buildCleatsSummary } from './migrate';
+import { buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
 import { getShaftSizingFromOutputs } from './shaftCalc';
 import { calculateTrackingRecommendation } from '../../lib/tracking';
@@ -42,12 +42,44 @@ import {
   SHEET_METAL_GAUGE_THICKNESS,
   STRUCTURAL_CHANNEL_THICKNESS,
 } from '../../lib/frame-catalog';
+import { getEffectiveDiameterByKey } from '../../lib/pulley-catalog';
 
 // ============================================================================
 // CONSTANTS
 // ============================================================================
 
 const PI = Math.PI;
+
+// ============================================================================
+// v1.17: EFFECTIVE PULLEY DIAMETER RESOLUTION
+// ============================================================================
+
+/**
+ * Get effective pulley diameters based on override flags.
+ *
+ * v1.17: Single source of truth for diameter resolution.
+ * - If override is true → use manual diameter (may be undefined)
+ * - If override is false → use catalog diameter (may be undefined)
+ * - NO silent defaults - undefined propagates to validation
+ *
+ * @returns Object with effective diameters (undefined if not available)
+ */
+export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
+  effectiveDrivePulleyDiameterIn: number | undefined;
+  effectiveTailPulleyDiameterIn: number | undefined;
+} {
+  // Drive pulley: override flag determines source
+  const effectiveDrivePulleyDiameterIn = inputs.drive_pulley_manual_override
+    ? inputs.drive_pulley_diameter_in
+    : getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
+
+  // Tail pulley: override flag determines source
+  const effectiveTailPulleyDiameterIn = inputs.tail_pulley_manual_override
+    ? inputs.tail_pulley_diameter_in
+    : getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
+
+  return { effectiveDrivePulleyDiameterIn, effectiveTailPulleyDiameterIn };
+}
 
 // ============================================================================
 // INTERMEDIATE CALCULATIONS
@@ -782,8 +814,12 @@ export function calculate(
   const frictionCoeff = inputs.friction_coeff ?? parameters.friction_coeff;
   const motorRpm = inputs.motor_rpm ?? parameters.motor_rpm;
 
-  // v1.3: Normalize pulley diameters (handles legacy migration)
-  const { drivePulleyDiameterIn, tailPulleyDiameterIn } = normalizeInputsForCalculation(inputs);
+  // v1.17: Get effective pulley diameters (override-based, no silent defaults)
+  // If diameters are undefined, use NaN to propagate through calculations
+  // Validation layer (rules.ts) will produce errors for missing configurations
+  const { effectiveDrivePulleyDiameterIn, effectiveTailPulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+  const drivePulleyDiameterIn = effectiveDrivePulleyDiameterIn ?? NaN;
+  const tailPulleyDiameterIn = effectiveTailPulleyDiameterIn ?? NaN;
 
   // Step 1: Belt weight coefficients (v1.3: uses drive pulley for PIW/PIL lookup)
   const { piw, pil, belt_piw_effective, belt_pil_effective } = calculateEffectiveBeltCoefficients(

@@ -46,7 +46,7 @@ import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
 import PulleySelect from './PulleySelect';
-import { PulleyCatalogItem, getEffectiveDiameter, PulleyStation } from '../../src/lib/pulley-catalog';
+import { PulleyCatalogItem, getEffectiveDiameterByKey, PulleyStation } from '../../src/lib/pulley-catalog';
 import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
@@ -124,36 +124,38 @@ export default function TabConveyorPhysical({
     }
   };
 
-  // v1.15: Handle head pulley catalog selection
-  const handleHeadPulleyChange = (catalogKey: string | undefined, pulley: PulleyCatalogItem | undefined) => {
+  // v1.17: Handle head pulley catalog selection (does NOT auto-populate diameter)
+  const handleHeadPulleyChange = (catalogKey: string | undefined, _pulley: PulleyCatalogItem | undefined) => {
     updateInput('head_pulley_catalog_key', catalogKey);
-    if (pulley) {
-      // Update drive pulley diameter from catalog
-      const effectiveDia = getEffectiveDiameter(pulley);
-      updateInput('drive_pulley_diameter_in', effectiveDia);
-      updateInput('pulley_diameter_in', effectiveDia);
-      updateInput('drive_pulley_preset', 'custom');
-    }
+    // v1.17: Do NOT auto-populate diameter - those fields are only for manual override
   };
 
-  // v1.15: Handle tail pulley catalog selection
-  const handleTailPulleyChange = (catalogKey: string | undefined, pulley: PulleyCatalogItem | undefined) => {
+  // v1.17: Handle tail pulley catalog selection (does NOT auto-populate diameter)
+  const handleTailPulleyChange = (catalogKey: string | undefined, _pulley: PulleyCatalogItem | undefined) => {
     updateInput('tail_pulley_catalog_key', catalogKey);
-    if (pulley) {
-      // Update tail pulley diameter from catalog
-      const effectiveDia = getEffectiveDiameter(pulley);
-      updateInput('tail_pulley_diameter_in', effectiveDia);
-      updateInput('tail_pulley_preset', 'custom');
-    }
+    // v1.17: Do NOT auto-populate diameter - those fields are only for manual override
   };
 
-  // v1.16: Catalog authority - when catalog selected, it's the source of truth
-  const driveFromCatalog = Boolean(inputs.head_pulley_catalog_key);
-  const tailFromCatalog = Boolean(inputs.tail_pulley_catalog_key);
+  // v1.17: Override-based diameter resolution
+  const driveOverride = Boolean(inputs.drive_pulley_manual_override);
+  const tailOverride = Boolean(inputs.tail_pulley_manual_override);
 
-  // Get effective pulley diameters
-  const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
-  const tailPulleyDia = inputs.tail_pulley_diameter_in ?? drivePulleyDia;
+  // Get catalog diameters using the same helper as formulas.ts
+  const catalogDriveDia = getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
+  const catalogTailDia = getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
+
+  // Manual diameters (only used when override is enabled)
+  const manualDriveDia = inputs.drive_pulley_diameter_in;
+  const manualTailDia = inputs.tail_pulley_diameter_in;
+
+  // Effective diameters for display (matches formulas.ts logic)
+  const drivePulleyDia = driveOverride ? manualDriveDia : catalogDriveDia;
+  const tailPulleyDia = tailOverride ? manualTailDia : catalogTailDia;
+
+  // Safe diameters for UI calculations (frame height, snub rollers display)
+  // Uses 4" fallback for display only - actual calculations use strict logic in formulas.ts
+  const safeDrivePulleyDia = drivePulleyDia ?? 4;
+  const safeTailPulleyDia = tailPulleyDia ?? 4;
 
   // Get pre-calc tracking and min pulley issues from useConfigureIssues (no stealth calc needed)
   const trackingIssue = getTrackingIssue();
@@ -194,16 +196,16 @@ export default function TabConveyorPhysical({
     inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
     inputs.belt_tracking_method === 'V-guided';
 
-  // Compute derived frame height and roller values
+  // Compute derived frame height and roller values (using safe diameters for UI display)
   const effectiveFrameHeight = calculateEffectiveFrameHeight(
     inputs.frame_height_mode ?? FrameHeightMode.Standard,
-    drivePulleyDia,
+    safeDrivePulleyDia,
     inputs.custom_frame_height_in
   );
   const requiresSnubRollers = calculateRequiresSnubRollers(
     effectiveFrameHeight,
-    drivePulleyDia,
-    tailPulleyDia
+    safeDrivePulleyDia,
+    safeTailPulleyDia
   );
   const snubRollerQty = calculateSnubRollerQuantity(requiresSnubRollers);
   const gravityRollerQty = calculateGravityRollerQuantity(
@@ -239,7 +241,7 @@ export default function TabConveyorPhysical({
       if (inputs.tail_tob_in === undefined) {
         // Use a default tail centerline height of 36" and add pulley radius
         const defaultTailCl = 36;
-        const tailTob = centerlineToTob(defaultTailCl, tailPulleyDia);
+        const tailTob = centerlineToTob(defaultTailCl, safeTailPulleyDia);
         updateInput('tail_tob_in', tailTob);
       }
       if (inputs.drive_tob_in === undefined) {
@@ -247,7 +249,7 @@ export default function TabConveyorPhysical({
         const rise = derivedGeometry.rise_in;
         const defaultTailCl = 36;
         const driveCl = defaultTailCl + rise;
-        const driveTob = centerlineToTob(driveCl, drivePulleyDia);
+        const driveTob = centerlineToTob(driveCl, safeDrivePulleyDia);
         updateInput('drive_tob_in', driveTob);
       }
     }
@@ -732,60 +734,61 @@ export default function TabConveyorPhysical({
             Pulleys
           </h4>
 
-          {/* v1.15: Head/Drive Pulley Catalog Selection */}
-          <div>
-            <label htmlFor="head_pulley_catalog_key" className="label">
-              Head/Drive Pulley (from catalog)
-            </label>
-            <PulleySelect
-              id="head_pulley_catalog_key"
-              value={inputs.head_pulley_catalog_key}
-              onChange={handleHeadPulleyChange}
-              station={'head_drive' as PulleyStation}
-              showDetails={true}
-              faceWidthRequired={inputs.belt_width_in}
-              beltSpeedFpm={inputs.belt_speed_fpm}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Select from catalog to auto-populate diameter. Or use manual selection below.
-            </p>
-          </div>
+          {/* ===== DRIVE/HEAD PULLEY SECTION ===== */}
+          <div className="space-y-3">
+            {/* v1.17: Head/Drive Pulley Catalog Selection */}
+            <div>
+              <label htmlFor="head_pulley_catalog_key" className="label">
+                Head/Drive Pulley (from catalog)
+              </label>
+              <PulleySelect
+                id="head_pulley_catalog_key"
+                value={inputs.head_pulley_catalog_key}
+                onChange={handleHeadPulleyChange}
+                station={'head_drive' as PulleyStation}
+                showDetails={true}
+                faceWidthRequired={inputs.belt_width_in}
+                beltSpeedFpm={inputs.belt_speed_fpm}
+              />
+            </div>
 
-          {/* v1.16: Tail Pulley Catalog Selection (always visible) */}
-          <div>
-            <label htmlFor="tail_pulley_catalog_key" className="label">
-              Tail Pulley (from catalog)
-            </label>
-            <PulleySelect
-              id="tail_pulley_catalog_key"
-              value={inputs.tail_pulley_catalog_key}
-              onChange={handleTailPulleyChange}
-              station={'tail' as PulleyStation}
-              showDetails={true}
-              faceWidthRequired={inputs.belt_width_in}
-              beltSpeedFpm={inputs.belt_speed_fpm}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Tail position supports internal bearing pulleys. Or use manual selection below.
-            </p>
-          </div>
-
-          {/* Drive Pulley Diameter */}
-          <div>
-            <label htmlFor="drive_pulley_preset" className="label">
-              Drive Pulley Diameter (in)
-              {driveFromCatalog && (
-                <span className="ml-2 text-xs font-normal text-blue-600">
-                  ({drivePulleyDia}" from catalog)
+            {/* Read-only catalog diameter display */}
+            <div className="text-sm">
+              <span className="text-gray-600">Diameter (from catalog): </span>
+              {catalogDriveDia !== undefined ? (
+                <span className={`font-medium ${driveOverride ? 'text-gray-400 line-through' : 'text-blue-600'}`}>
+                  {catalogDriveDia}"
+                  {driveOverride && <span className="ml-1 text-amber-600 no-underline">(overridden)</span>}
                 </span>
+              ) : (
+                <span className="text-gray-400">—</span>
               )}
+            </div>
+
+            {/* Override checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={driveOverride}
+                onChange={(e) => updateInput('drive_pulley_manual_override', e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Override catalog diameter</span>
             </label>
-            {driveFromCatalog ? (
-              <p className="text-xs text-gray-500 mt-1">
-                Derived from selected drive pulley. Clear catalog selection to set manually.
+
+            {/* Warning if neither catalog nor override */}
+            {!catalogDriveDia && !driveOverride && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                Select a pulley from catalog or enable override to specify diameter manually.
               </p>
-            ) : (
-              <>
+            )}
+
+            {/* Manual diameter controls - only shown when override is enabled */}
+            {driveOverride && (
+              <div>
+                <label htmlFor="drive_pulley_preset" className="label text-sm">
+                  Manual Drive Pulley Diameter (in)
+                </label>
                 <div className="flex gap-2">
                   <select
                     id="drive_pulley_preset"
@@ -793,8 +796,8 @@ export default function TabConveyorPhysical({
                     value={
                       inputs.drive_pulley_preset === 'custom'
                         ? 'custom'
-                        : PULLEY_DIAMETER_PRESETS.includes(drivePulleyDia as any)
-                        ? drivePulleyDia.toString()
+                        : manualDriveDia !== undefined && PULLEY_DIAMETER_PRESETS.includes(manualDriveDia as any)
+                        ? manualDriveDia.toString()
                         : 'custom'
                     }
                     onChange={(e) => handleDrivePulleyPresetChange(e.target.value)}
@@ -807,21 +810,21 @@ export default function TabConveyorPhysical({
                     <option value="custom">Custom...</option>
                   </select>
                   {(inputs.drive_pulley_preset === 'custom' ||
-                    !PULLEY_DIAMETER_PRESETS.includes(drivePulleyDia as any)) && (
+                    (manualDriveDia !== undefined && !PULLEY_DIAMETER_PRESETS.includes(manualDriveDia as any))) && (
                     <input
                       type="number"
                       id="drive_pulley_diameter_in"
                       className={`input w-24 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
-                      value={drivePulleyDia}
+                      value={manualDriveDia ?? ''}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
+                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
                         updateInput('drive_pulley_diameter_in', value);
                         updateInput('pulley_diameter_in', value);
                       }}
                       step="0.1"
                       min="2.5"
                       max="12"
-                      required
+                      placeholder="Enter diameter"
                     />
                   )}
                 </div>
@@ -846,26 +849,68 @@ export default function TabConveyorPhysical({
                     )}
                   </p>
                 )}
-              </>
+              </div>
             )}
           </div>
 
-          {/* v1.16: Tail Pulley Diameter (always visible) */}
-          <div>
-            <label htmlFor="tail_pulley_preset" className="label">
-              Tail Pulley Diameter (in)
-              {tailFromCatalog && (
-                <span className="ml-2 text-xs font-normal text-blue-600">
-                  ({tailPulleyDia}" from catalog)
-                </span>
-              )}
-            </label>
-            {tailFromCatalog ? (
+          {/* ===== TAIL PULLEY SECTION ===== */}
+          <div className="space-y-3">
+            {/* v1.17: Tail Pulley Catalog Selection */}
+            <div>
+              <label htmlFor="tail_pulley_catalog_key" className="label">
+                Tail Pulley (from catalog)
+              </label>
+              <PulleySelect
+                id="tail_pulley_catalog_key"
+                value={inputs.tail_pulley_catalog_key}
+                onChange={handleTailPulleyChange}
+                station={'tail' as PulleyStation}
+                showDetails={true}
+                faceWidthRequired={inputs.belt_width_in}
+                beltSpeedFpm={inputs.belt_speed_fpm}
+              />
               <p className="text-xs text-gray-500 mt-1">
-                Derived from selected tail pulley. Clear catalog selection to set manually.
+                Tail position supports internal bearing pulleys.
               </p>
-            ) : (
-              <>
+            </div>
+
+            {/* Read-only catalog diameter display */}
+            <div className="text-sm">
+              <span className="text-gray-600">Diameter (from catalog): </span>
+              {catalogTailDia !== undefined ? (
+                <span className={`font-medium ${tailOverride ? 'text-gray-400 line-through' : 'text-blue-600'}`}>
+                  {catalogTailDia}"
+                  {tailOverride && <span className="ml-1 text-amber-600 no-underline">(overridden)</span>}
+                </span>
+              ) : (
+                <span className="text-gray-400">—</span>
+              )}
+            </div>
+
+            {/* Override checkbox */}
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={tailOverride}
+                onChange={(e) => updateInput('tail_pulley_manual_override', e.target.checked)}
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="text-sm text-gray-700">Override catalog diameter</span>
+            </label>
+
+            {/* Warning if neither catalog nor override */}
+            {!catalogTailDia && !tailOverride && (
+              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
+                Select a pulley from catalog or enable override to specify diameter manually.
+              </p>
+            )}
+
+            {/* Manual diameter controls - only shown when override is enabled */}
+            {tailOverride && (
+              <div>
+                <label htmlFor="tail_pulley_preset" className="label text-sm">
+                  Manual Tail Pulley Diameter (in)
+                </label>
                 <div className="flex gap-2">
                   <select
                     id="tail_pulley_preset"
@@ -873,8 +918,8 @@ export default function TabConveyorPhysical({
                     value={
                       inputs.tail_pulley_preset === 'custom'
                         ? 'custom'
-                        : PULLEY_DIAMETER_PRESETS.includes(tailPulleyDia as any)
-                        ? tailPulleyDia.toString()
+                        : manualTailDia !== undefined && PULLEY_DIAMETER_PRESETS.includes(manualTailDia as any)
+                        ? manualTailDia.toString()
                         : 'custom'
                     }
                     onChange={(e) => handleTailPulleyPresetChange(e.target.value)}
@@ -887,20 +932,20 @@ export default function TabConveyorPhysical({
                     <option value="custom">Custom...</option>
                   </select>
                   {(inputs.tail_pulley_preset === 'custom' ||
-                    !PULLEY_DIAMETER_PRESETS.includes(tailPulleyDia as any)) && (
+                    (manualTailDia !== undefined && !PULLEY_DIAMETER_PRESETS.includes(manualTailDia as any))) && (
                     <input
                       type="number"
                       id="tail_pulley_diameter_in"
                       className={`input w-24 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
-                      value={tailPulleyDia}
+                      value={manualTailDia ?? ''}
                       onChange={(e) => {
-                        const value = parseFloat(e.target.value) || 0;
+                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
                         updateInput('tail_pulley_diameter_in', value);
                       }}
                       step="0.1"
                       min="2.5"
                       max="12"
-                      required
+                      placeholder="Enter diameter"
                     />
                   )}
                 </div>
@@ -925,7 +970,7 @@ export default function TabConveyorPhysical({
                     )}
                   </p>
                 )}
-              </>
+              </div>
             )}
           </div>
 
