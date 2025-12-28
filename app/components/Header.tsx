@@ -39,6 +39,18 @@ export default function Header({ loadedConfigurationId }: HeaderProps) {
               Calculator
             </Link>
             <Link
+              href="/quotes"
+              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Quotes
+            </Link>
+            <Link
+              href="/sales-orders"
+              className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
+            >
+              Sales Orders
+            </Link>
+            <Link
               href="/recipes"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >

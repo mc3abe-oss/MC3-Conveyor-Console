@@ -71,7 +71,27 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                     : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
                 }`}
               >
-                Calculator
+                Application
+              </Link>
+              <Link
+                href="/console/quotes"
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  pathname.startsWith('/console/quotes')
+                    ? 'bg-mc3-blue text-white'
+                    : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
+                }`}
+              >
+                Quotes
+              </Link>
+              <Link
+                href="/console/sales-orders"
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  pathname.startsWith('/console/sales-orders')
+                    ? 'bg-mc3-blue text-white'
+                    : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
+                }`}
+              >
+                Sales Orders
               </Link>
               <Link
                 href="/recipes"
@@ -105,6 +125,11 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
               <h2 className="text-sm font-semibold text-mc3-navy">
                 {currentProduct.name}
               </h2>
+              {pathname.startsWith('/console/belt') && (
+                <span className="ml-2 px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                  Application
+                </span>
+              )}
               {currentProduct.description && (
                 <>
                   <span className="mx-2 text-mc3-line">|</span>

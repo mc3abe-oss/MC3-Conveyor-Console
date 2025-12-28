@@ -3,22 +3,15 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
-import ReferenceHeader from './ReferenceHeader';
-import FindConfigModal from './FindConfigModal';
+import CalculatorContextBadge from './CalculatorContextBadge';
+import SaveTargetModal, { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
+import VaultTab from './VaultTab';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 
-type ViewMode = 'configure' | 'results';
-
-interface Configuration {
-  id: string;
-  reference_type: string;
-  reference_number: string;
-  line_key: string;
-  latest_revision_number: number;
-}
+type ViewMode = 'configure' | 'results' | 'vault';
 
 /**
  * BeltConveyorCalculatorApp - The main calculator application component.
@@ -31,10 +24,8 @@ export default function BeltConveyorCalculatorApp() {
   const [isCalculating, setIsCalculating] = useState(false);
   const [inputs, setInputs] = useState<SliderbedInputs | null>(null);
 
-  // Reference state
-  const [referenceType, setReferenceType] = useState<'QUOTE' | 'SALES_ORDER'>('QUOTE');
-  const [referenceNumber, setReferenceNumber] = useState('');
-  const [lineKey, setLineKey] = useState('1');
+  // Context-driven state: linked Quote or Sales Order
+  const [context, setContext] = useState<SaveTarget | null>(null);
   const [conveyorQty, setConveyorQty] = useState(1);
 
   // Load/Save state with dirty tracking
@@ -47,21 +38,12 @@ export default function BeltConveyorCalculatorApp() {
   const [calcStatus, setCalcStatus] = useState<'idle' | 'ok' | 'error'>('idle');
   const [triggerCalculate, setTriggerCalculate] = useState<number>(0);
 
-  const [loadedState, setLoadedState] = useState<{
-    isLoaded: boolean;
-    revisionNumber?: number;
-    savedAt?: string;
-    savedByUser?: string;
-    configurationId?: string;
-  }>({ isLoaded: false });
-
   const [isSaving, setIsSaving] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
 
-  // Find Config Modal
-  const [isFindModalOpen, setIsFindModalOpen] = useState(false);
+  // Save Target Modal (for first save when unlinked)
+  const [isSaveTargetModalOpen, setIsSaveTargetModalOpen] = useState(false);
 
   // View mode: 'configure' or 'results'
   const [viewMode, setViewMode] = useState<ViewMode>('configure');
@@ -183,17 +165,15 @@ export default function BeltConveyorCalculatorApp() {
   }, [lastCalculatedPayload, buildCurrentPayload, inputs, result]);
 
   // Can save if:
-  // 1) Has reference type and number
-  // 2) If loaded config exists: must be dirty AND NOT need recalc (calculation is fresh)
-  // 3) If no loaded config: allow save (new config creation, but still needs calc from handleSave checks)
-  const hasReference = !!(referenceType && referenceNumber);
-  const canSave = hasReference && (loadedConfigurationId ? (isDirty && !needsRecalc) : true);
+  // 1) If linked context: must have changes (dirty) AND calculation is fresh (not stale)
+  // 2) If no context: allow save (will open modal to select target)
+  const canSave = context ? (isDirty && !needsRecalc) : true;
 
   // Calculate button always enabled
   const canCalculate = true;
 
   // Debug: Log state changes
-  console.log('[state]', { hasReference, loadedConfigurationId, isDirty, needsRecalc, isCalculatedFresh, canSave, canCalculate });
+  console.log('[state]', { context, loadedConfigurationId, isDirty, needsRecalc, isCalculatedFresh, canSave, canCalculate });
 
   // Effect: Set initial payload after load completes
   // This ensures we snapshot the payload AFTER inputs are populated from load
@@ -246,36 +226,17 @@ export default function BeltConveyorCalculatorApp() {
     setInputs(newInputs);
   }, []);
 
-  const handleReferenceNumberChange = (value: string) => {
-    // Strip non-digits
-    const numericOnly = value.replace(/\D/g, '');
-    setReferenceNumber(numericOnly);
-  };
-
-  const handleLineKeyChange = (value: string) => {
-    // Allow only digits, minimum 1
-    const numericOnly = value.replace(/\D/g, '');
-    if (numericOnly === '' || parseInt(numericOnly) < 1) {
-      setLineKey('1');
-    } else {
-      setLineKey(numericOnly);
-    }
-  };
-
   const handleClear = () => {
     console.log('[Clear] Resetting all state');
 
-    // Reset reference fields
-    setReferenceType('QUOTE');
-    setReferenceNumber('');
-    setLineKey('1');
+    // Reset context (unlink from Quote/SO)
+    setContext(null);
     setConveyorQty(1);
 
     // Reset loaded state
     setLoadedConfigurationId(null);
     setLoadedRevisionId(null);
     setInitialLoadedPayload(null);
-    setLoadedState({ isLoaded: false });
 
     // Reset inputs to null (form will use its defaults)
     setInputs(null);
@@ -288,147 +249,28 @@ export default function BeltConveyorCalculatorApp() {
     showToast('Calculator reset');
   };
 
-  const handleLoad = async () => {
-    if (!referenceNumber) {
-      showToast('Please enter a reference number');
-      return;
-    }
-
-    console.log('[Load] Loading configuration:', { referenceType, referenceNumber, lineKey });
-
-    setIsLoading(true);
-    try {
-      const response = await fetch(
-        `/api/configurations/load?reference_type=${referenceType}&reference_number=${encodeURIComponent(referenceNumber)}&reference_line=${lineKey}`
-      );
-
-      if (!response.ok) {
-        const error = await response.json() as { error?: string };
-        console.error('[Load] API error:', error);
-        throw new Error(error.error || 'Failed to load');
-      }
-
-      const data = await response.json() as { configuration: any; revision: any };
-      const { configuration, revision } = data;
-
-      console.log('[Load] Loaded configuration:', { configId: configuration.id, revisionId: revision.id, revisionNumber: revision.revision_number });
-
-      // Set loaded IDs
-      setLoadedConfigurationId(configuration.id);
-      setLoadedRevisionId(revision.id);
-
-      // Update loaded state
-      setLoadedState({
-        isLoaded: true,
-        revisionNumber: revision.revision_number,
-        savedAt: revision.created_at,
-        savedByUser: revision.created_by_user_id,
-        configurationId: configuration.id,
-      });
-
-      // Restore conveyor_qty from application_json (default to 1 if not present)
-      const savedQty = revision.application_json?.conveyor_qty;
-      setConveyorQty(typeof savedQty === 'number' && savedQty >= 1 ? savedQty : 1);
-
-      // Set inputs from revision
-      setInputs(revision.inputs_json);
-
-      // If revision has outputs, restore them and mark as calculated
-      if (revision.outputs_json) {
-        setResult({
-          success: true,
-          outputs: revision.outputs_json,
-          warnings: revision.warnings_json || [],
-          metadata: {
-            model_version_id: '1.0.0',
-            calculated_at: revision.created_at || new Date().toISOString(),
-            model_key: 'belt_conveyor_v1',
-          },
-        });
-        setCalcStatus('ok');
-
-        // Set lastCalculatedPayload to match loaded state (considered "calculated")
-        const loadedPayload = {
-          inputs_json: revision.inputs_json,
-          parameters_json: DEFAULT_PARAMETERS,
-          application_json: revision.application_json,
-        };
-        setLastCalculatedPayload(loadedPayload);
-        console.log('[Load] Restored outputs and set lastCalculatedPayload');
-      } else {
-        // No outputs - clear result and calculation status
-        setResult(null);
-        setCalcStatus('idle');
-        setLastCalculatedPayload(null);
-        console.log('[Load] No outputs in revision, cleared calc state');
-      }
-
-      // Clear initial payload so the effect can set it after inputs update
-      setInitialLoadedPayload(null);
-      console.log('[Load] Cleared initial payload, will be set by effect');
-
-      showToast(`Loaded ${referenceType} ${referenceNumber} Rev ${revision.revision_number}`);
-    } catch (error) {
-      console.error('[Load] Error:', error);
-      showToast(error instanceof Error ? error.message : 'Failed to load configuration');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Handle Save button click
   const handleSave = async () => {
-    // 1. Validate reference inputs first
-    if (!referenceType || !referenceNumber) {
-      showToast('Enter Quote/SO and number');
+    // If no context (unlinked), open modal to select target
+    if (!context) {
+      // Require calculation before saving
+      if (calcStatus !== 'ok' || !result) {
+        showToast('Please calculate before saving');
+        return;
+      }
+      setIsSaveTargetModalOpen(true);
       return;
     }
 
-    // Validate line key is numeric >= 1
-    const lineNumber = parseInt(lineKey);
-    if (isNaN(lineNumber) || lineNumber < 1) {
-      showToast('Line must be a number >= 1');
+    // Context exists - save to linked Quote/SO
+    // Enforce calculate-first save-second workflow
+    if (!isDirty) {
+      showToast('No changes to save');
       return;
     }
 
-    // 2. If no configuration loaded, check if it already exists BEFORE requiring calculation
-    if (!loadedConfigurationId) {
-      console.log('[Save] No loaded config - checking existence first');
-      try {
-        const checkResponse = await fetch(
-          `/api/configurations/load?reference_type=${referenceType}&reference_number=${encodeURIComponent(referenceNumber)}&reference_line=${lineKey}`
-        );
-
-        if (checkResponse.ok) {
-          // Configuration exists - block save immediately
-          const refTypeLabel = referenceType === 'QUOTE' ? 'Quote' : 'Sales Order';
-          showToast(`This ${refTypeLabel} number + line already exists. Click Load to open it, then make changes and Save to create a new revision.`);
-          return;
-        }
-        // 404 means it doesn't exist - continue to calculation checks
-      } catch (error) {
-        // Network error or other issue - log but proceed
-        console.warn('[Save] Existence check failed, proceeding:', error);
-      }
-    }
-
-    // 3. If configuration is loaded, enforce calculate-first save-second workflow
-    if (loadedConfigurationId) {
-      // Check if there are changes
-      if (!isDirty) {
-        showToast('No changes to save');
-        return;
-      }
-
-      // Check if calculation is fresh
-      if (!isCalculatedFresh) {
-        showToast('Changes detected. Click Calculate before saving.');
-        return;
-      }
-    }
-
-    // 4. For new configs, require calculation
-    if (!loadedConfigurationId && calcStatus !== 'ok') {
-      showToast('Please calculate before saving');
+    if (!isCalculatedFresh) {
+      showToast('Changes detected. Click Calculate before saving.');
       return;
     }
 
@@ -437,21 +279,18 @@ export default function BeltConveyorCalculatorApp() {
       return;
     }
 
-    // Debug logging
-    console.log('[Save] Starting save operation', {
-      loadedConfigurationId,
-      loadedRevisionId,
-      isDirty,
-      canSave,
-      referenceType,
-      referenceNumber,
-      lineKey,
-    });
+    console.log('[Save] Saving to context:', context);
+
+    // TODO: Save specs to the linked Quote/SO
+    // For now, save to the legacy configurations table
+    const referenceType = context.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
+    // Use base_number as the reference number
+    const referenceNumber = String(context.base);
 
     const payload = {
       reference_type: referenceType,
       reference_number: referenceNumber,
-      reference_line: parseInt(lineKey),
+      reference_line: context.line ?? 1, // Use context line or default to 1
       model_key: 'belt_conveyor_v1',
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
@@ -459,8 +298,6 @@ export default function BeltConveyorCalculatorApp() {
       outputs_json: result.outputs,
       warnings_json: result.warnings,
     };
-
-    console.log('[Save] Payload:', payload);
 
     setIsSaving(true);
     try {
@@ -472,9 +309,6 @@ export default function BeltConveyorCalculatorApp() {
 
       if (!response.ok) {
         const raw = await response.text();
-        console.error('[Save] status:', response.status, response.statusText);
-        console.error('[Save] raw:', raw);
-
         let errorMessage = 'Failed to save';
         try {
           const parsed = JSON.parse(raw);
@@ -482,18 +316,13 @@ export default function BeltConveyorCalculatorApp() {
         } catch {
           errorMessage = raw || errorMessage;
         }
-
         throw new Error(errorMessage);
       }
 
       const data = await response.json() as { status?: string; configuration: any; revision: any; message?: string };
       const { status, configuration, revision, message } = data;
 
-      console.log('[Save] API response:', { status, configuration, revision, message });
-
       if (status === 'no_change') {
-        // Server detected no changes - don't update state
-        console.log('[Save] No changes detected by server');
         showToast(message || 'No changes to save');
         return;
       }
@@ -502,112 +331,89 @@ export default function BeltConveyorCalculatorApp() {
       setLoadedConfigurationId(configuration.id);
       setLoadedRevisionId(revision.id);
 
-      // Update loaded state
-      setLoadedState({
-        isLoaded: true,
-        revisionNumber: revision.revision_number,
-        savedAt: revision.created_at,
-        savedByUser: revision.created_by_user_id,
-        configurationId: configuration.id,
-      });
-
       // Reset initial loaded payload to current state
       const currentPayload = buildCurrentPayload();
       setInitialLoadedPayload(currentPayload);
 
-      console.log('[Save] Updated state, new revision:', revision.revision_number);
-
       showToast(`Saved Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('[Save] Error:', error);
-      showToast(error instanceof Error ? error.message : 'Failed to save configuration');
+      showToast(error instanceof Error ? error.message : 'Failed to save');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleFindConfig = async (config: Configuration) => {
-    setIsFindModalOpen(false);
+  // Handle selecting a target from the modal
+  const handleSelectSaveTarget = async (target: SaveTarget) => {
+    setIsSaveTargetModalOpen(false);
 
-    // Update reference fields
-    setReferenceType(config.reference_type as 'QUOTE' | 'SALES_ORDER');
-    setReferenceNumber(config.reference_number);
-    setLineKey(config.line_key || '1');
+    if (!inputs || !result) {
+      showToast('Please calculate before saving');
+      return;
+    }
 
-    // Load the configuration
-    setIsLoading(true);
+    console.log('[SaveTarget] Selected:', target);
+
+    // Set context (link to selected Quote/SO)
+    setContext(target);
+
+    // Save to the selected target
+    const referenceType = target.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
+    // Use base_number as the reference number
+    const referenceNumber = String(target.base);
+
+    const payload = {
+      reference_type: referenceType,
+      reference_number: referenceNumber,
+      reference_line: target.jobLine, // Use jobLine (Epicor job line) from modal
+      model_key: 'belt_conveyor_v1',
+      inputs_json: inputs,
+      parameters_json: DEFAULT_PARAMETERS,
+      application_json: buildApplicationJson(inputs, conveyorQty),
+      outputs_json: result.outputs,
+      warnings_json: result.warnings,
+    };
+
+    setIsSaving(true);
     try {
-      const response = await fetch(
-        `/api/configurations/load?reference_type=${config.reference_type}&reference_number=${encodeURIComponent(config.reference_number)}&reference_line=${config.line_key || '1'}`
-      );
+      const response = await fetch('/api/configurations/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
 
       if (!response.ok) {
-        throw new Error('Failed to load configuration');
+        const raw = await response.text();
+        let errorMessage = 'Failed to save';
+        try {
+          const parsed = JSON.parse(raw);
+          errorMessage = parsed.error || parsed.message || raw || errorMessage;
+        } catch {
+          errorMessage = raw || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await response.json() as { configuration: any; revision: any };
+      const data = await response.json() as { status?: string; configuration: any; revision: any };
       const { configuration, revision } = data;
 
-      // Set loaded IDs
+      // Update loaded IDs
       setLoadedConfigurationId(configuration.id);
       setLoadedRevisionId(revision.id);
 
-      // Update loaded state
-      setLoadedState({
-        isLoaded: true,
-        revisionNumber: revision.revision_number,
-        savedAt: revision.created_at,
-        savedByUser: revision.created_by_user_id,
-        configurationId: configuration.id,
-      });
+      // Set initial loaded payload
+      const currentPayload = buildCurrentPayload();
+      setInitialLoadedPayload(currentPayload);
 
-      // Restore conveyor_qty from application_json (default to 1 if not present)
-      const savedQty = revision.application_json?.conveyor_qty;
-      setConveyorQty(typeof savedQty === 'number' && savedQty >= 1 ? savedQty : 1);
-
-      // Set inputs from revision
-      setInputs(revision.inputs_json);
-
-      // If revision has outputs, restore them and mark as calculated
-      if (revision.outputs_json) {
-        setResult({
-          success: true,
-          outputs: revision.outputs_json,
-          warnings: revision.warnings_json || [],
-          metadata: {
-            model_version_id: '1.0.0',
-            calculated_at: revision.created_at || new Date().toISOString(),
-            model_key: 'belt_conveyor_v1',
-          },
-        });
-        setCalcStatus('ok');
-
-        // Set lastCalculatedPayload to match loaded state
-        const loadedPayload = {
-          inputs_json: revision.inputs_json,
-          parameters_json: DEFAULT_PARAMETERS,
-          application_json: revision.application_json,
-        };
-        setLastCalculatedPayload(loadedPayload);
-        console.log('[FindConfig] Restored outputs and set lastCalculatedPayload');
-      } else {
-        // No outputs - clear result and calculation status
-        setResult(null);
-        setCalcStatus('idle');
-        setLastCalculatedPayload(null);
-        console.log('[FindConfig] No outputs, cleared calc state');
-      }
-
-      // Clear initial payload so the effect can set it after inputs update
-      setInitialLoadedPayload(null);
-      console.log('[FindConfig] Cleared initial payload, will be set by effect');
-
-      showToast(`Loaded ${config.reference_type} ${config.reference_number} Rev ${revision.revision_number}`);
+      showToast(`Saved to ${formatSaveTarget(target)}`);
     } catch (error) {
-      console.error('Load error:', error);
-      showToast('Failed to load configuration');
+      console.error('[SaveTarget] Error:', error);
+      showToast(error instanceof Error ? error.message : 'Failed to save');
+      // Revert context on error
+      setContext(null);
     } finally {
-      setIsLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -627,36 +433,25 @@ export default function BeltConveyorCalculatorApp() {
           </div>
         )}
 
-        {/* Find Config Modal */}
-        <FindConfigModal
-          isOpen={isFindModalOpen}
-          onClose={() => setIsFindModalOpen(false)}
-          onSelect={handleFindConfig}
+        {/* Save Target Modal (for first save when unlinked) */}
+        <SaveTargetModal
+          isOpen={isSaveTargetModalOpen}
+          onClose={() => setIsSaveTargetModalOpen(false)}
+          onSelect={handleSelectSaveTarget}
+          defaultQuantity={conveyorQty}
         />
 
-        {/* Reference Header */}
-        <ReferenceHeader
-          referenceType={referenceType}
-          referenceNumber={referenceNumber}
-          lineKey={lineKey}
-          conveyorQty={conveyorQty}
-          onReferenceTypeChange={setReferenceType}
-          onReferenceNumberChange={handleReferenceNumberChange}
-          onLineKeyChange={handleLineKeyChange}
-          onConveyorQtyChange={setConveyorQty}
-          onLoad={handleLoad}
+        {/* Context Badge (replaces old Reference Header) */}
+        <CalculatorContextBadge
+          context={context}
+          onUnlink={handleClear}
+          isDirty={isDirty}
+          isSaving={isSaving}
           onSave={handleSave}
           onCalculate={handleCalculateClick}
-          onClear={handleClear}
-          loadedState={loadedState}
-          isSaving={isSaving}
-          isLoading={isLoading}
           isCalculating={isCalculating}
           canSave={canSave}
-          canCalculate={canCalculate}
-          isDirty={isDirty}
           needsRecalc={needsRecalc}
-          onOpenFindModal={() => setIsFindModalOpen(true)}
         />
 
         {/* Page-level Mode Tabs */}
@@ -702,6 +497,30 @@ export default function BeltConveyorCalculatorApp() {
                 {result && needsRecalc && (
                   <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
                     Stale
+                  </span>
+                )}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('vault')}
+              className={`
+                whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
+                ${
+                  viewMode === 'vault'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Vault
+                {!context && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded">
+                    Unlinked
                   </span>
                 )}
               </span>
@@ -854,6 +673,14 @@ export default function BeltConveyorCalculatorApp() {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Vault Mode */}
+        <div className={viewMode === 'vault' ? '' : 'hidden'}>
+          <VaultTab
+            context={context}
+            onOpenSaveModal={() => setIsSaveTargetModalOpen(true)}
+          />
         </div>
       </div>
     </div>
