@@ -1,17 +1,22 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
-import CalculatorContextBadge from './CalculatorContextBadge';
+import ApplicationContextHeader from './ApplicationContextHeader';
 import SaveTargetModal, { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
-import VaultTab from './VaultTab';
+import VaultTab, { DraftVault } from './VaultTab';
+import JobLineSelectModal from './JobLineSelectModal';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 
 type ViewMode = 'configure' | 'results' | 'vault';
+type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
+
+const LAST_APP_KEY = 'belt_lastApplicationId';
 
 /**
  * BeltConveyorCalculatorApp - The main calculator application component.
@@ -42,15 +47,193 @@ export default function BeltConveyorCalculatorApp() {
 
   const [toast, setToast] = useState<string | null>(null);
 
-  // Save Target Modal (for first save when unlinked)
+  // Save Target Modal (for first save in draft mode)
   const [isSaveTargetModalOpen, setIsSaveTargetModalOpen] = useState(false);
+
+  // Draft Vault (local state until first save)
+  const [draftVault, setDraftVault] = useState<DraftVault>({
+    notes: [],
+    specs: [],
+    scopeLines: [],
+    attachments: [],
+  });
 
   // View mode: 'configure' or 'results'
   const [viewMode, setViewMode] = useState<ViewMode>('configure');
 
+  // URL-based loading state
+  const searchParams = useSearchParams();
+  const [loadState, setLoadState] = useState<LoadState>('idle');
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [jobLineSelectModal, setJobLineSelectModal] = useState<{
+    isOpen: boolean;
+    availableJobLines: number[];
+    referenceType: 'QUOTE' | 'SALES_ORDER';
+    referenceBase: string;
+    suffix: number | null;
+  } | null>(null);
+
   const showToast = (message: string) => {
     setToast(message);
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // Load application from API response
+  const loadApplicationFromResponse = useCallback((data: any) => {
+    const { application, context: loadedContext } = data;
+
+    if (!application) {
+      setLoadError('Invalid application data');
+      setLoadState('error');
+      return;
+    }
+
+    // Extract inputs from the application (stored in inputs field, minus _config)
+    const { _config, ...inputsData } = application.inputs || {};
+
+    // Set inputs
+    setInputs(inputsData as SliderbedInputs);
+
+    // Set context from loaded data
+    if (loadedContext) {
+      setContext(loadedContext);
+      setConveyorQty(loadedContext.quantity || 1);
+    }
+
+    // Set loaded IDs
+    setLoadedConfigurationId(application.id);
+    setLoadedRevisionId(application.id);
+
+    // Set outputs/results if available
+    if (application.expected_outputs) {
+      setResult({
+        success: true,
+        outputs: application.expected_outputs,
+        warnings: application.expected_issues || [],
+        metadata: {
+          calculated_at: application.updated_at || new Date().toISOString(),
+          model_version_id: application.model_version || 'unknown',
+          model_key: 'belt_conveyor_v1',
+        },
+      });
+      setCalcStatus('ok');
+    }
+
+    // Save to localStorage for "last used" feature
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(LAST_APP_KEY, application.id);
+    }
+
+    setLoadState('loaded');
+    console.log('[Load] Application loaded:', application.id);
+  }, []);
+
+  // Effect: Load application based on URL params or localStorage
+  useEffect(() => {
+    if (loadState !== 'idle') return;
+
+    const appId = searchParams.get('app');
+    const quoteBase = searchParams.get('quote');
+    const soBase = searchParams.get('so');
+    const suffix = searchParams.get('suffix');
+    const jobLine = searchParams.get('jobLine');
+
+    // Build load URL
+    let loadUrl: string | null = null;
+
+    if (appId) {
+      loadUrl = `/api/applications/load?app=${encodeURIComponent(appId)}`;
+    } else if (quoteBase) {
+      loadUrl = `/api/applications/load?quote=${encodeURIComponent(quoteBase)}`;
+      if (suffix) loadUrl += `&suffix=${encodeURIComponent(suffix)}`;
+      if (jobLine) loadUrl += `&jobLine=${encodeURIComponent(jobLine)}`;
+    } else if (soBase) {
+      loadUrl = `/api/applications/load?so=${encodeURIComponent(soBase)}`;
+      if (suffix) loadUrl += `&suffix=${encodeURIComponent(suffix)}`;
+      if (jobLine) loadUrl += `&jobLine=${encodeURIComponent(jobLine)}`;
+    } else {
+      // No URL params - check localStorage for last used
+      if (typeof window !== 'undefined') {
+        const lastAppId = localStorage.getItem(LAST_APP_KEY);
+        if (lastAppId) {
+          loadUrl = `/api/applications/load?app=${encodeURIComponent(lastAppId)}`;
+        }
+      }
+    }
+
+    if (!loadUrl) {
+      // No app to load - start fresh (Draft Application)
+      setLoadState('loaded');
+      return;
+    }
+
+    // Load the application
+    setLoadState('loading');
+    setLoadError(null);
+
+    fetch(loadUrl)
+      .then(async (res) => {
+        const data = await res.json();
+
+        if (!res.ok) {
+          // If loading last-used app fails, clear it and start fresh
+          if (!appId && !quoteBase && !soBase && typeof window !== 'undefined') {
+            localStorage.removeItem(LAST_APP_KEY);
+            setLoadState('loaded'); // Start fresh, no error
+            return;
+          }
+          throw new Error(data.error || 'Failed to load application');
+        }
+
+        // Check if we need job line selection
+        if (data.needsJobLineSelection) {
+          setJobLineSelectModal({
+            isOpen: true,
+            availableJobLines: data.availableJobLines,
+            referenceType: data.referenceType,
+            referenceBase: data.referenceBase,
+            suffix: data.suffix,
+          });
+          setLoadState('awaiting-selection'); // Wait for user to pick a job line
+          return;
+        }
+
+        loadApplicationFromResponse(data);
+      })
+      .catch((err) => {
+        console.error('[Load] Error:', err);
+        setLoadError(err.message);
+        setLoadState('error');
+      });
+  }, [loadState, searchParams, loadApplicationFromResponse]);
+
+  // Handle job line selection
+  const handleJobLineSelect = (selectedJobLine: number) => {
+    if (!jobLineSelectModal) return;
+
+    const { referenceType, referenceBase, suffix } = jobLineSelectModal;
+    const paramName = referenceType === 'QUOTE' ? 'quote' : 'so';
+
+    let loadUrl = `/api/applications/load?${paramName}=${encodeURIComponent(referenceBase)}`;
+    if (suffix) loadUrl += `&suffix=${encodeURIComponent(String(suffix))}`;
+    loadUrl += `&jobLine=${encodeURIComponent(String(selectedJobLine))}`;
+
+    setJobLineSelectModal(null);
+    setLoadState('loading');
+
+    fetch(loadUrl)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to load application');
+        }
+        loadApplicationFromResponse(data);
+      })
+      .catch((err) => {
+        console.error('[Load] Error after job line selection:', err);
+        setLoadError(err.message);
+        setLoadState('error');
+      });
   };
 
   // Build application_json from inputs with all application fields
@@ -251,7 +434,7 @@ export default function BeltConveyorCalculatorApp() {
 
   // Handle Save button click
   const handleSave = async () => {
-    // If no context (unlinked), open modal to select target
+    // If no context (draft), open modal to select target
     if (!context) {
       // Require calculation before saving
       if (calcStatus !== 'ok' || !result) {
@@ -281,20 +464,19 @@ export default function BeltConveyorCalculatorApp() {
 
     console.log('[Save] Saving to context:', context);
 
-    // TODO: Save specs to the linked Quote/SO
-    // For now, save to the legacy configurations table
     const referenceType = context.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
-    // Use base_number as the reference number
-    const referenceNumber = String(context.base);
 
     const payload = {
       reference_type: referenceType,
-      reference_number: referenceNumber,
-      reference_line: context.line ?? 1, // Use context line or default to 1
+      reference_number: String(context.base),
+      reference_suffix: context.line ?? undefined, // Suffix (e.g., .2)
+      reference_line: context.jobLine,             // Job line within the reference
+      customer_name: context.customer_name ?? undefined,
+      quantity: context.quantity ?? conveyorQty,
       model_key: 'belt_conveyor_v1',
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
-      application_json: buildApplicationJson(inputs, conveyorQty),
+      application_json: buildApplicationJson(inputs, context.quantity ?? conveyorQty),
       outputs_json: result.outputs,
       warnings_json: result.warnings,
     };
@@ -331,6 +513,11 @@ export default function BeltConveyorCalculatorApp() {
       setLoadedConfigurationId(configuration.id);
       setLoadedRevisionId(revision.id);
 
+      // Save to localStorage for "last used" feature
+      if (typeof window !== 'undefined' && configuration.id) {
+        localStorage.setItem(LAST_APP_KEY, configuration.id);
+      }
+
       // Reset initial loaded payload to current state
       const currentPayload = buildCurrentPayload();
       setInitialLoadedPayload(currentPayload);
@@ -360,17 +547,18 @@ export default function BeltConveyorCalculatorApp() {
 
     // Save to the selected target
     const referenceType = target.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
-    // Use base_number as the reference number
-    const referenceNumber = String(target.base);
 
     const payload = {
       reference_type: referenceType,
-      reference_number: referenceNumber,
-      reference_line: target.jobLine, // Use jobLine (Epicor job line) from modal
+      reference_number: String(target.base),
+      reference_suffix: target.line ?? undefined,  // Suffix (e.g., .2)
+      reference_line: target.jobLine,              // Job line within the reference
+      customer_name: target.customer_name ?? undefined,
+      quantity: target.quantity,
       model_key: 'belt_conveyor_v1',
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
-      application_json: buildApplicationJson(inputs, conveyorQty),
+      application_json: buildApplicationJson(inputs, target.quantity),
       outputs_json: result.outputs,
       warnings_json: result.warnings,
     };
@@ -395,12 +583,78 @@ export default function BeltConveyorCalculatorApp() {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json() as { status?: string; configuration: any; revision: any };
-      const { configuration, revision } = data;
+      const data = await response.json() as { status?: string; configuration?: any; revision?: any; recipe?: any };
+      const { configuration, revision, recipe } = data;
 
-      // Update loaded IDs
-      setLoadedConfigurationId(configuration.id);
-      setLoadedRevisionId(revision.id);
+      // Update loaded IDs (configuration/revision or fallback to recipe)
+      const configId = configuration?.id || recipe?.id;
+      const revisionId = revision?.id || recipe?.id;
+      if (configId) setLoadedConfigurationId(configId);
+      if (revisionId) setLoadedRevisionId(revisionId);
+
+      // Save to localStorage for "last used" feature
+      if (typeof window !== 'undefined' && configId) {
+        localStorage.setItem(LAST_APP_KEY, configId);
+      }
+
+      // Persist draft vault entries to the database
+      if (configId && (draftVault.notes.length > 0 || draftVault.specs.length > 0 || draftVault.scopeLines.length > 0 || draftVault.attachments.length > 0)) {
+        console.log('[SaveTarget] Persisting draft vault entries...');
+        try {
+          // Persist notes
+          for (const note of draftVault.notes) {
+            await fetch(`/api/applications/${configId}/notes`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ content: note.content }),
+            });
+          }
+          // Persist specs (current ones only)
+          for (const spec of draftVault.specs.filter(s => s.is_current)) {
+            await fetch(`/api/applications/${configId}/specs`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                key: spec.key,
+                value: spec.value,
+                units: spec.units,
+                confidence: spec.confidence,
+              }),
+            });
+          }
+          // Persist scope lines
+          for (const line of draftVault.scopeLines) {
+            await fetch(`/api/applications/${configId}/scope-lines`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                text: line.text,
+                category: line.category,
+                inclusion: line.inclusion,
+                position: line.position,
+              }),
+            });
+          }
+          // Persist attachments
+          for (const att of draftVault.attachments) {
+            await fetch(`/api/applications/${configId}/attachments`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                file_name: att.file_name,
+                file_path: att.file_path,
+                tag: att.tag,
+              }),
+            });
+          }
+          // Clear draft vault after persistence
+          setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
+          console.log('[SaveTarget] Draft vault entries persisted');
+        } catch (vaultErr) {
+          console.error('[SaveTarget] Failed to persist vault entries:', vaultErr);
+          // Don't fail the save, just log the error
+        }
+      }
 
       // Set initial loaded payload
       const currentPayload = buildCurrentPayload();
@@ -433,7 +687,7 @@ export default function BeltConveyorCalculatorApp() {
           </div>
         )}
 
-        {/* Save Target Modal (for first save when unlinked) */}
+        {/* Save Target Modal (for first save in draft mode) */}
         <SaveTargetModal
           isOpen={isSaveTargetModalOpen}
           onClose={() => setIsSaveTargetModalOpen(false)}
@@ -441,8 +695,55 @@ export default function BeltConveyorCalculatorApp() {
           defaultQuantity={conveyorQty}
         />
 
-        {/* Context Badge (replaces old Reference Header) */}
-        <CalculatorContextBadge
+        {/* Line Selection Modal */}
+        {jobLineSelectModal && (
+          <JobLineSelectModal
+            isOpen={jobLineSelectModal.isOpen}
+            availableJobLines={jobLineSelectModal.availableJobLines}
+            referenceType={jobLineSelectModal.referenceType}
+            referenceBase={jobLineSelectModal.referenceBase}
+            suffix={jobLineSelectModal.suffix}
+            onSelect={handleJobLineSelect}
+            onClose={() => setJobLineSelectModal(null)}
+          />
+        )}
+
+        {/* Loading State */}
+        {loadState === 'loading' && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-3 text-gray-500">
+              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Loading application...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {loadState === 'error' && loadError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h3 className="text-sm font-medium text-red-800">Failed to load application</h3>
+                <p className="text-sm text-red-700 mt-1">{loadError}</p>
+                <button
+                  onClick={() => { setLoadState('loaded'); setLoadError(null); }}
+                  className="mt-2 text-sm font-medium text-red-600 hover:text-red-500"
+                >
+                  Start a new application instead
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Application Context Header */}
+        <ApplicationContextHeader
           context={context}
           onUnlink={handleClear}
           isDirty={isDirty}
@@ -520,7 +821,7 @@ export default function BeltConveyorCalculatorApp() {
                 Vault
                 {!context && (
                   <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded">
-                    Unlinked
+                    Draft
                   </span>
                 )}
               </span>
@@ -678,8 +979,10 @@ export default function BeltConveyorCalculatorApp() {
         {/* Vault Mode */}
         <div className={viewMode === 'vault' ? '' : 'hidden'}>
           <VaultTab
-            context={context}
+            applicationId={loadedConfigurationId}
             onOpenSaveModal={() => setIsSaveTargetModalOpen(true)}
+            draftVault={draftVault}
+            onDraftVaultChange={setDraftVault}
           />
         </div>
       </div>

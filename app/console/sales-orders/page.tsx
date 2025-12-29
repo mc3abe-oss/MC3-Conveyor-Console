@@ -1,11 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SalesOrder } from '../../../src/lib/database/quote-types';
 import { formatRef } from '../../../src/lib/quote-identifiers';
 
 export default function ConsoleSalesOrdersPage() {
+  const router = useRouter();
   const [salesOrders, setSalesOrders] = useState<SalesOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -32,17 +34,23 @@ export default function ConsoleSalesOrdersPage() {
     fetchSalesOrders();
   }, []);
 
+  // Navigate to Application with sales order context
+  const handleRowClick = (so: SalesOrder) => {
+    const params = new URLSearchParams();
+    params.set('so', String(so.base_number));
+    if (so.suffix_line) {
+      params.set('suffix', String(so.suffix_line));
+    }
+    // Don't set jobLine - let the Application loader resolve or prompt
+    router.push(`/console/belt?${params.toString()}`);
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* DEV MARKER */}
-      <div className="mb-4 p-3 bg-yellow-200 text-black font-bold text-center rounded">
-        DEV_MARKER_VAULT_IN_CONSOLE_PHASE1
-      </div>
-
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Sales Orders</h1>
         <p className="text-gray-600 mt-1">
-          Sales Orders are created by converting won Quotes. Active jobs and builds live here.
+          View and search sales orders. Click a row to open the Application.
         </p>
       </div>
 
@@ -102,14 +110,15 @@ export default function ConsoleSalesOrdersPage() {
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {salesOrders.map((so) => (
-                <tr key={so.id} className="hover:bg-gray-50">
+                <tr
+                  key={so.id}
+                  onClick={() => handleRowClick(so)}
+                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/console/sales-orders/${so.id}`}
-                      className="text-mc3-blue hover:text-mc3-navy font-medium"
-                    >
+                    <span className="text-mc3-blue font-medium">
                       {formatRef('sales_order', so.base_number)}
-                    </Link>
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {so.customer_name || <span className="text-gray-400 italic">No customer</span>}
@@ -118,12 +127,11 @@ export default function ConsoleSalesOrdersPage() {
                     {new Date(so.created_at).toLocaleDateString()}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    <Link
-                      href={`/console/quotes/${so.origin_quote_id}`}
-                      className="text-purple-600 hover:text-purple-800"
-                    >
-                      View Quote
-                    </Link>
+                    {so.origin_quote_id ? (
+                      <span className="text-purple-600">From Quote</span>
+                    ) : (
+                      <span className="text-gray-400">-</span>
+                    )}
                   </td>
                 </tr>
               ))}

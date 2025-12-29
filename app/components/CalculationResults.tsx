@@ -586,7 +586,7 @@ export default function CalculationResults({ result, inputs }: Props) {
 
 interface ResultRowProps {
   label: string;
-  value: number;
+  value: number | null | undefined;
   unit?: string;
   decimals?: number;
   highlight?: boolean;
@@ -602,7 +602,7 @@ function ResultRow({ label, value, unit, decimals = 2, highlight }: ResultRowPro
     >
       <span className={highlight ? 'font-medium' : ''}>{label}:</span>
       <span className={clsx('font-mono', highlight && 'font-semibold text-lg')}>
-        {value.toFixed(decimals)}
+        {value != null ? value.toFixed(decimals) : '—'}
         {unit && <span className="ml-1 text-xs">{unit}</span>}
       </span>
     </div>

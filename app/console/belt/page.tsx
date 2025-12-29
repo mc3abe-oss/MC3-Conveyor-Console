@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import BeltConveyorCalculatorApp from '../../components/BeltConveyorCalculatorApp';
 
 /**
@@ -7,5 +8,9 @@ import BeltConveyorCalculatorApp from '../../components/BeltConveyorCalculatorAp
  * Supports both slider bed and roller bed configurations.
  */
 export default function BeltConveyorPage() {
-  return <BeltConveyorCalculatorApp />;
+  return (
+    <Suspense fallback={<div className="p-6 text-gray-500">Loading calculator...</div>}>
+      <BeltConveyorCalculatorApp />
+    </Suspense>
+  );
 }

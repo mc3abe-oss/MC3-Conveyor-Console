@@ -15,8 +15,11 @@ import { hashCanonical, stripUndefined } from '../../../../src/lib/recipes/hash'
 
 interface SaveRequestBody {
   reference_type: 'QUOTE' | 'SALES_ORDER';
-  reference_number: string;
-  reference_line?: number;
+  reference_number: string;      // Base number as string (e.g., "62633")
+  reference_suffix?: number;     // Optional suffix (e.g., 2 for "62633.2")
+  reference_line?: number;       // Job line within the reference
+  customer_name?: string;        // Customer name
+  quantity?: number;             // Conveyor quantity
   model_key: string;
   title?: string;
   inputs_json: any;
@@ -52,7 +55,10 @@ export async function POST(request: NextRequest) {
     const {
       reference_type,
       reference_number,
+      reference_suffix,
       reference_line = 1,
+      customer_name,
+      quantity,
       model_key,
       title,
       inputs_json,
@@ -103,13 +109,20 @@ export async function POST(request: NextRequest) {
     // Build unique slug for this configuration
     const slug = buildRecipeSlug(reference_type, reference_number, lineNumber);
 
+    // Parse reference_number as base number
+    const referenceNumberBase = parseInt(reference_number, 10);
+
     // Build the combined inputs object (stores all config data)
     const combinedInputs = stripUndefined({
       ...inputs_json,
       _config: {
         reference_type,
-        reference_number,
-        reference_line: lineNumber,
+        reference_number,              // Keep string for backward compat
+        reference_number_base: referenceNumberBase, // Store as number
+        reference_suffix: reference_suffix ?? null,
+        reference_line: lineNumber,    // Job line
+        customer_name: customer_name ?? null,
+        quantity: quantity ?? 1,
         title,
         parameters_json,
         application_json,
@@ -143,6 +156,17 @@ export async function POST(request: NextRequest) {
           id: existingRecipe.id,
           slug,
           updated_at: existingRecipe.updated_at,
+        },
+        // Include configuration and revision for frontend compatibility
+        configuration: {
+          id: existingRecipe.id,
+          reference_type,
+          reference_number,
+          reference_line: lineNumber,
+        },
+        revision: {
+          id: existingRecipe.id,
+          revision_number: 1,
         },
       });
     }

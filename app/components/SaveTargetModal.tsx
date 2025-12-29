@@ -164,7 +164,7 @@ export default function SaveTargetModal({
     }
 
     if (jobLine < 1) {
-      setError('Job Line must be at least 1');
+      setError('Line must be at least 1');
       return;
     }
 
@@ -217,7 +217,7 @@ export default function SaveTargetModal({
     }
 
     if (jobLine < 1) {
-      setError('Job Line must be at least 1');
+      setError('Line must be at least 1');
       return;
     }
 
@@ -354,13 +354,13 @@ export default function SaveTargetModal({
                   )}
                 </div>
 
-                {/* Job Line and Quantity when SO is selected */}
+                {/* Line and Quantity when SO is selected */}
                 {selectedExisting && (
                   <div className="pt-4 border-t border-gray-200">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Job Line <span className="text-red-500">*</span>
+                          Line <span className="text-red-500">*</span>
                         </label>
                         <input
                           type="number"
@@ -433,14 +433,14 @@ export default function SaveTargetModal({
                   />
                 </div>
 
-                {/* Job Line and Quantity - side by side */}
+                {/* Line and Quantity - side by side */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Line <span className="text-red-500">*</span>
+                      Line <span className="text-red-500">*</span>
                       <span
                         className="ml-1 text-gray-400 cursor-help"
-                        title="Epicor line number / internal job line"
+                        title="Line within this quote or sales order"
                       >
                         <svg className="inline w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -604,14 +604,14 @@ export default function SaveTargetModal({
                   </div>
                 )}
 
-                {/* Job Line and Quantity */}
+                {/* Line and Quantity */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Job Line <span className="text-red-500">*</span>
+                      Line <span className="text-red-500">*</span>
                       <span
                         className="ml-1 text-gray-400 cursor-help"
-                        title="Epicor line number / internal job line"
+                        title="Line within this quote or sales order"
                       >
                         <svg className="inline w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />

@@ -1,9 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Link from 'next/link';
-import { Quote, QuoteStatus } from '../../../src/lib/database/quote-types';
-import { formatRef } from '../../../src/lib/quote-identifiers';
+import { useRouter } from 'next/navigation';
+import { QuoteStatus } from '../../../src/lib/database/quote-types';
+
+interface QuoteLine {
+  quote_number: string;
+  base_number: number;
+  suffix_line: number | null;
+  job_line: number;
+  customer_name: string | null;
+  quote_status: string;
+  revision_count: number;
+  latest_updated_at: string;
+  latest_application_id: string;
+}
 
 const STATUS_BADGE_COLORS: Record<QuoteStatus, string> = {
   draft: 'bg-gray-100 text-gray-800',
@@ -14,26 +25,31 @@ const STATUS_BADGE_COLORS: Record<QuoteStatus, string> = {
 };
 
 export default function ConsoleQuotesPage() {
-  const [quotes, setQuotes] = useState<Quote[]>([]);
+  const router = useRouter();
+  const [quoteLines, setQuoteLines] = useState<QuoteLine[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('');
-  const [creating, setCreating] = useState(false);
 
-  const fetchQuotes = async () => {
+  const fetchQuoteLines = async () => {
     setLoading(true);
     setError(null);
     try {
-      const url = statusFilter ? `/api/quotes?status=${statusFilter}` : '/api/quotes';
-      const res = await fetch(url);
+      const res = await fetch('/api/quotes/lines');
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to fetch quotes');
+        throw new Error(data.error || 'Failed to fetch quote lines');
       }
 
-      const data = await res.json();
-      setQuotes(data);
+      let data: QuoteLine[] = await res.json();
+
+      // Apply status filter client-side
+      if (statusFilter) {
+        data = data.filter(q => q.quote_status === statusFilter);
+      }
+
+      setQuoteLines(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
     } finally {
@@ -42,67 +58,46 @@ export default function ConsoleQuotesPage() {
   };
 
   useEffect(() => {
-    fetchQuotes();
+    fetchQuoteLines();
   }, [statusFilter]);
 
-  const handleCreateQuote = async () => {
-    setCreating(true);
-    try {
-      const res = await fetch('/api/quotes', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
+  // Navigate to Application with full quote context - NO MODAL
+  const handleRowClick = (line: QuoteLine) => {
+    const params = new URLSearchParams();
+    params.set('quote', String(line.base_number));
+    if (line.suffix_line != null && line.suffix_line >= 1) {
+      params.set('suffix', String(line.suffix_line));
+    }
+    // Always pass jobLine to skip the selection modal
+    params.set('jobLine', String(line.job_line));
+    router.push(`/console/belt?${params.toString()}`);
+  };
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to create quote');
-      }
+  // Format date as relative or absolute
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-      const newQuote = await res.json();
-      window.location.href = `/console/quotes/${newQuote.id}`;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create quote');
-      setCreating(false);
+    if (diffDays === 0) {
+      return 'Today';
+    } else if (diffDays === 1) {
+      return 'Yesterday';
+    } else if (diffDays < 7) {
+      return `${diffDays} days ago`;
+    } else {
+      return date.toLocaleDateString();
     }
   };
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-      {/* DEV MARKER */}
-      <div className="mb-4 p-3 bg-yellow-200 text-black font-bold text-center rounded">
-        DEV_MARKER_VAULT_IN_CONSOLE_PHASE1
-      </div>
-
-      <div className="mb-6 flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
-          <p className="text-gray-600 mt-1">
-            Manage quotes and convert won quotes to sales orders
-          </p>
-        </div>
-        <button
-          onClick={handleCreateQuote}
-          disabled={creating}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-mc3-blue hover:bg-mc3-navy disabled:bg-gray-400 rounded-md transition-colors"
-        >
-          {creating ? (
-            <>
-              <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              Creating...
-            </>
-          ) : (
-            <>
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Quote
-            </>
-          )}
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Quotes</h1>
+        <p className="text-gray-600 mt-1">
+          View quote lines. Click a row to open the Application.
+        </p>
       </div>
 
       {/* Status filter */}
@@ -124,7 +119,7 @@ export default function ConsoleQuotesPage() {
 
       {/* Content */}
       {loading ? (
-        <div className="text-center py-12 text-gray-500">Loading quotes...</div>
+        <div className="text-center py-12 text-gray-500">Loading quote lines...</div>
       ) : error ? (
         <div className="bg-red-50 border border-red-200 rounded-lg p-6">
           <div className="flex items-start gap-3">
@@ -132,10 +127,10 @@ export default function ConsoleQuotesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <div className="flex-1">
-              <h3 className="text-red-800 font-medium">Failed to load quotes</h3>
+              <h3 className="text-red-800 font-medium">Failed to load quote lines</h3>
               <p className="text-red-700 text-sm mt-1">{error}</p>
               <button
-                onClick={fetchQuotes}
+                onClick={fetchQuoteLines}
                 className="mt-3 px-4 py-2 text-sm font-medium text-red-700 bg-red-100 hover:bg-red-200 rounded-md transition-colors"
               >
                 Retry
@@ -143,18 +138,18 @@ export default function ConsoleQuotesPage() {
             </div>
           </div>
         </div>
-      ) : quotes.length === 0 ? (
+      ) : quoteLines.length === 0 ? (
         <div className="text-center py-16 bg-white rounded-lg border border-gray-200">
           <svg className="mx-auto h-16 w-16 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
           </svg>
           <h3 className="mt-4 text-lg font-medium text-gray-900">
-            {statusFilter ? `No ${statusFilter} quotes` : 'No quotes yet'}
+            {statusFilter ? `No ${statusFilter} quotes` : 'No quote lines yet'}
           </h3>
           <p className="mt-2 text-gray-500 max-w-md mx-auto">
             {statusFilter
               ? `No quotes with status "${statusFilter}" found.`
-              : 'Create your first quote to get started.'}
+              : 'Quote lines are created when you save an Application. Go to Application and save your work.'}
           </p>
           {statusFilter ? (
             <button
@@ -165,14 +160,10 @@ export default function ConsoleQuotesPage() {
             </button>
           ) : (
             <button
-              onClick={handleCreateQuote}
-              disabled={creating}
+              onClick={() => router.push('/console/belt')}
               className="mt-6 inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-mc3-blue hover:bg-mc3-navy rounded-md transition-colors"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Create First Quote
+              Go to Application
             </button>
           )}
         </div>
@@ -185,51 +176,57 @@ export default function ConsoleQuotesPage() {
                   Quote #
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Line
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Created
+                  Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Converted To
+                  Last Updated
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Revisions
                 </th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {quotes.map((quote) => (
-                <tr key={quote.id} className="hover:bg-gray-50">
+              {quoteLines.map((line) => (
+                <tr
+                  key={`${line.base_number}-${line.suffix_line ?? 'null'}-${line.job_line}`}
+                  onClick={() => handleRowClick(line)}
+                  className="hover:bg-blue-50 cursor-pointer transition-colors"
+                >
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <Link
-                      href={`/console/quotes/${quote.id}`}
-                      className="text-mc3-blue hover:text-mc3-navy font-medium"
-                    >
-                      {formatRef('quote', quote.base_number)}
-                    </Link>
+                    <span className="text-mc3-blue font-medium">
+                      {line.quote_number}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${STATUS_BADGE_COLORS[quote.quote_status]}`}>
-                      {quote.quote_status.charAt(0).toUpperCase() + quote.quote_status.slice(1)}
+                    <span className="text-gray-900 font-medium">
+                      {line.job_line}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                    {quote.customer_name || <span className="text-gray-400 italic">No customer</span>}
+                    {line.customer_name || <span className="text-gray-400 italic">No customer</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${STATUS_BADGE_COLORS[line.quote_status as QuoteStatus] || 'bg-gray-100 text-gray-800'}`}>
+                      {line.quote_status.charAt(0).toUpperCase() + line.quote_status.slice(1)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                    {new Date(quote.created_at).toLocaleDateString()}
+                    {formatDate(line.latest_updated_at)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
-                    {quote.converted_to_sales_order_id ? (
-                      <Link
-                        href={`/console/sales-orders/${quote.converted_to_sales_order_id}`}
-                        className="text-purple-600 hover:text-purple-800"
-                      >
-                        View Sales Order
-                      </Link>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    {line.revision_count > 1 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
+                        {line.revision_count} revs
+                      </span>
                     ) : (
-                      <span className="text-gray-400">-</span>
+                      <span className="text-gray-400 text-sm">1</span>
                     )}
                   </td>
                 </tr>
