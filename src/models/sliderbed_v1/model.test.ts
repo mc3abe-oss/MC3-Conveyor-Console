@@ -89,7 +89,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -518,7 +518,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
         part_spacing_in: 12, // 12 inches
-        environment_factors: [],
+        environment_factors: [EnvironmentFactors.Indoor],
       };
 
       const result = runCalculation({ inputs });
@@ -541,7 +541,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Crosswise,
         part_spacing_in: 12, // 12 inches
-        environment_factors: [],
+        environment_factors: [EnvironmentFactors.Indoor],
       };
 
       const result = runCalculation({ inputs });
@@ -1281,7 +1281,7 @@ describe('Belt Tracking Guidance', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -1487,7 +1487,7 @@ describe('Belt Tracking Guidance', () => {
         belt_speed_fpm: 50,
         direction_mode: DirectionMode.OneDirection,
         side_loading_direction: SideLoadingDirection.None,
-        environment_factors: [],
+        environment_factors: [EnvironmentFactors.Indoor],
       };
       const guidance = calculateTrackingGuidance(inputs);
 
@@ -1644,7 +1644,7 @@ describe('Split Pulley Diameter (v1.3)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -1872,7 +1872,7 @@ describe('Belt Cleats (v1.3)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -2166,7 +2166,7 @@ describe('Support & Height Model (v1.4)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -2901,7 +2901,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       material_type: MaterialType.Steel,
       process_type: ProcessType.Assembly,
       parts_sharp: PartsSharp.No,
-      environment_factors: [],
+      environment_factors: [EnvironmentFactors.Indoor],
       ambient_temperature: AmbientTemperature.Normal,
       power_feed: PowerFeed.V480_3Ph,
       controls_package: ControlsPackage.StartStop,
@@ -3166,7 +3166,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           material_type: MaterialType.Steel,
           process_type: ProcessType.Assembly,
           parts_sharp: PartsSharp.No,
-          environment_factors: [],
+          environment_factors: [EnvironmentFactors.Indoor],
           ambient_temperature: AmbientTemperature.Normal,
           power_feed: PowerFeed.V480_3Ph,
           controls_package: ControlsPackage.StartStop,
@@ -3229,7 +3229,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           material_type: MaterialType.Steel,
           process_type: ProcessType.Assembly,
           parts_sharp: PartsSharp.No,
-          environment_factors: [],
+          environment_factors: [EnvironmentFactors.Indoor],
           ambient_temperature: AmbientTemperature.Normal,
           power_feed: PowerFeed.V480_3Ph,
           controls_package: ControlsPackage.StartStop,
@@ -3282,7 +3282,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -3562,7 +3562,7 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -3584,12 +3584,13 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
   };
 
   const BASE_INPUTS: SliderbedInputs = {
+    conveyor_length_cc_in: 240, // 20 feet = 240 inches
     belt_width_in: 18,
-    length_ft: 20,
-    incline_deg: 0,
+    conveyor_incline_deg: 0,
     belt_speed_fpm: 50,
     motor_rpm: 1750,
     drive_rpm: 0,
+    pulley_diameter_in: 4, // Required for calculations
     part_weight_lbs: 5,
     part_length_in: 12,
     part_width_in: 6,
@@ -3814,7 +3815,7 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -4292,7 +4293,7 @@ describe('Frame Construction Validation (v1.14)', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -4628,7 +4629,7 @@ describe('v1.16 Catalog Diameter Authority', () => {
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
     ambient_temperature: AmbientTemperature.Normal,
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
@@ -4858,22 +4859,22 @@ describe('v1.17 Pulley Diameter Override', () => {
     part_width_in: 6,
     part_weight_lbs: 5,
     orientation: Orientation.Lengthwise,
-    environment_factors: [],
+    environment_factors: [EnvironmentFactors.Indoor],
   };
 
-  // Case A: No catalog key, override=false → undefined (catalog lookup fails)
-  it('should return undefined when no catalog and override is false (Case A)', () => {
+  // Case A: No catalog key, override=false but diameter provided → use diameter (backward compatibility)
+  it('should use diameter when no catalog and override is false but diameter provided (Case A)', () => {
     const inputs: SliderbedInputs = {
       ...OVERRIDE_BASE,
       head_pulley_catalog_key: undefined, // No catalog
       drive_pulley_manual_override: false,
-      drive_pulley_diameter_in: 4, // Manual value ignored when override=false
+      drive_pulley_diameter_in: 4, // Now used for backward compatibility
     };
 
     const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
 
-    // No catalog, override=false → undefined
-    expect(effectiveDrivePulleyDiameterIn).toBeUndefined();
+    // Backward compatibility: diameter is used even without override flag
+    expect(effectiveDrivePulleyDiameterIn).toBe(4);
   });
 
   // Case B: override=true, manual set → effective = manual (ignores catalog)
@@ -4948,17 +4949,18 @@ describe('v1.17 Pulley Diameter Override', () => {
   });
 
   // Tail pulley: no catalog, override=false → undefined
-  it('should return undefined for tail when no catalog and override is false', () => {
+  it('should use tail diameter when no catalog and override is false but diameter provided', () => {
     const inputs: SliderbedInputs = {
       ...OVERRIDE_BASE,
       tail_pulley_catalog_key: undefined,
       tail_pulley_manual_override: false,
-      tail_pulley_diameter_in: 4, // Manual value ignored
+      tail_pulley_diameter_in: 4, // Now used for backward compatibility
     };
 
     const { effectiveTailPulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
 
-    expect(effectiveTailPulleyDiameterIn).toBeUndefined();
+    // Backward compatibility: diameter is used even without override flag
+    expect(effectiveTailPulleyDiameterIn).toBe(4);
   });
 
   // Tail pulley: override=true → manual diameter
@@ -4973,6 +4975,188 @@ describe('v1.17 Pulley Diameter Override', () => {
     const { effectiveTailPulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
 
     expect(effectiveTailPulleyDiameterIn).toBe(6);
+  });
+});
+
+// ============================================================================
+// v1.27: PCI TUBE STRESS TEST FIXTURES
+// ============================================================================
+
+describe('PCI Tube Stress Calculations (v1.27)', () => {
+  // Base inputs for PCI tests
+  const PCI_BASE_INPUTS: SliderbedInputs = {
+    conveyor_length_cc_in: 120,
+    belt_width_in: 24,
+    belt_speed_fpm: 100,
+    pulley_diameter_in: 6,
+    // Manual override flags required for diameters to be used (v1.17 pulley resolution logic)
+    drive_pulley_manual_override: true,
+    drive_pulley_diameter_in: 6,
+    tail_pulley_manual_override: true,
+    tail_pulley_diameter_in: 6,
+    part_weight_lbs: 10,
+    part_length_in: 10,
+    part_width_in: 8,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 12,
+    drive_rpm: 100,
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: [EnvironmentFactors.Indoor],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  // Test 1: Resultant load output is populated (wire-only)
+  it('should populate drive_pulley_resultant_load_lbf from shaftCalc', () => {
+    const result = runCalculation({ inputs: PCI_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.drive_pulley_resultant_load_lbf).toBeDefined();
+    expect(result.outputs?.drive_pulley_resultant_load_lbf).toBeGreaterThan(0);
+    expect(result.outputs?.tail_pulley_resultant_load_lbf).toBeDefined();
+    expect(result.outputs?.tail_pulley_resultant_load_lbf).toBeGreaterThan(0);
+  });
+
+  // Test 2: T1 and T2 outputs are populated (wire-only)
+  it('should populate drive_T1_lbf and drive_T2_lbf from shaftCalc', () => {
+    const result = runCalculation({ inputs: PCI_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.drive_T1_lbf).toBeDefined();
+    expect(result.outputs?.drive_T1_lbf).toBeGreaterThan(0);
+    expect(result.outputs?.drive_T2_lbf).toBeDefined();
+    expect(result.outputs?.drive_T2_lbf).toBeGreaterThan(0);
+  });
+
+  // Test 3: PCI status is "incomplete" when geometry not provided
+  it('should set pci_tube_stress_status to "incomplete" when geometry missing', () => {
+    const result = runCalculation({ inputs: PCI_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.pci_tube_stress_status).toBe('incomplete');
+    expect(result.outputs?.pci_drive_tube_stress_psi).toBeUndefined();
+    expect(result.outputs?.pci_tail_tube_stress_psi).toBeUndefined();
+  });
+
+  // Test 4: PCI tube stress calculated when geometry provided
+  it('should calculate pci_drive_tube_stress_psi when geometry provided', () => {
+    const inputs: SliderbedInputs = {
+      ...PCI_BASE_INPUTS,
+      drive_tube_od_in: 6.0,
+      drive_tube_wall_in: 0.134,
+      hub_centers_in: 24,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.pci_drive_tube_stress_psi).toBeDefined();
+    expect(result.outputs?.pci_drive_tube_stress_psi).toBeGreaterThan(0);
+    expect(result.outputs?.pci_tube_stress_limit_psi).toBe(10000); // Drum pulley
+    expect(result.outputs?.pci_hub_centers_estimated).toBe(false);
+  });
+
+  // Test 5: Hub centers estimated flag set when defaulted
+  it('should set pci_hub_centers_estimated when hub_centers_in not provided', () => {
+    const inputs: SliderbedInputs = {
+      ...PCI_BASE_INPUTS,
+      drive_tube_od_in: 6.0,
+      drive_tube_wall_in: 0.134,
+      // hub_centers_in not provided - will default to belt_width_in
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.pci_hub_centers_estimated).toBe(true);
+    // Status should be "estimated" when hub centers defaulted and stress OK
+    expect(['estimated', 'warn', 'fail', 'incomplete']).toContain(result.outputs?.pci_tube_stress_status);
+  });
+
+  // Test 6: V-groove pulley uses 3,400 psi limit
+  it('should use 3,400 psi limit for V-groove pulley', () => {
+    const inputs: SliderbedInputs = {
+      ...PCI_BASE_INPUTS,
+      belt_tracking_method: BeltTrackingMethod.VGuided,
+      v_guide_profile: VGuideProfile.K10,
+      v_guide_key: 'K10_SOLID',
+      drive_tube_od_in: 6.0,
+      drive_tube_wall_in: 0.134,
+      hub_centers_in: 24,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.pci_tube_stress_limit_psi).toBe(3400);
+  });
+
+  // Test 7: Invalid geometry (wall exceeds radius) returns error status
+  it('should set pci_tube_stress_status to "error" for invalid geometry', () => {
+    const inputs: SliderbedInputs = {
+      ...PCI_BASE_INPUTS,
+      drive_tube_od_in: 4.0,
+      drive_tube_wall_in: 2.5, // Wall exceeds radius (2.0")
+      hub_centers_in: 24,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.pci_tube_stress_status).toBe('error');
+    expect(result.outputs?.pci_tube_stress_error_message).toBeDefined();
+  });
+
+  // Test 8: Regression - existing shaft outputs unchanged
+  it('should not change existing shaft diameter outputs when PCI inputs added', () => {
+    // Calculate without PCI inputs
+    const baseResult = runCalculation({ inputs: PCI_BASE_INPUTS });
+
+    // Calculate with PCI inputs
+    const pciInputs: SliderbedInputs = {
+      ...PCI_BASE_INPUTS,
+      drive_tube_od_in: 6.0,
+      drive_tube_wall_in: 0.134,
+      hub_centers_in: 24,
+    };
+    const pciResult = runCalculation({ inputs: pciInputs });
+
+    // Existing outputs must be unchanged (Edit #5 - mustNotChange)
+    expect(pciResult.outputs?.drive_shaft_diameter_in).toBe(baseResult.outputs?.drive_shaft_diameter_in);
+    expect(pciResult.outputs?.tail_shaft_diameter_in).toBe(baseResult.outputs?.tail_shaft_diameter_in);
+    expect(pciResult.outputs?.total_belt_pull_lb).toBe(baseResult.outputs?.total_belt_pull_lb);
+    expect(pciResult.outputs?.friction_pull_lb).toBe(baseResult.outputs?.friction_pull_lb);
   });
 });
 

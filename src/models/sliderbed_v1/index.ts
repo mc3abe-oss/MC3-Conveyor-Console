@@ -22,7 +22,7 @@ export * from './schema';
 export { calculate } from './formulas';
 
 // Validation
-export { validate, validateInputs, validateParameters, applyApplicationRules } from './rules';
+export { validate, validateInputs, validateParameters, applyApplicationRules, applyPciOutputRules } from './rules';
 
 // Test fixtures
 export * from './fixtures';

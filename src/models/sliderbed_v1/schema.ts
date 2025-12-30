@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.23 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.27 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,12 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.27 (2025-12-30): PCI Pulley Guide integration - tube stress checks
+ *                     New inputs: hub_centers_in, drive_tube_od_in, drive_tube_wall_in,
+ *                     tail_tube_od_in, tail_tube_wall_in, enforce_pci_checks
+ *                     New outputs: drive_pulley_resultant_load_lbf, tail_pulley_resultant_load_lbf,
+ *                     drive_T1_lbf, drive_T2_lbf, pci_drive_tube_stress_psi, pci_tail_tube_stress_psi,
+ *                     pci_tube_stress_limit_psi, pci_tube_stress_status, pci_hub_centers_estimated
  * v1.23 (2025-12-30): Cleats catalog integration (cleat_catalog, cleat_center_factors tables)
  *                     New inputs: cleats_mode, cleat_profile, cleat_size, cleat_pattern,
  *                     cleat_centers_in, cleat_style, cleat_material_family
@@ -1175,6 +1181,48 @@ export interface SliderbedInputs {
    * Default: auto
    */
   tracking_preference?: string;
+
+  // =========================================================================
+  // v1.27: PCI TUBE GEOMETRY INPUTS (auto-populated, with override)
+  // =========================================================================
+
+  /**
+   * Hub center-to-center distance (inches)
+   * Distance between hub contact points on the pulley.
+   * DEFAULT: belt_width_in (flagged as "estimated")
+   * Override: User can provide actual value for accurate check.
+   */
+  hub_centers_in?: number;
+
+  /**
+   * Drive pulley tube OD (inches) - OVERRIDE ONLY
+   * AUTO-POPULATED from pulley family/variant shell_od_in if available.
+   * Only use this input when variant lacks shell data.
+   */
+  drive_tube_od_in?: number;
+
+  /**
+   * Drive pulley tube wall thickness (inches) - OVERRIDE ONLY
+   * AUTO-POPULATED from pulley family/variant shell_wall_in if available.
+   */
+  drive_tube_wall_in?: number;
+
+  /**
+   * Tail pulley tube OD (inches) - OVERRIDE ONLY
+   */
+  tail_tube_od_in?: number;
+
+  /**
+   * Tail pulley tube wall thickness (inches) - OVERRIDE ONLY
+   */
+  tail_tube_wall_in?: number;
+
+  /**
+   * Enforce PCI checks as hard errors (default: false)
+   * When false: violations are warnings
+   * When true: violations are errors that block calculation
+   */
+  enforce_pci_checks?: boolean;
 }
 
 // ============================================================================
@@ -1595,6 +1643,79 @@ export interface SliderbedOutputs {
 
   /** 1-2 sentence rationale */
   tracking_recommendation_rationale?: string;
+
+  // =========================================================================
+  // v1.27: PCI PULLEY LOAD OUTPUTS (wired from shaftCalc, no new math)
+  // =========================================================================
+
+  /**
+   * Resultant load on drive pulley (lbf)
+   * Vector sum of T1 + T2 belt tensions.
+   * Source: shaftCalc.radial_load_lbf
+   * Equivalent to PCI "F" for tube stress calculations.
+   */
+  drive_pulley_resultant_load_lbf?: number;
+
+  /**
+   * Resultant load on tail pulley (lbf)
+   * Source: shaftCalc.radial_load_lbf (tail calculation)
+   */
+  tail_pulley_resultant_load_lbf?: number;
+
+  /**
+   * Tight side belt tension at drive pulley (lbf)
+   * Source: shaftCalc.T1_lbf
+   */
+  drive_T1_lbf?: number;
+
+  /**
+   * Slack side belt tension at drive pulley (lbf)
+   * Source: shaftCalc.T2_lbf
+   */
+  drive_T2_lbf?: number;
+
+  // =========================================================================
+  // v1.27: PCI TUBE STRESS OUTPUTS (new calculation)
+  // =========================================================================
+
+  /**
+   * Drive pulley tube stress (psi)
+   * PCI Formula: σ = 8(OD)(F)(H) / (π(OD⁴ - ID⁴))
+   * Undefined if tube geometry not provided.
+   */
+  pci_drive_tube_stress_psi?: number;
+
+  /**
+   * Tail pulley tube stress (psi)
+   */
+  pci_tail_tube_stress_psi?: number;
+
+  /**
+   * Tube stress limit applied (psi)
+   * 10,000 for drum pulleys, 3,400 for V-groove pulleys
+   */
+  pci_tube_stress_limit_psi?: number;
+
+  /**
+   * PCI tube stress check status
+   * - "pass": stress ≤ limit (all geometry provided)
+   * - "estimated": stress ≤ limit but hub_centers was defaulted
+   * - "warn": stress > limit (default mode)
+   * - "fail": stress > limit (enforce mode)
+   * - "incomplete": missing tube geometry inputs
+   * - "error": invalid geometry (ID≤0 or OD⁴-ID⁴≤0)
+   */
+  pci_tube_stress_status?: 'pass' | 'estimated' | 'warn' | 'fail' | 'incomplete' | 'error';
+
+  /**
+   * PCI tube stress error message (when status is 'error')
+   */
+  pci_tube_stress_error_message?: string;
+
+  /**
+   * Whether hub_centers_in was estimated (defaulted to belt_width_in)
+   */
+  pci_hub_centers_estimated?: boolean;
 }
 
 // ============================================================================

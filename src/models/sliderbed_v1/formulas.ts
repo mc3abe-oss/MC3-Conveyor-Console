@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.24 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.27 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,9 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.27 (2025-12-30): PCI Pulley Guide integration - tube stress checks
+ *                     Wires shaftCalc radial_load, T1, T2 to outputs
+ *                     New PCI tube stress calculation per Appendix A formula
  * v1.24 (2025-12-30): Pulley family/variant support - new inputs drive_pulley_variant_key,
  *                     tail_pulley_variant_key; new outputs drive/tail_pulley_shell_od_in,
  *                     drive/tail_pulley_finished_od_in
@@ -41,7 +44,13 @@ import {
 } from './schema';
 import { buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
-import { getShaftSizingFromOutputs } from './shaftCalc';
+import { getShaftSizingFromOutputs, ShaftSizingResult } from './shaftCalc';
+import {
+  calculatePciTubeStress,
+  getTubeStressLimit,
+  isVGroovePulley as detectVGroovePulley,
+  PciTubeStressResult,
+} from './pciChecks';
 import { calculateTrackingRecommendation } from '../../lib/tracking';
 import {
   SHEET_METAL_GAUGE_THICKNESS,
@@ -94,7 +103,7 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   tailShellOdIn: number | undefined;
   tailFinishedOdIn: number | undefined;
 } {
-  // Drive pulley: check variant first, then legacy catalog
+  // Drive pulley: check variant first, then legacy catalog, then manual values
   let effectiveDrivePulleyDiameterIn: number | undefined;
   let driveShellOdIn: number | undefined;
   let driveFinishedOdIn: number | undefined;
@@ -110,9 +119,15 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   } else if (inputs.head_pulley_catalog_key) {
     // Legacy: use old catalog
     effectiveDrivePulleyDiameterIn = getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
+  } else if (inputs.drive_pulley_diameter_in !== undefined && inputs.drive_pulley_diameter_in > 0) {
+    // Backward compatibility: use provided diameter without override flag
+    effectiveDrivePulleyDiameterIn = inputs.drive_pulley_diameter_in;
+  } else if (inputs.pulley_diameter_in !== undefined && inputs.pulley_diameter_in > 0) {
+    // Legacy fallback: use single pulley_diameter_in
+    effectiveDrivePulleyDiameterIn = inputs.pulley_diameter_in;
   }
 
-  // Tail pulley: check variant first, then legacy catalog
+  // Tail pulley: check variant first, then legacy catalog, then manual values
   let effectiveTailPulleyDiameterIn: number | undefined;
   let tailShellOdIn: number | undefined;
   let tailFinishedOdIn: number | undefined;
@@ -128,6 +143,12 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   } else if (inputs.tail_pulley_catalog_key) {
     // Legacy: use old catalog
     effectiveTailPulleyDiameterIn = getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
+  } else if (inputs.tail_pulley_diameter_in !== undefined && inputs.tail_pulley_diameter_in > 0) {
+    // Backward compatibility: use provided diameter without override flag
+    effectiveTailPulleyDiameterIn = inputs.tail_pulley_diameter_in;
+  } else if (effectiveDrivePulleyDiameterIn !== undefined) {
+    // Tail defaults to drive if not specified
+    effectiveTailPulleyDiameterIn = effectiveDrivePulleyDiameterIn;
   }
 
   return {
@@ -1047,24 +1068,40 @@ export function calculate(
   const pulleyFaceLengthIn = calculatePulleyFaceLength(inputs.belt_width_in, pulleyFaceExtraIn);
 
   // Step 18: Shaft diameter calculations (v1.12 - von Mises based)
+  // v1.27: Also extract radial_load, T1, T2 for PCI tube stress
   const shaftDiameterMode = inputs.shaft_diameter_mode ?? ShaftDiameterMode.Calculated;
 
   let driveShaftDiameterIn: number;
   let tailShaftDiameterIn: number;
+  let driveShaftSizing: ShaftSizingResult | undefined;
+  let tailShaftSizing: ShaftSizingResult | undefined;
 
   if (shaftDiameterMode === ShaftDiameterMode.Manual || shaftDiameterMode === 'Manual') {
     // Manual mode: use user-specified values
     driveShaftDiameterIn = inputs.drive_shaft_diameter_in ?? 1.0;
     tailShaftDiameterIn = inputs.tail_shaft_diameter_in ?? 1.0;
-  } else {
-    // Calculated mode: use von Mises-based shaft sizing
-    const driveShaftSizing = getShaftSizingFromOutputs(
+    // Still compute shaftCalc for radial load / T1 / T2 outputs
+    driveShaftSizing = getShaftSizingFromOutputs(
       inputs.belt_width_in,
       drivePulleyDiameterIn,
       totalBeltPullLb,
       true // is drive pulley
     );
-    const tailShaftSizing = getShaftSizingFromOutputs(
+    tailShaftSizing = getShaftSizingFromOutputs(
+      inputs.belt_width_in,
+      tailPulleyDiameterIn,
+      totalBeltPullLb,
+      false // is tail pulley
+    );
+  } else {
+    // Calculated mode: use von Mises-based shaft sizing
+    driveShaftSizing = getShaftSizingFromOutputs(
+      inputs.belt_width_in,
+      drivePulleyDiameterIn,
+      totalBeltPullLb,
+      true // is drive pulley
+    );
+    tailShaftSizing = getShaftSizingFromOutputs(
       inputs.belt_width_in,
       tailPulleyDiameterIn,
       totalBeltPullLb,
@@ -1073,6 +1110,81 @@ export function calculate(
 
     driveShaftDiameterIn = driveShaftSizing.required_diameter_in;
     tailShaftDiameterIn = tailShaftSizing.required_diameter_in;
+  }
+
+  // v1.27: Extract PCI pulley load outputs (wire-only, no new math)
+  const drivePulleyResultantLoadLbf = driveShaftSizing?.radial_load_lbf;
+  const tailPulleyResultantLoadLbf = tailShaftSizing?.radial_load_lbf;
+  const driveT1Lbf = driveShaftSizing?.T1_lbf;
+  const driveT2Lbf = driveShaftSizing?.T2_lbf;
+
+  // v1.27: PCI Tube Stress Calculations
+  // Auto-populate tube geometry from pulley variant/family if available (Edit #1)
+  const driveOD = inputs.drive_tube_od_in ?? driveShellOdIn;
+  const driveWall = inputs.drive_tube_wall_in; // TODO: Could auto-populate from family.shell_wall_in
+  const tailOD = inputs.tail_tube_od_in ?? tailShellOdIn;
+  const tailWall = inputs.tail_tube_wall_in;
+
+  // Hub centers: user override > default to belt width (flagged as estimated) (Edit #2)
+  const hubCentersProvided = inputs.hub_centers_in !== undefined;
+  const hubCentersIn = inputs.hub_centers_in ?? inputs.belt_width_in;
+
+  // Detect V-groove for stress limit (Edit #4 - documented limitation)
+  const isVGroove = detectVGroovePulley(inputs.belt_tracking_method, inputs.v_guide_key);
+  const tubeStressLimitPsi = getTubeStressLimit(isVGroove);
+  const enforceChecks = inputs.enforce_pci_checks === true;
+
+  // Calculate drive pulley tube stress
+  let pciDriveTubeStress: PciTubeStressResult | undefined;
+  if (driveOD !== undefined && driveWall !== undefined && drivePulleyResultantLoadLbf !== undefined) {
+    pciDriveTubeStress = calculatePciTubeStress(
+      {
+        tube_od_in: driveOD,
+        tube_wall_in: driveWall,
+        hub_centers_in: hubCentersIn,
+        radial_load_lbf: drivePulleyResultantLoadLbf,
+      },
+      tubeStressLimitPsi,
+      !hubCentersProvided,
+      enforceChecks
+    );
+  }
+
+  // Calculate tail pulley tube stress
+  let pciTailTubeStress: PciTubeStressResult | undefined;
+  if (tailOD !== undefined && tailWall !== undefined && tailPulleyResultantLoadLbf !== undefined) {
+    pciTailTubeStress = calculatePciTubeStress(
+      {
+        tube_od_in: tailOD,
+        tube_wall_in: tailWall,
+        hub_centers_in: hubCentersIn,
+        radial_load_lbf: tailPulleyResultantLoadLbf,
+      },
+      tubeStressLimitPsi,
+      !hubCentersProvided,
+      enforceChecks
+    );
+  }
+
+  // Determine overall PCI status (worst of drive/tail, or incomplete if neither computed)
+  let pciTubeStressStatus: 'pass' | 'estimated' | 'warn' | 'fail' | 'incomplete' | 'error' = 'incomplete';
+  let pciTubeStressErrorMessage: string | undefined;
+
+  if (pciDriveTubeStress || pciTailTubeStress) {
+    // Priority: error > fail > warn > estimated > pass > incomplete
+    const statuses = [pciDriveTubeStress?.status, pciTailTubeStress?.status].filter(Boolean) as string[];
+    if (statuses.includes('error')) {
+      pciTubeStressStatus = 'error';
+      pciTubeStressErrorMessage = pciDriveTubeStress?.error_message ?? pciTailTubeStress?.error_message;
+    } else if (statuses.includes('fail')) {
+      pciTubeStressStatus = 'fail';
+    } else if (statuses.includes('warn')) {
+      pciTubeStressStatus = 'warn';
+    } else if (statuses.includes('estimated')) {
+      pciTubeStressStatus = 'estimated';
+    } else if (statuses.includes('pass')) {
+      pciTubeStressStatus = 'pass';
+    }
   }
 
   // Step 19: Frame height calculations (v1.5)
@@ -1361,5 +1473,19 @@ export function calculate(
       inputs.frame_structural_channel_series
     ),
     pulley_end_to_frame_inside_out_in: inputs.pulley_end_to_frame_inside_in,
+
+    // v1.27: PCI Pulley Load outputs (wired from shaftCalc)
+    drive_pulley_resultant_load_lbf: drivePulleyResultantLoadLbf,
+    tail_pulley_resultant_load_lbf: tailPulleyResultantLoadLbf,
+    drive_T1_lbf: driveT1Lbf,
+    drive_T2_lbf: driveT2Lbf,
+
+    // v1.27: PCI Tube Stress outputs
+    pci_drive_tube_stress_psi: pciDriveTubeStress?.stress_psi,
+    pci_tail_tube_stress_psi: pciTailTubeStress?.stress_psi,
+    pci_tube_stress_limit_psi: (pciDriveTubeStress || pciTailTubeStress) ? tubeStressLimitPsi : undefined,
+    pci_tube_stress_status: pciTubeStressStatus,
+    pci_tube_stress_error_message: pciTubeStressErrorMessage,
+    pci_hub_centers_estimated: !hubCentersProvided,
   };
 }

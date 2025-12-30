@@ -1,10 +1,11 @@
 /**
- * SLIDERBED CONVEYOR v1.15 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.27 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.27 (2025-12-30): PCI tube stress output validation (applyPciOutputRules)
  * v1.15 (2025-12-26): Pulley catalog selection info messages
  * v1.14 (2025-12-26): Conveyor frame construction validation (gauge/channel conditional requirements)
  * v1.11 (2025-12-24): Belt minimum pulley diameter warnings
@@ -21,6 +22,7 @@
 
 import {
   SliderbedInputs,
+  SliderbedOutputs,
   SliderbedParameters,
   ValidationError,
   ValidationWarning,
@@ -1536,4 +1538,97 @@ export function validateForCommit(
     errors: [...errors, ...tobErrors],
     warnings,
   };
+}
+
+// ============================================================================
+// v1.27: PCI OUTPUT VALIDATION
+// ============================================================================
+
+/**
+ * Apply PCI tube stress validation rules based on calculation outputs.
+ *
+ * This function should be called after calculation to generate warnings/errors
+ * based on the computed PCI check status.
+ *
+ * @param inputs - Calculator inputs (for enforce_pci_checks flag)
+ * @param outputs - Calculator outputs (for PCI tube stress results)
+ * @returns Object containing errors and warnings arrays
+ */
+export function applyPciOutputRules(
+  inputs: SliderbedInputs,
+  outputs: SliderbedOutputs
+): { errors: ValidationError[]; warnings: ValidationWarning[] } {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  const status = outputs.pci_tube_stress_status;
+  const limit = outputs.pci_tube_stress_limit_psi;
+  const driveStress = outputs.pci_drive_tube_stress_psi;
+  const tailStress = outputs.pci_tail_tube_stress_psi;
+  // Note: enforceChecks already reflected in status ('fail' vs 'warn')
+
+  // Error: Invalid tube geometry
+  if (status === 'error') {
+    errors.push({
+      field: 'drive_tube_od_in',
+      message: outputs.pci_tube_stress_error_message ?? 'Invalid tube geometry',
+      severity: 'error',
+    });
+  }
+
+  // Fail: Stress exceeds limit (enforce mode)
+  if (status === 'fail') {
+    if (driveStress !== undefined && limit !== undefined && driveStress > limit) {
+      errors.push({
+        field: 'drive_tube_od_in',
+        message: `Drive pulley tube stress (${driveStress.toLocaleString()} psi) exceeds PCI limit (${limit.toLocaleString()} psi). Consider larger shell diameter or thicker wall.`,
+        severity: 'error',
+      });
+    }
+    if (tailStress !== undefined && limit !== undefined && tailStress > limit) {
+      errors.push({
+        field: 'tail_tube_od_in',
+        message: `Tail pulley tube stress (${tailStress.toLocaleString()} psi) exceeds PCI limit (${limit.toLocaleString()} psi). Consider larger shell diameter or thicker wall.`,
+        severity: 'error',
+      });
+    }
+  }
+
+  // Warn: Stress exceeds limit (default mode)
+  if (status === 'warn') {
+    if (driveStress !== undefined && limit !== undefined && driveStress > limit) {
+      warnings.push({
+        field: 'drive_tube_od_in',
+        message: `Drive pulley tube stress (${driveStress.toLocaleString()} psi) exceeds PCI limit (${limit.toLocaleString()} psi). Consider larger shell diameter or thicker wall.`,
+        severity: 'warning',
+      });
+    }
+    if (tailStress !== undefined && limit !== undefined && tailStress > limit) {
+      warnings.push({
+        field: 'tail_tube_od_in',
+        message: `Tail pulley tube stress (${tailStress.toLocaleString()} psi) exceeds PCI limit (${limit.toLocaleString()} psi). Consider larger shell diameter or thicker wall.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // Info: Hub centers estimated (not user-provided)
+  if (outputs.pci_hub_centers_estimated && status !== 'incomplete') {
+    warnings.push({
+      field: 'hub_centers_in',
+      message: `Hub centers defaulted to belt width (${inputs.belt_width_in}"). For accurate PCI tube stress check, provide actual hub centers.`,
+      severity: 'info',
+    });
+  }
+
+  // Info: PCI check status is 'estimated' (hub centers defaulted, stress OK)
+  if (status === 'estimated') {
+    warnings.push({
+      field: 'hub_centers_in',
+      message: 'PCI tube stress check passed with estimated hub centers. Provide actual hub centers for authoritative verification.',
+      severity: 'info',
+    });
+  }
+
+  return { errors, warnings };
 }
