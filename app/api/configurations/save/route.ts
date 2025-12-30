@@ -28,6 +28,7 @@ interface SaveRequestBody {
   outputs_json?: any;
   warnings_json?: any;
   change_note?: string;
+  outputs_stale?: boolean;       // True if outputs exist but inputs have changed since calculation
 }
 
 /**
@@ -67,6 +68,7 @@ export async function POST(request: NextRequest) {
       outputs_json,
       warnings_json,
       change_note,
+      outputs_stale = false,
     } = body;
 
     // Validate required fields
@@ -174,6 +176,10 @@ export async function POST(request: NextRequest) {
     // Build recipe name for display
     const recipeName = title || `${reference_type} ${reference_number} Line ${lineNumber}`;
 
+    // Determine calculation status based on outputs and staleness
+    const hasOutputs = !!outputs_json;
+    const isCalculated = hasOutputs && !outputs_stale;
+
     // Build the recipe row
     const recipeRow: Record<string, unknown> = {
       slug,
@@ -190,6 +196,11 @@ export async function POST(request: NextRequest) {
       notes: change_note || null,
       tolerance_policy: 'default_fallback',
       updated_by: userId,
+      // Calculation status tracking (v1.21)
+      calculation_status: isCalculated ? 'calculated' : 'draft',
+      is_calculated: isCalculated,
+      outputs_stale: hasOutputs && outputs_stale,
+      last_calculated_at: isCalculated ? new Date().toISOString() : null,
     };
 
     // Store outputs if provided
@@ -237,6 +248,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Determine save feedback message
+    let saveMessage: string;
+    if (isCalculated) {
+      saveMessage = 'Saved Calculated Results';
+    } else if (hasOutputs && outputs_stale) {
+      saveMessage = 'Saved Draft (results are stale)';
+    } else {
+      saveMessage = 'Saved Draft (not calculated)';
+    }
+
     return NextResponse.json({
       status: existingRecipe ? 'updated' : 'created',
       recipe: {
@@ -246,6 +267,12 @@ export async function POST(request: NextRequest) {
         created_at: recipe.created_at,
         updated_at: recipe.updated_at,
       },
+      // Calculation status fields (v1.21)
+      calculation_status: isCalculated ? 'calculated' : 'draft',
+      is_calculated: isCalculated,
+      outputs_stale: hasOutputs && outputs_stale,
+      last_calculated_at: isCalculated ? recipe.updated_at : null,
+      save_message: saveMessage,
       // Backward compatibility fields
       configuration: {
         id: recipe.id,

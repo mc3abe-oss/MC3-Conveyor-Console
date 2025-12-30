@@ -192,6 +192,11 @@ function buildContextFromApp(app: any): {
   jobLine: number;
   quantity: number;
   customer_name: string | null;
+  // Calculation status fields (v1.21)
+  calculation_status: 'draft' | 'calculated';
+  is_calculated: boolean;
+  outputs_stale: boolean;
+  last_calculated_at: string | null;
 } | null {
   const config = app.inputs?._config;
   if (!config?.reference_type) {
@@ -213,5 +218,10 @@ function buildContextFromApp(app: any): {
     jobLine,
     quantity,
     customer_name: customerName,
+    // Calculation status fields (v1.21)
+    calculation_status: app.calculation_status ?? 'draft',
+    is_calculated: app.is_calculated ?? false,
+    outputs_stale: app.outputs_stale ?? false,
+    last_calculated_at: app.last_calculated_at ?? null,
   };
 }

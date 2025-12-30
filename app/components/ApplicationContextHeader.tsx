@@ -13,6 +13,9 @@ interface ApplicationContextHeaderProps {
   isCalculating?: boolean;
   canSave?: boolean;
   needsRecalc?: boolean;
+  // Calculation status (v1.21)
+  calculationStatus?: 'draft' | 'calculated';
+  outputsStale?: boolean;
 }
 
 export default function ApplicationContextHeader({
@@ -25,7 +28,11 @@ export default function ApplicationContextHeader({
   isCalculating = false,
   canSave = true,
   needsRecalc = false,
+  calculationStatus = 'draft',
+  outputsStale = false,
 }: ApplicationContextHeaderProps) {
+  // Determine display status: only "Calculated" if truly calculated and not stale
+  const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
   // Draft state (not yet saved)
   if (!context) {
     return (
@@ -33,9 +40,15 @@ export default function ApplicationContextHeader({
         <div className="flex items-center justify-between py-4">
           {/* Left: Header Content */}
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">
-              Draft Application
-            </h1>
+            <div className="flex items-center gap-3">
+              <h1 className="text-2xl font-bold text-gray-900">
+                Draft Application
+              </h1>
+              {/* Status Chip */}
+              <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
+                Draft
+              </span>
+            </div>
             <p className="text-sm text-gray-500 mt-1">
               Not yet saved
             </p>
@@ -90,20 +103,30 @@ export default function ApplicationContextHeader({
       <div className="flex items-start justify-between py-4">
         {/* Left: Header Content */}
         <div>
-          {/* Line 1: Reference · Type */}
-          <h1 className="text-2xl font-bold text-gray-900">
-            <Link
-              href={href}
-              className="hover:text-gray-700 hover:underline"
-            >
-              {refDisplay}
-            </Link>
-            <span className="text-gray-400 font-normal mx-2">·</span>
-            <span className="text-gray-600 font-semibold">{typeLabel}</span>
-            {isDirty && (
-              <span className="ml-3 inline-block w-2 h-2 bg-gray-400 rounded-full" title="Unsaved changes" />
-            )}
-          </h1>
+          {/* Line 1: Reference · Type · Status Chip */}
+          <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-bold text-gray-900">
+              <Link
+                href={href}
+                className="hover:text-gray-700 hover:underline"
+              >
+                {refDisplay}
+              </Link>
+              <span className="text-gray-400 font-normal mx-2">·</span>
+              <span className="text-gray-600 font-semibold">{typeLabel}</span>
+              {isDirty && (
+                <span className="ml-3 inline-block w-2 h-2 bg-gray-400 rounded-full" title="Unsaved changes" />
+              )}
+            </h1>
+            {/* Status Chip */}
+            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
+              isFullyCalculated
+                ? 'bg-green-100 text-green-700'
+                : 'bg-amber-100 text-amber-700'
+            }`}>
+              {isFullyCalculated ? 'Calculated' : 'Draft'}
+            </span>
+          </div>
 
           {/* Line 2: Customer */}
           <p className="text-base text-gray-700 mt-1">
@@ -141,10 +164,10 @@ export default function ApplicationContextHeader({
           {onSave && (
             <button
               type="button"
-              className={`btn ${isDirty && canSave && !needsRecalc ? 'btn-primary' : 'btn-outline'}`}
+              className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'}`}
               onClick={onSave}
               disabled={!canSave || isSaving}
-              title={!isDirty ? 'No changes to save' : needsRecalc ? 'Recalculate before saving' : ''}
+              title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft (results are stale)' : ''}
             >
               {isSaving ? 'Saving...' : 'Save'}
             </button>

@@ -43,6 +43,10 @@ export default function BeltConveyorCalculatorApp() {
   const [calcStatus, setCalcStatus] = useState<'idle' | 'ok' | 'error'>('idle');
   const [triggerCalculate, setTriggerCalculate] = useState<number>(0);
 
+  // Calculation status tracking (v1.21)
+  const [calculationStatus, setCalculationStatus] = useState<'draft' | 'calculated'>('draft');
+  const [outputsStale, setOutputsStale] = useState(false);
+
   const [isSaving, setIsSaving] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
@@ -98,6 +102,17 @@ export default function BeltConveyorCalculatorApp() {
     if (loadedContext) {
       setContext(loadedContext);
       setConveyorQty(loadedContext.quantity || 1);
+
+      // Set calculation status from loaded context (v1.21)
+      const loadedCalcStatus = loadedContext.calculation_status ?? 'draft';
+      const loadedOutputsStale = loadedContext.outputs_stale ?? false;
+      setCalculationStatus(loadedCalcStatus);
+      setOutputsStale(loadedOutputsStale);
+
+      // Default to Configure tab when loading draft or stale
+      if (loadedCalcStatus === 'draft' || loadedOutputsStale) {
+        setViewMode('configure');
+      }
     }
 
     // Set loaded IDs
@@ -348,9 +363,9 @@ export default function BeltConveyorCalculatorApp() {
   }, [lastCalculatedPayload, buildCurrentPayload, inputs, result]);
 
   // Can save if:
-  // 1) If linked context: must have changes (dirty) AND calculation is fresh (not stale)
+  // 1) If linked context: must have changes (dirty) - draft saves allowed (v1.21)
   // 2) If no context: allow save (will open modal to select target)
-  const canSave = context ? (isDirty && !needsRecalc) : true;
+  const canSave = context ? isDirty : true;
 
   // Calculate button always enabled
   const canCalculate = true;
@@ -436,37 +451,31 @@ export default function BeltConveyorCalculatorApp() {
   const handleSave = async () => {
     // If no context (draft), open modal to select target
     if (!context) {
-      // Require calculation before saving
-      if (calcStatus !== 'ok' || !result) {
-        showToast('Please calculate before saving');
-        return;
-      }
+      // Draft saves allowed without calculation (v1.21)
       setIsSaveTargetModalOpen(true);
       return;
     }
 
     // Context exists - save to linked Quote/SO
-    // Enforce calculate-first save-second workflow
     if (!isDirty) {
       showToast('No changes to save');
       return;
     }
 
-    if (!isCalculatedFresh) {
-      showToast('Changes detected. Click Calculate before saving.');
+    if (!inputs) {
+      showToast('No inputs to save');
       return;
     }
 
-    if (!inputs || !result) {
-      showToast('Please calculate before saving');
-      return;
-    }
+    // Determine if this is a draft save or calculated save (v1.21)
+    const willSaveAsDraft = !result || needsRecalc;
+    const isStale = result && needsRecalc;
 
-    console.log('[Save] Saving to context:', context);
+    console.log('[Save] Saving to context:', context, { willSaveAsDraft, isStale });
 
     const referenceType = context.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       reference_type: referenceType,
       reference_number: String(context.base),
       reference_suffix: context.line ?? undefined, // Suffix (e.g., .2)
@@ -477,8 +486,12 @@ export default function BeltConveyorCalculatorApp() {
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, context.quantity ?? conveyorQty),
-      outputs_json: result.outputs,
-      warnings_json: result.warnings,
+      // Include outputs only if we have results (v1.21)
+      ...(result ? {
+        outputs_json: result.outputs,
+        warnings_json: result.warnings,
+        outputs_stale: isStale, // Mark as stale if inputs changed since calculation
+      } : {}),
     };
 
     setIsSaving(true);
@@ -501,8 +514,17 @@ export default function BeltConveyorCalculatorApp() {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json() as { status?: string; configuration: any; revision: any; message?: string };
-      const { status, configuration, revision, message } = data;
+      const data = await response.json() as {
+        status?: string;
+        configuration: any;
+        revision: any;
+        message?: string;
+        save_message?: string;
+        calculation_status?: 'draft' | 'calculated';
+        is_calculated?: boolean;
+        outputs_stale?: boolean;
+      };
+      const { status, configuration, revision, message, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale } = data;
 
       if (status === 'no_change') {
         showToast(message || 'No changes to save');
@@ -513,6 +535,10 @@ export default function BeltConveyorCalculatorApp() {
       setLoadedConfigurationId(configuration.id);
       setLoadedRevisionId(revision.id);
 
+      // Update calculation status (v1.21)
+      if (newCalcStatus) setCalculationStatus(newCalcStatus);
+      if (newOutputsStale !== undefined) setOutputsStale(newOutputsStale);
+
       // Save to localStorage for "last used" feature
       if (typeof window !== 'undefined' && configuration.id) {
         localStorage.setItem(LAST_APP_KEY, configuration.id);
@@ -522,7 +548,8 @@ export default function BeltConveyorCalculatorApp() {
       const currentPayload = buildCurrentPayload();
       setInitialLoadedPayload(currentPayload);
 
-      showToast(`Saved Rev ${revision.revision_number}`);
+      // Show save feedback message from API (v1.21)
+      showToast(save_message || `Saved Rev ${revision.revision_number}`);
     } catch (error) {
       console.error('[Save] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to save');
@@ -535,12 +562,16 @@ export default function BeltConveyorCalculatorApp() {
   const handleSelectSaveTarget = async (target: SaveTarget) => {
     setIsSaveTargetModalOpen(false);
 
-    if (!inputs || !result) {
-      showToast('Please calculate before saving');
+    if (!inputs) {
+      showToast('No inputs to save');
       return;
     }
 
-    console.log('[SaveTarget] Selected:', target);
+    // Determine if this is a draft save or calculated save (v1.21)
+    const willSaveAsDraft = !result || needsRecalc;
+    const isStale = result && needsRecalc;
+
+    console.log('[SaveTarget] Selected:', target, { willSaveAsDraft, isStale });
 
     // Set context (link to selected Quote/SO)
     setContext(target);
@@ -548,7 +579,7 @@ export default function BeltConveyorCalculatorApp() {
     // Save to the selected target
     const referenceType = target.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       reference_type: referenceType,
       reference_number: String(target.base),
       reference_suffix: target.line ?? undefined,  // Suffix (e.g., .2)
@@ -559,8 +590,12 @@ export default function BeltConveyorCalculatorApp() {
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, target.quantity),
-      outputs_json: result.outputs,
-      warnings_json: result.warnings,
+      // Include outputs only if we have results (v1.21)
+      ...(result ? {
+        outputs_json: result.outputs,
+        warnings_json: result.warnings,
+        outputs_stale: isStale, // Mark as stale if inputs changed since calculation
+      } : {}),
     };
 
     setIsSaving(true);
@@ -583,14 +618,27 @@ export default function BeltConveyorCalculatorApp() {
         throw new Error(errorMessage);
       }
 
-      const data = await response.json() as { status?: string; configuration?: any; revision?: any; recipe?: any };
-      const { configuration, revision, recipe } = data;
+      const data = await response.json() as {
+        status?: string;
+        configuration?: any;
+        revision?: any;
+        recipe?: any;
+        save_message?: string;
+        calculation_status?: 'draft' | 'calculated';
+        is_calculated?: boolean;
+        outputs_stale?: boolean;
+      };
+      const { configuration, revision, recipe, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale } = data;
 
       // Update loaded IDs (configuration/revision or fallback to recipe)
       const configId = configuration?.id || recipe?.id;
       const revisionId = revision?.id || recipe?.id;
       if (configId) setLoadedConfigurationId(configId);
       if (revisionId) setLoadedRevisionId(revisionId);
+
+      // Update calculation status (v1.21)
+      if (newCalcStatus) setCalculationStatus(newCalcStatus);
+      if (newOutputsStale !== undefined) setOutputsStale(newOutputsStale);
 
       // Save to localStorage for "last used" feature
       if (typeof window !== 'undefined' && configId) {
@@ -660,7 +708,8 @@ export default function BeltConveyorCalculatorApp() {
       const currentPayload = buildCurrentPayload();
       setInitialLoadedPayload(currentPayload);
 
-      showToast(`Saved to ${formatSaveTarget(target)}`);
+      // Show save feedback message from API (v1.21)
+      showToast(save_message || `Saved to ${formatSaveTarget(target)}`);
     } catch (error) {
       console.error('[SaveTarget] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to save');
@@ -753,6 +802,8 @@ export default function BeltConveyorCalculatorApp() {
           isCalculating={isCalculating}
           canSave={canSave}
           needsRecalc={needsRecalc}
+          calculationStatus={calculationStatus}
+          outputsStale={outputsStale}
         />
 
         {/* Page-level Mode Tabs */}
@@ -892,75 +943,76 @@ export default function BeltConveyorCalculatorApp() {
 
         {/* Results Mode - Full width results */}
         <div className={viewMode === 'results' ? '' : 'hidden'}>
-          {/* Stale Results Banner */}
-          {result && needsRecalc && (
-            <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
-              <div className="flex items-center gap-2 text-amber-800">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
-                <span className="font-medium">Results are stale.</span>
-                <span className="text-sm">Inputs have changed since last calculation.</span>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  handleCalculateClick();
-                }}
-                className="px-3 py-1.5 bg-amber-600 text-white text-sm font-medium rounded hover:bg-amber-700 transition-colors"
-              >
-                Recalculate
-              </button>
-            </div>
-          )}
+          {/* Determine if we should show valid results or placeholder (v1.21) */}
+          {(() => {
+            // Show valid results only if: result exists AND not stale AND calculation_status is calculated
+            const hasValidResults = result && !needsRecalc && calculationStatus === 'calculated' && !outputsStale;
 
-          {result ? (
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {/* Main Results - Takes 2 columns */}
-              <div className="lg:col-span-2">
-                <CalculationResults result={result} inputs={inputs ?? undefined} />
-              </div>
+            if (hasValidResults) {
+              return (
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Main Results - Takes 2 columns */}
+                  <div className="lg:col-span-2">
+                    <CalculationResults result={result} inputs={inputs ?? undefined} />
+                  </div>
 
-              {/* Input Echo - Summary of key inputs */}
-              <div className="lg:col-span-1">
-                <InputEcho inputs={inputs} />
-              </div>
-            </div>
-          ) : (
-            <div className="card">
-              <div className="text-center py-12 text-gray-500">
-                <svg
-                  className="mx-auto h-12 w-12 text-gray-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                  />
-                </svg>
-                <h3 className="mt-2 text-sm font-medium text-gray-900">
-                  No calculation yet
-                </h3>
-                <p className="mt-1 text-sm text-gray-500">
-                  Configure your conveyor and click Calculate to see results
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('configure')}
-                  className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Go to Configure
-                </button>
-              </div>
-            </div>
-          )}
+                  {/* Input Echo - Summary of key inputs */}
+                  <div className="lg:col-span-1">
+                    <InputEcho inputs={inputs} />
+                  </div>
+                </div>
+              );
+            }
 
-          {/* Edit Inputs CTA */}
-          {result && (
+            // Draft or stale state - show placeholder (v1.21)
+            return (
+              <div className="card">
+                <div className="text-center py-12 text-gray-500">
+                  <svg
+                    className="mx-auto h-12 w-12 text-amber-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                  </svg>
+                  <h3 className="mt-2 text-sm font-medium text-gray-900">
+                    {outputsStale ? 'Results are stale' : 'Draft Application'}
+                  </h3>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {outputsStale
+                      ? 'Inputs have changed since the last calculation. Recalculate to get valid results.'
+                      : 'This application has not been calculated yet. Configure inputs and run Calculate.'}
+                  </p>
+                  <div className="mt-4 flex justify-center gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setViewMode('configure')}
+                      className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Go to Configure
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleCalculateClick}
+                      disabled={isCalculating}
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
+                    >
+                      {isCalculating ? 'Calculating...' : 'Calculate Now'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
+          {/* Edit Inputs CTA - Only show when we have valid calculated results */}
+          {result && !needsRecalc && calculationStatus === 'calculated' && !outputsStale && (
             <div className="mt-6 flex justify-center">
               <button
                 type="button"
