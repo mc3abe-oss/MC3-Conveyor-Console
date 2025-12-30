@@ -33,6 +33,26 @@ export default function AdminPage() {
           </Link>
 
           <Link
+            href="/admin/pulley-families"
+            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pulley Families</h2>
+            <p className="text-sm text-gray-600">
+              Manage pulley family definitions (shell OD, face width, V-groove specs)
+            </p>
+          </Link>
+
+          <Link
+            href="/admin/pulley-variants"
+            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pulley Variants</h2>
+            <p className="text-sm text-gray-600">
+              Manage pulley variants (bore, hub, lagging, finished OD)
+            </p>
+          </Link>
+
+          <Link
             href="/admin/environment-factors"
             className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
           >

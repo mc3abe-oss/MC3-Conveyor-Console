@@ -1036,6 +1036,24 @@ export interface SliderbedInputs {
    */
   tail_pulley_manual_override?: boolean;
 
+  // =========================================================================
+  // v1.24: PULLEY FAMILY/VARIANT SELECTION
+  // =========================================================================
+
+  /**
+   * Drive pulley variant key (v1.24)
+   * References pulley_variants table. Takes precedence over head_pulley_catalog_key.
+   * When set, finished_od_in is derived from variant (or family shell_od_in).
+   */
+  drive_pulley_variant_key?: string;
+
+  /**
+   * Tail pulley variant key (v1.24)
+   * References pulley_variants table. Takes precedence over tail_pulley_catalog_key.
+   * When set, finished_od_in is derived from variant (or family shell_od_in).
+   */
+  tail_pulley_variant_key?: string;
+
   /** Belt PIW from catalog (populated when belt is selected) */
   belt_piw?: number;
 
@@ -1310,6 +1328,38 @@ export interface SliderbedOutputs {
 
   /** Tail pulley diameter used in inches */
   tail_pulley_diameter_in: number;
+
+  // =========================================================================
+  // v1.24: PULLEY FAMILY/VARIANT OUTPUTS
+  // =========================================================================
+
+  /**
+   * Drive pulley shell OD from family (inches)
+   * Always the family's shell_od_in. Undefined if no variant selected.
+   */
+  drive_pulley_shell_od_in?: number;
+
+  /**
+   * Tail pulley shell OD from family (inches)
+   * Always the family's shell_od_in. Undefined if no variant selected.
+   */
+  tail_pulley_shell_od_in?: number;
+
+  /**
+   * Drive pulley finished OD (inches)
+   * Variant's finished_od_in if set, else family's shell_od_in.
+   * This is the effective outer diameter after lagging.
+   * Undefined if no variant selected.
+   */
+  drive_pulley_finished_od_in?: number;
+
+  /**
+   * Tail pulley finished OD (inches)
+   * Variant's finished_od_in if set, else family's shell_od_in.
+   * This is the effective outer diameter after lagging.
+   * Undefined if no variant selected.
+   */
+  tail_pulley_finished_od_in?: number;
 
   // =========================================================================
   // v1.11: BELT MINIMUM PULLEY DIAMETER OUTPUTS

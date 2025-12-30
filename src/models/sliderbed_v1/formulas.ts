@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.23 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.24 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,9 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.24 (2025-12-30): Pulley family/variant support - new inputs drive_pulley_variant_key,
+ *                     tail_pulley_variant_key; new outputs drive/tail_pulley_shell_od_in,
+ *                     drive/tail_pulley_finished_od_in
  * v1.23 (2025-12-30): Cleats catalog integration - catalog-driven min pulley diameter calculation
  *                     Aggregate constraint: required_min_pulley_diameter_in = max(belt, vguide, cleats)
  * v1.12 (2025-12-25): Von Mises-based shaft diameter calculation, belt_width_in rename
@@ -46,6 +49,10 @@ import {
 } from '../../lib/frame-catalog';
 import { getEffectiveDiameterByKey } from '../../lib/pulley-catalog';
 import {
+  getFinishedOdByVariantKey,
+  getShellOdByVariantKey,
+} from '../../lib/pulley-families';
+import {
   getCachedCleatCatalog,
   getCachedCleatCenterFactors,
   lookupCleatsMinPulleyDia,
@@ -63,33 +70,74 @@ const PI = Math.PI;
 
 // ============================================================================
 // v1.17: EFFECTIVE PULLEY DIAMETER RESOLUTION
+// v1.24: Extended to support pulley family/variant selection
 // ============================================================================
 
 /**
- * Get effective pulley diameters based on override flags.
+ * Get effective pulley diameters based on override flags and variant selection.
  *
- * v1.17: Single source of truth for diameter resolution.
- * - If override is true → use manual diameter (may be undefined)
- * - If override is false → use catalog diameter (may be undefined)
- * - NO silent defaults - undefined propagates to validation
+ * v1.24: Priority order for diameter resolution:
+ * 1. Manual override → use drive_pulley_diameter_in / tail_pulley_diameter_in
+ * 2. Variant key → use finished_od_in from variant (or shell_od_in fallback)
+ * 3. Legacy catalog key → use diameter from pulley_catalog
+ * 4. undefined if nothing selected
  *
- * @returns Object with effective diameters (undefined if not available)
+ * Also returns shell_od and finished_od for output when variant is selected.
+ *
+ * @returns Object with effective diameters and variant info (undefined if not available)
  */
 export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   effectiveDrivePulleyDiameterIn: number | undefined;
   effectiveTailPulleyDiameterIn: number | undefined;
+  driveShellOdIn: number | undefined;
+  driveFinishedOdIn: number | undefined;
+  tailShellOdIn: number | undefined;
+  tailFinishedOdIn: number | undefined;
 } {
-  // Drive pulley: override flag determines source
-  const effectiveDrivePulleyDiameterIn = inputs.drive_pulley_manual_override
-    ? inputs.drive_pulley_diameter_in
-    : getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
+  // Drive pulley: check variant first, then legacy catalog
+  let effectiveDrivePulleyDiameterIn: number | undefined;
+  let driveShellOdIn: number | undefined;
+  let driveFinishedOdIn: number | undefined;
 
-  // Tail pulley: override flag determines source
-  const effectiveTailPulleyDiameterIn = inputs.tail_pulley_manual_override
-    ? inputs.tail_pulley_diameter_in
-    : getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
+  if (inputs.drive_pulley_manual_override) {
+    // Manual override takes precedence
+    effectiveDrivePulleyDiameterIn = inputs.drive_pulley_diameter_in;
+  } else if (inputs.drive_pulley_variant_key) {
+    // v1.24: Use variant finished_od_in (falls back to shell_od_in)
+    driveFinishedOdIn = getFinishedOdByVariantKey(inputs.drive_pulley_variant_key);
+    driveShellOdIn = getShellOdByVariantKey(inputs.drive_pulley_variant_key);
+    effectiveDrivePulleyDiameterIn = driveFinishedOdIn;
+  } else if (inputs.head_pulley_catalog_key) {
+    // Legacy: use old catalog
+    effectiveDrivePulleyDiameterIn = getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
+  }
 
-  return { effectiveDrivePulleyDiameterIn, effectiveTailPulleyDiameterIn };
+  // Tail pulley: check variant first, then legacy catalog
+  let effectiveTailPulleyDiameterIn: number | undefined;
+  let tailShellOdIn: number | undefined;
+  let tailFinishedOdIn: number | undefined;
+
+  if (inputs.tail_pulley_manual_override) {
+    // Manual override takes precedence
+    effectiveTailPulleyDiameterIn = inputs.tail_pulley_diameter_in;
+  } else if (inputs.tail_pulley_variant_key) {
+    // v1.24: Use variant finished_od_in (falls back to shell_od_in)
+    tailFinishedOdIn = getFinishedOdByVariantKey(inputs.tail_pulley_variant_key);
+    tailShellOdIn = getShellOdByVariantKey(inputs.tail_pulley_variant_key);
+    effectiveTailPulleyDiameterIn = tailFinishedOdIn;
+  } else if (inputs.tail_pulley_catalog_key) {
+    // Legacy: use old catalog
+    effectiveTailPulleyDiameterIn = getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
+  }
+
+  return {
+    effectiveDrivePulleyDiameterIn,
+    effectiveTailPulleyDiameterIn,
+    driveShellOdIn,
+    driveFinishedOdIn,
+    tailShellOdIn,
+    tailFinishedOdIn,
+  };
 }
 
 // ============================================================================
@@ -826,9 +874,17 @@ export function calculate(
   const motorRpm = inputs.motor_rpm ?? parameters.motor_rpm;
 
   // v1.17: Get effective pulley diameters (override-based, no silent defaults)
+  // v1.24: Extended to support pulley family/variant selection
   // If diameters are undefined, use NaN to propagate through calculations
   // Validation layer (rules.ts) will produce errors for missing configurations
-  const { effectiveDrivePulleyDiameterIn, effectiveTailPulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
+  const {
+    effectiveDrivePulleyDiameterIn,
+    effectiveTailPulleyDiameterIn,
+    driveShellOdIn,
+    driveFinishedOdIn,
+    tailShellOdIn,
+    tailFinishedOdIn,
+  } = getEffectivePulleyDiameters(inputs);
   const drivePulleyDiameterIn = effectiveDrivePulleyDiameterIn ?? NaN;
   const tailPulleyDiameterIn = effectiveTailPulleyDiameterIn ?? NaN;
 
@@ -1215,6 +1271,12 @@ export function calculate(
     // v1.3: Split pulley diameters
     drive_pulley_diameter_in: drivePulleyDiameterIn,
     tail_pulley_diameter_in: tailPulleyDiameterIn,
+
+    // v1.24: Pulley family/variant outputs
+    drive_pulley_shell_od_in: driveShellOdIn,
+    tail_pulley_shell_od_in: tailShellOdIn,
+    drive_pulley_finished_od_in: driveFinishedOdIn,
+    tail_pulley_finished_od_in: tailFinishedOdIn,
 
     // v1.11: Belt minimum pulley diameter outputs
     min_pulley_drive_required_in: minPulleyDriveRequiredIn,
