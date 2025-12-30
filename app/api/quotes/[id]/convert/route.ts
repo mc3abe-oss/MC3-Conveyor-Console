@@ -248,7 +248,57 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       }
     }
 
-    // 8. Update the quote: status = 'converted', is_read_only = true, link to SO
+    // 8. Re-link applications (calc_recipes) from Quote to Sales Order
+    // Find all calc_recipes linked to this quote and update them to point to the new SO
+    const quoteSlugPattern = `config:quote:${quote.base_number}:%`;
+    const { data: linkedRecipes } = await supabase
+      .from('calc_recipes')
+      .select('id, slug, inputs')
+      .like('slug', quoteSlugPattern);
+
+    if (linkedRecipes && linkedRecipes.length > 0) {
+      for (const recipe of linkedRecipes) {
+        // Extract line number from slug (e.g., config:quote:62633:1 -> 1)
+        const slugParts = recipe.slug.split(':');
+        const lineNumber = slugParts[3] || '1';
+
+        // Build new slug for SO
+        const newSlug = `config:sales_order:${baseNumber}:${lineNumber}`;
+
+        // Update _config in inputs to point to SO
+        const updatedInputs = {
+          ...recipe.inputs,
+          _config: {
+            ...(recipe.inputs as Record<string, unknown>)?._config as Record<string, unknown>,
+            reference_type: 'SALES_ORDER',
+            reference_number: String(baseNumber),
+            reference_number_base: baseNumber,
+            // Preserve lineage to original quote
+            origin_quote_number: quote.base_number,
+            origin_quote_id: quoteId,
+          },
+        };
+
+        const { error: recipeUpdateError } = await supabase
+          .from('calc_recipes')
+          .update({
+            slug: newSlug,
+            inputs: updatedInputs,
+            source_ref: String(baseNumber),
+            notes: `Re-linked from Quote Q${quote.base_number} during conversion`,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', recipe.id);
+
+        if (recipeUpdateError) {
+          console.error('Recipe re-link error:', recipeUpdateError);
+          // Don't fail the conversion, just log the error
+        }
+      }
+      console.log(`Re-linked ${linkedRecipes.length} application(s) from Quote Q${quote.base_number} to SO${baseNumber}`);
+    }
+
+    // 9. Update the quote: status = 'converted', is_read_only = true, link to SO
     const { error: updateError } = await supabase
       .from('quotes')
       .update({
@@ -273,7 +323,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // 9. Return success with the new sales order
+    // 10. Return success with the new sales order
     return NextResponse.json({
       success: true,
       sales_order_id: salesOrderId,

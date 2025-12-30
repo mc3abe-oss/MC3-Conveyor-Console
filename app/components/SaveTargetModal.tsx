@@ -254,7 +254,7 @@ export default function SaveTargetModal({
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold text-gray-900">Save Configuration</h2>
+              <h2 className="text-xl font-semibold text-gray-900">Save Application</h2>
               <button
                 onClick={onClose}
                 className="text-gray-400 hover:text-gray-500"
@@ -306,7 +306,7 @@ export default function SaveTargetModal({
               /* SALES ORDER TAB - Only allow existing selection */
               <div className="space-y-4">
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                  Sales Orders are created by converting won Quotes. Select an existing Sales Order below.
+                  Link this application to an existing Sales Order below.
                 </div>
 
                 {/* Search */}
@@ -348,8 +348,8 @@ export default function SaveTargetModal({
                     ))
                   ) : (
                     <div className="text-center py-8 text-gray-500">
-                      <p>No sales orders found.</p>
-                      <p className="text-sm mt-2">Create a Quote first, mark it as won, then convert it.</p>
+                      <p>No sales orders found yet.</p>
+                      <p className="text-sm mt-2">Create a sales order in the Sales Orders section, then link it here.</p>
                     </div>
                   )}
                 </div>
