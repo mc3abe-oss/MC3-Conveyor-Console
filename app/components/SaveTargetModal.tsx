@@ -150,13 +150,8 @@ export default function SaveTargetModal({
     return numStr.includes(searchLower) || customer.includes(searchLower);
   });
 
-  // Handle create new (only for quotes - sales orders must come from conversion)
+  // Handle create new (works for both quotes and sales orders)
   const handleCreateNew = async () => {
-    if (activeTab !== 'quote') {
-      setError('Sales Orders can only be created by converting a Quote. Use an existing Sales Order or create a Quote first.');
-      return;
-    }
-
     const parsed = getParsedNumber();
     if (!parsed) {
       setNumberError('Number is required');
@@ -177,7 +172,8 @@ export default function SaveTargetModal({
     setError(null);
 
     try {
-      const res = await fetch('/api/quotes', {
+      const apiEndpoint = activeTab === 'quote' ? '/api/quotes' : '/api/sales-orders';
+      const res = await fetch(apiEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -189,12 +185,12 @@ export default function SaveTargetModal({
 
       if (!res.ok) {
         const data = await res.json();
-        throw new Error(data.error || 'Failed to create quote');
+        throw new Error(data.error || `Failed to create ${activeTab === 'quote' ? 'quote' : 'sales order'}`);
       }
 
       const newRecord = await res.json();
       onSelect({
-        type: 'quote',
+        type: activeTab,
         id: newRecord.id,
         base: newRecord.base_number,
         line: newRecord.suffix_line ?? parsed.line ?? null,
@@ -244,13 +240,16 @@ export default function SaveTargetModal({
   const canSaveExisting = !!selectedExisting && jobLine >= 1 && quantity >= 1;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto">
+    <div className="fixed inset-0 z-50 overflow-y-auto" onClick={onClose}>
       <div className="flex min-h-screen items-center justify-center p-4">
-        {/* Backdrop */}
-        <div className="fixed inset-0 bg-black/50 z-0" onClick={onClose} />
+        {/* Backdrop - visual only */}
+        <div className="fixed inset-0 bg-black/50 -z-10" />
 
-        {/* Modal */}
-        <div className="relative z-10 bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col">
+        {/* Modal - stop propagation so clicks inside don't close */}
+        <div
+          className="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
           {/* Header */}
           <div className="px-6 py-4 border-b border-gray-200">
             <div className="flex items-center justify-between">
@@ -302,92 +301,203 @@ export default function SaveTargetModal({
 
             {loading ? (
               <div className="text-center py-8 text-gray-500">Loading...</div>
-            ) : activeTab === 'sales_order' ? (
-              /* SALES ORDER TAB - Only allow existing selection */
+            ) : activeTab === 'sales_order' && mode === 'create' ? (
+              /* CREATE NEW SALES ORDER FORM - mirrors Quote tab */
               <div className="space-y-4">
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-sm text-blue-800">
-                  Link this application to an existing Sales Order below.
+                <div className="text-sm font-medium text-gray-700 mb-2">
+                  Create New Sales Order
                 </div>
 
-                {/* Search */}
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by number or customer..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  disabled={false}
-                  autoComplete="off"
-                  autoFocus={activeTab === 'sales_order'}
-                />
-
-                {/* List */}
-                <div className="max-h-64 overflow-y-auto space-y-2">
-                  {filteredSalesOrders.length > 0 ? (
-                    filteredSalesOrders.map((so) => (
-                      <button
-                        key={so.id}
-                        onClick={() => { setSelectedExisting(so); setMode('existing'); }}
-                        className={`w-full p-3 border rounded-lg text-left transition-colors ${
-                          selectedExisting?.id === so.id
-                            ? 'border-blue-500 bg-blue-50'
-                            : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-gray-900">
-                              {formatRef('sales_order', so.base_number)}
-                            </p>
-                            <p className="text-sm text-gray-500">
-                              {so.customer_name || 'No customer'}
-                            </p>
-                          </div>
-                          <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
-                            SO
-                          </span>
-                        </div>
-                      </button>
-                    ))
-                  ) : (
-                    <div className="text-center py-8 text-gray-500">
-                      <p>No sales orders found yet.</p>
-                      <p className="text-sm mt-2">Create a sales order in the Sales Orders section, then link it here.</p>
-                    </div>
+                {/* SO Number Input */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Sales Order Number <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={numberInput}
+                    onChange={(e) => handleNumberChange(e.target.value)}
+                    placeholder="62633 or 62633.2"
+                    className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 ${
+                      numberError
+                        ? 'border-red-300 focus:ring-red-500'
+                        : 'border-gray-300 focus:ring-blue-500'
+                    }`}
+                  />
+                  {numberError && (
+                    <p className="mt-1 text-xs text-red-600">{numberError}</p>
+                  )}
+                  {preview && !numberError && (
+                    <p className="mt-1 text-xs text-green-600">
+                      Will save as: <span className="font-medium">{formatRef('sales_order', getParsedNumber()?.base || 0, getParsedNumber()?.line)}</span>
+                    </p>
                   )}
                 </div>
 
-                {/* Line and Quantity when SO is selected */}
+                {/* Customer Name */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Customer <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={customerName}
+                    onChange={(e) => setCustomerName(e.target.value)}
+                    placeholder="Customer name"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+
+                {/* Line and Quantity - side by side */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Line <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={jobLine}
+                      onChange={(e) => setJobLine(Math.max(1, parseInt(e.target.value) || 1))}
+                      min={1}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      min={1}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Collapsible "Or save to existing" section */}
+                <div className="pt-4 border-t border-gray-200">
+                  <button
+                    onClick={() => setShowExisting(!showExisting)}
+                    className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
+                  >
+                    <svg
+                      className={`w-4 h-4 transition-transform ${showExisting ? 'rotate-90' : ''}`}
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                    Or save to existing sales order...
+                  </button>
+
+                  {showExisting && (
+                    <div className="mt-3 space-y-3">
+                      {/* Search */}
+                      <input
+                        type="text"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        placeholder="Search by number or customer..."
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+
+                      {/* List */}
+                      <div className="max-h-48 overflow-y-auto space-y-2">
+                        {filteredSalesOrders.length > 0 ? (
+                          filteredSalesOrders.map((so) => (
+                            <button
+                              key={so.id}
+                              onClick={() => { setSelectedExisting(so); setMode('existing'); }}
+                              className={`w-full p-3 border rounded-lg text-left transition-colors ${
+                                selectedExisting?.id === so.id
+                                  ? 'border-blue-500 bg-blue-50'
+                                  : 'border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium text-gray-900">
+                                    {formatRef('sales_order', so.base_number)}
+                                  </p>
+                                  <p className="text-sm text-gray-500">
+                                    {so.customer_name || 'No customer'}
+                                  </p>
+                                </div>
+                                <span className="px-2 py-0.5 text-xs font-medium bg-blue-100 text-blue-700 rounded">
+                                  SO
+                                </span>
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <p className="text-sm text-gray-500 text-center py-4">
+                            No sales orders found
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : activeTab === 'sales_order' && mode === 'existing' ? (
+              /* SAVE TO EXISTING SO - Shows selected record with editable fields */
+              <div className="space-y-4">
+                <div className="text-sm font-medium text-gray-700 mb-2">
+                  Save to Existing Sales Order
+                </div>
+
+                {/* Selected record display */}
                 {selectedExisting && (
-                  <div className="pt-4 border-t border-gray-200">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="p-4 border-2 rounded-lg border-blue-500 bg-blue-50">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Line <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={jobLine}
-                          onChange={(e) => setJobLine(Math.max(1, parseInt(e.target.value) || 1))}
-                          min={1}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <p className="font-medium text-gray-900">
+                          {formatRef('sales_order', selectedExisting.base_number)}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {selectedExisting.customer_name || 'No customer'}
+                        </p>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Quantity <span className="text-red-500">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          value={quantity}
-                          onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                          min={1}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                      <button
+                        onClick={() => { setSelectedExisting(null); setMode('create'); }}
+                        className="text-sm text-gray-500 hover:text-gray-700"
+                      >
+                        Change
+                      </button>
                     </div>
                   </div>
                 )}
+
+                {/* Line and Quantity */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Line <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={jobLine}
+                      onChange={(e) => setJobLine(Math.max(1, parseInt(e.target.value) || 1))}
+                      min={1}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Quantity <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={quantity}
+                      onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                      min={1}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
               </div>
             ) : mode === 'create' ? (
               /* CREATE NEW QUOTE FORM */
@@ -655,8 +765,17 @@ export default function SaveTargetModal({
               Cancel
             </button>
 
-            {activeTab === 'sales_order' ? (
-              /* Sales Order tab - only save to existing */
+            {activeTab === 'sales_order' && mode === 'create' ? (
+              /* Sales Order tab - create new */
+              <button
+                onClick={handleCreateNew}
+                disabled={!canCreate || saving}
+                className="px-4 py-2 text-sm font-medium text-white rounded-md transition-colors bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300"
+              >
+                {saving ? 'Saving...' : 'Save SO + Link'}
+              </button>
+            ) : activeTab === 'sales_order' && mode === 'existing' ? (
+              /* Sales Order tab - save to existing */
               <button
                 onClick={handleSaveToExisting}
                 disabled={!canSaveExisting || saving}
