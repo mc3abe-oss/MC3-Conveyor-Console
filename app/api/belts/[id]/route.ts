@@ -74,7 +74,7 @@ async function getBeltUsageCount(catalogKey: string): Promise<BeltUsageResult> {
  * Get belt details with usage information
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
