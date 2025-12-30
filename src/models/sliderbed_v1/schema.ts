@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.22 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.23 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,12 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.23 (2025-12-30): Cleats catalog integration (cleat_catalog, cleat_center_factors tables)
+ *                     New inputs: cleats_mode, cleat_profile, cleat_size, cleat_pattern,
+ *                     cleat_centers_in, cleat_style, cleat_material_family
+ *                     New outputs: cleats_base_min_pulley_diameter_12in_in, cleats_centers_factor,
+ *                     cleats_min_pulley_diameter_in, cleats_rule_source, cleats_drill_siped_caution,
+ *                     required_min_pulley_diameter_in
  * v1.22 (2025-12-30): V-Guides catalog integration (v_guide_key references v_guides table)
  * v1.21 (2025-12-30): Draft saves and calculation status tracking
  * v1.15 (2025-12-26): Pulley Catalog integration (head_pulley_catalog_key, tail_pulley_catalog_key)
@@ -575,20 +581,68 @@ export interface SliderbedInputs {
   tail_pulley_preset?: PulleyDiameterPreset;
 
   // =========================================================================
-  // BELT CLEATS (v1.3 - spec-only, no power math)
+  // BELT CLEATS (v1.3 legacy + v1.23 catalog-based)
   // =========================================================================
+
+  // --- LEGACY FIELDS (v1.3 - MUST REMAIN, do not rename) ---
 
   /** Whether belt cleats are enabled */
   cleats_enabled?: boolean;
 
-  /** Cleat height in inches (required if cleats_enabled) */
+  /** Cleat height in inches (legacy - retained for backward compat) */
   cleat_height_in?: number;
 
-  /** Cleat center-to-center spacing in inches (required if cleats_enabled) */
+  /** Cleat center-to-center spacing in inches (legacy - retained for backward compat) */
   cleat_spacing_in?: number;
 
-  /** Cleat edge offset in inches - distance from belt edge to nearest cleat edge (required if cleats_enabled) */
+  /** Cleat edge offset in inches (legacy - retained for backward compat) */
   cleat_edge_offset_in?: number;
+
+  // --- NEW v1.23 CATALOG-BASED FIELDS ---
+
+  /**
+   * Cleats mode (v1.23)
+   * 'none' | 'cleated' - UI uses this; must stay in sync with cleats_enabled
+   * SYNC RULE: cleats_mode='cleated' => cleats_enabled=true
+   */
+  cleats_mode?: 'none' | 'cleated';
+
+  /**
+   * Cleat profile (v1.23)
+   * Selected from cleat_catalog.cleat_profile (e.g., 'T-Cleat', 'Straight', 'Scalloped')
+   */
+  cleat_profile?: string;
+
+  /**
+   * Cleat size (v1.23)
+   * Selected from cleat_catalog.cleat_size (e.g., '0.5"', '1"', '1.5"', '2"')
+   */
+  cleat_size?: string;
+
+  /**
+   * Cleat pattern (v1.23)
+   * STRAIGHT_CROSS, CURVED_90, CURVED_120, CURVED_150
+   */
+  cleat_pattern?: 'STRAIGHT_CROSS' | 'CURVED_90' | 'CURVED_120' | 'CURVED_150';
+
+  /**
+   * Cleat centers in inches (v1.23)
+   * Standard values: 12, 8, 6, 4
+   * Default: 12
+   */
+  cleat_centers_in?: 12 | 8 | 6 | 4;
+
+  /**
+   * Cleat style (v1.23)
+   * SOLID (default) or DRILL_SIPED_1IN
+   */
+  cleat_style?: 'SOLID' | 'DRILL_SIPED_1IN';
+
+  /**
+   * Cleat material family (v1.23)
+   * Locked to PVC_HOT_WELDED for now; future may support others
+   */
+  cleat_material_family?: string;
 
   // SPEED & THROUGHPUT
   /** Belt Speed in FPM (feet per minute) */
@@ -1301,12 +1355,51 @@ export interface SliderbedOutputs {
    */
   cleat_spacing_multiplier?: number;
 
-  // CLEAT OUTPUTS (v1.3 - spec-only summary)
+  // CLEAT OUTPUTS (v1.3 spec-only summary + v1.23 catalog-driven)
   /** Whether cleats are enabled */
   cleats_enabled?: boolean;
 
   /** Cleat specification summary (for display) */
   cleats_summary?: string;
+
+  // =========================================================================
+  // v1.23: CLEATS CATALOG-DRIVEN OUTPUTS
+  // =========================================================================
+
+  /**
+   * Base minimum pulley diameter from cleat catalog at 12" centers (inches)
+   * Before applying centers factor. 0/null if cleats disabled.
+   */
+  cleats_base_min_pulley_diameter_12in_in?: number;
+
+  /**
+   * Centers factor applied from cleat_center_factors table
+   * e.g., 1.0, 1.15, 1.25, 1.35. 1.0 if cleats disabled.
+   */
+  cleats_centers_factor?: number;
+
+  /**
+   * Final minimum pulley diameter after applying centers factor (inches)
+   * Rounded up to nearest 0.5". 0/null if cleats disabled.
+   */
+  cleats_min_pulley_diameter_in?: number;
+
+  /**
+   * Source description for the cleat rule applied
+   * e.g., "PVC Hot Welded Guide: T-Cleat 1" STRAIGHT_CROSS @ 6" centers"
+   */
+  cleats_rule_source?: string;
+
+  /**
+   * True if DRILL_SIPED_1IN style is selected (triggers durability caution)
+   */
+  cleats_drill_siped_caution?: boolean;
+
+  /**
+   * Aggregate required minimum pulley diameter (inches)
+   * max(belt_min, vguide_min, cleats_min) - the final constraint
+   */
+  required_min_pulley_diameter_in?: number;
 
   // =========================================================================
   // v1.5: FRAME HEIGHT & SNUB ROLLER OUTPUTS

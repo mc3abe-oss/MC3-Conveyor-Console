@@ -52,6 +52,24 @@ import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../..
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
+import { useState, useEffect } from 'react';
+import {
+  CleatCatalogItem,
+  CleatCenterFactor,
+  CleatPattern,
+  CleatStyle,
+  CleatCenters,
+  CLEAT_PATTERN_LABELS,
+  CLEAT_STYLES,
+  CLEAT_STYLE_LABELS,
+  CLEAT_CENTERS_OPTIONS,
+  DEFAULT_CLEAT_MATERIAL_FAMILY,
+  getUniqueCleatProfiles,
+  getCleatSizesForProfile,
+  getCleatPatternsForProfileSize,
+  lookupCleatsMinPulleyDia,
+  isDrillSipedSupported,
+} from '../../src/lib/cleat-catalog';
 
 interface TabConveyorPhysicalProps {
   inputs: SliderbedInputs;
@@ -279,6 +297,99 @@ export default function TabConveyorPhysical({
   };
 
   const { handleToggle, isExpanded } = useAccordionState();
+
+  // v1.23: Cleat catalog state
+  const [cleatCatalog, setCleatCatalog] = useState<CleatCatalogItem[]>([]);
+  const [cleatCenterFactors, setCleatCenterFactors] = useState<CleatCenterFactor[]>([]);
+  const [cleatCatalogLoading, setCleatCatalogLoading] = useState(true);
+
+  // Fetch cleat catalog data on mount
+  useEffect(() => {
+    const fetchCleatCatalog = async () => {
+      try {
+        const response = await fetch('/api/cleats');
+        if (response.ok) {
+          const data = await response.json();
+          setCleatCatalog(data.catalog || []);
+          setCleatCenterFactors(data.centerFactors || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch cleat catalog:', error);
+      } finally {
+        setCleatCatalogLoading(false);
+      }
+    };
+    fetchCleatCatalog();
+  }, []);
+
+  // v1.23: Derived cleat dropdown options
+  const cleatProfiles = getUniqueCleatProfiles(cleatCatalog);
+  const cleatSizes = inputs.cleat_profile
+    ? getCleatSizesForProfile(cleatCatalog, inputs.cleat_profile)
+    : [];
+  const cleatPatterns = inputs.cleat_profile && inputs.cleat_size
+    ? getCleatPatternsForProfileSize(cleatCatalog, inputs.cleat_profile, inputs.cleat_size)
+    : [];
+
+  // v1.23: Check if drill & siped is supported for current selection
+  const drillSipedSupported =
+    inputs.cleat_profile && inputs.cleat_size && inputs.cleat_pattern
+      ? isDrillSipedSupported(
+          cleatCatalog,
+          DEFAULT_CLEAT_MATERIAL_FAMILY,
+          inputs.cleat_profile,
+          inputs.cleat_size,
+          inputs.cleat_pattern as CleatPattern
+        )
+      : false;
+
+  // v1.23: Compute cleats min pulley diameter for readout
+  const cleatsMinPulleyResult =
+    inputs.cleats_mode === 'cleated' &&
+    inputs.cleat_profile &&
+    inputs.cleat_size &&
+    inputs.cleat_pattern &&
+    inputs.cleat_style &&
+    inputs.cleat_centers_in
+      ? lookupCleatsMinPulleyDia(
+          cleatCatalog,
+          cleatCenterFactors,
+          DEFAULT_CLEAT_MATERIAL_FAMILY,
+          inputs.cleat_profile,
+          inputs.cleat_size,
+          inputs.cleat_pattern as CleatPattern,
+          inputs.cleat_style as CleatStyle,
+          inputs.cleat_centers_in as CleatCenters
+        )
+      : null;
+
+  // v1.23: Handle cleats_mode change (syncs with cleats_enabled)
+  const handleCleatsModeChange = (mode: 'none' | 'cleated') => {
+    updateInput('cleats_mode', mode);
+    updateInput('cleats_enabled', mode === 'cleated');
+
+    // Set defaults when enabling cleats
+    if (mode === 'cleated') {
+      if (!inputs.cleat_centers_in) updateInput('cleat_centers_in', 12);
+      if (!inputs.cleat_style) updateInput('cleat_style', 'SOLID');
+      if (!inputs.cleat_material_family) updateInput('cleat_material_family', DEFAULT_CLEAT_MATERIAL_FAMILY);
+    }
+  };
+
+  // v1.23: Handle cleat profile change (cascading dropdown reset)
+  const handleCleatProfileChange = (profile: string | undefined) => {
+    updateInput('cleat_profile', profile);
+    // Reset dependent dropdowns
+    updateInput('cleat_size', undefined);
+    updateInput('cleat_pattern', undefined);
+  };
+
+  // v1.23: Handle cleat size change (cascading dropdown reset)
+  const handleCleatSizeChange = (size: string | undefined) => {
+    updateInput('cleat_size', size);
+    // Reset dependent dropdown
+    updateInput('cleat_pattern', undefined);
+  };
 
   return (
     <div className="space-y-4">
@@ -724,6 +835,284 @@ export default function TabConveyorPhysical({
             </div>
           )}
 
+          {/* ===== v1.23: CLEATS SUBSECTION (moved here from after Pulleys) ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
+            Cleats
+          </h4>
+
+          {/* Belt Cleats Mode Selection */}
+          <div>
+            <label className="label">Belt Cleats</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="cleats_mode"
+                  checked={inputs.cleats_mode !== 'cleated'}
+                  onChange={() => handleCleatsModeChange('none')}
+                  className="mr-2"
+                />
+                None
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="cleats_mode"
+                  checked={inputs.cleats_mode === 'cleated'}
+                  onChange={() => handleCleatsModeChange('cleated')}
+                  className="mr-2"
+                />
+                Add Cleats
+              </label>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Cleats help retain product on inclines. Affects minimum pulley diameter constraints.
+            </p>
+          </div>
+
+          {/* Cleat configuration (v1.23: catalog-based selection) */}
+          {inputs.cleats_mode === 'cleated' && (
+            <div className="ml-4 pl-4 border-l-2 border-blue-200 mt-4 space-y-4">
+              {/* Cleat Profile */}
+              <div>
+                <label htmlFor="cleat_profile" className="label">
+                  Cleat Profile
+                </label>
+                <select
+                  id="cleat_profile"
+                  className="input"
+                  value={inputs.cleat_profile ?? ''}
+                  onChange={(e) => handleCleatProfileChange(e.target.value || undefined)}
+                  disabled={cleatCatalogLoading}
+                >
+                  <option value="">Select profile...</option>
+                  {cleatProfiles.map((profile) => (
+                    <option key={profile} value={profile}>
+                      {profile}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cleat Size (cascading, filtered by profile) */}
+              <div>
+                <label htmlFor="cleat_size" className="label">
+                  Cleat Size
+                </label>
+                <select
+                  id="cleat_size"
+                  className="input"
+                  value={inputs.cleat_size ?? ''}
+                  onChange={(e) => handleCleatSizeChange(e.target.value || undefined)}
+                  disabled={!inputs.cleat_profile || cleatSizes.length === 0}
+                >
+                  <option value="">Select size...</option>
+                  {cleatSizes.map((size) => (
+                    <option key={size} value={size}>
+                      {size}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cleat Pattern (cascading, filtered by profile + size) */}
+              <div>
+                <label htmlFor="cleat_pattern" className="label">
+                  Cleat Pattern
+                </label>
+                <select
+                  id="cleat_pattern"
+                  className="input"
+                  value={inputs.cleat_pattern ?? ''}
+                  onChange={(e) => updateInput('cleat_pattern', e.target.value || undefined)}
+                  disabled={!inputs.cleat_size || cleatPatterns.length === 0}
+                >
+                  <option value="">Select pattern...</option>
+                  {cleatPatterns.map((pattern) => (
+                    <option key={pattern} value={pattern}>
+                      {CLEAT_PATTERN_LABELS[pattern]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Cleat Centers */}
+              <div>
+                <label htmlFor="cleat_centers_in" className="label">
+                  Cleat Centers (in)
+                </label>
+                <select
+                  id="cleat_centers_in"
+                  className="input"
+                  value={inputs.cleat_centers_in ?? 12}
+                  onChange={(e) => updateInput('cleat_centers_in', parseInt(e.target.value))}
+                >
+                  {CLEAT_CENTERS_OPTIONS.map((centers) => (
+                    <option key={centers} value={centers}>
+                      {centers}" spacing
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Tighter spacing increases min pulley diameter constraint.
+                </p>
+              </div>
+
+              {/* Cleat Style */}
+              <div>
+                <label htmlFor="cleat_style" className="label">
+                  Cleat Style
+                </label>
+                <select
+                  id="cleat_style"
+                  className="input"
+                  value={inputs.cleat_style ?? 'SOLID'}
+                  onChange={(e) => updateInput('cleat_style', e.target.value)}
+                >
+                  {CLEAT_STYLES.map((style) => (
+                    <option
+                      key={style}
+                      value={style}
+                      disabled={style === 'DRILL_SIPED_1IN' && !drillSipedSupported}
+                    >
+                      {CLEAT_STYLE_LABELS[style]}
+                      {style === 'DRILL_SIPED_1IN' && !drillSipedSupported && ' (not available)'}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Drill & Siped Caution Info Box */}
+              {inputs.cleat_style === 'DRILL_SIPED_1IN' && (
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-md">
+                  <div className="flex items-start">
+                    <div className="flex-shrink-0">
+                      <svg className="h-5 w-5 text-amber-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                    <div className="ml-3">
+                      <h4 className="text-sm font-medium text-amber-800">
+                        Drill & Siped Cleats
+                      </h4>
+                      <p className="mt-1 text-sm text-amber-700">
+                        Perforated cleats have reduced structural strength. Recommended for drainage applications only.
+                        May require larger pulley diameters.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Cleats Constraint Readout Panel */}
+              {cleatsMinPulleyResult && (
+                <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                    Cleats Constraint
+                  </h4>
+                  {cleatsMinPulleyResult.success ? (
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Base @ 12":</span>
+                        <span className="font-medium text-gray-900">
+                          {cleatsMinPulleyResult.baseMinDia12In?.toFixed(1)}"
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-600">Centers Factor:</span>
+                        <span className="font-medium text-gray-900">
+                          {cleatsMinPulleyResult.centersFactor.toFixed(2)}x
+                        </span>
+                      </div>
+                      <div className="col-span-2 flex justify-between border-t border-gray-200 pt-1 mt-1">
+                        <span className="text-gray-700 font-medium">Min Pulley:</span>
+                        <span className="font-bold text-blue-600">
+                          {cleatsMinPulleyResult.roundedMinDia?.toFixed(1)}"
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-red-600">{cleatsMinPulleyResult.error}</p>
+                  )}
+                </div>
+              )}
+
+              {/* Advanced: Legacy Cleat Fields */}
+              <details className="mt-4">
+                <summary className="text-sm font-medium text-gray-600 cursor-pointer hover:text-gray-800">
+                  Advanced / Legacy Fields
+                </summary>
+                <div className="mt-3 space-y-4 pl-2 border-l-2 border-gray-200">
+                  <div>
+                    <label htmlFor="cleat_height_in" className="label">
+                      Cleat Height (in)
+                    </label>
+                    <input
+                      type="number"
+                      id="cleat_height_in"
+                      className="input"
+                      value={inputs.cleat_height_in ?? ''}
+                      onChange={(e) =>
+                        updateInput('cleat_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                      }
+                      step="0.25"
+                      min="0.5"
+                      max="6"
+                      placeholder="e.g., 1"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Height of cleats (0.5" - 6")
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="cleat_spacing_in" className="label">
+                      Cleat Spacing (in)
+                    </label>
+                    <input
+                      type="number"
+                      id="cleat_spacing_in"
+                      className="input"
+                      value={inputs.cleat_spacing_in ?? ''}
+                      onChange={(e) =>
+                        updateInput('cleat_spacing_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                      }
+                      step="1"
+                      min="2"
+                      max="48"
+                      placeholder="e.g., 12"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Center-to-center spacing (legacy field, use Centers dropdown above)
+                    </p>
+                  </div>
+
+                  <div>
+                    <label htmlFor="cleat_edge_offset_in" className="label">
+                      Cleat Edge Offset (in)
+                    </label>
+                    <input
+                      type="number"
+                      id="cleat_edge_offset_in"
+                      className="input"
+                      value={inputs.cleat_edge_offset_in ?? ''}
+                      onChange={(e) =>
+                        updateInput('cleat_edge_offset_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                      }
+                      step="0.25"
+                      min="0"
+                      max="12"
+                      placeholder="e.g., 0.5"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      Distance from belt edge to cleat end (0" - 12")
+                    </p>
+                  </div>
+                </div>
+              </details>
+            </div>
+          )}
+
           {/* ===== PULLEYS SUBSECTION ===== */}
           <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
             Pulleys
@@ -1050,114 +1439,6 @@ export default function TabConveyorPhysical({
             </div>
           )}
 
-          {/* ===== CLEATS SUBSECTION ===== */}
-          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
-            Cleats
-          </h4>
-
-          {/* Belt Cleats */}
-          <div>
-            <label className="label">Belt Cleats</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="cleats_enabled"
-                  checked={inputs.cleats_enabled !== true}
-                  onChange={() => updateInput('cleats_enabled', false)}
-                  className="mr-2"
-                />
-                None
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="cleats_enabled"
-                  checked={inputs.cleats_enabled === true}
-                  onChange={() => updateInput('cleats_enabled', true)}
-                  className="mr-2"
-                />
-                Add Cleats
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Cleats help retain product on inclines. Does not affect power/tension calculations.
-            </p>
-          </div>
-
-          {/* Cleat configuration */}
-          {inputs.cleats_enabled && (
-            <div className="ml-4 pl-4 border-l-2 border-gray-200 mt-4 space-y-4">
-              <div>
-                <label htmlFor="cleat_height_in" className="label">
-                  Cleat Height (in)
-                </label>
-                <input
-                  type="number"
-                  id="cleat_height_in"
-                  className="input"
-                  value={inputs.cleat_height_in ?? ''}
-                  onChange={(e) =>
-                    updateInput('cleat_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.25"
-                  min="0.5"
-                  max="6"
-                  required
-                  placeholder="e.g., 1"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Height of cleats (0.5" - 6")
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="cleat_spacing_in" className="label">
-                  Cleat Spacing (in)
-                </label>
-                <input
-                  type="number"
-                  id="cleat_spacing_in"
-                  className="input"
-                  value={inputs.cleat_spacing_in ?? ''}
-                  onChange={(e) =>
-                    updateInput('cleat_spacing_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="1"
-                  min="2"
-                  max="48"
-                  required
-                  placeholder="e.g., 12"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Center-to-center spacing between cleats (2" - 48")
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="cleat_edge_offset_in" className="label">
-                  Cleat Edge Offset (in)
-                </label>
-                <input
-                  type="number"
-                  id="cleat_edge_offset_in"
-                  className="input"
-                  value={inputs.cleat_edge_offset_in ?? ''}
-                  onChange={(e) =>
-                    updateInput('cleat_edge_offset_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.25"
-                  min="0"
-                  max="12"
-                  required
-                  placeholder="e.g., 0.5"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Distance from belt edge to cleat end (0" - 12")
-                </p>
-              </div>
-            </div>
-          )}
         </div>
       </AccordionSection>
 

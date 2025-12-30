@@ -99,18 +99,47 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
   }
 
   // =========================================================================
-  // CLEAT MIGRATION
+  // CLEAT MIGRATION (v1.23)
   // =========================================================================
 
   if (migrated.cleats_enabled === undefined) {
     migrated.cleats_enabled = false;
   }
 
-  // If cleats disabled, clear the cleat fields (optional, keeps data clean)
+  // v1.23: Sync cleats_mode with cleats_enabled
+  // SYNC RULE: cleats_mode='cleated' <=> cleats_enabled=true
+  if (migrated.cleats_mode === undefined) {
+    migrated.cleats_mode = migrated.cleats_enabled ? 'cleated' : 'none';
+  } else if (migrated.cleats_mode === 'cleated') {
+    migrated.cleats_enabled = true;
+  } else if (migrated.cleats_mode === 'none') {
+    migrated.cleats_enabled = false;
+  }
+
+  // v1.23: Set defaults for new catalog fields when cleats enabled
+  // Do NOT auto-map legacy numeric fields to catalog selections
+  // Leave new fields unset - validation will prompt user to complete
+  if (migrated.cleats_enabled) {
+    // Default material family (locked)
+    if (migrated.cleat_material_family === undefined) {
+      migrated.cleat_material_family = 'PVC_HOT_WELDED';
+    }
+    // Default style to SOLID
+    if (migrated.cleat_style === undefined) {
+      migrated.cleat_style = 'SOLID';
+    }
+    // Default centers to 12"
+    if (migrated.cleat_centers_in === undefined) {
+      migrated.cleat_centers_in = 12;
+    }
+    // cleat_profile, cleat_size, cleat_pattern are NOT defaulted
+    // They must be selected by the user from the catalog
+  }
+
+  // If cleats disabled, DO NOT clear legacy fields (preserve for backward compat)
+  // Just ensure cleats_mode is synced
   if (!migrated.cleats_enabled) {
-    migrated.cleat_height_in = undefined;
-    migrated.cleat_spacing_in = undefined;
-    migrated.cleat_edge_offset_in = undefined;
+    migrated.cleats_mode = 'none';
   }
 
   // =========================================================================
@@ -345,6 +374,14 @@ export function buildCleatsSummary(inputs: SliderbedInputs): string | undefined 
     return undefined;
   }
 
+  // v1.23: Prefer catalog-based summary if available
+  if (inputs.cleat_profile && inputs.cleat_size && inputs.cleat_pattern) {
+    const style = inputs.cleat_style === 'DRILL_SIPED_1IN' ? ' (D&S)' : '';
+    const centers = inputs.cleat_centers_in ?? 12;
+    return `${inputs.cleat_profile} ${inputs.cleat_size} ${inputs.cleat_pattern}${style} @ ${centers}" c/c`;
+  }
+
+  // Fallback to legacy fields
   const height = inputs.cleat_height_in;
   const spacing = inputs.cleat_spacing_in;
   const offset = inputs.cleat_edge_offset_in;

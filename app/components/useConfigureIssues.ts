@@ -51,6 +51,11 @@ export enum IssueCode {
   // Min pulley issues
   MIN_PULLEY_DRIVE_TOO_SMALL = 'MIN_PULLEY_DRIVE_TOO_SMALL',
   MIN_PULLEY_TAIL_TOO_SMALL = 'MIN_PULLEY_TAIL_TOO_SMALL',
+  // v1.23: Cleats issues
+  CLEATS_PROFILE_REQUIRED = 'CLEATS_PROFILE_REQUIRED',
+  CLEATS_SIZE_REQUIRED = 'CLEATS_SIZE_REQUIRED',
+  CLEATS_PATTERN_REQUIRED = 'CLEATS_PATTERN_REQUIRED',
+  CLEATS_DRILL_SIPED_CAUTION = 'CLEATS_DRILL_SIPED_CAUTION',
 }
 
 // ============================================================================
@@ -390,6 +395,64 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       sectionKey: 'beltPulleys',
       trackingData: trackingResult,
     });
+  }
+
+  // ---------------------------------------------------------------------------
+  // PHYSICAL TAB - Cleats Validation (v1.23)
+  // ---------------------------------------------------------------------------
+
+  if (inputs.cleats_mode === 'cleated') {
+    // Profile is required when cleats enabled
+    if (!inputs.cleat_profile) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.CLEATS_PROFILE_REQUIRED,
+        message: 'Cleat profile is required',
+        detail: 'Select a cleat profile from the catalog',
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
+        fieldKeys: ['cleat_profile'],
+      });
+    }
+
+    // Size is required when cleats enabled
+    if (!inputs.cleat_size) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.CLEATS_SIZE_REQUIRED,
+        message: 'Cleat size is required',
+        detail: 'Select a cleat size',
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
+        fieldKeys: ['cleat_size'],
+      });
+    }
+
+    // Pattern is required when cleats enabled
+    if (!inputs.cleat_pattern) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.CLEATS_PATTERN_REQUIRED,
+        message: 'Cleat pattern is required',
+        detail: 'Select a cleat pattern',
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
+        fieldKeys: ['cleat_pattern'],
+      });
+    }
+
+    // Drill & Siped caution warning
+    if (inputs.cleat_style === 'DRILL_SIPED_1IN') {
+      issues.push({
+        severity: 'warning',
+        code: IssueCode.CLEATS_DRILL_SIPED_CAUTION,
+        message: 'Drill & Siped cleats have reduced durability',
+        detail: 'Perforated cleats are recommended for drainage applications only',
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
+        fieldKeys: ['cleat_style'],
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------

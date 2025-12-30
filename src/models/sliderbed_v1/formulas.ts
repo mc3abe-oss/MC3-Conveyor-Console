@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.11 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.23 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,8 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.23 (2025-12-30): Cleats catalog integration - catalog-driven min pulley diameter calculation
+ *                     Aggregate constraint: required_min_pulley_diameter_in = max(belt, vguide, cleats)
  * v1.12 (2025-12-25): Von Mises-based shaft diameter calculation, belt_width_in rename
  * v1.11 Phase 4 (2025-12-24): Cleat spacing multiplier for hot-welded PVC cleats
  * v1.11 (2025-12-24): Belt minimum pulley diameter outputs
@@ -43,6 +45,15 @@ import {
   STRUCTURAL_CHANNEL_THICKNESS,
 } from '../../lib/frame-catalog';
 import { getEffectiveDiameterByKey } from '../../lib/pulley-catalog';
+import {
+  getCachedCleatCatalog,
+  getCachedCleatCenterFactors,
+  lookupCleatsMinPulleyDia,
+  CleatPattern,
+  CleatStyle,
+  CleatCenters,
+  DEFAULT_CLEAT_MATERIAL_FAMILY,
+} from '../../lib/cleat-catalog';
 
 // ============================================================================
 // CONSTANTS
@@ -1041,6 +1052,7 @@ export function calculate(
     : inputs.belt_min_pulley_dia_no_vguide_in;
 
   // Step 21b: Apply cleat spacing multiplier for hot-welded cleats (v1.11 Phase 4)
+  // This is the LEGACY approach using inputs.cleat_spacing_in
   // Multiplier applies when:
   // 1. Belt has a minimum requirement (belt is selected)
   // 2. Cleats are enabled
@@ -1070,6 +1082,60 @@ export function calculate(
       minPulleyTailRequiredIn = minPulleyBaseFromBelt;
     }
   }
+
+  // Step 21c: v1.23 Cleats Catalog-Driven Min Pulley Diameter
+  // This is the NEW approach using cleat_profile, cleat_size, cleat_pattern, cleat_style, cleat_centers_in
+  // When catalog fields are populated, use catalog lookup; otherwise outputs are undefined
+  let cleatsBaseMinPulleyDia12In: number | undefined;
+  let cleatsCentersFactor: number | undefined;
+  let cleatsMinPulleyDiaIn: number | undefined;
+  let cleatsRuleSource: string | undefined;
+  let cleatsDrillSipedCaution = false;
+
+  // Only compute if cleats are enabled AND catalog fields are populated
+  if (
+    cleatsEnabled &&
+    inputs.cleat_profile &&
+    inputs.cleat_size &&
+    inputs.cleat_pattern
+  ) {
+    const cleatCatalog = getCachedCleatCatalog();
+    const centerFactors = getCachedCleatCenterFactors();
+
+    if (cleatCatalog && centerFactors && cleatCatalog.length > 0 && centerFactors.length > 0) {
+      const materialFamily = inputs.cleat_material_family ?? DEFAULT_CLEAT_MATERIAL_FAMILY;
+      const style = (inputs.cleat_style ?? 'SOLID') as CleatStyle;
+      const centersIn = (inputs.cleat_centers_in ?? 12) as CleatCenters;
+
+      const result = lookupCleatsMinPulleyDia(
+        cleatCatalog,
+        centerFactors,
+        materialFamily,
+        inputs.cleat_profile,
+        inputs.cleat_size,
+        inputs.cleat_pattern as CleatPattern,
+        style,
+        centersIn
+      );
+
+      if (result.success && result.roundedMinDia !== null) {
+        cleatsBaseMinPulleyDia12In = result.baseMinDia12In ?? undefined;
+        cleatsCentersFactor = result.centersFactor;
+        cleatsMinPulleyDiaIn = result.roundedMinDia;
+        cleatsRuleSource = result.ruleSource;
+        cleatsDrillSipedCaution = result.drillSipedCaution;
+      }
+      // If lookup fails, outputs remain undefined (validation will catch missing catalog entry)
+    }
+  }
+
+  // Step 21d: Aggregate required min pulley diameter (v1.23)
+  // required_min_pulley_diameter_in = max(belt_min, vguide_min, cleats_min)
+  // Note: Belt min already incorporates V-guide via minPulleyDriveRequiredIn
+  const requiredMinPulleyDiaIn = Math.max(
+    minPulleyDriveRequiredIn ?? 0,
+    cleatsMinPulleyDiaIn ?? 0
+  ) || undefined; // Return undefined if both are 0/undefined
 
   // Check if current pulleys meet the minimum (undefined if no belt selected)
   const drivePulleyMeetsMinimum = minPulleyDriveRequiredIn !== undefined
@@ -1156,13 +1222,21 @@ export function calculate(
     drive_pulley_meets_minimum: drivePulleyMeetsMinimum,
     tail_pulley_meets_minimum: tailPulleyMeetsMinimum,
 
-    // v1.11 Phase 4: Cleat spacing multiplier outputs
+    // v1.11 Phase 4: Cleat spacing multiplier outputs (legacy)
     min_pulley_base_in: minPulleyBaseFromBelt,
     cleat_spacing_multiplier: cleatSpacingMultiplier,
 
     // v1.3: Cleats (spec-only, no calculation impact)
     cleats_enabled: inputs.cleats_enabled ?? false,
     cleats_summary: buildCleatsSummary(inputs),
+
+    // v1.23: Cleats catalog-driven outputs
+    cleats_base_min_pulley_diameter_12in_in: cleatsBaseMinPulleyDia12In,
+    cleats_centers_factor: cleatsCentersFactor,
+    cleats_min_pulley_diameter_in: cleatsMinPulleyDiaIn,
+    cleats_rule_source: cleatsRuleSource,
+    cleats_drill_siped_caution: cleatsDrillSipedCaution,
+    required_min_pulley_diameter_in: requiredMinPulleyDiaIn,
 
     // v1.5: Frame height & snub roller outputs
     effective_frame_height_in: effectiveFrameHeightIn,
