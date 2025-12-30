@@ -9,7 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { supabase, supabaseAdmin, isSupabaseConfigured, isAdminConfigured } from '../../../src/lib/supabase/client';
 import { validateMaterialProfile } from '../../../src/lib/belt-catalog';
 
 // Re-export types for backward compatibility
@@ -60,6 +60,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!isAdminConfigured() || !supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Admin access not configured. Please set SUPABASE_SERVICE_ROLE_KEY.' },
+        { status: 503 }
+      );
+    }
+
     const body = await request.json();
     const { belt, change_reason } = body;
 
@@ -88,14 +95,15 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Use admin client (bypasses RLS) for belt catalog management
     // Set session variables for audit
-    await supabase.rpc('set_config', {
+    await supabaseAdmin.rpc('set_config', {
       setting: 'app.change_reason',
       value: change_reason,
     });
 
-    // Upsert the belt
-    const { data, error } = await supabase
+    // Upsert the belt using admin client
+    const { data, error } = await supabaseAdmin
       .from('belt_catalog')
       .upsert(belt, { onConflict: 'catalog_key' })
       .select()

@@ -4,32 +4,16 @@
  * Allows admin/engineer users to view, edit, and manage belt catalog entries.
  * Changes are versioned for rollback capability.
  *
- * v1.11: Added material_profile support
- * v1.11 Phase 4: Added cleat_method to material_profile
+ * v1.18: Simplified - removed Material Profile panel and V-guided min pulley field.
+ *        V-guide min pulley is now handled via V-guide dropdown/lookup, not belt catalog.
  */
 
 'use client';
 
 import { useState, useEffect } from 'react';
-import { BeltCatalogItem, BeltMaterialProfile } from '../../api/belts/route';
+import { BeltCatalogItem } from '../../api/belts/route';
 import { clearBeltCatalogCache } from '../../hooks/useBeltCatalog';
 import Header from '../../components/Header';
-
-interface MaterialProfileFormData {
-  enabled: boolean;
-  material_family: string;
-  construction: string;
-  min_dia_no_vguide_in: string;
-  min_dia_with_vguide_in: string;
-  notes: string;
-  source_ref: string;
-  // Phase 3A: Banding support
-  supports_banding: boolean;
-  banding_min_dia_no_vguide_in: string;
-  banding_min_dia_with_vguide_in: string;
-  // Phase 4: Cleat method
-  cleat_method: 'hot_welded' | 'molded' | 'mechanical' | '';
-}
 
 interface BeltFormData {
   catalog_key: string;
@@ -45,30 +29,11 @@ interface BeltFormData {
   thickness_in: string;
   piw: string;
   pil: string;
-  min_pulley_dia_no_vguide_in: string;
-  min_pulley_dia_with_vguide_in: string;
+  min_pulley_dia_in: string;
   notes: string;
   tags: string;
   is_active: boolean;
-  // Material profile (v1.11)
-  material_profile: MaterialProfileFormData;
 }
-
-const emptyMaterialProfile: MaterialProfileFormData = {
-  enabled: false,
-  material_family: '',
-  construction: '',
-  min_dia_no_vguide_in: '',
-  min_dia_with_vguide_in: '',
-  notes: '',
-  source_ref: '',
-  // Phase 3A: Banding support
-  supports_banding: false,
-  banding_min_dia_no_vguide_in: '',
-  banding_min_dia_with_vguide_in: '',
-  // Phase 4: Cleat method
-  cleat_method: '',
-};
 
 const emptyForm: BeltFormData = {
   catalog_key: '',
@@ -84,12 +49,10 @@ const emptyForm: BeltFormData = {
   thickness_in: '',
   piw: '',
   pil: '',
-  min_pulley_dia_no_vguide_in: '',
-  min_pulley_dia_with_vguide_in: '',
+  min_pulley_dia_in: '',
   notes: '',
   tags: '',
   is_active: true,
-  material_profile: { ...emptyMaterialProfile },
 };
 
 export default function AdminBeltsPage() {
@@ -126,7 +89,6 @@ export default function AdminBeltsPage() {
 
   function selectBelt(belt: BeltCatalogItem) {
     setSelectedBelt(belt);
-    const mp = belt.material_profile;
     setFormData({
       catalog_key: belt.catalog_key,
       display_name: belt.display_name,
@@ -141,28 +103,10 @@ export default function AdminBeltsPage() {
       thickness_in: belt.thickness_in?.toString() || '',
       piw: belt.piw.toString(),
       pil: belt.pil.toString(),
-      min_pulley_dia_no_vguide_in: belt.min_pulley_dia_no_vguide_in.toString(),
-      min_pulley_dia_with_vguide_in: belt.min_pulley_dia_with_vguide_in.toString(),
+      min_pulley_dia_in: belt.min_pulley_dia_no_vguide_in.toString(),
       notes: belt.notes || '',
       tags: belt.tags?.join(', ') || '',
       is_active: belt.is_active,
-      material_profile: mp
-        ? {
-            enabled: true,
-            material_family: mp.material_family || '',
-            construction: mp.construction || '',
-            min_dia_no_vguide_in: mp.min_dia_no_vguide_in?.toString() || '',
-            min_dia_with_vguide_in: mp.min_dia_with_vguide_in?.toString() || '',
-            notes: mp.notes || '',
-            source_ref: mp.source_ref || '',
-            // Phase 3A: Banding support
-            supports_banding: mp.supports_banding || false,
-            banding_min_dia_no_vguide_in: mp.banding_min_dia_no_vguide_in?.toString() || '',
-            banding_min_dia_with_vguide_in: mp.banding_min_dia_with_vguide_in?.toString() || '',
-            // Phase 4: Cleat method
-            cleat_method: mp.cleat_method || '',
-          }
-        : { ...emptyMaterialProfile },
     });
     setChangeReason('');
     setSaveMessage(null);
@@ -179,13 +123,6 @@ export default function AdminBeltsPage() {
     setFormData((prev) => ({ ...prev, [field]: value }));
   }
 
-  function updateMaterialProfileField(field: keyof MaterialProfileFormData, value: string | boolean) {
-    setFormData((prev) => ({
-      ...prev,
-      material_profile: { ...prev.material_profile, [field]: value },
-    }));
-  }
-
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
 
@@ -198,33 +135,7 @@ export default function AdminBeltsPage() {
     setSaveMessage(null);
 
     try {
-      // Build material_profile if enabled
-      const mp = formData.material_profile;
-      let materialProfile: BeltMaterialProfile | null = null;
-      if (mp.enabled && mp.material_family.trim()) {
-        materialProfile = {
-          material_family: mp.material_family.trim(),
-          construction: mp.construction.trim() || undefined,
-          min_dia_no_vguide_in: mp.min_dia_no_vguide_in
-            ? parseFloat(mp.min_dia_no_vguide_in)
-            : undefined,
-          min_dia_with_vguide_in: mp.min_dia_with_vguide_in
-            ? parseFloat(mp.min_dia_with_vguide_in)
-            : undefined,
-          notes: mp.notes.trim() || undefined,
-          source_ref: mp.source_ref.trim() || undefined,
-          // Phase 3A: Banding support
-          supports_banding: mp.supports_banding || undefined,
-          banding_min_dia_no_vguide_in: mp.supports_banding && mp.banding_min_dia_no_vguide_in
-            ? parseFloat(mp.banding_min_dia_no_vguide_in)
-            : undefined,
-          banding_min_dia_with_vguide_in: mp.supports_banding && mp.banding_min_dia_with_vguide_in
-            ? parseFloat(mp.banding_min_dia_with_vguide_in)
-            : undefined,
-          // Phase 4: Cleat method
-          cleat_method: mp.cleat_method || undefined,
-        };
-      }
+      const minPulleyDia = parseFloat(formData.min_pulley_dia_in);
 
       const belt = {
         catalog_key: formData.catalog_key,
@@ -240,8 +151,10 @@ export default function AdminBeltsPage() {
         thickness_in: formData.thickness_in ? parseFloat(formData.thickness_in) : null,
         piw: parseFloat(formData.piw),
         pil: parseFloat(formData.pil),
-        min_pulley_dia_no_vguide_in: parseFloat(formData.min_pulley_dia_no_vguide_in),
-        min_pulley_dia_with_vguide_in: parseFloat(formData.min_pulley_dia_with_vguide_in),
+        // Store min pulley dia in both columns for backward compatibility
+        // V-guide min pulley is now handled via V-guide dropdown/lookup
+        min_pulley_dia_no_vguide_in: minPulleyDia,
+        min_pulley_dia_with_vguide_in: minPulleyDia,
         notes: formData.notes || null,
         tags: formData.tags
           ? formData.tags
@@ -250,8 +163,6 @@ export default function AdminBeltsPage() {
               .filter(Boolean)
           : null,
         is_active: formData.is_active,
-        material_profile: materialProfile,
-        material_profile_version: materialProfile ? 1 : undefined,
       };
 
       const response = await fetch('/api/belts', {
@@ -331,14 +242,7 @@ export default function AdminBeltsPage() {
                 >
                   <div className="font-medium">{belt.display_name}</div>
                   <div className="text-xs text-gray-500">
-                    {belt.material} | PIW: {belt.piw}
-                    {belt.material_profile && (
-                      <span className="ml-1 text-blue-600">
-                        | Profile: {belt.material_profile.material_family}
-                        {belt.material_profile.min_dia_no_vguide_in !== undefined &&
-                          ` (${belt.material_profile.min_dia_no_vguide_in}″)`}
-                      </span>
-                    )}
+                    {belt.material} | PIW: {belt.piw} | Min Pulley: {belt.min_pulley_dia_no_vguide_in}″
                   </div>
                 </button>
               ))}
@@ -459,33 +363,21 @@ export default function AdminBeltsPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Pulley Dia (no V-guide) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.min_pulley_dia_no_vguide_in}
-                    onChange={(e) => updateField('min_pulley_dia_no_vguide_in', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Min Pulley Dia (V-guided) *
-                  </label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.min_pulley_dia_with_vguide_in}
-                    onChange={(e) => updateField('min_pulley_dia_with_vguide_in', e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded"
-                    required
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Min Pulley Diameter (in) *
+                </label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={formData.min_pulley_dia_in}
+                  onChange={(e) => updateField('min_pulley_dia_in', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded max-w-xs"
+                  required
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  V-guide min pulley requirements are handled via the V-Guide dropdown.
+                </p>
               </div>
 
               {/* Flags */}
@@ -535,187 +427,6 @@ export default function AdminBeltsPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded"
                   rows={2}
                 />
-              </div>
-
-              {/* Material Profile Section (v1.11) */}
-              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50">
-                <div className="flex items-center justify-between mb-3">
-                  <label className="block text-sm font-medium text-gray-700">
-                    Material Profile
-                    <span className="ml-2 text-xs text-gray-500 font-normal">
-                      (v1.11 - overrides legacy min pulley values when set)
-                    </span>
-                  </label>
-                  <label className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={formData.material_profile.enabled}
-                      onChange={(e) => updateMaterialProfileField('enabled', e.target.checked)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm">Enable</span>
-                  </label>
-                </div>
-
-                {formData.material_profile.enabled && (
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Material Family *
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.material_profile.material_family}
-                          onChange={(e) => updateMaterialProfileField('material_family', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                          placeholder="e.g., PVC, PU, Rubber"
-                          required={formData.material_profile.enabled}
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Construction
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.material_profile.construction}
-                          onChange={(e) => updateMaterialProfileField('construction', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                          placeholder="e.g., 2-ply, fabric reinforced"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Min Dia (no V-guide) [in]
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={formData.material_profile.min_dia_no_vguide_in}
-                          onChange={(e) => updateMaterialProfileField('min_dia_no_vguide_in', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                          placeholder="Override legacy value"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Min Dia (V-guided) [in]
-                        </label>
-                        <input
-                          type="number"
-                          step="0.1"
-                          value={formData.material_profile.min_dia_with_vguide_in}
-                          onChange={(e) => updateMaterialProfileField('min_dia_with_vguide_in', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                          placeholder="Override legacy value"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Source Reference
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.material_profile.source_ref}
-                          onChange={(e) => updateMaterialProfileField('source_ref', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                          placeholder="e.g., Belting Specs Aug 2022"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-medium text-gray-600 mb-1">
-                          Profile Notes
-                        </label>
-                        <input
-                          type="text"
-                          value={formData.material_profile.notes}
-                          onChange={(e) => updateMaterialProfileField('notes', e.target.value)}
-                          className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                          placeholder="Additional material notes"
-                        />
-                      </div>
-                    </div>
-
-                    {/* Phase 3A: Head Tension Banding Section */}
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      <div className="flex items-center justify-between mb-3">
-                        <label className="block text-xs font-medium text-gray-600">
-                          Head Tension Banding
-                          <span className="ml-1 text-gray-400 font-normal">
-                            (higher min pulley requirements)
-                          </span>
-                        </label>
-                        <label className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.material_profile.supports_banding}
-                            onChange={(e) => updateMaterialProfileField('supports_banding', e.target.checked)}
-                            className="mr-2"
-                          />
-                          <span className="text-xs">Supports Banding</span>
-                        </label>
-                      </div>
-
-                      {formData.material_profile.supports_banding && (
-                        <div className="grid grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Banding Min Dia (no V-guide) [in]
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={formData.material_profile.banding_min_dia_no_vguide_in}
-                              onChange={(e) => updateMaterialProfileField('banding_min_dia_no_vguide_in', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                              placeholder="e.g., 4.0"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Banding Min Dia (V-guided) [in]
-                            </label>
-                            <input
-                              type="number"
-                              step="0.1"
-                              value={formData.material_profile.banding_min_dia_with_vguide_in}
-                              onChange={(e) => updateMaterialProfileField('banding_min_dia_with_vguide_in', e.target.value)}
-                              className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                              placeholder="e.g., 5.0"
-                            />
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Phase 4: Cleat Method */}
-                    <div className="border-t border-gray-200 pt-3 mt-3">
-                      <label className="block text-xs font-medium text-gray-600 mb-1">
-                        Cleat Attachment Method
-                      </label>
-                      <select
-                        value={formData.material_profile.cleat_method}
-                        onChange={(e) => updateMaterialProfileField('cleat_method', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
-                      >
-                        <option value="">Not specified</option>
-                        <option value="hot_welded">Hot Welded (PVC - requires min pulley multiplier)</option>
-                        <option value="molded">Molded (no multiplier)</option>
-                        <option value="mechanical">Mechanical (no multiplier)</option>
-                      </select>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Hot-welded PVC cleats require larger minimum pulley diameters based on cleat spacing.
-                      </p>
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="border-t pt-4">
