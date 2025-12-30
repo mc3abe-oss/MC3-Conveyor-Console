@@ -1081,6 +1081,43 @@ export interface SliderbedInputs {
   belt_cleat_method?: 'hot_welded' | 'molded' | 'mechanical';
 
   // =========================================================================
+  // v1.26: BELT FAMILY & V-GUIDE MIN PULLEY
+  // =========================================================================
+
+  /**
+   * Belt family (v1.26)
+   * Populated from belt catalog when belt is selected.
+   * Determines which V-guide min pulley values to use.
+   */
+  belt_family?: 'PVC' | 'PU';
+
+  /**
+   * V-guide min pulley diameter for solid belt - PVC (v1.26)
+   * Populated from v_guides catalog when V-guide is selected.
+   */
+  vguide_min_pulley_dia_solid_in?: number;
+
+  /**
+   * V-guide min pulley diameter for notched belt - PVC (v1.26)
+   * Populated from v_guides catalog when V-guide is selected.
+   */
+  vguide_min_pulley_dia_notched_in?: number;
+
+  /**
+   * V-guide min pulley diameter for solid belt - PU (v1.26)
+   * Populated from v_guides catalog when V-guide is selected.
+   * Null if V-guide doesn't support PU belts.
+   */
+  vguide_min_pulley_dia_solid_pu_in?: number | null;
+
+  /**
+   * V-guide min pulley diameter for notched belt - PU (v1.26)
+   * Populated from v_guides catalog when V-guide is selected.
+   * Null if V-guide doesn't support PU belts.
+   */
+  vguide_min_pulley_dia_notched_pu_in?: number | null;
+
+  // =========================================================================
   // v1.13: TRACKING RECOMMENDATION INPUTS
   // =========================================================================
 
@@ -1444,6 +1481,31 @@ export interface SliderbedOutputs {
    * True if DRILL_SIPED_1IN style is selected (triggers durability caution)
    */
   cleats_drill_siped_caution?: boolean;
+
+  // =========================================================================
+  // v1.26: V-GUIDE MIN PULLEY OUTPUTS
+  // =========================================================================
+
+  /**
+   * Belt family derived from selected belt (v1.26)
+   * Determines which V-guide min pulley values are used.
+   */
+  belt_family_used?: 'PVC' | 'PU';
+
+  /**
+   * V-guide min pulley diameter requirement (inches) (v1.26)
+   * Selected based on belt_family:
+   * - PU: vguide_min_pulley_dia_solid_pu_in or vguide_min_pulley_dia_notched_pu_in
+   * - PVC: vguide_min_pulley_dia_solid_in or vguide_min_pulley_dia_notched_in
+   * Undefined if no V-guide selected or if tracking is not V-guided.
+   */
+  vguide_min_pulley_dia_in?: number;
+
+  /**
+   * True if V-guide PU data is missing but PU belt is selected (v1.26)
+   * Triggers error: "Selected V-guide does not support PU belts"
+   */
+  vguide_pu_data_missing?: boolean;
 
   /**
    * Aggregate required minimum pulley diameter (inches)

@@ -1107,6 +1107,31 @@ export function calculate(
     ? inputs.belt_min_pulley_dia_with_vguide_in
     : inputs.belt_min_pulley_dia_no_vguide_in;
 
+  // Step 21a: V-guide min pulley diameter (v1.26)
+  // Select PU or PVC values based on belt family
+  const beltFamily = inputs.belt_family ?? 'PVC';
+  let vguideMinPulleyDiaIn: number | undefined;
+  let vguidePuDataMissing = false;
+
+  if (isVGuided && inputs.v_guide_key) {
+    // V-guide is selected - determine which min pulley value to use
+    // For now, use "solid" values (notched belt support can be added later)
+    if (beltFamily === 'PU') {
+      // PU belt - try PU values first
+      if (inputs.vguide_min_pulley_dia_solid_pu_in != null) {
+        vguideMinPulleyDiaIn = inputs.vguide_min_pulley_dia_solid_pu_in;
+      } else {
+        // PU values not available - flag as missing
+        vguidePuDataMissing = true;
+        // Fall back to PVC values (validation will emit error)
+        vguideMinPulleyDiaIn = inputs.vguide_min_pulley_dia_solid_in;
+      }
+    } else {
+      // PVC belt - use PVC values
+      vguideMinPulleyDiaIn = inputs.vguide_min_pulley_dia_solid_in;
+    }
+  }
+
   // Step 21b: Apply cleat spacing multiplier for hot-welded cleats (v1.11 Phase 4)
   // This is the LEGACY approach using inputs.cleat_spacing_in
   // Multiplier applies when:
@@ -1185,13 +1210,14 @@ export function calculate(
     }
   }
 
-  // Step 21d: Aggregate required min pulley diameter (v1.23)
+  // Step 21d: Aggregate required min pulley diameter (v1.26)
   // required_min_pulley_diameter_in = max(belt_min, vguide_min, cleats_min)
-  // Note: Belt min already incorporates V-guide via minPulleyDriveRequiredIn
+  // v1.26: Now includes V-guide min pulley requirement separately
   const requiredMinPulleyDiaIn = Math.max(
     minPulleyDriveRequiredIn ?? 0,
+    vguideMinPulleyDiaIn ?? 0,
     cleatsMinPulleyDiaIn ?? 0
-  ) || undefined; // Return undefined if both are 0/undefined
+  ) || undefined; // Return undefined if all are 0/undefined
 
   // Check if current pulleys meet the minimum (undefined if no belt selected)
   const drivePulleyMeetsMinimum = minPulleyDriveRequiredIn !== undefined
@@ -1298,6 +1324,13 @@ export function calculate(
     cleats_min_pulley_diameter_in: cleatsMinPulleyDiaIn,
     cleats_rule_source: cleatsRuleSource,
     cleats_drill_siped_caution: cleatsDrillSipedCaution,
+
+    // v1.26: V-guide min pulley outputs
+    belt_family_used: beltFamily,
+    vguide_min_pulley_dia_in: vguideMinPulleyDiaIn,
+    vguide_pu_data_missing: vguidePuDataMissing,
+
+    // Aggregate required min pulley diameter
     required_min_pulley_diameter_in: requiredMinPulleyDiaIn,
 
     // v1.5: Frame height & snub roller outputs

@@ -446,6 +446,18 @@ export function validateInputs(
     });
   }
 
+  // v1.26: PU belt with V-guide missing PU data
+  if (isVGuided && inputs.belt_family === 'PU' && inputs.v_guide_key) {
+    // Check if V-guide has PU min pulley data
+    if (inputs.vguide_min_pulley_dia_solid_pu_in == null) {
+      errors.push({
+        field: 'v_guide_key',
+        message: 'Selected V-guide does not support PU belts. Choose a different V-guide or belt.',
+        severity: 'error',
+      });
+    }
+  }
+
   // Manual shaft diameters required if manual mode
   const isManualShaft = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
                         inputs.shaft_diameter_mode === 'Manual';

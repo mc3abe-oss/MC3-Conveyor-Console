@@ -23,6 +23,7 @@ interface BeltFormData {
   display_name: string;
   manufacturer: string;
   material: string;
+  belt_family: 'PVC' | 'PU';
   surface: string;
   food_grade: boolean;
   cut_resistant: boolean;
@@ -51,6 +52,7 @@ const emptyForm: BeltFormData = {
   display_name: '',
   manufacturer: '',
   material: '',
+  belt_family: 'PVC',
   surface: '',
   food_grade: false,
   cut_resistant: false,
@@ -131,6 +133,7 @@ export default function AdminBeltsPage() {
       display_name: belt.display_name,
       manufacturer: belt.manufacturer || '',
       material: belt.material,
+      belt_family: belt.belt_family || 'PVC',
       surface: belt.surface || '',
       food_grade: belt.food_grade,
       cut_resistant: belt.cut_resistant,
@@ -187,6 +190,7 @@ export default function AdminBeltsPage() {
         display_name: formData.display_name,
         manufacturer: formData.manufacturer || null,
         material: formData.material,
+        belt_family: formData.belt_family,
         surface: formData.surface || null,
         food_grade: formData.food_grade,
         cut_resistant: formData.cut_resistant,
@@ -491,7 +495,7 @@ export default function AdminBeltsPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-4 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Manufacturer</label>
                     <input
@@ -510,6 +514,21 @@ export default function AdminBeltsPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded"
                       required
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Belt Family *</label>
+                    <select
+                      value={formData.belt_family}
+                      onChange={(e) => updateField('belt_family', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                      required
+                    >
+                      <option value="PVC">PVC</option>
+                      <option value="PU">PU</option>
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Determines V-guide min pulley values
+                    </p>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Surface</label>

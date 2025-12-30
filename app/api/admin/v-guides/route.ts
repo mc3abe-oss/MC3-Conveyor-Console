@@ -1,14 +1,16 @@
 /**
- * Admin V-Guides API (v1.22.1)
+ * Admin V-Guides API (v1.26)
  *
  * GET: Fetch all v-guides (including inactive)
  * POST: Create a new v-guide
  * PUT: Update an existing v-guide
  *
- * Schema (v1.22.1):
+ * Schema (v1.26):
  * - key: K-code (K10, K13, etc.) - canonical identifier
  * - na_letter: Optional NA letter alias (O, A, B, C)
  * - label: Display label, computed as "K10 (O)" or "K10"
+ * - PVC min pulley: min_pulley_dia_solid_in, min_pulley_dia_notched_in (required)
+ * - PU min pulley: min_pulley_dia_solid_pu_in, min_pulley_dia_notched_pu_in (optional)
  *
  * Note: DELETE is intentionally not implemented to preserve data integrity
  */
@@ -20,8 +22,12 @@ import { getCurrentUserId } from '../../../../src/lib/supabase/server';
 interface VGuidePayload {
   key: string;                          // K-code (K10, K13, etc.)
   na_letter?: string | null;            // Optional NA letter (O, A, B, C)
+  // PVC min pulley values (required)
   min_pulley_dia_solid_in: number;
   min_pulley_dia_notched_in: number;
+  // PU min pulley values (optional, v1.26)
+  min_pulley_dia_solid_pu_in?: number | null;
+  min_pulley_dia_notched_pu_in?: number | null;
   notes?: string | null;
   sort_order?: number;
   is_active?: boolean;
@@ -161,6 +167,8 @@ export async function POST(request: NextRequest) {
         label,
         min_pulley_dia_solid_in: body.min_pulley_dia_solid_in,
         min_pulley_dia_notched_in: body.min_pulley_dia_notched_in,
+        min_pulley_dia_solid_pu_in: body.min_pulley_dia_solid_pu_in ?? null,
+        min_pulley_dia_notched_pu_in: body.min_pulley_dia_notched_pu_in ?? null,
         notes: body.notes || null,
         sort_order: body.sort_order ?? 0,
         is_active: body.is_active !== false,
@@ -257,6 +265,8 @@ export async function PUT(request: NextRequest) {
         label,
         min_pulley_dia_solid_in: body.min_pulley_dia_solid_in,
         min_pulley_dia_notched_in: body.min_pulley_dia_notched_in,
+        min_pulley_dia_solid_pu_in: body.min_pulley_dia_solid_pu_in ?? null,
+        min_pulley_dia_notched_pu_in: body.min_pulley_dia_notched_pu_in ?? null,
         notes: body.notes,
         sort_order: body.sort_order,
         is_active: body.is_active,

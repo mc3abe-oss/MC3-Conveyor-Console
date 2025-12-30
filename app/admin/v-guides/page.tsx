@@ -1,12 +1,14 @@
 /**
- * Admin V-Guides Page (v1.22.1)
+ * Admin V-Guides Page (v1.26)
  *
  * Allows admin users to manage V-Guide catalog entries.
  *
- * Schema (v1.22.1):
+ * Schema (v1.26):
  * - key: K-code (K10, K13, etc.) - canonical identifier
  * - na_letter: Optional NA letter alias (O, A, B, C)
  * - label: Display label, computed as "O (K10)" or "K10"
+ * - PVC min pulley: min_pulley_dia_solid_in, min_pulley_dia_notched_in (required)
+ * - PU min pulley: min_pulley_dia_solid_pu_in, min_pulley_dia_notched_pu_in (optional)
  *
  * Features:
  * - Add new v-guides with K-code as key
@@ -25,8 +27,12 @@ interface VGuide {
   key: string;           // K-code (K10, K13, etc.)
   na_letter: string | null; // Optional NA letter (O, A, B, C)
   label: string;
+  // PVC min pulley values (default)
   min_pulley_dia_solid_in: number;
   min_pulley_dia_notched_in: number;
+  // PU min pulley values (v1.26)
+  min_pulley_dia_solid_pu_in: number | null;
+  min_pulley_dia_notched_pu_in: number | null;
   notes: string | null;
   sort_order: number;
   is_active: boolean;
@@ -36,8 +42,12 @@ interface VGuide {
 interface VGuideFormData {
   key: string;              // K-code
   na_letter: string;        // Optional NA letter
+  // PVC (default)
   min_pulley_dia_solid_in: string;
   min_pulley_dia_notched_in: string;
+  // PU (v1.26)
+  min_pulley_dia_solid_pu_in: string;
+  min_pulley_dia_notched_pu_in: string;
   notes: string;
   sort_order: string;
   is_active: boolean;
@@ -48,6 +58,8 @@ const emptyForm: VGuideFormData = {
   na_letter: '',
   min_pulley_dia_solid_in: '',
   min_pulley_dia_notched_in: '',
+  min_pulley_dia_solid_pu_in: '',
+  min_pulley_dia_notched_pu_in: '',
   notes: '',
   sort_order: '',
   is_active: true,
@@ -91,6 +103,8 @@ export default function AdminVGuidesPage() {
       na_letter: vguide.na_letter || '',
       min_pulley_dia_solid_in: vguide.min_pulley_dia_solid_in.toString(),
       min_pulley_dia_notched_in: vguide.min_pulley_dia_notched_in.toString(),
+      min_pulley_dia_solid_pu_in: vguide.min_pulley_dia_solid_pu_in?.toString() || '',
+      min_pulley_dia_notched_pu_in: vguide.min_pulley_dia_notched_pu_in?.toString() || '',
       notes: vguide.notes || '',
       sort_order: vguide.sort_order?.toString() || '',
       is_active: vguide.is_active,
@@ -148,11 +162,17 @@ export default function AdminVGuidesPage() {
     setSaveMessage(null);
 
     try {
+      // Parse PU values (optional)
+      const solidPuDia = formData.min_pulley_dia_solid_pu_in ? parseFloat(formData.min_pulley_dia_solid_pu_in) : null;
+      const notchedPuDia = formData.min_pulley_dia_notched_pu_in ? parseFloat(formData.min_pulley_dia_notched_pu_in) : null;
+
       const payload = {
         key: formData.key.toUpperCase(),
         na_letter: formData.na_letter ? formData.na_letter.toUpperCase() : null,
         min_pulley_dia_solid_in: solidDia,
         min_pulley_dia_notched_in: notchedDia,
+        min_pulley_dia_solid_pu_in: solidPuDia,
+        min_pulley_dia_notched_pu_in: notchedPuDia,
         notes: formData.notes || null,
         sort_order: formData.sort_order ? parseInt(formData.sort_order, 10) : 0,
         is_active: formData.is_active,
@@ -203,6 +223,8 @@ export default function AdminVGuidesPage() {
           na_letter: selectedVGuide.na_letter,
           min_pulley_dia_solid_in: selectedVGuide.min_pulley_dia_solid_in,
           min_pulley_dia_notched_in: selectedVGuide.min_pulley_dia_notched_in,
+          min_pulley_dia_solid_pu_in: selectedVGuide.min_pulley_dia_solid_pu_in,
+          min_pulley_dia_notched_pu_in: selectedVGuide.min_pulley_dia_notched_pu_in,
           notes: selectedVGuide.notes,
           sort_order: selectedVGuide.sort_order,
           is_active: !selectedVGuide.is_active,
@@ -357,11 +379,11 @@ export default function AdminVGuidesPage() {
                     </div>
                   </div>
 
-                  {/* Row 2: Min Pulley Diameters */}
+                  {/* Row 2: PVC Min Pulley Diameters */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Min Pulley Dia - Solid (in) *
+                        Min Pulley Dia - PVC Solid (in) *
                       </label>
                       <input
                         type="number"
@@ -373,11 +395,11 @@ export default function AdminVGuidesPage() {
                         min="0.1"
                         placeholder="e.g., 2.5"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Minimum for solid belt</p>
+                      <p className="text-xs text-gray-500 mt-1">Required for PVC solid belt</p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">
-                        Min Pulley Dia - Notched (in) *
+                        Min Pulley Dia - PVC Notched (in) *
                       </label>
                       <input
                         type="number"
@@ -389,11 +411,47 @@ export default function AdminVGuidesPage() {
                         min="0.1"
                         placeholder="e.g., 2.0"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Minimum for notched belt</p>
+                      <p className="text-xs text-gray-500 mt-1">Required for PVC notched belt</p>
                     </div>
                   </div>
 
-                  {/* Row 3: Notes */}
+                  {/* Row 3: PU Min Pulley Diameters (optional) */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Min Pulley Dia - PU Solid (in)
+                        <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.min_pulley_dia_solid_pu_in}
+                        onChange={(e) => updateField('min_pulley_dia_solid_pu_in', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        step="0.1"
+                        min="0.1"
+                        placeholder="e.g., 4.0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">For PU solid belt (leave empty if N/A)</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Min Pulley Dia - PU Notched (in)
+                        <span className="text-gray-400 font-normal ml-1">(optional)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={formData.min_pulley_dia_notched_pu_in}
+                        onChange={(e) => updateField('min_pulley_dia_notched_pu_in', e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        step="0.1"
+                        min="0.1"
+                        placeholder="e.g., 3.0"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">For PU notched belt (leave empty if N/A)</p>
+                    </div>
+                  </div>
+
+                  {/* Row 4: Notes */}
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       Notes
@@ -407,7 +465,7 @@ export default function AdminVGuidesPage() {
                     />
                   </div>
 
-                  {/* Row 4: Sort Order and Active */}
+                  {/* Row 5: Sort Order and Active */}
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">

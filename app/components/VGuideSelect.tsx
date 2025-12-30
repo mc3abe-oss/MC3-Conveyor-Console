@@ -1,10 +1,12 @@
 /**
- * VGuideSelect Component (v1.22.1)
+ * VGuideSelect Component (v1.26)
  *
  * Dropdown for selecting a V-Guide profile from the admin-managed catalog.
  *
  * Display format: "O (K10)" if na_letter exists, else "K10"
  * Stores the canonical K-code in inputs.v_guide_key
+ *
+ * v1.26: Now includes PU min pulley values in VGuideItem.
  *
  * Handles backward compatibility:
  * - Old configs saved with NA letters (O, A, B, C) are translated to K-codes
@@ -107,9 +109,12 @@ export default function VGuideSelect({
       </select>
       {/* Show min pulley info when a v-guide is selected */}
       {selectedVGuide && (
-        <p className="text-xs text-gray-500 mt-1">
-          Min pulley: {selectedVGuide.min_pulley_dia_solid_in}" (solid) / {selectedVGuide.min_pulley_dia_notched_in}" (notched)
-        </p>
+        <div className="text-xs text-gray-500 mt-1">
+          <p>PVC: {selectedVGuide.min_pulley_dia_solid_in}" (solid) / {selectedVGuide.min_pulley_dia_notched_in}" (notched)</p>
+          {selectedVGuide.min_pulley_dia_solid_pu_in != null && (
+            <p>PU: {selectedVGuide.min_pulley_dia_solid_pu_in}" (solid) / {selectedVGuide.min_pulley_dia_notched_pu_in}" (notched)</p>
+          )}
+        </div>
       )}
     </div>
   );

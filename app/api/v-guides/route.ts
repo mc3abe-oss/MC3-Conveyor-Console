@@ -23,8 +23,12 @@ export interface VGuideItem {
   key: string;              // K-code (K10, K13, etc.)
   na_letter: string | null; // Optional NA letter (O, A, B, C)
   label: string;            // Display label
+  // PVC min pulley values (default)
   min_pulley_dia_solid_in: number;
   min_pulley_dia_notched_in: number;
+  // PU min pulley values (v1.26) - null if not applicable
+  min_pulley_dia_solid_pu_in: number | null;
+  min_pulley_dia_notched_pu_in: number | null;
 }
 
 /**
@@ -42,7 +46,7 @@ export async function GET() {
 
     const { data: items, error } = await supabase
       .from('v_guides')
-      .select('key, na_letter, label, min_pulley_dia_solid_in, min_pulley_dia_notched_in')
+      .select('key, na_letter, label, min_pulley_dia_solid_in, min_pulley_dia_notched_in, min_pulley_dia_solid_pu_in, min_pulley_dia_notched_pu_in')
       .eq('is_active', true)
       .order('sort_order', { ascending: true });
 

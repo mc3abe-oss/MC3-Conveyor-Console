@@ -80,6 +80,12 @@ export interface BeltMaterialProfile {
 }
 
 /**
+ * Belt family type (v1.26)
+ * Determines which V-guide min pulley values to use
+ */
+export type BeltFamily = 'PVC' | 'PU';
+
+/**
  * Belt Catalog Item
  *
  * Represents a belt entry in the catalog with optional material profile.
@@ -90,6 +96,9 @@ export interface BeltCatalogItem {
   display_name: string;
   manufacturer: string | null;
   material: string;
+
+  /** Belt family (v1.26): PVC or PU. Determines V-guide min pulley values. */
+  belt_family: BeltFamily;
   surface: string | null;
   food_grade: boolean;
   cut_resistant: boolean;

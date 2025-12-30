@@ -123,6 +123,7 @@ export default function TabConveyorPhysical({
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
   // v1.11 Phase 4: Also sets belt_cleat_method for cleat spacing multiplier
+  // v1.26: Also sets belt_family for PU/PVC V-guide min pulley selection
   const handleBeltChange = (catalogKey: string | undefined, belt: BeltCatalogItem | undefined) => {
     updateInput('belt_catalog_key', catalogKey);
     if (belt) {
@@ -134,12 +135,15 @@ export default function TabConveyorPhysical({
       updateInput('belt_min_pulley_dia_with_vguide_in', effectiveMin.withVguide);
       // Set cleat method from material profile (for cleat spacing multiplier)
       updateInput('belt_cleat_method', effectiveMin.cleatMethod);
+      // v1.26: Set belt family for V-guide min pulley selection
+      updateInput('belt_family', belt.belt_family);
     } else {
       updateInput('belt_piw', undefined);
       updateInput('belt_pil', undefined);
       updateInput('belt_min_pulley_dia_no_vguide_in', undefined);
       updateInput('belt_min_pulley_dia_with_vguide_in', undefined);
       updateInput('belt_cleat_method', undefined);
+      updateInput('belt_family', undefined);
     }
   };
 
@@ -818,6 +822,7 @@ export default function TabConveyorPhysical({
           </div>
 
           {/* V-guide profile (v1.22: now using catalog-based selection) */}
+          {/* v1.26: Also populates V-guide min pulley values for PU/PVC calculation */}
           {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
             inputs.belt_tracking_method === 'V-guided') && (
             <div>
@@ -827,8 +832,20 @@ export default function TabConveyorPhysical({
               <VGuideSelect
                 id="v_guide_key"
                 value={inputs.v_guide_key}
-                onChange={(key: string | undefined, _vguide: VGuideItem | undefined) => {
+                onChange={(key: string | undefined, vguide: VGuideItem | undefined) => {
                   updateInput('v_guide_key', key);
+                  // v1.26: Populate V-guide min pulley values for calculation
+                  if (vguide) {
+                    updateInput('vguide_min_pulley_dia_solid_in', vguide.min_pulley_dia_solid_in);
+                    updateInput('vguide_min_pulley_dia_notched_in', vguide.min_pulley_dia_notched_in);
+                    updateInput('vguide_min_pulley_dia_solid_pu_in', vguide.min_pulley_dia_solid_pu_in);
+                    updateInput('vguide_min_pulley_dia_notched_pu_in', vguide.min_pulley_dia_notched_pu_in);
+                  } else {
+                    updateInput('vguide_min_pulley_dia_solid_in', undefined);
+                    updateInput('vguide_min_pulley_dia_notched_in', undefined);
+                    updateInput('vguide_min_pulley_dia_solid_pu_in', undefined);
+                    updateInput('vguide_min_pulley_dia_notched_pu_in', undefined);
+                  }
                 }}
                 required
               />
