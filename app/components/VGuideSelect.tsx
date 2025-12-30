@@ -13,7 +13,8 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { VGuideItem, translateVGuideKey } from '../api/v-guides/route';
+import { VGuideItem } from '../api/v-guides/route';
+import { translateVGuideKey } from '../../src/lib/v-guide-utils';
 
 interface VGuideSelectProps {
   id?: string;
