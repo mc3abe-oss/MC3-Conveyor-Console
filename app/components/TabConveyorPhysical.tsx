@@ -13,7 +13,6 @@
 import {
   SliderbedInputs,
   BeltTrackingMethod,
-  VGuideProfile,
   ShaftDiameterMode,
   PULLEY_DIAMETER_PRESETS,
   PulleyDiameterPreset,
@@ -46,6 +45,8 @@ import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
 import PulleySelect from './PulleySelect';
+import VGuideSelect from './VGuideSelect';
+import { VGuideItem } from '../api/v-guides/route';
 import { PulleyCatalogItem, getEffectiveDiameterByKey, PulleyStation } from '../../src/lib/pulley-catalog';
 import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
@@ -705,27 +706,21 @@ export default function TabConveyorPhysical({
             </p>
           </div>
 
-          {/* V-guide profile */}
+          {/* V-guide profile (v1.22: now using catalog-based selection) */}
           {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
             inputs.belt_tracking_method === 'V-guided') && (
             <div>
-              <label htmlFor="v_guide_profile" className="label">
-                V-Guide Profile
+              <label htmlFor="v_guide_key" className="label">
+                V-Guide
               </label>
-              <select
-                id="v_guide_profile"
-                className="input"
-                value={inputs.v_guide_profile || ''}
-                onChange={(e) => updateInput('v_guide_profile', e.target.value || undefined)}
+              <VGuideSelect
+                id="v_guide_key"
+                value={inputs.v_guide_key}
+                onChange={(key: string | undefined, _vguide: VGuideItem | undefined) => {
+                  updateInput('v_guide_key', key);
+                }}
                 required
-              >
-                <option value="">Select profile...</option>
-                {Object.values(VGuideProfile).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
           )}
 

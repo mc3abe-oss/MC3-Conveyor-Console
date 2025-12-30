@@ -51,6 +51,16 @@ export default function AdminPage() {
               Manage process type options for applications (Molding, Stamping, etc.)
             </p>
           </Link>
+
+          <Link
+            href="/admin/v-guides"
+            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+          >
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">V-Guides</h2>
+            <p className="text-sm text-gray-600">
+              Manage V-Guide profiles with EU/NA codes and minimum pulley diameters
+            </p>
+          </Link>
         </div>
       </main>
     </>

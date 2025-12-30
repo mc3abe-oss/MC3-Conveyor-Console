@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.15 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.22 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,8 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.22 (2025-12-30): V-Guides catalog integration (v_guide_key references v_guides table)
+ * v1.21 (2025-12-30): Draft saves and calculation status tracking
  * v1.15 (2025-12-26): Pulley Catalog integration (head_pulley_catalog_key, tail_pulley_catalog_key)
  * v1.14 (2025-12-26): Conveyor Frame inputs (construction type, gauge, channel, pulley-to-frame gap)
  * v1.13 (2025-12-26): Belt tracking recommendation system (crowned/hybrid/v-guided)
@@ -923,6 +925,13 @@ export interface SliderbedInputs {
 
   /** V-guide profile - required if belt_tracking_method = V-guided */
   v_guide_profile?: VGuideProfile | string;
+
+  /**
+   * V-Guide key (v1.22) - references v_guides catalog
+   * Canonical key using EU designation (O, A, B, C)
+   * When set, this takes precedence over v_guide_profile
+   */
+  v_guide_key?: string;
 
   /** Shaft diameter mode */
   shaft_diameter_mode: ShaftDiameterMode | string;
