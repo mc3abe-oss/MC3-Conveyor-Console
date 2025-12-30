@@ -135,4 +135,4 @@ export async function fetchVGuideByKey(key: string): Promise<VGuideItem | null> 
 }
 
 // Re-export the translation function for use elsewhere
-export { translateVGuideKey } from '../api/v-guides/route';
+export { translateVGuideKey } from '../../src/lib/v-guide-utils';

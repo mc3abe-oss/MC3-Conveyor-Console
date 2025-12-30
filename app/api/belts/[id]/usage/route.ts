@@ -14,7 +14,7 @@ import { supabase, supabaseAdmin, isSupabaseConfigured } from '../../../../../sr
  * Get belt usage count and breakdown
  */
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
