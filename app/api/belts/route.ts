@@ -1,11 +1,14 @@
 /**
  * GET /api/belts
  *
- * Fetch active belt catalog items
- * Returns: [{ catalog_key, display_name, piw, pil, min_pulley_dia_no_vguide_in, min_pulley_dia_with_vguide_in, material_profile, ... }]
+ * Fetch belt catalog items.
+ * By default, returns only active belts.
+ * Use ?includeInactive=true to include inactive belts (for admin pages).
+ *
+ * Returns: [{ catalog_key, display_name, piw, pil, min_pulley_dia_no_vguide_in, min_pulley_dia_with_vguide_in, ... }]
  *
  * POST /api/belts (Admin only)
- * Create or update a belt catalog item, including optional material_profile
+ * Create or update a belt catalog item
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,7 +18,7 @@ import { validateMaterialProfile } from '../../../src/lib/belt-catalog';
 // Re-export types for backward compatibility
 export type { BeltCatalogItem, BeltMaterialProfile } from '../../../src/lib/belt-catalog';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     // Check if Supabase is configured
     if (!isSupabaseConfigured()) {
@@ -28,13 +31,22 @@ export async function GET() {
       );
     }
 
-    // Query belt_catalog table (includes material_profile for v1.11)
-    // Using select('*') for backwards compatibility - works before and after migration
-    const { data: belts, error } = await supabase
+    // Check for includeInactive query param (for admin pages)
+    const { searchParams } = new URL(request.url);
+    const includeInactive = searchParams.get('includeInactive') === 'true';
+
+    // Query belt_catalog table
+    let query = supabase
       .from('belt_catalog')
       .select('*')
-      .eq('is_active', true)
       .order('display_name', { ascending: true });
+
+    // Only filter by is_active if not including inactive
+    if (!includeInactive) {
+      query = query.eq('is_active', true);
+    }
+
+    const { data: belts, error } = await query;
 
     if (error) {
       console.error('Belt catalog fetch error:', error);
