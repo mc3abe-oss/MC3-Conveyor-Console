@@ -240,12 +240,13 @@ export function validateInputs(inputs: BeltConveyorInputs): ValidationError[] {
   }
 
   // BELT TRACKING & PULLEY VALIDATION
+  // Accept EITHER v_guide_profile (legacy) OR v_guide_key (v1.22+)
   const isVGuided =
     inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
     inputs.belt_tracking_method === 'V-guided';
-  if (isVGuided && !inputs.v_guide_profile) {
+  if (isVGuided && !inputs.v_guide_profile && !inputs.v_guide_key) {
     errors.push({
-      field: 'v_guide_profile',
+      field: 'v_guide_key',
       message: 'V-guide profile is required when belt tracking method is V-guided',
       severity: 'error',
     });

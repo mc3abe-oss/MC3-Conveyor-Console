@@ -1017,16 +1017,41 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.pulley_face_length_in).toBe(26);
     });
 
-    it('should require v_guide_profile when V-guided', () => {
+    it('should require v_guide_profile OR v_guide_key when V-guided', () => {
       const inputs = {
         ...baseInputs,
         belt_tracking_method: BeltTrackingMethod.VGuided,
-        // v_guide_profile not set
+        // Neither v_guide_profile nor v_guide_key set
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(false);
-      expect(result.errors?.some(e => e.field === 'v_guide_profile')).toBe(true);
+      // v1.23: Error field changed from v_guide_profile to v_guide_key
+      expect(result.errors?.some(e => e.field === 'v_guide_key')).toBe(true);
+    });
+
+    it('should accept v_guide_key alone for V-guided (v1.23+)', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        v_guide_key: 'K10_SOLID', // v1.22+ key format without v_guide_profile
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.is_v_guided).toBe(true);
+    });
+
+    it('should accept v_guide_profile alone for V-guided (legacy)', () => {
+      const inputs = {
+        ...baseInputs,
+        belt_tracking_method: BeltTrackingMethod.VGuided,
+        v_guide_profile: VGuideProfile.K10, // Legacy profile enum
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.is_v_guided).toBe(true);
     });
 
     it('should use manual shaft diameters when specified', () => {
@@ -1990,6 +2015,37 @@ describe('Belt Cleats (v1.3)', () => {
 
       expect(result.success).toBe(false);
       expect(result.errors?.some((e) => e.field === 'cleat_edge_offset_in')).toBe(true);
+    });
+
+    it('should accept cleat_size without cleat_height_in (v1.24 derived)', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_size: '3"', // Should derive cleat_height_in = 3
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        // cleat_height_in NOT set - should be derived from cleat_size
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Should NOT have cleat_height_in error
+      expect(result.errors?.some((e) => e.field === 'cleat_height_in')).toBeFalsy();
+    });
+
+    it('should still require height when cleat_size is invalid (v1.24)', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleat_size: 'abc', // Invalid - cannot parse to number
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        // cleat_height_in NOT set, cleat_size is invalid
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors?.some((e) => e.field === 'cleat_height_in')).toBe(true);
     });
 
     it('should calculate successfully with valid cleat config', () => {

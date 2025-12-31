@@ -446,10 +446,25 @@ export default function TabConveyorPhysical({
   };
 
   // v1.23: Handle cleat size change (cascading dropdown reset)
+  // Maps size string (e.g., "1.5\"", "3", "3 inch") to numeric cleat_height_in
   const handleCleatSizeChange = (size: string | undefined) => {
     updateInput('cleat_size', size);
     // Reset dependent dropdown
     updateInput('cleat_pattern', undefined);
+
+    // Map size string to numeric cleat_height_in for validator/calc
+    // Robust parsing: handle "3", '3"', '3 inch', '3 in', '3 inches'
+    if (size) {
+      const cleaned = String(size).toLowerCase().trim()
+        .replace(/["\s]/g, '')
+        .replace(/(in|inch|inches)$/i, '');
+      const height = parseFloat(cleaned);
+      if (Number.isFinite(height) && height > 0) {
+        updateInput('cleat_height_in', height);
+      }
+    } else {
+      updateInput('cleat_height_in', undefined);
+    }
   };
 
   return (
@@ -1019,7 +1034,12 @@ export default function TabConveyorPhysical({
                   id="cleat_centers_in"
                   className="input"
                   value={inputs.cleat_centers_in ?? 12}
-                  onChange={(e) => updateInput('cleat_centers_in', parseInt(e.target.value))}
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value, 10);
+                    updateInput('cleat_centers_in', v);
+                    // Sync to cleat_spacing_in for validator/calc compatibility
+                    updateInput('cleat_spacing_in', v);
+                  }}
                 >
                   {CLEAT_CENTERS_OPTIONS.map((centers) => (
                     <option key={centers} value={centers}>
@@ -1111,32 +1131,18 @@ export default function TabConveyorPhysical({
                 </div>
               )}
 
-              {/* Advanced: Legacy Cleat Fields */}
-              <details className="mt-4">
-                <summary className="text-sm font-medium text-gray-600 cursor-pointer hover:text-gray-800">
-                  Advanced / Legacy Fields
-                </summary>
-                <div className="mt-3 space-y-4 pl-2 border-l-2 border-gray-200">
-                  <div>
-                    <label htmlFor="cleat_height_in" className="label">
-                      Cleat Height (in)
-                    </label>
-                    <input
-                      type="number"
-                      id="cleat_height_in"
-                      className="input"
-                      value={inputs.cleat_height_in ?? ''}
-                      onChange={(e) =>
-                        updateInput('cleat_height_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                      }
-                      step="0.25"
-                      min="0.5"
-                      max="6"
-                      placeholder="e.g., 1"
-                    />
-                    <p className="text-xs text-gray-500 mt-1">
-                      Height of cleats (0.5" - 6")
-                    </p>
+              {/* Cleat Geometry Summary & Overrides */}
+              <div className="mt-4 pt-4 border-t border-gray-200">
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+                  Geometry
+                </h4>
+                <div className="space-y-4">
+                  {/* Cleat Height - Read-only, derived from Size */}
+                  <div className="flex justify-between items-center py-2 px-3 bg-gray-50 rounded-md">
+                    <span className="text-sm text-gray-600">Cleat Height</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {inputs.cleat_height_in != null ? `${inputs.cleat_height_in}"` : '--'}
+                    </span>
                   </div>
 
                   <div>
@@ -1157,7 +1163,7 @@ export default function TabConveyorPhysical({
                       placeholder="e.g., 12"
                     />
                     <p className="text-xs text-gray-500 mt-1">
-                      Center-to-center spacing (legacy field, use Centers dropdown above)
+                      Auto-set from Centers dropdown. Override here if needed.
                     </p>
                   </div>
 
@@ -1183,7 +1189,7 @@ export default function TabConveyorPhysical({
                     </p>
                   </div>
                 </div>
-              </details>
+              </div>
             </div>
           )}
 

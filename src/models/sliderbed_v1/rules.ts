@@ -61,6 +61,21 @@ function isPulleyKeyValid(_key: string | undefined): boolean {
   return false; // Legacy pulley catalog no longer exists
 }
 
+/**
+ * v1.24: Parse cleat height from cleat_size string.
+ * UI derives cleat_height_in from cleat_size, but this provides a model-layer
+ * safety net for old saved configs or edge cases.
+ * Handles: "3", '3"', '3 inch', '3 in', '3 inches'
+ */
+export function parseCleatHeightFromSize(size: unknown): number | undefined {
+  if (!size) return undefined;
+  const s = String(size).toLowerCase().trim();
+  const cleaned = s.replace(/["\s]/g, '').replace(/(in|inch|inches)$/i, '');
+  const n = parseFloat(cleaned);
+  if (!Number.isFinite(n) || n <= 0) return undefined;
+  return n;
+}
+
 // ============================================================================
 // INPUT VALIDATION
 // ============================================================================
@@ -442,11 +457,12 @@ export function validateInputs(
   // BELT TRACKING & PULLEY VALIDATION
 
   // V-guide profile required if V-guided
+  // Accept EITHER v_guide_profile (legacy) OR v_guide_key (v1.22+)
   const isVGuided = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
                     inputs.belt_tracking_method === 'V-guided';
-  if (isVGuided && !inputs.v_guide_profile) {
+  if (isVGuided && !inputs.v_guide_profile && !inputs.v_guide_key) {
     errors.push({
-      field: 'v_guide_profile',
+      field: 'v_guide_key',
       message: 'V-guide profile is required when belt tracking method is V-guided',
       severity: 'error',
     });
@@ -553,29 +569,33 @@ export function validateInputs(
   }
 
   // =========================================================================
-  // v1.3: CLEAT VALIDATION
+  // v1.3/v1.24: CLEAT VALIDATION
+  // v1.24: Derive cleat_height_in from cleat_size if not set
   // =========================================================================
 
   if (inputs.cleats_enabled) {
+    // v1.24: Compute effective height (from input OR derived from cleat_size)
+    const effectiveHeight = inputs.cleat_height_in ?? parseCleatHeightFromSize(inputs.cleat_size);
+
     // Cleat height required when enabled
-    if (inputs.cleat_height_in === undefined || inputs.cleat_height_in <= 0) {
+    if (effectiveHeight === undefined || effectiveHeight <= 0) {
       errors.push({
         field: 'cleat_height_in',
-        message: 'Cleat height is required when cleats are enabled',
+        message: 'Cleat height is required when cleats are enabled (set via Size dropdown)',
         severity: 'error',
       });
     }
 
     // Cleat height range (0.5" - 6")
-    if (inputs.cleat_height_in !== undefined) {
-      if (inputs.cleat_height_in < 0.5) {
+    if (effectiveHeight !== undefined) {
+      if (effectiveHeight < 0.5) {
         errors.push({
           field: 'cleat_height_in',
           message: 'Cleat height must be >= 0.5"',
           severity: 'error',
         });
       }
-      if (inputs.cleat_height_in > 6) {
+      if (effectiveHeight > 6) {
         errors.push({
           field: 'cleat_height_in',
           message: 'Cleat height must be <= 6"',
