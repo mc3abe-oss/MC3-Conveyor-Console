@@ -98,6 +98,35 @@ Key principle: stronger steel does not make a shaft stiffer. Larger diameter red
       </div>
     ),
   },
+  // Pulley design logic (simplified)
+  {
+    id: 'dl-pulley-selection',
+    title: 'Pulley selection basics',
+    body: `Pulleys are selected based on style, face profile, and position.
+
+DRUM pulleys are standard for drive and tail positions. They support crowning for tracking
+and V-groove profiles for V-guided belts.
+
+WING pulleys are self-cleaning and used on the dirty/return side where debris carryback
+is expected. They cannot be crowned or used with V-guided belts.
+
+Face profile affects tracking: FLAT requires other tracking methods, CROWNED provides
+passive tracking, V-GUIDED uses the belt's V-guide and groove pulley for positive tracking.`,
+  },
+  {
+    id: 'dl-pulley-stress',
+    title: 'Pulley tube stress (PCI method)',
+    body: `The pulley shell sees the resultant belt tension as a bending load.
+
+Tube stress depends on: shell diameter, wall thickness, hub spacing, and the resultant
+load from belt tensions.
+
+Standard drum pulleys: allowable stress up to 10,000 psi.
+V-groove pulleys: allowable stress limited to 3,400 psi due to stress concentration.
+
+If tube stress is too high: increase shell diameter, increase wall thickness,
+or reduce hub spacing.`,
+  },
 ];
 
 // SVG Diagram Component

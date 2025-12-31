@@ -55,7 +55,11 @@ import {
   calculateEffectiveFrameHeight,
   calculateRequiresSnubRollers,
 } from './formulas';
-import { isPulleyKeyValid } from '../../lib/pulley-catalog';
+// PHASE 0: Legacy pulley catalog import removed - will be replaced by application_pulleys in Phase 2
+// Stub function to maintain API compatibility during transition
+function isPulleyKeyValid(_key: string | undefined): boolean {
+  return false; // Legacy pulley catalog no longer exists
+}
 
 // ============================================================================
 // INPUT VALIDATION

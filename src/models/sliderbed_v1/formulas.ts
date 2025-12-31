@@ -56,11 +56,17 @@ import {
   SHEET_METAL_GAUGE_THICKNESS,
   STRUCTURAL_CHANNEL_THICKNESS,
 } from '../../lib/frame-catalog';
-import { getEffectiveDiameterByKey } from '../../lib/pulley-catalog';
-import {
-  getFinishedOdByVariantKey,
-  getShellOdByVariantKey,
-} from '../../lib/pulley-families';
+// PHASE 0: Legacy pulley catalog imports removed - will be replaced by application_pulleys in Phase 2
+// Stub functions to maintain API compatibility during transition
+function getEffectiveDiameterByKey(_key: string | undefined): number | undefined {
+  return undefined; // Pulley diameter resolution moved to application_pulleys
+}
+function getFinishedOdByVariantKey(_key: string | undefined): number | undefined {
+  return undefined; // Pulley variant resolution moved to application_pulleys
+}
+function getShellOdByVariantKey(_key: string | undefined): number | undefined {
+  return undefined; // Pulley variant resolution moved to application_pulleys
+}
 import {
   getCachedCleatCatalog,
   getCachedCleatCenterFactors,

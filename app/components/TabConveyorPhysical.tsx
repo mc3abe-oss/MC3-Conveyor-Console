@@ -44,10 +44,13 @@ import {
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
-import PulleySelect from './PulleySelect';
+// PHASE 0: PulleySelect removed - pulley configuration moves to modal in Phase 2
 import VGuideSelect from './VGuideSelect';
 import { VGuideItem } from '../api/v-guides/route';
-import { PulleyCatalogItem, getEffectiveDiameterByKey, PulleyStation } from '../../src/lib/pulley-catalog';
+// PHASE 0: Legacy pulley catalog removed - stub function for compatibility
+function getEffectiveDiameterByKey(_key: string | undefined): number | undefined {
+  return undefined; // Legacy catalog removed - Phase 2 will use application_pulleys
+}
 import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
@@ -147,17 +150,7 @@ export default function TabConveyorPhysical({
     }
   };
 
-  // v1.17: Handle head pulley catalog selection (does NOT auto-populate diameter)
-  const handleHeadPulleyChange = (catalogKey: string | undefined, _pulley: PulleyCatalogItem | undefined) => {
-    updateInput('head_pulley_catalog_key', catalogKey);
-    // v1.17: Do NOT auto-populate diameter - those fields are only for manual override
-  };
-
-  // v1.17: Handle tail pulley catalog selection (does NOT auto-populate diameter)
-  const handleTailPulleyChange = (catalogKey: string | undefined, _pulley: PulleyCatalogItem | undefined) => {
-    updateInput('tail_pulley_catalog_key', catalogKey);
-    // v1.17: Do NOT auto-populate diameter - those fields are only for manual override
-  };
+  // PHASE 0: Legacy pulley handlers removed - Phase 2 will use application_pulleys modal
 
   // v1.17: Override-based diameter resolution
   const driveOverride = Boolean(inputs.drive_pulley_manual_override);
@@ -1142,15 +1135,10 @@ export default function TabConveyorPhysical({
               <label htmlFor="head_pulley_catalog_key" className="label">
                 Head/Drive Pulley (from catalog)
               </label>
-              <PulleySelect
-                id="head_pulley_catalog_key"
-                value={inputs.head_pulley_catalog_key}
-                onChange={handleHeadPulleyChange}
-                station={'head_drive' as PulleyStation}
-                showDetails={true}
-                faceWidthRequired={inputs.belt_width_in}
-                beltSpeedFpm={inputs.belt_speed_fpm}
-              />
+              {/* PHASE 0: Legacy PulleySelect removed - Phase 2 will add application_pulleys modal */}
+              <div className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                Pulley configuration moved to per-line settings. Use manual override below.
+              </div>
             </div>
 
             {/* Read-only catalog diameter display */}
@@ -1261,15 +1249,10 @@ export default function TabConveyorPhysical({
               <label htmlFor="tail_pulley_catalog_key" className="label">
                 Tail Pulley (from catalog)
               </label>
-              <PulleySelect
-                id="tail_pulley_catalog_key"
-                value={inputs.tail_pulley_catalog_key}
-                onChange={handleTailPulleyChange}
-                station={'tail' as PulleyStation}
-                showDetails={true}
-                faceWidthRequired={inputs.belt_width_in}
-                beltSpeedFpm={inputs.belt_speed_fpm}
-              />
+              {/* PHASE 0: Legacy PulleySelect removed - Phase 2 will add application_pulleys modal */}
+              <div className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                Pulley configuration moved to per-line settings. Use manual override below.
+              </div>
               <p className="text-xs text-gray-500 mt-1">
                 Tail position supports internal bearing pulleys.
               </p>

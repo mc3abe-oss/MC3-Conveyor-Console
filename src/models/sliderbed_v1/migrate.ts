@@ -55,7 +55,11 @@ import {
   SheetMetalGauge,
 } from './schema';
 import { horizontalFromAxis, normalizeGeometry, DerivedGeometry } from './geometry';
-import { getEffectiveDiameterByKey } from '../../lib/pulley-catalog';
+// PHASE 0: Legacy pulley catalog import removed - will be replaced by application_pulleys in Phase 2
+// Stub function to maintain API compatibility during transition
+function getEffectiveDiameterByKey(_key: string | undefined): number | undefined {
+  return undefined; // Pulley diameter resolution moved to application_pulleys
+}
 
 const DEFAULT_PULLEY_DIAMETER_IN = 4;
 
