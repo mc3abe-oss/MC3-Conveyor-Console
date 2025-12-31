@@ -14,10 +14,11 @@ import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { hashCanonical, stripUndefined } from '../../../../src/lib/recipes/hash';
 
 interface SaveRequestBody {
-  reference_type: 'QUOTE' | 'SALES_ORDER';
+  reference_type: 'QUOTE' | 'SALES_ORDER';  // v1: Every application must be linked to Quote or SO
   reference_number: string;      // Base number as string (e.g., "62633")
   reference_suffix?: number;     // Optional suffix (e.g., 2 for "62633.2")
   reference_line?: number;       // Job line within the reference
+  reference_id?: string;         // UUID of the quote or sales_order (for FK linkage)
   customer_name?: string;        // Customer name
   quantity?: number;             // Conveyor quantity
   model_key: string;
@@ -58,6 +59,7 @@ export async function POST(request: NextRequest) {
       reference_number,
       reference_suffix,
       reference_line = 1,
+      reference_id,           // UUID of the quote or sales_order
       customer_name,
       quantity,
       model_key,
@@ -154,6 +156,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         status: 'no_change',
         message: 'No changes detected.',
+        // TOP-LEVEL applicationId for easy access
+        applicationId: existingRecipe.id,
         recipe: {
           id: existingRecipe.id,
           slug,
@@ -180,6 +184,11 @@ export async function POST(request: NextRequest) {
     const hasOutputs = !!outputs_json;
     const isCalculated = hasOutputs && !outputs_stale;
 
+    // Determine FK linkage based on reference_type and reference_id
+    // These FKs are the SERVER TRUTH for delete eligibility
+    const quoteId = (reference_type === 'QUOTE' && reference_id) ? reference_id : null;
+    const salesOrderId = (reference_type === 'SALES_ORDER' && reference_id) ? reference_id : null;
+
     // Build the recipe row
     const recipeRow: Record<string, unknown> = {
       slug,
@@ -196,6 +205,9 @@ export async function POST(request: NextRequest) {
       notes: change_note || null,
       tolerance_policy: 'default_fallback',
       updated_by: userId,
+      // FK linkage columns (determines delete eligibility)
+      quote_id: quoteId,
+      sales_order_id: salesOrderId,
       // Calculation status tracking (v1.21)
       calculation_status: isCalculated ? 'calculated' : 'draft',
       is_calculated: isCalculated,
@@ -260,6 +272,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       status: existingRecipe ? 'updated' : 'created',
+      // TOP-LEVEL applicationId for easy access
+      applicationId: recipe.id,
       recipe: {
         id: recipe.id,
         slug: recipe.slug,

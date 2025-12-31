@@ -25,6 +25,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const statusFilter = searchParams.get('status') as QuoteStatus | null;
+    const baseNumber = searchParams.get('base_number');
     const includeDeleted = searchParams.get('include_deleted') === 'true';
 
     let query = supabase
@@ -35,6 +36,11 @@ export async function GET(request: NextRequest) {
     // Filter by status if provided
     if (statusFilter) {
       query = query.eq('quote_status', statusFilter);
+    }
+
+    // Filter by base_number if provided
+    if (baseNumber) {
+      query = query.eq('base_number', parseInt(baseNumber, 10));
     }
 
     // Exclude soft-deleted by default

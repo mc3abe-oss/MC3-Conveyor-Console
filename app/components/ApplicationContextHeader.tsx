@@ -1,11 +1,15 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 
 interface ApplicationContextHeaderProps {
   context: SaveTarget | null;
-  onUnlink?: () => void;
+  loadedConfigurationId?: string | null;
+  onClear?: () => void;
+  onDeleteLine?: () => void;  // Called after successful line delete (saved application)
+  onDeleteDraft?: () => Promise<void> | void; // Called to delete an unsaved draft (clears context + deletes DB record)
   isDirty?: boolean;
   isSaving?: boolean;
   onSave?: () => void;
@@ -20,7 +24,10 @@ interface ApplicationContextHeaderProps {
 
 export default function ApplicationContextHeader({
   context,
-  onUnlink,
+  loadedConfigurationId,
+  onClear,
+  onDeleteLine,
+  onDeleteDraft,
   isDirty = false,
   isSaving = false,
   onSave,
@@ -31,9 +38,147 @@ export default function ApplicationContextHeader({
   calculationStatus = 'draft',
   outputsStale = false,
 }: ApplicationContextHeaderProps) {
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showDeleteDraftConfirm, setShowDeleteDraftConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // Line delete eligibility state - fetched from server
+  // canHardDelete = true means application is ONLY referenced by this line type
+  // canHardDelete = false means application is ALSO referenced by the other type
+  const [canHardDelete, setCanHardDelete] = useState<boolean | null>(null);
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+
   // Determine display status: only "Calculated" if truly calculated and not stale
   const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
-  // Draft state (not yet saved)
+
+  // Determine if this is a saved application (has DB record)
+  const isSavedApplication = !!loadedConfigurationId;
+
+  // Determine if this is a draft with context (linked to Quote/SO but not saved)
+  const isDraftWithContext = !!context && !isSavedApplication;
+
+  // DEV: Debug logging for delete button visibility
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[DEV][ApplicationContextHeader] Delete button state:', {
+      contextType: context?.type || 'none',
+      contextId: context?.id || null,
+      isSavedApplication,
+      isDraftWithContext,
+      loadedConfigurationId: loadedConfigurationId || null,
+      // Delete button hidden because:
+      // - For saved: shown when isSavedApplication && onDeleteLine
+      // - For draft: shown when isDraftWithContext && onDeleteDraft
+      deleteLineVisible: isSavedApplication && !!onDeleteLine,
+      deleteDraftVisible: isDraftWithContext && !!onDeleteDraft,
+    });
+  }
+
+  // Fetch delete eligibility from server when application is loaded
+  useEffect(() => {
+    if (!loadedConfigurationId) {
+      setCanHardDelete(null);
+      return;
+    }
+
+    // Fetch eligibility from server
+    setIsCheckingEligibility(true);
+    fetch(`/api/applications/${loadedConfigurationId}/delete-eligibility`)
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          setCanHardDelete(data.canHardDelete);
+          console.log('[DeleteEligibility]', data);
+        } else {
+          setCanHardDelete(false);
+        }
+      })
+      .catch((err) => {
+        console.error('[DeleteEligibility] Error:', err);
+        setCanHardDelete(false);
+      })
+      .finally(() => {
+        setIsCheckingEligibility(false);
+      });
+  }, [loadedConfigurationId]);
+
+  // Contextual button label based on context type
+  const isQuoteContext = context?.type === 'quote';
+  const deleteButtonLabel = isQuoteContext ? 'Delete Quote Line' : 'Delete SO Line';
+
+  const handleClearClick = () => {
+    setShowClearConfirm(true);
+  };
+
+  const handleConfirmClear = () => {
+    setShowClearConfirm(false);
+    if (onClear) {
+      onClear();
+    }
+  };
+
+  const handleDeleteClick = () => {
+    setDeleteError(null);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteDraftClick = () => {
+    setShowDeleteDraftConfirm(true);
+  };
+
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+
+  const handleConfirmDeleteDraft = async () => {
+    if (onDeleteDraft) {
+      setIsDeletingDraft(true);
+      try {
+        await onDeleteDraft();
+      } finally {
+        setIsDeletingDraft(false);
+        setShowDeleteDraftConfirm(false);
+      }
+    } else {
+      setShowDeleteDraftConfirm(false);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!loadedConfigurationId || !context) return;
+
+    setIsDeleting(true);
+    setDeleteError(null);
+
+    try {
+      // Call contextual delete endpoint based on context type
+      const endpoint = context.type === 'quote'
+        ? `/api/applications/${loadedConfigurationId}/delete-quote-line`
+        : `/api/applications/${loadedConfigurationId}/delete-so-line`;
+
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to delete line');
+      }
+
+      // Success - close modal and notify parent
+      setShowDeleteConfirm(false);
+      if (onDeleteLine) {
+        onDeleteLine();
+      }
+    } catch (error) {
+      console.error('Delete error:', error);
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete line');
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  // Draft state (no context - not linked to any Quote/SO)
   if (!context) {
     return (
       <div className="bg-white border-b border-gray-200 mb-6">
@@ -42,7 +187,7 @@ export default function ApplicationContextHeader({
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-2xl font-bold text-gray-900">
-                Draft Application
+                New Application
               </h1>
               {/* Status Chip */}
               <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
@@ -86,13 +231,61 @@ export default function ApplicationContextHeader({
                 {isSaving ? 'Saving...' : 'Save'}
               </button>
             )}
+            {onClear && (
+              <button
+                type="button"
+                className="btn btn-outline text-gray-500 hover:text-gray-700"
+                onClick={handleClearClick}
+                title="Clear and start fresh"
+              >
+                Clear
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Clear Confirmation Modal */}
+        {showClearConfirm && (
+          <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowClearConfirm(false)}>
+            <div className="flex min-h-screen items-center justify-center p-4">
+              <div className="fixed inset-0 bg-black/50 -z-10" />
+              <div
+                className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                  Clear this application?
+                </h3>
+                <p className="text-gray-600 mb-4">
+                  This resets the form and unlinks from any Quote/Sales Order.
+                  Saved records are not deleted.
+                </p>
+
+                <div className="flex justify-end gap-3">
+                  <button
+                    type="button"
+                    className="btn btn-outline"
+                    onClick={() => setShowClearConfirm(false)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleConfirmClear}
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
 
-  // Linked state
+  // Linked state (has context - linked to a Quote or Sales Order)
   const isQuote = context.type === 'quote';
   const href = (isQuote ? `/console/quotes/${context.id}` : `/console/sales-orders/${context.id}`) as `/console/quotes/${string}`;
   const typeLabel = isQuote ? 'Quote' : 'Sales Order';
@@ -118,13 +311,15 @@ export default function ApplicationContextHeader({
                 <span className="ml-3 inline-block w-2 h-2 bg-gray-400 rounded-full" title="Unsaved changes" />
               )}
             </h1>
-            {/* Status Chip */}
+            {/* Status Chip - show Saved vs Draft based on loadedConfigurationId */}
             <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-              isFullyCalculated
-                ? 'bg-green-100 text-green-700'
+              isSavedApplication
+                ? (isFullyCalculated ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700')
                 : 'bg-amber-100 text-amber-700'
             }`}>
-              {isFullyCalculated ? 'Calculated' : 'Draft'}
+              {isSavedApplication
+                ? (isFullyCalculated ? 'Calculated' : 'Saved')
+                : 'Draft'}
             </span>
           </div>
 
@@ -172,18 +367,173 @@ export default function ApplicationContextHeader({
               {isSaving ? 'Saving...' : 'Save'}
             </button>
           )}
-          {onUnlink && (
+          {onClear && (
             <button
               type="button"
-              className="btn btn-outline text-gray-600 hover:text-gray-800"
-              onClick={onUnlink}
-              title="Start a new draft"
+              className="btn btn-outline text-gray-500 hover:text-gray-700"
+              onClick={handleClearClick}
+              title="Clear and start a new application"
             >
-              New
+              Clear
+            </button>
+          )}
+          {/* Delete Draft - show for unsaved drafts with context */}
+          {isDraftWithContext && onDeleteDraft && (
+            <button
+              type="button"
+              className="btn btn-outline text-red-600 hover:text-red-700 hover:border-red-300"
+              onClick={handleDeleteDraftClick}
+              title="Delete this draft"
+            >
+              Delete Draft
+            </button>
+          )}
+          {/* Delete Line - show for saved applications */}
+          {isSavedApplication && onDeleteLine && (
+            <button
+              type="button"
+              className="btn btn-outline text-red-600 hover:text-red-700 hover:border-red-300"
+              onClick={handleDeleteClick}
+              disabled={isCheckingEligibility}
+              title={`Delete this ${isQuoteContext ? 'Quote' : 'Sales Order'} line`}
+            >
+              {isCheckingEligibility ? '...' : deleteButtonLabel}
             </button>
           )}
         </div>
       </div>
+
+      {/* Clear Confirmation Modal */}
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowClearConfirm(false)}>
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50 -z-10" />
+            <div
+              className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Clear this application?
+              </h3>
+              <p className="text-gray-600 mb-4">
+                This resets the form and unlinks from any Quote/Sales Order.
+                Saved records are not deleted.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowClearConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleConfirmClear}
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Line Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50 -z-10" />
+            <div
+              className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                {deleteButtonLabel}?
+              </h3>
+              <p className="text-gray-600 mb-2">
+                This will remove the {isQuoteContext ? 'Quote' : 'Sales Order'} line.
+              </p>
+              {!canHardDelete && (
+                <p className="text-amber-600 text-sm mb-4">
+                  This application is also linked to a {isQuoteContext ? 'Sales Order' : 'Quote'}, so it will be deactivated (not permanently deleted).
+                </p>
+              )}
+              {canHardDelete && (
+                <p className="text-gray-500 text-sm mb-4">
+                  The application will be permanently deleted. This cannot be undone.
+                </p>
+              )}
+
+              {deleteError && (
+                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+                  {deleteError}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleConfirmDelete}
+                  disabled={isDeleting}
+                >
+                  {isDeleting ? 'Deleting...' : deleteButtonLabel}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Draft Confirmation Modal */}
+      {showDeleteDraftConfirm && (
+        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => !isDeletingDraft && setShowDeleteDraftConfirm(false)}>
+          <div className="flex min-h-screen items-center justify-center p-4">
+            <div className="fixed inset-0 bg-black/50 -z-10" />
+            <div
+              className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                Delete Draft?
+              </h3>
+              <p className="text-gray-600 mb-4">
+                This will permanently delete the {context?.type === 'quote' ? 'Quote' : 'Sales Order'} record and return to a new application.
+              </p>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => setShowDeleteDraftConfirm(false)}
+                  disabled={isDeletingDraft}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn bg-red-600 hover:bg-red-700 text-white"
+                  onClick={handleConfirmDeleteDraft}
+                  disabled={isDeletingDraft}
+                >
+                  {isDeletingDraft ? 'Deleting...' : 'Delete Draft'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

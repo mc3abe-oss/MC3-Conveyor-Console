@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
         .from('calc_recipes')
         .select('*')
         .eq('id', appId)
+        .is('deleted_at', null)
+        .eq('is_active', true)
         .maybeSingle();
 
       if (error) {
@@ -74,11 +76,14 @@ export async function GET(request: NextRequest) {
     // Build query for reference lookup
     // We query the inputs JSONB field for _config values
     // Use reference_number for backward compat, will also check reference_number_base
+    // Exclude soft-deleted and deactivated records
     const { data: apps, error } = await supabase
       .from('calc_recipes')
       .select('*')
       .eq('inputs->_config->>reference_type', referenceType)
       .or(`inputs->_config->>reference_number.eq.${referenceBase},inputs->_config->>reference_number_base.eq.${referenceBase}`)
+      .is('deleted_at', null)
+      .eq('is_active', true)
       .order('updated_at', { ascending: false });
 
     if (error) {

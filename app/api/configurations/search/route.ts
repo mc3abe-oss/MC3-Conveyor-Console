@@ -53,6 +53,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     // Build query - filter by config: slug prefix
+    // Exclude soft-deleted and deactivated records
     let queryBuilder = supabase
       .from('calc_recipes')
       .select(`
@@ -65,7 +66,9 @@ export async function GET(request: NextRequest) {
         updated_at,
         created_at
       `)
-      .like('slug', 'config:%');
+      .like('slug', 'config:%')
+      .is('deleted_at', null)
+      .eq('is_active', true);
 
     // Filter by reference_type if not ALL
     // Slug format is config:{type}:{number}:{line}

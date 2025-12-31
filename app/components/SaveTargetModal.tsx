@@ -223,7 +223,7 @@ export default function SaveTargetModal({
     }
 
     onSelect({
-      type: activeTab,
+      type: activeTab as 'quote' | 'sales_order',
       id: selectedExisting.id,
       base: selectedExisting.base_number,
       line: null, // Existing records don't have suffix line from selection

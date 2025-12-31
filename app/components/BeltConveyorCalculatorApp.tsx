@@ -6,7 +6,7 @@ import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
 import DesignLogicPanel from './DesignLogicPanel';
 import ApplicationContextHeader from './ApplicationContextHeader';
-import SaveTargetModal, { SaveTarget, formatSaveTarget } from './SaveTargetModal';
+import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
@@ -85,11 +85,23 @@ export default function BeltConveyorCalculatorApp() {
 
   // Load application from API response
   const loadApplicationFromResponse = useCallback((data: any) => {
+    // DEV: LOAD_APP_START
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][LOAD_APP_START]', {
+        receivedData: data,
+        hasApplication: !!data?.application,
+        applicationId: data?.application?.id,
+      });
+    }
+
     const { application, context: loadedContext } = data;
 
     if (!application) {
       setLoadError('Invalid application data');
       setLoadState('error');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV][LOAD_APP_END] FAILED - no application in data');
+      }
       return;
     }
 
@@ -117,6 +129,13 @@ export default function BeltConveyorCalculatorApp() {
     }
 
     // Set loaded IDs
+    // DEV: SET_LOADED_APP_ID
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][SET_LOADED_APP_ID]', {
+        newValue: application.id,
+        source: 'loadApplicationFromResponse',
+      });
+    }
     setLoadedConfigurationId(application.id);
     setLoadedRevisionId(application.id);
 
@@ -141,6 +160,14 @@ export default function BeltConveyorCalculatorApp() {
     }
 
     setLoadState('loaded');
+    // DEV: LOAD_APP_END
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][LOAD_APP_END] SUCCESS', {
+        applicationId: application.id,
+        hasContext: !!loadedContext,
+        hasOutputs: !!application.expected_outputs,
+      });
+    }
     console.log('[Load] Application loaded:', application.id);
   }, []);
 
@@ -198,6 +225,58 @@ export default function BeltConveyorCalculatorApp() {
             setLoadState('loaded'); // Start fresh, no error
             return;
           }
+
+          // If loading by SO reference fails with 404, the SO exists but has no application yet
+          // Set up a blank context linked to that SO so user can start working
+          if (res.status === 404 && soBase && data.error?.includes('No Application found')) {
+            console.log('[Load] No application for SO, fetching SO details to set up blank context');
+            const soRes = await fetch(`/api/sales-orders?base_number=${encodeURIComponent(soBase)}`);
+            if (soRes.ok) {
+              const soList = await soRes.json();
+              const so = soList.find((s: { base_number: number }) => String(s.base_number) === soBase);
+              if (so) {
+                // Set up blank context linked to this SO
+                setContext({
+                  type: 'sales_order',
+                  id: so.id,
+                  base: so.base_number,
+                  line: so.suffix_line ?? null,
+                  jobLine: 1,
+                  quantity: 1,
+                  customer_name: so.customer_name,
+                });
+                setLoadState('loaded');
+                showToast(`Linked to SO${so.base_number}. Fill in details and save.`);
+                return;
+              }
+            }
+          }
+
+          // Same for quotes
+          if (res.status === 404 && quoteBase && data.error?.includes('No Application found')) {
+            console.log('[Load] No application for Quote, fetching Quote details to set up blank context');
+            const quoteRes = await fetch(`/api/quotes?base_number=${encodeURIComponent(quoteBase)}`);
+            if (quoteRes.ok) {
+              const quoteList = await quoteRes.json();
+              const quote = quoteList.find((q: { base_number: number }) => String(q.base_number) === quoteBase);
+              if (quote) {
+                // Set up blank context linked to this Quote
+                setContext({
+                  type: 'quote',
+                  id: quote.id,
+                  base: quote.base_number,
+                  line: quote.suffix_line ?? null,
+                  jobLine: 1,
+                  quantity: 1,
+                  customer_name: quote.customer_name,
+                });
+                setLoadState('loaded');
+                showToast(`Linked to Q${quote.base_number}. Fill in details and save.`);
+                return;
+              }
+            }
+          }
+
           throw new Error(data.error || 'Failed to load application');
         }
 
@@ -222,6 +301,37 @@ export default function BeltConveyorCalculatorApp() {
         setLoadState('error');
       });
   }, [loadState, searchParams, loadApplicationFromResponse]);
+
+  // Effect: Reset load state when URL params change (to reload different application)
+  const currentAppId = searchParams.get('app');
+  const currentQuote = searchParams.get('quote');
+  const currentSo = searchParams.get('so');
+  const currentSuffix = searchParams.get('suffix');
+  const currentJobLine = searchParams.get('jobLine');
+
+  const [lastLoadParams, setLastLoadParams] = useState<string | null>(null);
+  const currentParams = `${currentAppId}|${currentQuote}|${currentSo}|${currentSuffix}|${currentJobLine}`;
+
+  useEffect(() => {
+    if (lastLoadParams !== null && lastLoadParams !== currentParams && loadState === 'loaded') {
+      console.log('[Load] URL params changed, resetting to reload new application');
+      // DEV: LOADED_APP_ID_RESET
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV][LOADED_APP_ID_RESET]', {
+          reason: 'URL_PARAMS_CHANGED',
+          oldParams: lastLoadParams,
+          newParams: currentParams,
+        });
+      }
+      setLoadState('idle');
+      setLoadedConfigurationId(null);
+      setLoadedRevisionId(null);
+      setContext(null);
+      setResult(null);
+      setInputs(null);
+    }
+    setLastLoadParams(currentParams);
+  }, [currentParams, lastLoadParams, loadState]);
 
   // Handle job line selection
   const handleJobLineSelect = (selectedJobLine: number) => {
@@ -431,7 +541,15 @@ export default function BeltConveyorCalculatorApp() {
   }, []);
 
   const handleClear = () => {
-    console.log('[Clear] Resetting all state');
+    console.log('[Clear] Resetting all state to new application');
+
+    // DEV: LOADED_APP_ID_RESET
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][LOADED_APP_ID_RESET]', {
+        reason: 'HANDLE_CLEAR',
+        previousId: loadedConfigurationId,
+      });
+    }
 
     // Reset context (unlink from Quote/SO)
     setContext(null);
@@ -450,7 +568,137 @@ export default function BeltConveyorCalculatorApp() {
     setLastCalculatedPayload(null);
     setCalcStatus('idle');
 
-    showToast('Calculator reset');
+    // Reset calculation status fields
+    setCalculationStatus('draft');
+    setOutputsStale(false);
+
+    // Clear localStorage to prevent auto-loading old app on refresh
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LAST_APP_KEY);
+    }
+
+    // Reset load state to loaded (we're now in a fresh state)
+    setLoadState('loaded');
+
+    // Clear draft vault
+    setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
+
+    showToast('Cleared - start fresh');
+  };
+
+  // Handle Delete Line callback from header
+  const handleDeleteLine = () => {
+    console.log('[DeleteLine] Line deleted, clearing state');
+
+    // Show appropriate toast
+    const lineType = context?.type === 'quote' ? 'Quote' : 'Sales Order';
+    showToast(`${lineType} line deleted`);
+
+    // Clear all state (same as handleClear)
+    setContext(null);
+    setConveyorQty(1);
+    setLoadedConfigurationId(null);
+    setLoadedRevisionId(null);
+    setInitialLoadedPayload(null);
+    setInputs(null);
+    setResult(null);
+    setLastCalculatedPayload(null);
+    setCalcStatus('idle');
+    setCalculationStatus('draft');
+    setOutputsStale(false);
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(LAST_APP_KEY);
+    }
+
+    setLoadState('loaded');
+    setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
+  };
+
+  // Handle Delete Draft callback from header (for unsaved drafts with context)
+  // Draft = a Quote/Sales Order header row with no linked calc_recipes application
+  const handleDeleteDraft = async () => {
+    if (!context) {
+      console.warn('[DeleteDraft] No context to delete');
+      return;
+    }
+
+    // DEV: Log all identity fields for debugging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][DELETE_DRAFT_CLICK]', {
+        reference_type: context.type,
+        reference_number: context.type === 'quote' ? `Q${context.base}` : `SO${context.base}`,
+        reference_id: context.id,
+        base: context.base,
+        line: context.line,
+        jobLine: context.jobLine,
+        applicationId: loadedConfigurationId,
+        // These should all be null for a true draft (unsaved)
+        loadedConfigurationId,
+        loadedRevisionId,
+      });
+    }
+
+    // Determine the DELETE endpoint based on context type
+    const endpoint = context.type === 'quote'
+      ? `/api/quotes/${context.id}`
+      : `/api/sales-orders/${context.id}`;
+
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][DELETE_DRAFT_API_CALL]', {
+        method: 'DELETE',
+        url: endpoint,
+      });
+    }
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV][DELETE_DRAFT_API_RESPONSE]', {
+          status: response.status,
+          ok: response.ok,
+          body: data,
+        });
+      }
+
+      if (!response.ok) {
+        console.error('[DeleteDraft] API error:', data);
+        showToast(data.error || 'Failed to delete draft');
+        return;
+      }
+
+      // Success - show toast
+      const typeLabel = context.type === 'quote' ? 'Quote' : 'Sales Order';
+      showToast(`${typeLabel} draft deleted`);
+
+      // Clear all state
+      setContext(null);
+      setConveyorQty(1);
+      setLoadedConfigurationId(null);
+      setLoadedRevisionId(null);
+      setInitialLoadedPayload(null);
+      setInputs(null);
+      setResult(null);
+      setLastCalculatedPayload(null);
+      setCalcStatus('idle');
+      setCalculationStatus('draft');
+      setOutputsStale(false);
+
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(LAST_APP_KEY);
+      }
+
+      setLoadState('loaded');
+      setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
+    } catch (error) {
+      console.error('[DeleteDraft] Network error:', error);
+      showToast('Failed to delete draft');
+    }
   };
 
   // Handle Save button click
@@ -479,6 +727,7 @@ export default function BeltConveyorCalculatorApp() {
 
     console.log('[Save] Saving to context:', context, { willSaveAsDraft, isStale });
 
+    // Map context.type to reference_type enum (v1: must be Quote or SO)
     const referenceType = context.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
 
     const payload: Record<string, unknown> = {
@@ -486,6 +735,7 @@ export default function BeltConveyorCalculatorApp() {
       reference_number: String(context.base),
       reference_suffix: context.line ?? undefined, // Suffix (e.g., .2)
       reference_line: context.jobLine,             // Job line within the reference
+      reference_id: context.id || undefined,       // UUID for FK linkage (quote_id or sales_order_id)
       customer_name: context.customer_name ?? undefined,
       quantity: context.quantity ?? conveyorQty,
       model_key: 'belt_conveyor_v1',
@@ -568,6 +818,11 @@ export default function BeltConveyorCalculatorApp() {
   const handleSelectSaveTarget = async (target: SaveTarget) => {
     setIsSaveTargetModalOpen(false);
 
+    // DEV logging
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][SaveTarget] Target received:', target);
+    }
+
     if (!inputs) {
       showToast('No inputs to save');
       return;
@@ -583,6 +838,7 @@ export default function BeltConveyorCalculatorApp() {
     setContext(target);
 
     // Save to the selected target
+    // Map target.type to reference_type enum (v1: must be Quote or SO)
     const referenceType = target.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
 
     const payload: Record<string, unknown> = {
@@ -590,6 +846,7 @@ export default function BeltConveyorCalculatorApp() {
       reference_number: String(target.base),
       reference_suffix: target.line ?? undefined,  // Suffix (e.g., .2)
       reference_line: target.jobLine,              // Job line within the reference
+      reference_id: target.id || undefined,        // UUID for FK linkage (quote_id or sales_order_id)
       customer_name: target.customer_name ?? undefined,
       quantity: target.quantity,
       model_key: 'belt_conveyor_v1',
@@ -603,6 +860,16 @@ export default function BeltConveyorCalculatorApp() {
         outputs_stale: isStale, // Mark as stale if inputs changed since calculation
       } : {}),
     };
+
+    // DEV: SAVE_CLICK
+    if (process.env.NODE_ENV === 'development') {
+      console.log('[DEV][SAVE_CLICK]', {
+        payload,
+        currentLoadedConfigurationId: loadedConfigurationId,
+        currentRoute: typeof window !== 'undefined' ? window.location.href : 'unknown',
+        target,
+      });
+    }
 
     setIsSaving(true);
     try {
@@ -626,6 +893,7 @@ export default function BeltConveyorCalculatorApp() {
 
       const data = await response.json() as {
         status?: string;
+        applicationId?: string;  // TOP-LEVEL for easy access
         configuration?: any;
         revision?: any;
         recipe?: any;
@@ -634,21 +902,74 @@ export default function BeltConveyorCalculatorApp() {
         is_calculated?: boolean;
         outputs_stale?: boolean;
       };
-      const { configuration, revision, recipe, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale } = data;
 
-      // Update loaded IDs (configuration/revision or fallback to recipe)
-      const configId = configuration?.id || recipe?.id;
+      const { applicationId: topLevelId, configuration, revision, recipe, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale } = data;
+
+      // Get the application ID - prefer top-level, then fallback to nested
+      const configId = topLevelId || configuration?.id || recipe?.id;
       const revisionId = revision?.id || recipe?.id;
-      if (configId) setLoadedConfigurationId(configId);
-      if (revisionId) setLoadedRevisionId(revisionId);
 
-      // Update calculation status (v1.21)
-      if (newCalcStatus) setCalculationStatus(newCalcStatus);
-      if (newOutputsStale !== undefined) setOutputsStale(newOutputsStale);
+      // DEV: SAVE_RESPONSE
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV][SAVE_RESPONSE]', {
+          statusCode: response.status,
+          fullResponse: data,
+          derivedConfigId: configId,
+          derivedRevisionId: revisionId,
+        });
+      }
+
+      if (!configId) {
+        throw new Error('Save succeeded but no application ID returned');
+      }
 
       // Save to localStorage for "last used" feature
-      if (typeof window !== 'undefined' && configId) {
+      if (typeof window !== 'undefined') {
         localStorage.setItem(LAST_APP_KEY, configId);
+      }
+
+      // CRITICAL: Reload the application from server to get fresh truth
+      // This ensures we exit Draft mode and have consistent state
+      if (process.env.NODE_ENV === 'development') {
+        console.log('[DEV][SaveTarget] Reloading application from server:', configId);
+      }
+
+      const reloadResponse = await fetch(`/api/applications/load?app=${encodeURIComponent(configId)}`);
+      if (reloadResponse.ok) {
+        const reloadData = await reloadResponse.json();
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[DEV][POST_SAVE_HYDRATION] About to call loadApplicationFromResponse', {
+            configId,
+            reloadData,
+            currentLastLoadParams: lastLoadParams,
+            currentParams,
+          });
+        }
+        // IMPORTANT: Update lastLoadParams BEFORE calling loadApplicationFromResponse
+        // This prevents the URL params change effect from immediately resetting our state
+        // because loadApplicationFromResponse sets loadState='loaded' which could trigger the effect
+        setLastLoadParams(currentParams);
+        loadApplicationFromResponse(reloadData);
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[DEV][POST_SAVE_HYDRATION] loadApplicationFromResponse completed');
+        }
+        showToast(save_message || 'Saved successfully');
+      } else {
+        // Fallback: just set the IDs if reload fails
+        console.warn('[SaveTarget] Reload failed, using local state');
+        // DEV: SET_LOADED_APP_ID (fallback)
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[DEV][SET_LOADED_APP_ID]', {
+            newValue: configId,
+            source: 'handleSelectSaveTarget_fallback',
+            reloadStatus: reloadResponse.status,
+          });
+        }
+        if (configId) setLoadedConfigurationId(configId);
+        if (revisionId) setLoadedRevisionId(revisionId);
+        if (newCalcStatus) setCalculationStatus(newCalcStatus);
+        if (newOutputsStale !== undefined) setOutputsStale(newOutputsStale);
+        showToast(save_message || 'Saved (reload pending)');
       }
 
       // Persist draft vault entries to the database
@@ -713,9 +1034,6 @@ export default function BeltConveyorCalculatorApp() {
       // Set initial loaded payload
       const currentPayload = buildCurrentPayload();
       setInitialLoadedPayload(currentPayload);
-
-      // Show save feedback message from API (v1.21)
-      showToast(save_message || `Saved to ${formatSaveTarget(target)}`);
     } catch (error) {
       console.error('[SaveTarget] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to save');
@@ -800,7 +1118,10 @@ export default function BeltConveyorCalculatorApp() {
         {/* Application Context Header */}
         <ApplicationContextHeader
           context={context}
-          onUnlink={handleClear}
+          loadedConfigurationId={loadedConfigurationId}
+          onClear={handleClear}
+          onDeleteLine={handleDeleteLine}
+          onDeleteDraft={handleDeleteDraft}
           isDirty={isDirty}
           isSaving={isSaving}
           onSave={handleSave}

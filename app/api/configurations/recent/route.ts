@@ -48,6 +48,7 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient();
 
     // Fetch recent recipes that are user configurations (slug starts with "config:")
+    // Exclude soft-deleted and deactivated records
     const { data: recipes, error } = await supabase
       .from('calc_recipes')
       .select(`
@@ -60,6 +61,8 @@ export async function GET(request: NextRequest) {
         created_at
       `)
       .like('slug', 'config:%')
+      .is('deleted_at', null)
+      .eq('is_active', true)
       .order('updated_at', { ascending: false })
       .limit(limit);
 
