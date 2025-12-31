@@ -1,351 +1,383 @@
-# Pulley Data + UI Map Report
+# Pulley Data + UI Map
 
-**Generated:** 2024-12-31
-**Updated:** 2024-12-31
-**Version:** v1.28
-**Purpose:** Phase 0 inventory for Pulley Model Simplification (PCI-Aligned)
-**Branch:** fix/pulley-admin
-**Status:** All 8 phases complete
+**Updated:** 2025-12-31
+**Version:** vNext (Pulley Library + Per-Application Pulleys)
+**Status:** Current
 
 ---
 
-## Executive Summary
+## 1) Purpose
 
-Today's pulley selection uses a **dual model**:
-1. **Legacy**: `pulley_catalog` table with `head_pulley_catalog_key` / `tail_pulley_catalog_key`
-2. **Current (v1.24+)**: `pulley_families` + `pulley_variants` tables with `drive_pulley_variant_key` / `tail_pulley_variant_key`
-
-Calculations consume: `diameter_in`, `shell_od_in`, `finished_od_in`, `shell_wall_in` (for PCI checks)
-
-Admin pages active: `/admin/pulleys`, `/admin/pulley-families`, `/admin/pulley-variants`
-
-Migration strategy: **dual-read + alias map**
+This document maps the database schema, UI components, API routes, and calculation engine integration for the pulley system. It serves as the single source of truth for how pulleys work in the application.
 
 ---
 
-## 1. Database Tables
+## 2) The New Data Model
 
-### 1.1 pulley_catalog (v1.15 - Legacy)
-**Migration:** `supabase/migrations/20251226_pulley_catalog.sql`
+### A) pulley_library_styles (Admin Truth)
+
+**Purpose:** Engineering truth for pulley styles. Defines what styles exist, their eligibility constraints, and PCI stress limits. Managed by admins only.
+
+**Location:** `supabase/migrations/20251231300000_pulley_reset.sql`
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `catalog_key` | text PK | Stable identifier (e.g., STD_DRUM_4_STEEL) |
-| `display_name` | text | Human-readable name |
-| `manufacturer` | text | PCI, etc. |
-| `part_number` | text | Mfg part number |
-| `diameter_in` | numeric | Nominal diameter |
-| `face_width_min_in` | numeric | Min face width |
-| `face_width_max_in` | numeric | Max face width |
-| `crown_height_in` | numeric | Crown height (0 = flat) |
-| `type` | enum | DRUM, WING, SPIRAL, MAGNETIC |
-| `shell_material` | text | Steel, Stainless, etc. |
-| `is_lagged` | boolean | Has lagging? |
-| `lagging_type` | text | Rubber, Urethane, etc. |
-| `lagging_thickness_in` | numeric | Lagging thickness |
-| `shaft_arrangement` | enum | THROUGH_SHAFT_EXTERNAL_BEARINGS, STUB_SHAFT_EXTERNAL_BEARINGS, INTERNAL_BEARINGS |
-| `hub_connection` | enum | KEYED, TAPER_LOCK, QD_BUSHING, etc. |
-| `allow_head_drive` | boolean | Can be used at head/drive? |
-| `allow_tail` | boolean | Can be used at tail? |
-| `allow_snub` | boolean | Can be used as snub? |
-| `allow_bend` | boolean | Can be used as bend? |
-| `allow_takeup` | boolean | Can be used at take-up? |
-| `max_shaft_rpm` | numeric | Max RPM |
-| `max_belt_speed_fpm` | numeric | Max belt speed |
-| `max_tension_pli` | numeric | Max tension per linear inch |
-| `is_preferred` | boolean | Preferred selection |
-| `is_active` | boolean | Soft delete flag |
+| `key` | TEXT PK | Immutable identifier (e.g., `DRUM_STEEL_STANDARD`) |
+| `name` | TEXT | Display name |
+| `description` | TEXT | Description shown in UI |
+| `style_type` | ENUM | `DRUM`, `WING`, `SPIRAL_WING` |
+| `material_class` | TEXT | Default: `STEEL` |
+| `eligible_drive` | BOOLEAN | Can be used at drive position |
+| `eligible_tail` | BOOLEAN | Can be used at tail position |
+| `eligible_dirty_side` | BOOLEAN | Can be used on dirty/return side |
+| `eligible_crown` | BOOLEAN | Supports crowned face profile |
+| `eligible_v_guided` | BOOLEAN | Supports V-guided face profile |
+| `eligible_lagging` | BOOLEAN | Can have lagging applied |
+| `face_width_rule` | TEXT | `BELT_PLUS_ALLOWANCE` or `MANUAL_RANGE` |
+| `face_width_allowance_in` | NUMERIC | Default allowance (2.0") |
+| `tube_stress_limit_flat_psi` | NUMERIC | PCI limit for flat/crowned (10000) |
+| `tube_stress_limit_vgroove_psi` | NUMERIC | PCI limit for V-groove (3400) |
+| `is_active` | BOOLEAN | Soft delete flag |
+| `sort_order` | INTEGER | Display ordering |
 
-**Constraint:** INTERNAL_BEARINGS → allow_tail=true, all others=false
-
-**Audit Table:** `pulley_catalog_versions` (change tracking)
+**Admin edits:** All fields except `key` (immutable after creation)
+**Users never edit:** This table directly; users select styles via application_pulleys
 
 ---
 
-### 1.2 pulley_families (v1.30 - Current)
-**Migration:** `supabase/migrations/20251230200000_pulley_families_variants.sql`
+### B) application_pulleys (Per-Application Instance)
+
+**Purpose:** Stores the actual pulley configuration for each application line (calc_recipes row). Each application can have one drive pulley and one tail pulley.
+
+**Location:** `supabase/migrations/20251231300000_pulley_reset.sql`
 
 | Column | Type | Description |
 |--------|------|-------------|
-| `pulley_family_key` | text PK | Stable identifier (e.g., PCI_FC_4IN_42_5_K10) |
-| `manufacturer` | text | PCI, etc. |
-| `style` | text | FLAT_FACE, CROWNED, WING, SPIRAL |
-| `material` | text | Steel, Stainless, etc. |
-| `shell_od_in` | numeric | Shell outer diameter |
-| `face_width_in` | numeric | Face width |
-| `shell_wall_in` | numeric | Shell wall thickness |
-| `is_crowned` | boolean | Has crown? |
-| `crown_type` | text | Crown type description |
-| `v_groove_section` | text | V-groove profile (K10, K13, K17, etc.) |
-| `v_groove_top_width_in` | numeric | V-groove top width |
-| `v_groove_bottom_width_in` | numeric | V-groove bottom width |
-| `v_groove_depth_in` | numeric | V-groove depth |
-| `version` | text | Data version |
-| `source` | text | Source document reference |
-| `notes` | text | Notes |
-| `is_active` | boolean | Soft delete flag |
+| `id` | UUID PK | Auto-generated |
+| `application_line_id` | UUID | FK to `calc_recipes.id` |
+| `position` | ENUM | `DRIVE` or `TAIL` |
+| `style_key` | TEXT FK | References `pulley_library_styles.key` |
+| `face_profile` | ENUM | `FLAT`, `CROWNED`, `V_GUIDED` (derived from belt tracking) |
+| `v_guide_key` | TEXT | V-guide profile key (only if face_profile = V_GUIDED) |
+| `lagging_type` | ENUM | `NONE`, `RUBBER`, `URETHANE` |
+| `lagging_thickness_in` | NUMERIC | Required if lagging_type != NONE |
+| `face_width_in` | NUMERIC | Face width |
+| `shell_od_in` | NUMERIC | Shell outer diameter (for PCI) |
+| `shell_wall_in` | NUMERIC | Shell wall thickness (for PCI) |
+| `hub_centers_in` | NUMERIC | Hub center distance (for PCI) |
+| `finished_od_in` | NUMERIC | Auto-computed: shell_od + 2×lagging |
+| `enforce_pci_checks` | BOOLEAN | Enable PCI tube stress validation |
+| `notes` | TEXT | User notes |
+
+**Constraints:**
+- `UNIQUE(application_line_id, position)` — one drive, one tail per app
+- `v_guide_key` required when `face_profile = V_GUIDED`
+- `lagging_thickness_in` required when `lagging_type != NONE`
 
 ---
 
-### 1.3 pulley_variants (v1.30 - Current)
-**Migration:** `supabase/migrations/20251230200000_pulley_families_variants.sql`
+## 3) User Workflow (Application UI)
 
-| Column | Type | Description |
-|--------|------|-------------|
-| `pulley_variant_key` | text PK | Stable identifier |
-| `pulley_family_key` | text FK | References pulley_families |
-| `bore_in` | numeric | Bore diameter |
-| `hub_style` | text | XT, QD, TAPER_LOCK, etc. |
-| `bearing_type` | text | Bearing type |
-| `lagging_type` | text | SBR, URETHANE, CERAMIC, etc. |
-| `lagging_thickness_in` | numeric | Lagging thickness |
-| `lagging_durometer_shore_a` | numeric | Lagging durometer |
-| `finished_od_in` | numeric | Finished OD (incl. lagging) - overrides family shell_od_in |
-| `runout_max_in` | numeric | Max runout tolerance |
-| `paint_spec` | text | Paint specification |
-| `version` | text | Data version |
-| `source` | text | Source document reference |
-| `notes` | text | Notes |
-| `is_active` | boolean | Soft delete flag |
+### Location
+`/console/belt` → Tab: Conveyor Physical → Accordion: Pulleys & Belt Interface
 
----
+### UI Structure
 
-## 2. TypeScript Libraries
+Two side-by-side cards:
 
-### 2.1 src/lib/pulley-catalog.ts
-**Types:**
-- `PulleyCatalogItem` - Interface matching pulley_catalog table
-- `PulleyStation` - 'head_drive' | 'tail' | 'snub' | 'bend' | 'takeup'
-- `ShaftArrangement` - Enum with 3 values
-- `HubConnection` - Enum with 6 values
-- `PulleyConstruction` - 'DRUM' | 'WING' | 'SPIRAL' | 'MAGNETIC'
+| Card | Position | Shows |
+|------|----------|-------|
+| Head/Drive Pulley | DRIVE | Style name, face profile badge, finished OD |
+| Tail Pulley | TAIL | Style name, face profile badge, finished OD |
 
-**Functions:**
-- `getEffectiveDiameter(item)` - Returns diameter + 2×lagging_thickness
-- `isStationCompatible(item, station)` - Checks allow_* flags
-- `hasInternalBearings(item)` - Checks shaft_arrangement
-- `filterPulleys(items, criteria)` - Filters with validation
-- `getEffectiveDiameterByKey(key)` - Lookup by catalog_key
-- `isPulleyKeyValid(key)` - Validates catalog key exists
+### Configure Button
+Each card has a **"Configure Pulleys" / "Edit Pulleys"** button that opens `PulleyConfigModal`.
 
-**Cache:** `setCachedPulleys()`, `getCachedPulleys()`, `clearPulleyCatalogCache()`
+### Modal Workflow
+1. User opens modal
+2. Tabs: Drive | Tail
+3. Select style from filtered dropdown (filtered by position + tracking)
+4. Set lagging type/thickness
+5. Set face width (defaults to belt width + allowance)
+6. (Advanced) Set shell OD/wall/hub centers for PCI
+7. Save → creates/updates `application_pulleys` rows
+8. Modal closes, cards show summary
+
+### Draft App Constraint
+**CURRENT LIMITATION:** The Configure button requires `applicationLineId` (calc_recipes.id). Draft applications have no ID until first save, so users cannot configure pulleys until after saving at least once.
+
+**File:** `app/components/TabConveyorPhysical.tsx:1239-1244`
 
 ---
 
-### 2.2 src/lib/pulley-families.ts
-**Types:**
-- `PulleyFamily` - Interface matching pulley_families table
-- `PulleyVariant` - Interface matching pulley_variants table
-- `PulleyVariantWithFamily` - Variant with embedded family
+## 4) Tracking Drives Face Profile
 
-**Functions:**
-- `getShellOdIn(family)` - Returns family.shell_od_in
-- `getFinishedOdIn(variant, family)` - Returns variant.finished_od_in or fallback
-- `getVariantFinishedOdIn(variantWithFamily)` - Same for joined object
-- `getVariantDisplayLabel(variant, family)` - Generate display label
-- `validatePulleyFamily(family)` - Validates family data
-- `validatePulleyVariant(variant)` - Validates variant data
-- `getFamilyByKey(key)` - Lookup family
-- `getVariantByKey(key)` - Lookup variant
-- `getFinishedOdByVariantKey(key)` - **Main lookup for calculator**
-- `getShellOdByVariantKey(key)` - Get shell OD
-- `isVariantKeyValid(key)` - Validates variant key exists
+### Core Principle
+Belt tracking selection determines pulley face profile. Users do NOT directly select face profile in the pulley modal — it's derived and shown read-only.
 
-**Cache:** `setCachedPulleyFamilies()`, `setCachedPulleyVariants()`, etc.
+### Derivation Logic
 
----
+**File:** `src/lib/pulley-tracking.ts:37-52`
 
-## 3. API Routes
+```
+inputs.belt_tracking_method = 'V-guided'  → V_GUIDED
+inputs.belt_tracking_method = 'Crowned'   → CROWNED
+else                                      → FLAT
+```
 
-| Route | Method | Description |
-|-------|--------|-------------|
-| `/api/pulleys` | GET | Fetch active pulley_catalog items |
-| `/api/pulleys` | POST | Create/update catalog item (admin) |
-| `/api/pulley-families` | GET | Fetch active families (supports `includeInactive`) |
-| `/api/pulley-families` | POST | Create/update family (admin) |
-| `/api/pulley-variants` | GET | Fetch active variants with family join (supports `familyKey` filter) |
-| `/api/pulley-variants` | POST | Create/update variant (admin) |
+### Eligibility Filtering
 
----
+**File:** `src/lib/pulley-tracking.ts:97-117`
 
-## 4. Admin Pages
+Function `getEligiblePulleyStyles(styles, position, trackingMode)` filters styles:
 
-| Route | Purpose | Status |
-|-------|---------|--------|
-| `/admin/pulleys` | Pulley Catalog Editor | Legacy (v1.15) |
-| `/admin/pulley-families` | Pulley Families Editor | Current (v1.30) |
-| `/admin/pulley-variants` | Pulley Variants Editor | Current (v1.30) |
+1. Must be `is_active = true`
+2. Position check:
+   - DRIVE → `eligible_drive = true`
+   - TAIL → `eligible_tail = true`
+3. Tracking check:
+   - V_GUIDED → `eligible_v_guided = true`
+   - CROWNED → `eligible_crown = true`
+   - FLAT → no additional filter
+
+### Not Yet Implemented
+- `eligible_dirty_side` is stored but NOT used in filtering logic
+- No automatic detection of "dirty side" position
 
 ---
 
-## 5. User-Facing UI
+## 5) Geometry Defaults + Computations
 
-### 5.1 Component: PulleySelect.tsx
-**Location:** `app/components/PulleySelect.tsx`
+### Face Width Default
+```
+default_face_width = belt_width_in + style.face_width_allowance_in
+```
+Where `face_width_allowance_in` defaults to 2.0" in seed data.
 
-**Usage:** Used in `TabConveyorPhysical.tsx` for pulley selection
+**File:** `app/components/PulleyConfigModal.tsx:49-50, 101-102`
 
-**Data Source:** Currently fetches from `/api/pulley-variants` (v1.24+)
+### Finished OD Computation
+```
+finished_od_in = shell_od_in + (2 × lagging_thickness_in)
+```
+If `lagging_type = NONE`, then `finished_od_in = shell_od_in`.
 
-### 5.2 Hooks
-| Hook | Source |
-|------|--------|
-| `usePulleyCatalog` | `/api/pulleys` (legacy) |
-| `usePulleyFamilies` | `/api/pulley-families` + `/api/pulley-variants` |
+**Computed by:** Database trigger `compute_finished_od()` on INSERT/UPDATE.
+
+**File:** `supabase/migrations/20251231300000_pulley_reset.sql:204-216`
 
 ---
 
-## 6. Calculator Integration
+## 6) API Contract
 
-### 6.1 Input Fields (schema.ts)
+### /api/admin/pulley-library
+
+**File:** `app/api/admin/pulley-library/route.ts`
+
+| Method | Purpose | Auth |
+|--------|---------|------|
+| GET | List styles | — |
+| POST | Create style | Admin |
+| PUT | Update style | Admin |
+| DELETE | Soft delete (set is_active=false) | Admin |
+
+**GET Query Params:**
+- `active_only=false` to include inactive styles (default: true)
+
+**POST/PUT Payload:**
 ```typescript
-// Current (v1.24+)
-drive_pulley_variant_key?: string;
-tail_pulley_variant_key?: string;
-drive_pulley_manual_override?: boolean;
-tail_pulley_manual_override?: boolean;
-drive_pulley_diameter_in?: number;
-tail_pulley_diameter_in?: number;
-
-// Legacy (v1.15)
-head_pulley_catalog_key?: string;
-tail_pulley_catalog_key?: string;
-pulley_diameter_in?: number;  // Legacy fallback
+{
+  key: string,           // Required, uppercase, immutable after create
+  name: string,          // Required
+  style_type: 'DRUM' | 'WING' | 'SPIRAL_WING',
+  eligible_drive: boolean,
+  eligible_tail: boolean,
+  eligible_crown: boolean,
+  eligible_v_guided: boolean,
+  eligible_lagging: boolean,
+  // ... other fields
+}
 ```
 
-### 6.2 Resolution Priority (formulas.ts:98-162)
+**Validation:**
+- Key must be unique
+- Key normalized to uppercase with underscores
+- Style type must be valid enum value
+
+---
+
+### /api/application-pulleys
+
+**File:** `app/api/application-pulleys/route.ts`
+
+| Method | Purpose |
+|--------|---------|
+| GET | Fetch pulleys for an application line |
+| POST | Create/upsert pulley config |
+| DELETE | Remove pulley config |
+
+**GET Query Params:**
+- `line_id` (required) — The application line UUID
+- `position` (optional) — Filter by DRIVE or TAIL
+
+**POST Payload:**
+```typescript
+{
+  application_line_id: string,  // Required
+  position: 'DRIVE' | 'TAIL',   // Required
+  style_key: string,            // Required, must exist
+  face_profile: 'FLAT' | 'CROWNED' | 'V_GUIDED',
+  v_guide_key?: string,         // Required if V_GUIDED
+  lagging_type: 'NONE' | 'RUBBER' | 'URETHANE',
+  lagging_thickness_in?: number, // Required if lagging != NONE
+  face_width_in?: number,
+  shell_od_in?: number,
+  shell_wall_in?: number,
+  hub_centers_in?: number,
+  enforce_pci_checks?: boolean,
+  notes?: string
+}
 ```
-1. Manual override flag + direct diameter → use drive_pulley_diameter_in
-2. Variant key → getFinishedOdByVariantKey() → finished_od_in or shell_od_in
-3. Legacy catalog key → getEffectiveDiameterByKey()
-4. Direct diameter fields (backward compat)
-5. Legacy pulley_diameter_in fallback
+
+**Validation (API enforces):**
+- Style must exist and be active
+- Style must be eligible for position (drive/tail)
+- Style must be eligible for face_profile (crown/v_guided)
+- V-guide key required for V_GUIDED profile
+- Lagging thickness required for non-NONE lagging
+
+**Upsert:** Uses `ON CONFLICT (application_line_id, position)` to update existing.
+
+**DELETE Query Params:**
+- `id` (required) — The application_pulleys UUID
+
+---
+
+## 7) Calculation Engine Integration
+
+### Current Architecture
+The calculation engine (`src/models/sliderbed_v1/formulas.ts`) reads from `inputs.*` fields, not directly from `application_pulleys`. A sync layer bridges the gap.
+
+### getEffectivePulleyDiameters()
+
+**File:** `src/models/sliderbed_v1/formulas.ts:104-168`
+
+**Priority for drive pulley:**
+1. `drive_pulley_manual_override = true` → use `inputs.drive_pulley_diameter_in`
+2. `drive_pulley_variant_key` → legacy lookup (now returns undefined)
+3. `head_pulley_catalog_key` → legacy lookup (now returns undefined)
+4. `drive_pulley_diameter_in > 0` → use directly
+5. `pulley_diameter_in > 0` → legacy fallback
+
+### Sync from application_pulleys → inputs
+
+**File:** `app/components/TabConveyorPhysical.tsx:249-271`
+
+When application_pulleys are loaded, the UI syncs to inputs:
+
+```typescript
+// Drive pulley
+inputs.drive_pulley_diameter_in = drivePulley.finished_od_in
+inputs.drive_pulley_manual_override = true
+
+// Tail pulley
+inputs.tail_pulley_diameter_in = tailPulley.finished_od_in
+inputs.tail_pulley_manual_override = true
 ```
 
-### 6.3 Fields Consumed by Calculations
-| Field | Used In |
-|-------|---------|
-| `drivePulleyDiameterIn` | Belt length, RPM, torque, frame height, shaft sizing, PIW/PIL lookup |
-| `tailPulleyDiameterIn` | Belt length, snub rollers, min pulley check |
-| `drive_tube_od_in` | PCI tube stress (from shell_od_in or override) |
-| `drive_tube_wall_in` | PCI tube stress (from shell_wall_in or override) |
+This ensures `getEffectivePulleyDiameters()` uses priority #1 (manual override).
 
-### 6.4 Output Fields Generated
-| Field | Source |
-|-------|--------|
-| `drive_pulley_shell_od_in` | From variant's family |
-| `drive_pulley_finished_od_in` | From variant or fallback |
-| `tail_pulley_shell_od_in` | From variant's family |
-| `tail_pulley_finished_od_in` | From variant or fallback |
-| `pci_drive_tube_stress_psi` | PCI formula result |
-| `pci_tail_tube_stress_psi` | PCI formula result |
+### NOT Currently Wired
+The following `application_pulleys` fields are **NOT synced** to inputs for PCI calculations:
+
+| application_pulleys | Missing inputs.* field |
+|---------------------|------------------------|
+| `shell_od_in` | `drive_tube_od_in` |
+| `shell_wall_in` | `drive_tube_wall_in` |
+| `hub_centers_in` | (no equivalent) |
+
+**Impact:** PCI tube stress checks cannot use per-application pulley geometry yet.
 
 ---
 
-## 7. Existing Constraints & Rules
+## 8) Seed Data
 
-### 7.1 Database Constraints
-- `INTERNAL_BEARINGS` → tail-only (enforced at DB, TS, and UI levels)
-- Face width must be within min/max bounds
-- Positive dimensions required
+### Current Seed Styles (2)
 
-### 7.2 TypeScript Validation
-- `validatePulleyFamily()` - Validates shell_od_in > 0, face_width_in > 0, etc.
-- `validatePulleyVariant()` - Validates finished_od_in > 0 or null, etc.
-- `isStationCompatible()` - Checks allow_* flags
+| Key | Name | Type | Eligible |
+|-----|------|------|----------|
+| `DRUM_STEEL_STANDARD` | Standard Drum | DRUM | drive, tail, crown, v_guided, lagging |
+| `WING_STEEL_STANDARD` | Wing Pulley | WING | tail, dirty_side |
 
-### 7.3 Missing (needs implementation)
-- Dirty-side eligibility inference
-- V-groove → dirty-side incompatibility
-- Drive-capable enforcement
-- Crown eligibility enforcement
+**File:** `supabase/migrations/20251231300000_pulley_reset.sql:222-248`
 
----
-
-## 8. Migration Strategy
-
-### 8.1 Dual-Read Approach
-1. New `pulley_definitions` and `pulley_configurations` tables created alongside existing
-2. `pulley_aliases` table maps legacy keys to new keys
-3. Calculator adapter tries new model first, falls back to legacy
-4. All saved configurations continue to work via alias resolution
-
-### 8.2 ID Continuity
-- Legacy `catalog_key`, `pulley_family_key`, `pulley_variant_key` remain valid
-- Aliases table ensures old keys resolve to new definitions/configurations
-- No breaking changes to saved applications
-
-### 8.3 Admin Consolidation
-- New `/admin/pulleys` with tabs replaces 3 separate pages
-- Old pages deprecated with banner, not deleted
-- Alias tab shows unmapped legacy entries
+### Minimum Required Seed Set (Future)
+- [ ] DRUM sizes: 3", 4", 5", 6", 8" with default shell_od/wall
+- [ ] Crowned drum variants
+- [ ] Wing pulley sizes
+- [ ] Spiral wing (when supported)
+- [ ] V-groove drum variants
 
 ---
 
-## 9. New PCI-Aligned Model (v1.28)
+## 9) Deprecations
 
-### 9.1 New Tables (side-by-side)
+### Removed Tables
+- `pulley_catalog`, `pulley_catalog_versions`
+- `pulley_families`, `pulley_variants`
+- `pulley_definitions`, `pulley_configurations`, `pulley_aliases`, `pulley_overrides`
 
-| Table | Purpose |
-|-------|---------|
-| `pulley_definitions` | Engineering truth - identity + constraints |
-| `pulley_configurations` | Bounded user choices within constraints |
-| `pulley_aliases` | Legacy key mapping for ID continuity |
-| `pulley_overrides` | Tiered escape hatch with audit trail |
+### Removed Routes
+- `/api/pulleys`
+- `/api/pulley-families`
+- `/api/pulley-variants`
 
-### 9.2 New Libraries
+### Removed Admin Pages
+- `/admin/pulleys`
+- `/admin/pulley-families`
+- `/admin/pulley-variants`
 
-| File | Purpose |
-|------|---------|
-| `src/lib/pulley-definitions.ts` | TypeScript types and utilities |
-| `src/models/sliderbed_v1/pulleyRules.ts` | Explicit rule functions |
-| `src/models/sliderbed_v1/pulleySelectionAdapter.ts` | Calculation adapter (dual-read) |
+### Removed Components/Libraries
+- `app/components/PulleySelect.tsx`
+- `app/hooks/usePulleyCatalog.ts`
+- `app/hooks/usePulleyFamilies.ts`
+- `src/lib/pulley-catalog.ts`
+- `src/lib/pulley-families.ts`
 
-### 9.3 New API Routes
-
-| Route | Purpose |
-|-------|---------|
-| `/api/pulley-definitions` | CRUD for definitions |
-| `/api/pulley-configurations` | CRUD for configurations |
-| `/api/pulley-aliases` | CRUD for aliases |
-| `/api/pulley-aliases/resolve` | Resolve legacy key to new model |
-| `/api/pulley-overrides` | CRUD for overrides |
-
-### 9.4 New Admin Page
-
-| Route | Purpose |
-|-------|---------|
-| `/admin/pulley-management` | Unified admin with 4 tabs (Definitions, Configurations, Aliases, Overrides) |
-
-### 9.5 Migration Scripts
-
-| File | Purpose |
-|------|---------|
-| `20251231220000_pulley_definitions_model.sql` | Create new tables + enums |
-| `20251231230000_migrate_legacy_pulleys.sql` | Transfer data from legacy tables |
+**No more pulley families/variants/catalog.** The new model is:
+- `pulley_library_styles` (admin truth)
+- `application_pulleys` (per-app instances)
 
 ---
 
-## Appendix: File Locations
+## 10) Known Gaps / Next Improvements
 
-| Type | Path |
-|------|------|
-| Migration (catalog) | `supabase/migrations/20251226_pulley_catalog.sql` |
-| Migration (families) | `supabase/migrations/20251230200000_pulley_families_variants.sql` |
-| Migration (new model) | `supabase/migrations/20251231220000_pulley_definitions_model.sql` |
-| Migration (data) | `supabase/migrations/20251231230000_migrate_legacy_pulleys.sql` |
-| Library (catalog) | `src/lib/pulley-catalog.ts` |
-| Library (families) | `src/lib/pulley-families.ts` |
-| Test (catalog) | `src/lib/pulley-catalog.test.ts` |
-| Test (families) | `src/lib/pulley-families.test.ts` |
-| API (catalog) | `app/api/pulleys/route.ts` |
-| API (families) | `app/api/pulley-families/route.ts` |
-| API (variants) | `app/api/pulley-variants/route.ts` |
-| Admin (catalog) | `app/admin/pulleys/page.tsx` |
-| Admin (families) | `app/admin/pulley-families/page.tsx` |
-| Admin (variants) | `app/admin/pulley-variants/page.tsx` |
-| Hook (catalog) | `app/hooks/usePulleyCatalog.ts` |
-| Hook (families) | `app/hooks/usePulleyFamilies.ts` |
-| Component | `app/components/PulleySelect.tsx` |
-| Formulas | `src/models/sliderbed_v1/formulas.ts` |
-| Schema | `src/models/sliderbed_v1/schema.ts` |
+1. **PCI Geometry Sync**
+   - Wire `shell_od_in`, `shell_wall_in`, `hub_centers_in` from application_pulleys to inputs for PCI tube stress calculations.
+
+2. **Draft Configuration Before Save**
+   - Allow pulley configuration on draft applications (before first save creates calc_recipes row).
+
+3. **Dirty-Side Eligibility**
+   - Implement filtering logic using `eligible_dirty_side` when tail is on return/dirty side.
+
+4. **More Seeded Styles**
+   - Add common drum sizes with pre-populated shell geometry for quick selection.
+
+5. **Style Variants/Sizes**
+   - Consider adding a "pulley sizes" concept under each style if per-size geometry is needed.
+
+---
+
+## File Reference
+
+| Purpose | Path |
+|---------|------|
+| Migration | `supabase/migrations/20251231300000_pulley_reset.sql` |
+| Tracking logic | `src/lib/pulley-tracking.ts` |
+| Config modal | `app/components/PulleyConfigModal.tsx` |
+| Physical tab | `app/components/TabConveyorPhysical.tsx` |
+| Admin page | `app/admin/pulley-library/page.tsx` |
+| Admin API | `app/api/admin/pulley-library/route.ts` |
+| App pulleys API | `app/api/application-pulleys/route.ts` |
+| Calc formulas | `src/models/sliderbed_v1/formulas.ts` |
