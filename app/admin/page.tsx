@@ -23,32 +23,12 @@ export default function AdminPage() {
           </Link>
 
           <Link
-            href="/admin/pulleys"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+            href="/admin/pulley-library"
+            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-blue-300 bg-blue-50"
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pulley Catalog Admin</h2>
-            <p className="text-sm text-gray-600">
-              Manage pulley catalog entries (internal bearings = tail only)
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/pulley-families"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pulley Families</h2>
-            <p className="text-sm text-gray-600">
-              Manage pulley family definitions (shell OD, face width, V-groove specs)
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/pulley-variants"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Pulley Variants</h2>
-            <p className="text-sm text-gray-600">
-              Manage pulley variants (bore, hub, lagging, finished OD)
+            <h2 className="text-lg font-semibold text-blue-900 mb-2">Pulley Library</h2>
+            <p className="text-sm text-blue-700">
+              Manage pulley styles (Drum, Wing) with PCI-aligned stress limits
             </p>
           </Link>
 
@@ -92,6 +72,8 @@ export default function AdminPage() {
             </p>
           </Link>
         </div>
+
+        {/* PHASE 0: Legacy pulley admin pages removed - Phase 1 will add new pulley library admin */}
       </main>
     </>
   );
