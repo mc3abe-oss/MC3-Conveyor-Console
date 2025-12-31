@@ -15,7 +15,6 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
   PULLEY_DIAMETER_PRESETS,
-  PulleyDiameterPreset,
   FrameHeightMode,
   EndSupportType,
   derivedLegsRequired,
@@ -56,6 +55,9 @@ import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
 import { useState, useEffect } from 'react';
+import PulleyConfigModal from './PulleyConfigModal';
+import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
+import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
   CleatCatalogItem,
   CleatCenterFactor,
@@ -82,6 +84,8 @@ interface TabConveyorPhysicalProps {
   getTrackingIssue: () => Issue | undefined;
   /** Get min pulley issues (pre-calc) */
   getMinPulleyIssues: () => Issue[];
+  /** Application line ID for pulley configuration (calc_recipes.id) */
+  applicationLineId?: string | null;
 }
 
 /**
@@ -122,6 +126,7 @@ export default function TabConveyorPhysical({
   sectionCounts,
   getTrackingIssue,
   getMinPulleyIssues,
+  applicationLineId,
 }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
@@ -199,18 +204,99 @@ export default function TabConveyorPhysical({
     minPulleyRequired = drivePulleyIssue?.minPulleyData?.requiredIn ?? tailPulleyIssue?.minPulleyData?.requiredIn ?? minPulleyBaseFromBelt;
   }
 
-  // Both drive and tail use same min pulley value
-  const minPulleyDriveRequired = minPulleyRequired;
-  const minPulleyTailRequired = minPulleyRequired;
-
-  // Derive warning states from issues
+  // Derive warning states from issues (used in legacy override section)
   const drivePulleyBelowMinimum = !!drivePulleyIssue;
   const tailPulleyBelowMinimum = !!tailPulleyIssue;
 
-  // Tracking method for display label
-  const isVGuided =
-    inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
-    inputs.belt_tracking_method === 'V-guided';
+  // Pulley configuration modal state
+  const [isPulleyModalOpen, setIsPulleyModalOpen] = useState(false);
+  const [applicationPulleys, setApplicationPulleys] = useState<ApplicationPulley[]>([]);
+  const [pulleysLoading, setPulleysLoading] = useState(false);
+
+  // Derived tracking mode for display
+  const trackingMode = getBeltTrackingMode({ belt_tracking_method: inputs.belt_tracking_method });
+  const trackingLabel = getFaceProfileLabel(trackingMode);
+
+  // Load existing pulley configurations when applicationLineId changes
+  useEffect(() => {
+    async function loadPulleys() {
+      if (!applicationLineId) {
+        setApplicationPulleys([]);
+        return;
+      }
+      setPulleysLoading(true);
+      try {
+        const res = await fetch(`/api/application-pulleys?line_id=${applicationLineId}`);
+        if (res.ok) {
+          const data = await res.json();
+          setApplicationPulleys(data);
+        }
+      } catch (err) {
+        console.error('Failed to load pulleys:', err);
+      } finally {
+        setPulleysLoading(false);
+      }
+    }
+    loadPulleys();
+  }, [applicationLineId]);
+
+  // Get pulley by position
+  const drivePulley = applicationPulleys.find((p) => p.position === 'DRIVE');
+  const tailPulley = applicationPulleys.find((p) => p.position === 'TAIL');
+
+  // Sync application pulley geometry to inputs for calculation engine
+  // This ensures getEffectivePulleyDiameters() picks up the application_pulleys values
+  useEffect(() => {
+    // Drive pulley sync
+    if (drivePulley?.finished_od_in) {
+      // Use finished_od as the effective diameter
+      if (inputs.drive_pulley_diameter_in !== drivePulley.finished_od_in) {
+        updateInput('drive_pulley_diameter_in', drivePulley.finished_od_in);
+        updateInput('pulley_diameter_in', drivePulley.finished_od_in);
+      }
+    }
+    if (drivePulley?.shell_od_in) {
+      if (inputs.drive_tube_od_in !== drivePulley.shell_od_in) {
+        updateInput('drive_tube_od_in', drivePulley.shell_od_in);
+      }
+    }
+    if (drivePulley?.shell_wall_in) {
+      if (inputs.drive_tube_wall_in !== drivePulley.shell_wall_in) {
+        updateInput('drive_tube_wall_in', drivePulley.shell_wall_in);
+      }
+    }
+
+    // Tail pulley sync
+    if (tailPulley?.finished_od_in) {
+      if (inputs.tail_pulley_diameter_in !== tailPulley.finished_od_in) {
+        updateInput('tail_pulley_diameter_in', tailPulley.finished_od_in);
+      }
+    }
+    if (tailPulley?.shell_od_in) {
+      if (inputs.tail_tube_od_in !== tailPulley.shell_od_in) {
+        updateInput('tail_tube_od_in', tailPulley.shell_od_in);
+      }
+    }
+    if (tailPulley?.shell_wall_in) {
+      if (inputs.tail_tube_wall_in !== tailPulley.shell_wall_in) {
+        updateInput('tail_tube_wall_in', tailPulley.shell_wall_in);
+      }
+    }
+  }, [drivePulley, tailPulley]);
+
+  // Refresh pulleys after modal save
+  const handlePulleySave = async () => {
+    if (!applicationLineId) return;
+    try {
+      const res = await fetch(`/api/application-pulleys?line_id=${applicationLineId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setApplicationPulleys(data);
+      }
+    } catch (err) {
+      console.error('Failed to refresh pulleys:', err);
+    }
+  };
 
   // Compute derived frame height and roller values (using safe diameters for UI display)
   const effectiveFrameHeight = calculateEffectiveFrameHeight(
@@ -268,28 +354,6 @@ export default function TabConveyorPhysical({
         const driveTob = centerlineToTob(driveCl, safeDrivePulleyDia);
         updateInput('drive_tob_in', driveTob);
       }
-    }
-  };
-
-  // Handle pulley preset selection
-  const handleDrivePulleyPresetChange = (preset: string) => {
-    if (preset === 'custom') {
-      updateInput('drive_pulley_preset', 'custom');
-    } else {
-      const value = parseFloat(preset);
-      updateInput('drive_pulley_preset', value as PulleyDiameterPreset);
-      updateInput('drive_pulley_diameter_in', value);
-      updateInput('pulley_diameter_in', value);
-    }
-  };
-
-  const handleTailPulleyPresetChange = (preset: string) => {
-    if (preset === 'custom') {
-      updateInput('tail_pulley_preset', 'custom');
-    } else {
-      const value = parseFloat(preset);
-      updateInput('tail_pulley_preset', value as PulleyDiameterPreset);
-      updateInput('tail_pulley_diameter_in', value);
     }
   };
 
@@ -1128,235 +1192,180 @@ export default function TabConveyorPhysical({
             Pulleys
           </h4>
 
-          {/* ===== DRIVE/HEAD PULLEY SECTION ===== */}
-          <div className="space-y-3">
-            {/* v1.17: Head/Drive Pulley Catalog Selection */}
-            <div>
-              <label htmlFor="head_pulley_catalog_key" className="label">
-                Head/Drive Pulley (from catalog)
-              </label>
-              {/* PHASE 0: Legacy PulleySelect removed - Phase 2 will add application_pulleys modal */}
-              <div className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
-                Pulley configuration moved to per-line settings. Use manual override below.
-              </div>
-            </div>
+          {/* Tracking Mode Display (read-only from belt) */}
+          <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-sm">
+            <span className="text-blue-700 font-medium">Tracking (from Belt): {trackingLabel}</span>
+            {trackingMode === 'V_GUIDED' && inputs.v_guide_key && (
+              <span className="ml-2 text-blue-600">({inputs.v_guide_key})</span>
+            )}
+          </div>
 
-            {/* Read-only catalog diameter display */}
-            <div className="text-sm">
-              <span className="text-gray-600">Diameter (from catalog): </span>
-              {catalogDriveDia !== undefined ? (
-                <span className={`font-medium ${driveOverride ? 'text-gray-400 line-through' : 'text-blue-600'}`}>
-                  {catalogDriveDia}"
-                  {driveOverride && <span className="ml-1 text-amber-600 no-underline">(overridden)</span>}
-                </span>
+          {/* Pulley Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* DRIVE PULLEY CARD */}
+            <div className={`border rounded-lg p-4 ${drivePulley ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="font-medium text-gray-900">Head/Drive Pulley</h5>
+                {drivePulley && (
+                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
+                )}
+              </div>
+
+              {pulleysLoading ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : drivePulley ? (
+                <div className="space-y-1 text-sm">
+                  <div><span className="text-gray-600">Style:</span> <span className="font-medium">{drivePulley.style_key}</span></div>
+                  <div><span className="text-gray-600">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
+                  <div><span className="text-gray-600">Lagging:</span> <span className="font-medium">
+                    {drivePulley.lagging_type === 'NONE' ? 'None' : `${drivePulley.lagging_type} (${drivePulley.lagging_thickness_in || 0}")`}
+                  </span></div>
+                  {drivePulley.finished_od_in && (
+                    <div><span className="text-gray-600">Finished OD:</span> <span className="font-medium text-blue-600">{drivePulley.finished_od_in}"</span></div>
+                  )}
+                  {drivePulley.face_width_in && (
+                    <div><span className="text-gray-600">Face Width:</span> <span className="font-medium">{drivePulley.face_width_in}"</span></div>
+                  )}
+                </div>
               ) : (
-                <span className="text-gray-400">—</span>
+                <p className="text-sm text-gray-500 mb-3">Not configured</p>
+              )}
+
+              {!applicationLineId ? (
+                <p className="text-xs text-amber-600 mt-3">Save application to configure pulleys</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsPulleyModalOpen(true)}
+                  className="mt-3 w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  {drivePulley ? 'Edit Pulleys' : 'Configure Pulleys'}
+                </button>
               )}
             </div>
 
-            {/* Override checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={driveOverride}
-                onChange={(e) => updateInput('drive_pulley_manual_override', e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Override catalog diameter</span>
-            </label>
+            {/* TAIL PULLEY CARD */}
+            <div className={`border rounded-lg p-4 ${tailPulley ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+              <div className="flex items-center justify-between mb-3">
+                <h5 className="font-medium text-gray-900">Tail Pulley</h5>
+                {tailPulley && (
+                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
+                )}
+              </div>
 
-            {/* Warning if neither catalog nor override */}
-            {!catalogDriveDia && !driveOverride && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                Select a pulley from catalog or enable override to specify diameter manually.
-              </p>
-            )}
+              {pulleysLoading ? (
+                <p className="text-sm text-gray-500">Loading...</p>
+              ) : tailPulley ? (
+                <div className="space-y-1 text-sm">
+                  <div><span className="text-gray-600">Style:</span> <span className="font-medium">{tailPulley.style_key}</span></div>
+                  <div><span className="text-gray-600">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
+                  <div><span className="text-gray-600">Lagging:</span> <span className="font-medium">
+                    {tailPulley.lagging_type === 'NONE' ? 'None' : `${tailPulley.lagging_type} (${tailPulley.lagging_thickness_in || 0}")`}
+                  </span></div>
+                  {tailPulley.finished_od_in && (
+                    <div><span className="text-gray-600">Finished OD:</span> <span className="font-medium text-blue-600">{tailPulley.finished_od_in}"</span></div>
+                  )}
+                  {tailPulley.face_width_in && (
+                    <div><span className="text-gray-600">Face Width:</span> <span className="font-medium">{tailPulley.face_width_in}"</span></div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 mb-3">Not configured</p>
+              )}
 
-            {/* Manual diameter controls - only shown when override is enabled */}
-            {driveOverride && (
+              {!applicationLineId ? (
+                <p className="text-xs text-amber-600 mt-3">Save application to configure pulleys</p>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setIsPulleyModalOpen(true)}
+                  className="mt-3 w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+                >
+                  {tailPulley ? 'Edit Pulleys' : 'Configure Pulleys'}
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Min Pulley Requirements */}
+          {minPulleyRequired !== undefined && (
+            <div className="text-xs text-gray-600 bg-gray-100 rounded px-3 py-2">
+              <span className="font-medium">Min pulley diameter:</span> {minPulleyRequired}" ({trackingLabel})
+              {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+                <span className="ml-2 text-amber-600">
+                  (includes {cleatSpacingMultiplier.toFixed(2)}x cleat factor)
+                </span>
+              )}
+            </div>
+          )}
+
+          {/* Legacy Manual Override Section - collapsed by default */}
+          <details className="mt-4">
+            <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
+              Legacy Manual Diameter Override
+            </summary>
+            <div className="mt-3 pl-4 border-l-2 border-gray-200 space-y-4">
+              {/* Drive override */}
               <div>
-                <label htmlFor="drive_pulley_preset" className="label text-sm">
-                  Manual Drive Pulley Diameter (in)
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={driveOverride}
+                    onChange={(e) => updateInput('drive_pulley_manual_override', e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Override drive pulley diameter</span>
                 </label>
-                <div className="flex gap-2">
-                  <select
-                    id="drive_pulley_preset"
-                    className={`input flex-1 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
-                    value={
-                      inputs.drive_pulley_preset === 'custom'
-                        ? 'custom'
-                        : manualDriveDia !== undefined && PULLEY_DIAMETER_PRESETS.includes(manualDriveDia as any)
-                        ? manualDriveDia.toString()
-                        : 'custom'
-                    }
-                    onChange={(e) => handleDrivePulleyPresetChange(e.target.value)}
-                  >
-                    {PULLEY_DIAMETER_PRESETS.map((size) => (
-                      <option key={size} value={size.toString()}>
-                        {size}"
-                      </option>
-                    ))}
-                    <option value="custom">Custom...</option>
-                  </select>
-                  {(inputs.drive_pulley_preset === 'custom' ||
-                    (manualDriveDia !== undefined && !PULLEY_DIAMETER_PRESETS.includes(manualDriveDia as any))) && (
-                    <input
-                      type="number"
-                      id="drive_pulley_diameter_in"
-                      className={`input w-24 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
-                      value={manualDriveDia ?? ''}
+                {driveOverride && (
+                  <div className="mt-2 flex gap-2">
+                    <select
+                      className={`input flex-1 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
+                      value={manualDriveDia?.toString() || ''}
                       onChange={(e) => {
                         const value = e.target.value ? parseFloat(e.target.value) : undefined;
                         updateInput('drive_pulley_diameter_in', value);
                         updateInput('pulley_diameter_in', value);
                       }}
-                      step="0.1"
-                      min="2.5"
-                      max="12"
-                      placeholder="Enter diameter"
-                    />
-                  )}
-                </div>
-                {drivePulleyBelowMinimum && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Drive pulley is below minimum required ({minPulleyDriveRequired}" for{' '}
-                    {isVGuided ? 'V-guided' : 'crowned'} tracking).
-                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                      <span className="block text-red-500 text-xs mt-0.5">
-                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                      </span>
-                    )}
-                  </p>
-                )}
-                {!drivePulleyBelowMinimum && minPulleyDriveRequired !== undefined && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Minimum required: {minPulleyDriveRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
-                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                      <span className="block text-amber-600 text-xs mt-0.5">
-                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                      </span>
-                    )}
-                  </p>
+                    >
+                      <option value="">Select...</option>
+                      {PULLEY_DIAMETER_PRESETS.map((size) => (
+                        <option key={size} value={size.toString()}>{size}"</option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
-
-          {/* ===== TAIL PULLEY SECTION ===== */}
-          <div className="space-y-3">
-            {/* v1.17: Tail Pulley Catalog Selection */}
-            <div>
-              <label htmlFor="tail_pulley_catalog_key" className="label">
-                Tail Pulley (from catalog)
-              </label>
-              {/* PHASE 0: Legacy PulleySelect removed - Phase 2 will add application_pulleys modal */}
-              <div className="text-sm text-gray-500 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
-                Pulley configuration moved to per-line settings. Use manual override below.
-              </div>
-              <p className="text-xs text-gray-500 mt-1">
-                Tail position supports internal bearing pulleys.
-              </p>
-            </div>
-
-            {/* Read-only catalog diameter display */}
-            <div className="text-sm">
-              <span className="text-gray-600">Diameter (from catalog): </span>
-              {catalogTailDia !== undefined ? (
-                <span className={`font-medium ${tailOverride ? 'text-gray-400 line-through' : 'text-blue-600'}`}>
-                  {catalogTailDia}"
-                  {tailOverride && <span className="ml-1 text-amber-600 no-underline">(overridden)</span>}
-                </span>
-              ) : (
-                <span className="text-gray-400">—</span>
-              )}
-            </div>
-
-            {/* Override checkbox */}
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={tailOverride}
-                onChange={(e) => updateInput('tail_pulley_manual_override', e.target.checked)}
-                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-              />
-              <span className="text-sm text-gray-700">Override catalog diameter</span>
-            </label>
-
-            {/* Warning if neither catalog nor override */}
-            {!catalogTailDia && !tailOverride && (
-              <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
-                Select a pulley from catalog or enable override to specify diameter manually.
-              </p>
-            )}
-
-            {/* Manual diameter controls - only shown when override is enabled */}
-            {tailOverride && (
+              {/* Tail override */}
               <div>
-                <label htmlFor="tail_pulley_preset" className="label text-sm">
-                  Manual Tail Pulley Diameter (in)
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={tailOverride}
+                    onChange={(e) => updateInput('tail_pulley_manual_override', e.target.checked)}
+                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <span className="text-sm text-gray-700">Override tail pulley diameter</span>
                 </label>
-                <div className="flex gap-2">
-                  <select
-                    id="tail_pulley_preset"
-                    className={`input flex-1 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
-                    value={
-                      inputs.tail_pulley_preset === 'custom'
-                        ? 'custom'
-                        : manualTailDia !== undefined && PULLEY_DIAMETER_PRESETS.includes(manualTailDia as any)
-                        ? manualTailDia.toString()
-                        : 'custom'
-                    }
-                    onChange={(e) => handleTailPulleyPresetChange(e.target.value)}
-                  >
-                    {PULLEY_DIAMETER_PRESETS.map((size) => (
-                      <option key={size} value={size.toString()}>
-                        {size}"
-                      </option>
-                    ))}
-                    <option value="custom">Custom...</option>
-                  </select>
-                  {(inputs.tail_pulley_preset === 'custom' ||
-                    (manualTailDia !== undefined && !PULLEY_DIAMETER_PRESETS.includes(manualTailDia as any))) && (
-                    <input
-                      type="number"
-                      id="tail_pulley_diameter_in"
-                      className={`input w-24 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
-                      value={manualTailDia ?? ''}
+                {tailOverride && (
+                  <div className="mt-2 flex gap-2">
+                    <select
+                      className={`input flex-1 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
+                      value={manualTailDia?.toString() || ''}
                       onChange={(e) => {
                         const value = e.target.value ? parseFloat(e.target.value) : undefined;
                         updateInput('tail_pulley_diameter_in', value);
                       }}
-                      step="0.1"
-                      min="2.5"
-                      max="12"
-                      placeholder="Enter diameter"
-                    />
-                  )}
-                </div>
-                {tailPulleyBelowMinimum && (
-                  <p className="text-xs text-red-600 mt-1">
-                    Tail pulley is below minimum required ({minPulleyTailRequired}" for{' '}
-                    {isVGuided ? 'V-guided' : 'crowned'} tracking).
-                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                      <span className="block text-red-500 text-xs mt-0.5">
-                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                      </span>
-                    )}
-                  </p>
-                )}
-                {!tailPulleyBelowMinimum && minPulleyTailRequired !== undefined && (
-                  <p className="text-xs text-gray-500 mt-1">
-                    Minimum required: {minPulleyTailRequired}" ({isVGuided ? 'V-guided' : 'crowned'})
-                    {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
-                      <span className="block text-amber-600 text-xs mt-0.5">
-                        Includes {cleatSpacingMultiplier.toFixed(2)}x cleat spacing factor
-                      </span>
-                    )}
-                  </p>
+                    >
+                      <option value="">Select...</option>
+                      {PULLEY_DIAMETER_PRESETS.map((size) => (
+                        <option key={size} value={size.toString()}>{size}"</option>
+                      ))}
+                    </select>
+                  </div>
                 )}
               </div>
-            )}
-          </div>
+            </div>
+          </details>
 
           {/* Pulley Surface Type */}
           <div>
@@ -1818,6 +1827,17 @@ export default function TabConveyorPhysical({
           )}
         </div>
       </AccordionSection>
+
+      {/* Pulley Configuration Modal */}
+      <PulleyConfigModal
+        isOpen={isPulleyModalOpen}
+        onClose={() => setIsPulleyModalOpen(false)}
+        applicationLineId={applicationLineId || null}
+        beltTrackingMethod={inputs.belt_tracking_method}
+        vGuideKey={inputs.v_guide_key}
+        beltWidthIn={inputs.belt_width_in}
+        onSave={handlePulleySave}
+      />
     </div>
   );
 }

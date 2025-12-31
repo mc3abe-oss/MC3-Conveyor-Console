@@ -51,6 +51,7 @@ interface Props {
   loadedRevisionId?: string; // Key to track when to reload inputs
   triggerCalculate?: number; // Counter to trigger calculation from parent
   hideCalculateButton?: boolean; // Hide the form's Calculate button if calculation is triggered externally
+  applicationLineId?: string | null; // Application ID for per-line configurations (pulleys)
 }
 
 export default function CalculatorForm({
@@ -61,6 +62,7 @@ export default function CalculatorForm({
   loadedRevisionId,
   triggerCalculate,
   hideCalculateButton = false,
+  applicationLineId,
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -243,6 +245,7 @@ export default function CalculatorForm({
               sectionCounts={sectionCounts}
               getTrackingIssue={getTrackingIssue}
               getMinPulleyIssues={getMinPulleyIssues}
+              applicationLineId={applicationLineId}
             />
           )}
 

@@ -1,24 +1,41 @@
 /**
  * Pulley Configuration Modal
  *
- * Allows configuring drive and tail pulleys for an application line.
- * Uses the new PCI-aligned pulley model with:
- * - pulley_library_styles (admin truth)
- * - application_pulleys (per-line configuration)
+ * Configures drive and tail pulleys for an application line.
+ *
+ * CRITICAL: Belt tracking drives pulley face profile.
+ * - Users do NOT select face profile in this modal
+ * - Face profile is derived from belt tracking and shown READ-ONLY
+ * - Style options are filtered by position AND tracking eligibility
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { PulleyLibraryStyle } from '../api/admin/pulley-library/route';
-import { ApplicationPulley, FaceProfile, LaggingType } from '../api/application-pulleys/route';
+import { ApplicationPulley, LaggingType } from '../api/application-pulleys/route';
+import {
+  getBeltTrackingMode,
+  getFaceProfileLabel,
+  getEligiblePulleyStyles,
+  isStyleCompatible,
+  computeFinishedOd,
+  PulleyStyleEligibility,
+} from '../../src/lib/pulley-tracking';
+import { BeltTrackingMethod } from '../../src/models/sliderbed_v1/schema';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
   applicationLineId: string | null;
-  vGuideKey?: string; // Current V-guide selection from inputs
-  onSave?: () => void; // Callback after successful save
+  /** Current belt tracking method from inputs */
+  beltTrackingMethod?: BeltTrackingMethod | string | null;
+  /** Current V-guide key from inputs (for reference) */
+  vGuideKey?: string | null;
+  /** Current belt width for face width default */
+  beltWidthIn?: number;
+  /** Callback after successful save */
+  onSave?: () => void;
 }
 
 type TabPosition = 'DRIVE' | 'TAIL';
@@ -29,12 +46,14 @@ const LAGGING_TYPE_LABELS: Record<LaggingType, string> = {
   URETHANE: 'Urethane',
 };
 
+/** Default face width allowance (belt width + this value) */
+const FACE_WIDTH_ALLOWANCE_IN = 2.0;
+
 interface PulleyFormData {
   style_key: string;
-  face_profile: FaceProfile;
-  v_guide_key: string;
   lagging_type: LaggingType;
   lagging_thickness_in: string;
+  face_width_in: string;
   shell_od_in: string;
   shell_wall_in: string;
   hub_centers_in: string;
@@ -44,10 +63,9 @@ interface PulleyFormData {
 
 const emptyForm: PulleyFormData = {
   style_key: '',
-  face_profile: 'FLAT',
-  v_guide_key: '',
   lagging_type: 'NONE',
   lagging_thickness_in: '',
+  face_width_in: '',
   shell_od_in: '',
   shell_wall_in: '',
   hub_centers_in: '',
@@ -59,17 +77,29 @@ export default function PulleyConfigModal({
   isOpen,
   onClose,
   applicationLineId,
+  beltTrackingMethod,
   vGuideKey,
+  beltWidthIn,
   onSave,
 }: Props) {
   const [activeTab, setActiveTab] = useState<TabPosition>('DRIVE');
   const [styles, setStyles] = useState<PulleyLibraryStyle[]>([]);
   const [driveForm, setDriveForm] = useState<PulleyFormData>(emptyForm);
   const [tailForm, setTailForm] = useState<PulleyFormData>(emptyForm);
+  const [existingDrive, setExistingDrive] = useState<ApplicationPulley | null>(null);
+  const [existingTail, setExistingTail] = useState<ApplicationPulley | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+
+  // Derive tracking mode from belt tracking inputs (READ-ONLY)
+  const trackingMode = getBeltTrackingMode({ belt_tracking_method: beltTrackingMethod });
+  const trackingLabel = getFaceProfileLabel(trackingMode);
+
+  // Default face width from belt width
+  const defaultFaceWidth = beltWidthIn ? beltWidthIn + FACE_WIDTH_ALLOWANCE_IN : undefined;
 
   // Load styles and existing pulley configs when modal opens
   useEffect(() => {
@@ -78,13 +108,14 @@ export default function PulleyConfigModal({
     }
   }, [isOpen, applicationLineId]);
 
-  // Auto-populate V-guide key from inputs
+  // Reset forms when modal opens
   useEffect(() => {
-    if (vGuideKey) {
-      setDriveForm((prev) => ({ ...prev, v_guide_key: vGuideKey }));
-      setTailForm((prev) => ({ ...prev, v_guide_key: vGuideKey }));
+    if (isOpen) {
+      setError(null);
+      setSaveMessage(null);
+      setShowAdvanced(false);
     }
-  }, [vGuideKey]);
+  }, [isOpen]);
 
   async function loadData() {
     setIsLoading(true);
@@ -93,26 +124,32 @@ export default function PulleyConfigModal({
       // Load styles
       const stylesRes = await fetch('/api/admin/pulley-library');
       if (!stylesRes.ok) throw new Error('Failed to load pulley styles');
-      const stylesData = await stylesRes.json();
+      const stylesData: PulleyLibraryStyle[] = await stylesRes.json();
       setStyles(stylesData);
 
       // Load existing pulleys for this line
       if (applicationLineId) {
         const pulleysRes = await fetch(`/api/application-pulleys?line_id=${applicationLineId}`);
         if (pulleysRes.ok) {
-          const pulleysData = await pulleysRes.json();
+          const pulleysData: ApplicationPulley[] = await pulleysRes.json();
 
-          // Populate forms with existing data
-          const drivePulley = pulleysData.find((p: ApplicationPulley) => p.position === 'DRIVE');
-          const tailPulley = pulleysData.find((p: ApplicationPulley) => p.position === 'TAIL');
+          const drivePulley = pulleysData.find((p) => p.position === 'DRIVE');
+          const tailPulley = pulleysData.find((p) => p.position === 'TAIL');
+
+          setExistingDrive(drivePulley || null);
+          setExistingTail(tailPulley || null);
 
           if (drivePulley) {
             setDriveForm(pulleyToForm(drivePulley));
           } else {
             // Default to first eligible drive style
-            const defaultDrive = stylesData.find((s: PulleyLibraryStyle) => s.eligible_drive);
-            if (defaultDrive) {
-              setDriveForm({ ...emptyForm, style_key: defaultDrive.key });
+            const eligibleDrive = getEligibleStyles(stylesData, 'DRIVE');
+            if (eligibleDrive.length > 0) {
+              setDriveForm({
+                ...emptyForm,
+                style_key: eligibleDrive[0].key,
+                face_width_in: defaultFaceWidth?.toString() || '',
+              });
             }
           }
 
@@ -120,9 +157,13 @@ export default function PulleyConfigModal({
             setTailForm(pulleyToForm(tailPulley));
           } else {
             // Default to first eligible tail style
-            const defaultTail = stylesData.find((s: PulleyLibraryStyle) => s.eligible_tail);
-            if (defaultTail) {
-              setTailForm({ ...emptyForm, style_key: defaultTail.key });
+            const eligibleTail = getEligibleStyles(stylesData, 'TAIL');
+            if (eligibleTail.length > 0) {
+              setTailForm({
+                ...emptyForm,
+                style_key: eligibleTail[0].key,
+                face_width_in: defaultFaceWidth?.toString() || '',
+              });
             }
           }
         }
@@ -137,10 +178,9 @@ export default function PulleyConfigModal({
   function pulleyToForm(pulley: ApplicationPulley): PulleyFormData {
     return {
       style_key: pulley.style_key,
-      face_profile: pulley.face_profile,
-      v_guide_key: pulley.v_guide_key || '',
       lagging_type: pulley.lagging_type,
       lagging_thickness_in: pulley.lagging_thickness_in?.toString() || '',
+      face_width_in: pulley.face_width_in?.toString() || '',
       shell_od_in: pulley.shell_od_in?.toString() || '',
       shell_wall_in: pulley.shell_wall_in?.toString() || '',
       hub_centers_in: pulley.hub_centers_in?.toString() || '',
@@ -149,17 +189,50 @@ export default function PulleyConfigModal({
     };
   }
 
-  // Get filtered styles for current position
-  function getStylesForPosition(position: TabPosition): PulleyLibraryStyle[] {
-    return styles.filter((s) =>
-      position === 'DRIVE' ? s.eligible_drive : s.eligible_tail
-    );
-  }
+  // Get filtered styles for position + tracking
+  const getEligibleStyles = useCallback(
+    (allStyles: PulleyLibraryStyle[], position: TabPosition): PulleyStyleEligibility[] => {
+      return getEligiblePulleyStyles(
+        allStyles.map((s) => ({
+          key: s.key,
+          name: s.name,
+          eligible_drive: s.eligible_drive,
+          eligible_tail: s.eligible_tail,
+          eligible_crown: s.eligible_crown,
+          eligible_v_guided: s.eligible_v_guided,
+          is_active: s.is_active,
+        })),
+        position,
+        trackingMode
+      );
+    },
+    [trackingMode]
+  );
 
   // Get current selected style
   function getSelectedStyle(position: TabPosition): PulleyLibraryStyle | undefined {
     const form = position === 'DRIVE' ? driveForm : tailForm;
     return styles.find((s) => s.key === form.style_key);
+  }
+
+  // Check if current style is compatible with tracking
+  function isCurrentStyleCompatible(position: TabPosition): boolean {
+    const form = position === 'DRIVE' ? driveForm : tailForm;
+    const style = styles.find((s) => s.key === form.style_key);
+    if (!style) return true; // No style selected yet
+    return isStyleCompatible(
+      {
+        key: style.key,
+        name: style.name,
+        eligible_drive: style.eligible_drive,
+        eligible_tail: style.eligible_tail,
+        eligible_crown: style.eligible_crown,
+        eligible_v_guided: style.eligible_v_guided,
+        is_active: style.is_active,
+      },
+      position,
+      trackingMode
+    );
   }
 
   // Update form field
@@ -168,7 +241,7 @@ export default function PulleyConfigModal({
     setter((prev) => ({ ...prev, [field]: value }));
   }
 
-  // Handle style change - reset dependent fields
+  // Handle style change - apply style defaults
   function handleStyleChange(position: TabPosition, styleKey: string) {
     const setter = position === 'DRIVE' ? setDriveForm : setTailForm;
     const style = styles.find((s) => s.key === styleKey);
@@ -176,17 +249,32 @@ export default function PulleyConfigModal({
     setter((prev) => ({
       ...prev,
       style_key: styleKey,
-      // Reset face_profile if not compatible
-      face_profile: style?.eligible_crown ? prev.face_profile : 'FLAT',
-      // Reset lagging if not compatible
+      // Reset lagging if style doesn't support it
       lagging_type: style?.eligible_lagging ? prev.lagging_type : 'NONE',
       lagging_thickness_in: style?.eligible_lagging ? prev.lagging_thickness_in : '',
+      // Apply style defaults for face width if empty
+      face_width_in: prev.face_width_in || defaultFaceWidth?.toString() || '',
     }));
+  }
+
+  // Compute finished OD for display
+  function getComputedFinishedOd(form: PulleyFormData): string {
+    const shellOd = parseFloat(form.shell_od_in);
+    const isLagged = form.lagging_type !== 'NONE';
+    const thickness = parseFloat(form.lagging_thickness_in);
+    const finished = computeFinishedOd(shellOd, isLagged, thickness);
+    return finished ? `${finished.toFixed(2)}"` : '—';
   }
 
   async function handleSave() {
     if (!applicationLineId) {
       setError('No application line selected');
+      return;
+    }
+
+    // Validate style compatibility
+    if (!isCurrentStyleCompatible('DRIVE') || !isCurrentStyleCompatible('TAIL')) {
+      setError('Selected style is not compatible with current belt tracking. Please select a different style.');
       return;
     }
 
@@ -201,12 +289,15 @@ export default function PulleyConfigModal({
           application_line_id: applicationLineId,
           position: 'DRIVE',
           style_key: driveForm.style_key,
-          face_profile: driveForm.face_profile,
-          v_guide_key: driveForm.face_profile === 'V_GUIDED' ? driveForm.v_guide_key : null,
+          // Face profile derived from tracking - not user input
+          face_profile: trackingMode,
+          v_guide_key: trackingMode === 'V_GUIDED' ? vGuideKey : null,
           lagging_type: driveForm.lagging_type,
-          lagging_thickness_in: driveForm.lagging_type !== 'NONE'
-            ? parseFloat(driveForm.lagging_thickness_in) || null
-            : null,
+          lagging_thickness_in:
+            driveForm.lagging_type !== 'NONE'
+              ? parseFloat(driveForm.lagging_thickness_in) || null
+              : null,
+          face_width_in: driveForm.face_width_in ? parseFloat(driveForm.face_width_in) : null,
           shell_od_in: driveForm.shell_od_in ? parseFloat(driveForm.shell_od_in) : null,
           shell_wall_in: driveForm.shell_wall_in ? parseFloat(driveForm.shell_wall_in) : null,
           hub_centers_in: driveForm.hub_centers_in ? parseFloat(driveForm.hub_centers_in) : null,
@@ -232,12 +323,14 @@ export default function PulleyConfigModal({
           application_line_id: applicationLineId,
           position: 'TAIL',
           style_key: tailForm.style_key,
-          face_profile: tailForm.face_profile,
-          v_guide_key: tailForm.face_profile === 'V_GUIDED' ? tailForm.v_guide_key : null,
+          face_profile: trackingMode,
+          v_guide_key: trackingMode === 'V_GUIDED' ? vGuideKey : null,
           lagging_type: tailForm.lagging_type,
-          lagging_thickness_in: tailForm.lagging_type !== 'NONE'
-            ? parseFloat(tailForm.lagging_thickness_in) || null
-            : null,
+          lagging_thickness_in:
+            tailForm.lagging_type !== 'NONE'
+              ? parseFloat(tailForm.lagging_thickness_in) || null
+              : null,
+          face_width_in: tailForm.face_width_in ? parseFloat(tailForm.face_width_in) : null,
           shell_od_in: tailForm.shell_od_in ? parseFloat(tailForm.shell_od_in) : null,
           shell_wall_in: tailForm.shell_wall_in ? parseFloat(tailForm.shell_wall_in) : null,
           hub_centers_in: tailForm.hub_centers_in ? parseFloat(tailForm.hub_centers_in) : null,
@@ -263,7 +356,7 @@ export default function PulleyConfigModal({
       // Close after short delay
       setTimeout(() => {
         onClose();
-      }, 1000);
+      }, 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Save failed');
     } finally {
@@ -271,11 +364,36 @@ export default function PulleyConfigModal({
     }
   }
 
+  async function handleClear(position: TabPosition) {
+    const existing = position === 'DRIVE' ? existingDrive : existingTail;
+    if (!existing) return;
+
+    try {
+      const res = await fetch(`/api/application-pulleys?id=${existing.id}`, {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error);
+      }
+
+      // Reset form and clear existing
+      const setter = position === 'DRIVE' ? setDriveForm : setTailForm;
+      const setExisting = position === 'DRIVE' ? setExistingDrive : setExistingTail;
+      setter(emptyForm);
+      setExisting(null);
+      onSave?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Clear failed');
+    }
+  }
+
   if (!isOpen) return null;
 
   const currentForm = activeTab === 'DRIVE' ? driveForm : tailForm;
   const selectedStyle = getSelectedStyle(activeTab);
-  const eligibleStyles = getStylesForPosition(activeTab);
+  const eligibleStyles = getEligibleStyles(styles, activeTab);
+  const styleCompatible = isCurrentStyleCompatible(activeTab);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
@@ -288,32 +406,57 @@ export default function PulleyConfigModal({
             className="text-gray-400 hover:text-gray-600 transition-colors"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
+        </div>
+
+        {/* Tracking Mode Banner - READ ONLY */}
+        <div className="px-6 py-3 bg-blue-50 border-b border-blue-100">
+          <div className="flex items-center justify-between">
+            <div>
+              <span className="text-sm text-blue-700 font-medium">
+                Tracking (from Belt): {trackingLabel}
+              </span>
+              {trackingMode === 'V_GUIDED' && vGuideKey && (
+                <span className="ml-2 text-xs text-blue-600">({vGuideKey})</span>
+              )}
+            </div>
+            <span className="text-xs text-blue-500">Change tracking in the Belt section</span>
+          </div>
         </div>
 
         {/* Tabs */}
         <div className="px-6 pt-4 border-b border-gray-200">
           <div className="flex gap-4">
-            {(['DRIVE', 'TAIL'] as TabPosition[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab === 'DRIVE' ? 'Head/Drive Pulley' : 'Tail Pulley'}
-              </button>
-            ))}
+            {(['DRIVE', 'TAIL'] as TabPosition[]).map((tab) => {
+              const tabCompatible =
+                tab === 'DRIVE' ? isCurrentStyleCompatible('DRIVE') : isCurrentStyleCompatible('TAIL');
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
+                    activeTab === tab
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  } ${!tabCompatible ? 'text-red-500' : ''}`}
+                >
+                  {tab === 'DRIVE' ? 'Head/Drive Pulley' : 'Tail Pulley'}
+                  {!tabCompatible && <span className="ml-1 text-red-500">!</span>}
+                </button>
+              );
+            })}
           </div>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 overflow-y-auto max-h-[60vh]">
+        <div className="px-6 py-4 overflow-y-auto max-h-[55vh]">
           {isLoading ? (
             <div className="py-8 text-center text-gray-500">Loading...</div>
           ) : (
@@ -329,66 +472,41 @@ export default function PulleyConfigModal({
                 </div>
               )}
 
+              {/* Style Compatibility Warning */}
+              {!styleCompatible && currentForm.style_key && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  <strong>Style not compatible:</strong> The selected style "{selectedStyle?.name}" is
+                  not compatible with {trackingLabel} tracking. Please select a different style.
+                </div>
+              )}
+
               {/* Style Selection */}
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Pulley Style
-                </label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Pulley Style</label>
                 <select
                   value={currentForm.style_key}
                   onChange={(e) => handleStyleChange(activeTab, e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                  className={`w-full px-3 py-2 border rounded-md focus:ring-blue-500 focus:border-blue-500 ${
+                    !styleCompatible ? 'border-red-500' : 'border-gray-300'
+                  }`}
                 >
                   <option value="">Select a style...</option>
                   {eligibleStyles.map((style) => (
                     <option key={style.key} value={style.key}>
-                      {style.name} ({style.style_type})
+                      {style.name}
                     </option>
                   ))}
                 </select>
                 {selectedStyle?.description && (
                   <p className="mt-1 text-xs text-gray-500">{selectedStyle.description}</p>
                 )}
-              </div>
-
-              {/* Face Profile */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Face Profile
-                </label>
-                <select
-                  value={currentForm.face_profile}
-                  onChange={(e) => updateForm(activeTab, 'face_profile', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="FLAT">Flat</option>
-                  {selectedStyle?.eligible_crown && (
-                    <option value="CROWNED">Crowned</option>
-                  )}
-                  {selectedStyle?.eligible_v_guided && (
-                    <option value="V_GUIDED">V-Guided</option>
-                  )}
-                </select>
-              </div>
-
-              {/* V-Guide Key (only if V_GUIDED) */}
-              {currentForm.face_profile === 'V_GUIDED' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    V-Guide Profile
-                  </label>
-                  <input
-                    type="text"
-                    value={currentForm.v_guide_key}
-                    onChange={(e) => updateForm(activeTab, 'v_guide_key', e.target.value)}
-                    placeholder="e.g., K10"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">
-                    Use the V-guide key from the application (e.g., K10, K13)
+                {eligibleStyles.length === 0 && (
+                  <p className="mt-1 text-xs text-amber-600">
+                    No styles available for {activeTab.toLowerCase()} position with {trackingLabel}{' '}
+                    tracking.
                   </p>
-                </div>
-              )}
+                )}
+              </div>
 
               {/* Lagging */}
               {selectedStyle?.eligible_lagging && (
@@ -403,7 +521,9 @@ export default function PulleyConfigModal({
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                     >
                       {Object.entries(LAGGING_TYPE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -425,55 +545,105 @@ export default function PulleyConfigModal({
                 </div>
               )}
 
-              {/* Geometry (optional) */}
-              <div className="border-t border-gray-200 pt-4 mt-4">
-                <h4 className="text-sm font-medium text-gray-700 mb-3">
-                  Geometry (optional - for PCI stress checks)
-                </h4>
-                <div className="grid grid-cols-3 gap-3">
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Shell OD (in)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={currentForm.shell_od_in}
-                      onChange={(e) => updateForm(activeTab, 'shell_od_in', e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Shell Wall (in)</label>
-                    <input
-                      type="number"
-                      step="0.0625"
-                      value={currentForm.shell_wall_in}
-                      onChange={(e) => updateForm(activeTab, 'shell_wall_in', e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-600 mb-1">Hub Centers (in)</label>
-                    <input
-                      type="number"
-                      step="0.5"
-                      value={currentForm.hub_centers_in}
-                      onChange={(e) => updateForm(activeTab, 'hub_centers_in', e.target.value)}
-                      className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
+              {/* Face Width */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Face Width (in)
+                </label>
+                <input
+                  type="number"
+                  step="0.5"
+                  value={currentForm.face_width_in}
+                  onChange={(e) => updateForm(activeTab, 'face_width_in', e.target.value)}
+                  placeholder={defaultFaceWidth ? `${defaultFaceWidth} (belt + ${FACE_WIDTH_ALLOWANCE_IN}")` : 'Enter face width'}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                />
+                {defaultFaceWidth && !currentForm.face_width_in && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Default: {defaultFaceWidth}" (belt width + {FACE_WIDTH_ALLOWANCE_IN}" allowance)
+                  </p>
+                )}
               </div>
 
-              {/* PCI Enforcement */}
-              <label className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  checked={currentForm.enforce_pci_checks}
-                  onChange={(e) => updateForm(activeTab, 'enforce_pci_checks', e.target.checked)}
-                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                />
-                <span className="text-sm text-gray-700">Enforce PCI tube stress checks</span>
-              </label>
+              {/* Advanced Geometry Toggle */}
+              <div className="border-t border-gray-200 pt-4 mt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvanced(!showAdvanced)}
+                  className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-800"
+                >
+                  <svg
+                    className={`w-4 h-4 transition-transform ${showAdvanced ? 'rotate-90' : ''}`}
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M9 5l7 7-7 7"
+                    />
+                  </svg>
+                  Advanced Geometry (for PCI stress checks)
+                </button>
+
+                {showAdvanced && (
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-3 gap-3">
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Shell OD (in)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={currentForm.shell_od_in}
+                          onChange={(e) => updateForm(activeTab, 'shell_od_in', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Shell Wall (in)</label>
+                        <input
+                          type="number"
+                          step="0.0625"
+                          value={currentForm.shell_wall_in}
+                          onChange={(e) => updateForm(activeTab, 'shell_wall_in', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-600 mb-1">Hub Centers (in)</label>
+                        <input
+                          type="number"
+                          step="0.5"
+                          value={currentForm.hub_centers_in}
+                          onChange={(e) => updateForm(activeTab, 'hub_centers_in', e.target.value)}
+                          className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Computed Finished OD */}
+                    <div className="text-sm">
+                      <span className="text-gray-600">Finished OD (computed): </span>
+                      <span className="font-medium text-blue-600">
+                        {getComputedFinishedOd(currentForm)}
+                      </span>
+                    </div>
+
+                    {/* PCI Enforcement */}
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={currentForm.enforce_pci_checks}
+                        onChange={(e) => updateForm(activeTab, 'enforce_pci_checks', e.target.checked)}
+                        className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Enforce PCI tube stress checks</span>
+                    </label>
+                  </div>
+                )}
+              </div>
 
               {/* Notes */}
               <div>
@@ -490,20 +660,32 @@ export default function PulleyConfigModal({
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3">
-          <button
-            onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={isSaving || !driveForm.style_key || !tailForm.style_key}
-            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
-          >
-            {isSaving ? 'Saving...' : 'Save Configuration'}
-          </button>
+        <div className="px-6 py-4 border-t border-gray-200 flex justify-between">
+          <div>
+            {(activeTab === 'DRIVE' ? existingDrive : existingTail) && (
+              <button
+                onClick={() => handleClear(activeTab)}
+                className="px-4 py-2 text-red-600 bg-red-50 rounded-md hover:bg-red-100 transition-colors text-sm"
+              >
+                Clear {activeTab === 'DRIVE' ? 'Drive' : 'Tail'} Pulley
+              </button>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving || !driveForm.style_key || !tailForm.style_key || !styleCompatible}
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
+            >
+              {isSaving ? 'Saving...' : 'Save Configuration'}
+            </button>
+          </div>
         </div>
       </div>
     </div>

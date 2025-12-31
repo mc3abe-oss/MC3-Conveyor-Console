@@ -215,9 +215,12 @@ function buildContextFromApp(app: any): {
   const quantity = config.application_json?.conveyor_qty ?? 1;
   const customerName = config.customer_name ?? null;
 
+  // Return the FK reference ID (quote_id or sales_order_id), NOT the application ID
+  const referenceId = type === 'quote' ? app.quote_id : app.sales_order_id;
+
   return {
     type,
-    id: app.id,
+    id: referenceId || null,
     base,
     line: suffix,
     jobLine,
