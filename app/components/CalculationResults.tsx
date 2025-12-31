@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   CalculationResult,
   SliderbedInputs,
@@ -10,6 +10,7 @@ import {
 } from '../../src/models/sliderbed_v1/schema';
 import clsx from 'clsx';
 import SaveRecipeModal from './SaveRecipeModal';
+import DesignLogicPanel, { DesignLogicLink, ScrollToDesignLogic } from './DesignLogicPanel';
 
 interface Props {
   result: CalculationResult;
@@ -20,6 +21,12 @@ export default function CalculationResults({ result, inputs }: Props) {
   const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
   const [isSavingRecipe, setIsSavingRecipe] = useState(false);
   const [recipeToast, setRecipeToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [scrollToDesignLogic, setScrollToDesignLogic] = useState<ScrollToDesignLogic | undefined>();
+
+  // Callback to receive the scroll function from DesignLogicPanel
+  const handleScrollFunctionReady = useCallback((fn: ScrollToDesignLogic) => {
+    setScrollToDesignLogic(() => fn);
+  }, []);
 
   const handleSaveRecipe = async (data: { name: string; recipe_type: 'golden' | 'reference'; notes: string }) => {
     if (!inputs || !result.outputs) {
@@ -293,12 +300,17 @@ export default function CalculationResults({ result, inputs }: Props) {
                 unit="lb"
                 decimals={2}
               />
-              <ResultRow
-                label="Total Belt Pull"
-                value={outputs.total_belt_pull_lb}
-                unit="lb"
-                decimals={2}
-              />
+              <div className="flex items-center">
+                <div className="flex-1">
+                  <ResultRow
+                    label="Total Belt Pull"
+                    value={outputs.total_belt_pull_lb}
+                    unit="lb"
+                    decimals={2}
+                  />
+                </div>
+                <DesignLogicLink anchorId="dl-working-tension" scrollFn={scrollToDesignLogic} />
+              </div>
             </div>
           </div>
 
@@ -338,18 +350,28 @@ export default function CalculationResults({ result, inputs }: Props) {
               {/* Shaft diameters - only show when mode is Calculated */}
               {inputs?.shaft_diameter_mode === 'Calculated' && (
                 <>
-                  <ResultRow
-                    label="Drive Shaft Diameter (calc)"
-                    value={outputs.drive_shaft_diameter_in}
-                    unit="in"
-                    decimals={3}
-                  />
-                  <ResultRow
-                    label="Tail Shaft Diameter (calc)"
-                    value={outputs.tail_shaft_diameter_in}
-                    unit="in"
-                    decimals={3}
-                  />
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <ResultRow
+                        label="Drive Shaft Diameter (calc)"
+                        value={outputs.drive_shaft_diameter_in}
+                        unit="in"
+                        decimals={3}
+                      />
+                    </div>
+                    <DesignLogicLink anchorId="dl-shaft" scrollFn={scrollToDesignLogic} />
+                  </div>
+                  <div className="flex items-center">
+                    <div className="flex-1">
+                      <ResultRow
+                        label="Tail Shaft Diameter (calc)"
+                        value={outputs.tail_shaft_diameter_in}
+                        unit="in"
+                        decimals={3}
+                      />
+                    </div>
+                    <DesignLogicLink anchorId="dl-shaft" scrollFn={scrollToDesignLogic} />
+                  </div>
                 </>
               )}
             </div>
@@ -541,8 +563,14 @@ export default function CalculationResults({ result, inputs }: Props) {
         </div>
       </div>
 
+      {/* Design Logic Panel */}
+      <DesignLogicPanel
+        className="mt-4"
+        onScrollFunctionReady={handleScrollFunctionReady}
+      />
+
       {/* Metadata */}
-      <div className="text-xs text-gray-500 text-center">
+      <div className="text-xs text-gray-500 text-center mt-4">
         Model: {result.metadata.model_key} | Version: {result.metadata.model_version_id}
         <br />
         Calculated at: {new Date(result.metadata.calculated_at).toLocaleString()}

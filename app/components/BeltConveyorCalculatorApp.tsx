@@ -4,6 +4,7 @@ import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
+import DesignLogicPanel from './DesignLogicPanel';
 import ApplicationContextHeader from './ApplicationContextHeader';
 import SaveTargetModal, { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
@@ -399,6 +400,7 @@ export default function BeltConveyorCalculatorApp() {
     if (hasChanged && calcStatus === 'ok') {
       console.log('[Effect] Inputs changed - calculation invalidated');
       setCalcStatus('idle');
+      setOutputsStale(true); // Mark outputs as stale when inputs change
     }
   }, [inputs, lastCalculatedPayload, buildCurrentPayload, calcStatus]);
 
@@ -412,6 +414,10 @@ export default function BeltConveyorCalculatorApp() {
     const calculatedPayload = buildCurrentPayload();
     setLastCalculatedPayload(calculatedPayload);
     setCalcStatus('ok');
+
+    // Update calculation status to 'calculated' (v1.21)
+    setCalculationStatus('calculated');
+    setOutputsStale(false);
 
     console.log('[Calculate] Success - payload snapshot saved', calculatedPayload);
     setIsCalculating(false);
@@ -945,8 +951,9 @@ export default function BeltConveyorCalculatorApp() {
         <div className={viewMode === 'results' ? '' : 'hidden'}>
           {/* Determine if we should show valid results or placeholder (v1.21) */}
           {(() => {
-            // Show valid results only if: result exists AND not stale AND calculation_status is calculated
-            const hasValidResults = result && !needsRecalc && calculationStatus === 'calculated' && !outputsStale;
+            // Show valid results only if: result exists AND calculation_status is calculated AND not stale
+            // Note: outputsStale is now reliably set when inputs change after calculation
+            const hasValidResults = result && calculationStatus === 'calculated' && !outputsStale;
 
             if (hasValidResults) {
               return (
@@ -1007,12 +1014,17 @@ export default function BeltConveyorCalculatorApp() {
                     </button>
                   </div>
                 </div>
+
+                {/* Design Logic Panel - Always visible for education */}
+                <div className="mt-6">
+                  <DesignLogicPanel />
+                </div>
               </div>
             );
           })()}
 
           {/* Edit Inputs CTA - Only show when we have valid calculated results */}
-          {result && !needsRecalc && calculationStatus === 'calculated' && !outputsStale && (
+          {result && calculationStatus === 'calculated' && !outputsStale && (
             <div className="mt-6 flex justify-center">
               <button
                 type="button"
