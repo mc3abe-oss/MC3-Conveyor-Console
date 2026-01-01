@@ -3334,6 +3334,152 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       });
     });
   });
+
+  // v1.28: Cleats + Snub Rollers compatibility regression tests
+  describe('Cleats + Snub Rollers Compatibility (v1.28)', () => {
+    // Base inputs with cleats enabled
+    const cleatsBaseInputs: SliderbedInputs = {
+      conveyor_length_cc_in: 120,
+      belt_width_in: 18,
+      drive_pulley_diameter_in: 5.5, // 5.5" pulley → standard frame = 6.5"
+      tail_pulley_diameter_in: 5.5,
+      drive_rpm: 100,
+      part_weight_lbs: 5,
+      part_length_in: 12,
+      part_width_in: 6,
+      orientation: Orientation.Lengthwise,
+      drop_height_in: 0,
+      part_temperature_class: PartTemperatureClass.Ambient,
+      fluid_type: FluidType.None,
+      part_spacing_in: 0,
+      belt_speed_fpm: 50,
+      material_type: MaterialType.Steel,
+      process_type: ProcessType.Assembly,
+      parts_sharp: PartsSharp.No,
+      environment_factors: [EnvironmentFactors.Indoor],
+      ambient_temperature: AmbientTemperature.Normal,
+      power_feed: PowerFeed.V480_3Ph,
+      controls_package: ControlsPackage.StartStop,
+      spec_source: SpecSource.Standard,
+      field_wiring_required: FieldWiringRequired.No,
+      bearing_grade: BearingGrade.Standard,
+      documentation_package: DocumentationPackage.Basic,
+      finish_paint_system: FinishPaintSystem.PowderCoat,
+      labels_required: LabelsRequired.Yes,
+      send_to_estimating: SendToEstimating.No,
+      motor_brand: MotorBrand.Standard,
+      bottom_covers: false,
+      side_rails: SideRails.None,
+      end_guards: EndGuards.None,
+      finger_safe: false,
+      lacing_style: LacingStyle.Endless,
+      side_skirts: false,
+      sensor_options: [],
+      pulley_surface_type: PulleySurfaceType.Plain,
+      start_stop_application: false,
+      direction_mode: DirectionMode.OneDirection,
+      brake_motor: false,
+      gearmotor_orientation: GearmotorOrientation.SideMount,
+      drive_hand: DriveHand.RightHand,
+      belt_tracking_method: BeltTrackingMethod.Crowned,
+      shaft_diameter_mode: ShaftDiameterMode.Calculated,
+      frame_height_mode: FrameHeightMode.Standard,
+      // Cleats enabled
+      cleats_enabled: true,
+      cleats_mode: 'cleated',
+      cleat_height_in: 1,
+      cleat_spacing_in: 6,
+      cleat_edge_offset_in: 0.5,
+    };
+
+    it('should PASS when cleats enabled and snubs NOT required (frame height above threshold)', () => {
+      // 5.5" pulley + standard 1.0" offset = 6.5" frame height
+      // Snub threshold = 5.5" + 2.5" = 8.0"
+      // 6.5" < 8.0", so snubs WOULD be required with this config
+      // Use custom frame height to put it above threshold
+      const inputs: SliderbedInputs = {
+        ...cleatsBaseInputs,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 9.0, // Above snub threshold (5.5 + 2.5 = 8.0)
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.requires_snub_rollers).toBe(false);
+      // Should have no cleats+snub error
+      expect(result.errors).toBeUndefined();
+    });
+
+    it('should FAIL when cleats enabled and snubs required (frame height below threshold)', () => {
+      // 5.5" pulley, LOW PROFILE mode = 6.0" frame height (5.5 + 0.5)
+      // Snub threshold = 5.5" + 2.5" = 8.0"
+      // 6.0" < 8.0", so snubs ARE required → conflict with cleats
+      // Note: Standard mode adds 2.5" offset to MATCH snub threshold, so use Low Profile to test conflict
+      const inputs: SliderbedInputs = {
+        ...cleatsBaseInputs,
+        frame_height_mode: FrameHeightMode.LowProfile, // 5.5 + 0.5 = 6.0" < 8.0" threshold
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors!.length).toBeGreaterThanOrEqual(2); // Error in both Frame and Cleats sections
+
+      // Check for frame_height_mode error
+      const frameError = result.errors!.find(e => e.field === 'frame_height_mode');
+      expect(frameError).toBeDefined();
+      expect(frameError!.message).toContain('snub rollers');
+      expect(frameError!.message).toContain('cleats');
+
+      // Check for cleats_mode error
+      const cleatsError = result.errors!.find(e => e.field === 'cleats_mode');
+      expect(cleatsError).toBeDefined();
+      expect(cleatsError!.message).toContain('Cleats cannot be used with snub rollers');
+    });
+
+    it('should PASS when cleats DISABLED and snubs required', () => {
+      // No conflict when cleats are off - use Low Profile to require snubs
+      // Note: Standard mode adds 2.5" = same as snub threshold, so never requires snubs
+      const inputs: SliderbedInputs = {
+        ...cleatsBaseInputs,
+        cleats_enabled: false,
+        cleats_mode: undefined,
+        cleat_height_in: undefined,
+        frame_height_mode: FrameHeightMode.LowProfile, // 5.5 + 0.5 = 6.0" < 8.0" threshold
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.requires_snub_rollers).toBe(true);
+      expect(result.outputs?.snub_roller_quantity).toBe(2);
+    });
+
+    it('should use correct pulley diameter from inputs (regression for v1.28 fix)', () => {
+      // This test ensures the fix for using getEffectivePulleyDiameters works:
+      // The frame height in the error message should match the actual derived value
+      // Use Low Profile mode to trigger snub requirement and cleats conflict
+      const inputs: SliderbedInputs = {
+        ...cleatsBaseInputs,
+        drive_pulley_diameter_in: 5.5,
+        tail_pulley_diameter_in: 5.5,
+        frame_height_mode: FrameHeightMode.LowProfile, // 5.5 + 0.5 = 6.0" frame height
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(false);
+      expect(result.errors).toBeDefined();
+
+      // The error message should show 6.0" frame height (derived from 5.5" pulley + 0.5 low profile)
+      const frameError = result.errors!.find(e => e.field === 'frame_height_mode');
+      expect(frameError).toBeDefined();
+      expect(frameError!.message).toContain('6.0"'); // Correct derived frame height
+      expect(frameError!.message).toContain('8.0"'); // Correct snub threshold (5.5 + 2.5)
+    });
+  });
 });
 
 // ============================================================================
@@ -4111,9 +4257,10 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
       expect(result.success).toBe(true);
       // No minimum requirements, so no warnings about belt minimum
       expect(result.outputs?.min_pulley_drive_required_in).toBeUndefined();
+      // Use toBeFalsy to handle undefined warnings array
       expect(
         result.warnings?.some((w) => w.message.includes('below belt minimum'))
-      ).toBe(false);
+      ).toBeFalsy();
     });
   });
 

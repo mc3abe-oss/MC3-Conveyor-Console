@@ -54,13 +54,18 @@ import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../..
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PulleyConfigModal from './PulleyConfigModal';
 import CleatsConfigModal from './CleatsConfigModal';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
   CLEAT_PATTERN_LABELS,
+  useCleatCatalog,
+  lookupCleatsMinPulleyDia,
+  CleatPattern,
+  CleatStyle,
+  DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../src/lib/cleat-catalog';
 
 interface TabConveyorPhysicalProps {
@@ -73,6 +78,8 @@ interface TabConveyorPhysicalProps {
   getMinPulleyIssues: () => Issue[];
   /** Application line ID for pulley configuration (calc_recipes.id) */
   applicationLineId?: string | null;
+  /** Get merged issues for a section (pre-calc + post-calc, de-duped) */
+  getMergedIssuesForSection?: (sectionKey: SectionKey) => Issue[];
 }
 
 /**
@@ -114,6 +121,7 @@ export default function TabConveyorPhysical({
   getTrackingIssue,
   getMinPulleyIssues,
   applicationLineId,
+  getMergedIssuesForSection,
 }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
@@ -377,6 +385,43 @@ export default function TabConveyorPhysical({
 
   // v1.24: Cleat catalog and handlers moved to CleatsConfigModal
 
+  // Load cleat catalog for min pulley display
+  const { cleatCatalog, cleatCenterFactors } = useCleatCatalog();
+
+  // Compute cleats min pulley diameter for display under summary card
+  const cleatsMinPulleyDiaIn = useMemo(() => {
+    if (
+      inputs.cleats_mode !== 'cleated' ||
+      !inputs.cleat_profile ||
+      !inputs.cleat_size ||
+      !inputs.cleat_pattern ||
+      !inputs.cleat_style ||
+      !inputs.cleat_centers_in
+    ) {
+      return null;
+    }
+    const result = lookupCleatsMinPulleyDia(
+      cleatCatalog,
+      cleatCenterFactors,
+      DEFAULT_CLEAT_MATERIAL_FAMILY,
+      inputs.cleat_profile,
+      inputs.cleat_size,
+      inputs.cleat_pattern as CleatPattern,
+      inputs.cleat_style as CleatStyle,
+      inputs.cleat_centers_in
+    );
+    return result.success ? result.roundedMinDia : null;
+  }, [
+    cleatCatalog,
+    cleatCenterFactors,
+    inputs.cleats_mode,
+    inputs.cleat_profile,
+    inputs.cleat_size,
+    inputs.cleat_pattern,
+    inputs.cleat_style,
+    inputs.cleat_centers_in,
+  ]);
+
   return (
     <div className="space-y-4">
       {/* SECTION: Conveyor Type & Geometry */}
@@ -386,6 +431,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('geometry')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.geometry}
+        issues={getMergedIssuesForSection?.('geometry')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Bed Type */}
@@ -677,6 +723,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('beltPulleys')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.beltPulleys}
+        issues={getMergedIssuesForSection?.('beltPulleys')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* ===== BELT SUBSECTION ===== */}
@@ -866,6 +913,9 @@ export default function TabConveyorPhysical({
                 )}
                 {inputs.cleat_spacing_in && (
                   <div><span className="text-gray-600">Centers:</span> <span className="font-medium text-blue-600">{inputs.cleat_spacing_in}"</span></div>
+                )}
+                {cleatsMinPulleyDiaIn !== null && (
+                  <div><span className="text-gray-600">Min Pulley (cleats):</span> <span className="font-medium text-amber-600">{cleatsMinPulleyDiaIn}"</span></div>
                 )}
               </div>
             ) : (
@@ -1170,6 +1220,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('frame')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.frame}
+        issues={getMergedIssuesForSection?.('frame')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* ===== v1.14: FRAME CONSTRUCTION SUBSECTION ===== */}

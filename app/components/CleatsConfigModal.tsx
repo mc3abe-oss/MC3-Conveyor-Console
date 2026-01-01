@@ -19,6 +19,9 @@ import {
   getCleatSizesForProfile,
   getCleatPatternsForProfileSize,
   lookupCleatsMinPulleyDia,
+  lookupCleatBaseMinDia12,
+  getCentersFactor,
+  computeCleatsMinPulleyDia,
   isDrillSipedSupported,
   getCentersBucket,
   CleatPattern,
@@ -27,6 +30,7 @@ import {
   CLEAT_PATTERN_LABELS,
   CLEAT_STYLE_LABELS,
   CLEAT_STYLES,
+  CLEAT_CENTERS_OPTIONS,
   DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../src/lib/cleat-catalog';
 
@@ -132,6 +136,51 @@ export default function CleatsConfigModal({
     }
     return inputs.cleat_centers_in as CleatCenters ?? 12;
   }, [inputs.cleat_spacing_in, inputs.cleat_centers_in]);
+
+  // Compute base min diameter at 12" centers for bucket table preview
+  const baseMinDia12In = useMemo(() => {
+    if (!inputs.cleat_profile || !inputs.cleat_size || !inputs.cleat_pattern || !inputs.cleat_style) {
+      return null;
+    }
+    const result = lookupCleatBaseMinDia12(
+      cleatCatalog,
+      DEFAULT_CLEAT_MATERIAL_FAMILY,
+      inputs.cleat_profile,
+      inputs.cleat_size,
+      inputs.cleat_pattern as CleatPattern,
+      inputs.cleat_style as CleatStyle
+    );
+    return result.success ? result.baseMinDia12In : null;
+  }, [cleatCatalog, inputs.cleat_profile, inputs.cleat_size, inputs.cleat_pattern, inputs.cleat_style]);
+
+  // Build bucket table data with factors and resulting min pulley diameters
+  const bucketTableData = useMemo(() => {
+    return CLEAT_CENTERS_OPTIONS.map((bucket) => {
+      const factorResult = getCentersFactor(cleatCenterFactors, DEFAULT_CLEAT_MATERIAL_FAMILY, bucket);
+      const factor = factorResult.success ? factorResult.factor : null;
+
+      let resultingMinDia: number | null = null;
+      if (baseMinDia12In !== null && factor !== null) {
+        const computed = computeCleatsMinPulleyDia(baseMinDia12In, factor);
+        resultingMinDia = computed.roundedUp;
+      }
+
+      // Threshold description: what desired centers map to this bucket
+      let threshold: string;
+      if (bucket === 4) threshold = '≤ 4"';
+      else if (bucket === 6) threshold = '4.1" – 6"';
+      else if (bucket === 8) threshold = '6.1" – 8"';
+      else threshold = '> 8"';
+
+      return {
+        bucket,
+        threshold,
+        factor,
+        resultingMinDia,
+        isCurrent: bucket === currentBucket,
+      };
+    });
+  }, [cleatCenterFactors, baseMinDia12In, currentBucket]);
 
   if (!isOpen) return null;
 
@@ -243,21 +292,57 @@ export default function CleatsConfigModal({
             </p>
           </div>
 
-          {/* Centers Bucket - Read-only display */}
-          <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-start gap-3">
-              <svg className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-              </svg>
-              <div className="flex-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium text-blue-800">Centers Bucket (for min pulley calc)</span>
-                  <span className="text-sm font-bold text-blue-700">{currentBucket}" bucket</span>
-                </div>
-                <p className="text-xs text-blue-600 mt-1">
-                  This bucket is derived from your desired centers and is used only to calculate the minimum recommended pulley diameter. Tighter spacing uses a smaller bucket, which increases the minimum.
-                </p>
-              </div>
+          {/* Centers Bucket Table */}
+          <div className="border border-gray-200 rounded-lg overflow-hidden">
+            <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-600 uppercase tracking-wide">
+                Cleat Centers Buckets (for min pulley diameter)
+              </h4>
+            </div>
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 text-xs text-gray-500 uppercase">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium">Bucket</th>
+                  <th className="px-3 py-2 text-left font-medium">Desired Centers</th>
+                  <th className="px-3 py-2 text-center font-medium">Factor</th>
+                  <th className="px-3 py-2 text-right font-medium">Min Pulley</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {bucketTableData.map((row) => (
+                  <tr
+                    key={row.bucket}
+                    className={row.isCurrent ? 'bg-blue-50' : 'bg-white'}
+                  >
+                    <td className="px-3 py-2 font-medium text-gray-900">
+                      {row.bucket}"
+                      {row.isCurrent && (
+                        <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-600 text-white rounded">
+                          Current
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-gray-600">{row.threshold}</td>
+                    <td className="px-3 py-2 text-center text-gray-600">
+                      {row.factor !== null ? `${row.factor.toFixed(2)}x` : '—'}
+                    </td>
+                    <td className="px-3 py-2 text-right font-medium">
+                      {row.resultingMinDia !== null ? (
+                        <span className={row.isCurrent ? 'text-blue-700' : 'text-gray-900'}>
+                          {row.resultingMinDia.toFixed(1)}"
+                        </span>
+                      ) : (
+                        <span className="text-gray-400">—</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {/* Summary line */}
+            <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 text-xs text-gray-600">
+              Your desired centers: <span className="font-medium text-gray-900">{inputs.cleat_spacing_in ?? '—'}"</span>
+              {' → '}bucket: <span className="font-medium text-blue-700">{currentBucket}"</span>
             </div>
           </div>
 

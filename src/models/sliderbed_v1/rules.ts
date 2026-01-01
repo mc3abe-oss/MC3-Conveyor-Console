@@ -1,10 +1,12 @@
 /**
- * SLIDERBED CONVEYOR v1.27 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.28 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.28 (2025-12-31): Fix cleats+snub false failure - use getEffectivePulleyDiameters for consistent
+ *                     pulley resolution; show error in Frame section (not just Cleats)
  * v1.27 (2025-12-30): PCI tube stress output validation (applyPciOutputRules)
  * v1.15 (2025-12-26): Pulley catalog selection info messages
  * v1.14 (2025-12-26): Conveyor frame construction validation (gauge/channel conditional requirements)
@@ -53,6 +55,7 @@ import {
   SNUB_ROLLER_CLEARANCE_THRESHOLD_IN,
   calculateEffectiveFrameHeight,
   calculateRequiresSnubRollers,
+  getEffectivePulleyDiameters,
 } from './formulas';
 
 /**
@@ -937,9 +940,13 @@ export function applyApplicationRules(
   // - "Different diameters" warning (valid in our system, no value)
   // - "Non-standard diameter" info (catalog now defines valid options)
 
-  // Compute effective pulley diameters for belt minimum warnings
-  const drivePulley = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
-  const tailPulley = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in;
+  // v1.28: Use getEffectivePulleyDiameters for consistent resolution with formulas.ts
+  // This ensures frame height, snub roller checks, etc. use the same pulley values
+  // as the calculation engine, avoiding false positives from stale legacy fields.
+  const { effectiveDrivePulleyDiameterIn, effectiveTailPulleyDiameterIn } =
+    getEffectivePulleyDiameters(inputs);
+  const drivePulley = effectiveDrivePulleyDiameterIn;
+  const tailPulley = effectiveTailPulleyDiameterIn;
 
   // =========================================================================
   // v1.11: BELT MINIMUM PULLEY DIAMETER WARNINGS
@@ -1151,8 +1158,16 @@ export function applyApplicationRules(
 
   // v1.24: Cleats + Snub rollers incompatibility (hard error)
   // Cleated belts cannot use snub rollers - the cleats would collide with the rollers
+  // v1.28: Show error in BOTH Frame section and Cleats section for visibility
   const cleatsEnabled = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
   if (cleatsEnabled && requiresSnubRollers) {
+    // Error in Frame section (user can increase frame height)
+    errors.push({
+      field: 'frame_height_mode',
+      message: `Frame height (${effectiveFrameHeight.toFixed(1)}") requires snub rollers (threshold: ${snubThreshold.toFixed(1)}"), but cleats are enabled. Snub rollers and cleats are incompatible. Increase frame height or disable cleats.`,
+      severity: 'error',
+    });
+    // Error in Cleats section (user can remove cleats)
     errors.push({
       field: 'cleats_mode',
       message: `Cleats cannot be used with snub rollers. Current frame height (${effectiveFrameHeight.toFixed(1)}") requires snub rollers (threshold: ${snubThreshold.toFixed(1)}"). Either increase frame height or remove cleats.`,
