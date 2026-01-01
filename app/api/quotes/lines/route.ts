@@ -2,24 +2,22 @@
  * GET /api/quotes/lines
  * List all quote lines - ONE ROW PER (quote_base, suffix, job_line)
  *
+ * Query params:
+ *   - search: text search on quote_number, customer_name (optional)
+ *   - status: QuoteStatus filter (optional)
+ *   - rangeDays: '30' | '90' - filter by latest_updated_at within N days (optional)
+ *   - page: page number, 1-based (default: 1)
+ *   - pageSize: items per page (default: 100, max: 100)
+ *
+ * Response: { data: QuoteLine[], total: number, page: number, pageSize: number }
+ *
  * This endpoint joins the quotes table with calc_recipes to show:
  * - All unique quote lines that have applications
  * - Latest revision info per line
  * - Revision count per line
- *
- * Returns:
- *   - quote_number: Display string (Q12, Q12.1, etc.)
- *   - base_number: The quote base number
- *   - suffix_line: The suffix (null, 1, 2, etc.)
- *   - job_line: The job line number (1, 2, 3, etc.)
- *   - customer_name: Customer name
- *   - quote_status: Status of the quote record
- *   - revision_count: Number of revisions for this line
- *   - latest_updated_at: When the latest revision was updated
- *   - latest_application_id: ID of the latest application
  */
 
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 
 interface QuoteLineRow {
@@ -34,9 +32,19 @@ interface QuoteLineRow {
   latest_application_id: string;
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
+    const { searchParams } = new URL(request.url);
+
+    // Parse query params
+    const search = searchParams.get('search')?.trim().toLowerCase() || '';
+    const statusFilter = searchParams.get('status') || '';
+    const rangeDays = searchParams.get('rangeDays');
+
+    // Pagination
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '100', 10)));
 
     // Get all calc_recipes with QUOTE reference type
     const { data: recipes, error: recipesError } = await supabase
@@ -110,7 +118,7 @@ export async function GET() {
     }
 
     // Build output rows
-    const rows: QuoteLineRow[] = [];
+    const allRows: QuoteLineRow[] = [];
 
     for (const [, group] of groups) {
       // Sort revisions by updated_at desc to get latest
@@ -128,7 +136,7 @@ export async function GET() {
       // Look up quote record for customer and status
       const quoteRecord = quoteMap.get(quoteNumber);
 
-      rows.push({
+      allRows.push({
         quote_number: quoteNumber,
         base_number: group.base_number,
         suffix_line: group.suffix_line,
@@ -141,16 +149,53 @@ export async function GET() {
       });
     }
 
-    // Sort by base_number, suffix_line, job_line
-    rows.sort((a, b) => {
-      if (a.base_number !== b.base_number) return a.base_number - b.base_number;
-      const aSuffix = a.suffix_line ?? 0;
-      const bSuffix = b.suffix_line ?? 0;
-      if (aSuffix !== bSuffix) return aSuffix - bSuffix;
-      return a.job_line - b.job_line;
-    });
+    // Sort by latest_updated_at DESC (most recent first)
+    allRows.sort((a, b) =>
+      new Date(b.latest_updated_at).getTime() - new Date(a.latest_updated_at).getTime()
+    );
 
-    return NextResponse.json(rows);
+    // Apply filters
+    let filteredRows = allRows;
+
+    // Date range filter
+    if (rangeDays && !search) {
+      const daysAgo = parseInt(rangeDays, 10);
+      if (!isNaN(daysAgo) && daysAgo > 0) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+        filteredRows = filteredRows.filter(row =>
+          new Date(row.latest_updated_at) >= cutoffDate
+        );
+      }
+    }
+
+    // Status filter
+    if (statusFilter) {
+      filteredRows = filteredRows.filter(row => row.quote_status === statusFilter);
+    }
+
+    // Search filter
+    if (search) {
+      filteredRows = filteredRows.filter(row => {
+        const quoteNumMatch = row.quote_number.toLowerCase().includes(search);
+        const customerMatch = row.customer_name?.toLowerCase().includes(search) || false;
+        return quoteNumMatch || customerMatch;
+      });
+    }
+
+    // Calculate total before pagination
+    const total = filteredRows.length;
+
+    // Apply pagination
+    const offset = (page - 1) * pageSize;
+    const paginatedRows = filteredRows.slice(offset, offset + pageSize);
+
+    return NextResponse.json({
+      data: paginatedRows,
+      total,
+      page,
+      pageSize,
+    });
   } catch (error) {
     console.error('Quote lines API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
