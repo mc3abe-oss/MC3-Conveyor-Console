@@ -606,41 +606,6 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
               />
             </div>
 
-            <div>
-              <label htmlFor="belt_coeff_piw" className="label">
-                Belt Coefficient PIW (lb/in) <span className="text-gray-500">(0.05-0.30, default: 0.109)</span>
-              </label>
-              <input
-                type="number"
-                id="belt_coeff_piw"
-                className="input"
-                value={inputs.belt_coeff_piw || ''}
-                onChange={(e) =>
-                  updateInput('belt_coeff_piw', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="0.001"
-                min="0.05"
-                max="0.30"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="belt_coeff_pil" className="label">
-                Belt Coefficient PIL (lb/in) <span className="text-gray-500">(0.05-0.30, default: 0.109)</span>
-              </label>
-              <input
-                type="number"
-                id="belt_coeff_pil"
-                className="input"
-                value={inputs.belt_coeff_pil || ''}
-                onChange={(e) =>
-                  updateInput('belt_coeff_pil', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="0.001"
-                min="0.05"
-                max="0.30"
-              />
-            </div>
         </div>
       </AccordionSection>
     </div>

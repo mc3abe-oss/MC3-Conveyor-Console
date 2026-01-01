@@ -767,52 +767,96 @@ export default function TabConveyorPhysical({
             </p>
           </div>
 
-          {/* PIW/PIL Override Fields */}
+          {/* PIW/PIL Compact Display with Override Toggle */}
           {inputs.belt_catalog_key && (
-            <>
-              <div>
-                <label htmlFor="belt_piw_override" className="label">
-                  PIW Override (lb/in) <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_piw_override"
-                  className="input"
-                  value={inputs.belt_piw_override ?? ''}
-                  onChange={(e) =>
-                    updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.001"
-                  min="0.05"
-                  max="0.30"
-                  placeholder={inputs.belt_piw?.toString() ?? ''}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave blank to use catalog value ({inputs.belt_piw ?? 'N/A'} lb/in)
-                </p>
-              </div>
-              <div>
-                <label htmlFor="belt_pil_override" className="label">
-                  PIL Override (lb/in) <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_pil_override"
-                  className="input"
-                  value={inputs.belt_pil_override ?? ''}
-                  onChange={(e) =>
-                    updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.001"
-                  min="0.05"
-                  max="0.30"
-                  placeholder={inputs.belt_pil?.toString() ?? ''}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave blank to use catalog value ({inputs.belt_pil ?? 'N/A'} lb/in)
-                </p>
-              </div>
-            </>
+            <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+              {/* Check if overrides are active */}
+              {(inputs.belt_piw_override !== undefined || inputs.belt_pil_override !== undefined) ? (
+                /* Override mode: show inline inputs */
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">PIW / PIL Override</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        updateInput('belt_piw_override', undefined);
+                        updateInput('belt_pil_override', undefined);
+                      }}
+                      className="text-xs text-gray-500 hover:text-gray-700"
+                    >
+                      Use Catalog
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1">
+                      <label htmlFor="belt_piw_override" className="sr-only">PIW Override</label>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-500 w-8">PIW:</span>
+                        <input
+                          type="number"
+                          id="belt_piw_override"
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                          value={inputs.belt_piw_override ?? ''}
+                          onChange={(e) =>
+                            updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)
+                          }
+                          step="0.001"
+                          min="0.05"
+                          max="0.30"
+                          placeholder={inputs.belt_piw?.toString() ?? ''}
+                        />
+                        <span className="text-xs text-gray-500">lb/in</span>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <label htmlFor="belt_pil_override" className="sr-only">PIL Override</label>
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-gray-500 w-8">PIL:</span>
+                        <input
+                          type="number"
+                          id="belt_pil_override"
+                          className="flex-1 px-2 py-1 text-sm border border-gray-300 rounded focus:ring-blue-500 focus:border-blue-500"
+                          value={inputs.belt_pil_override ?? ''}
+                          onChange={(e) =>
+                            updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)
+                          }
+                          step="0.001"
+                          min="0.05"
+                          max="0.30"
+                          placeholder={inputs.belt_pil?.toString() ?? ''}
+                        />
+                        <span className="text-xs text-gray-500">lb/in</span>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gray-500">
+                    Catalog: PIW {inputs.belt_piw ?? 'N/A'} / PIL {inputs.belt_pil ?? 'N/A'} lb/in
+                  </p>
+                </div>
+              ) : (
+                /* Default mode: show catalog values with Override button */
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-700">
+                    <span className="font-medium">PIW / PIL:</span>{' '}
+                    <span className="text-blue-600 font-medium">
+                      {inputs.belt_piw ?? '—'} / {inputs.belt_pil ?? '—'}
+                    </span>
+                    <span className="text-gray-500"> lb/in</span>
+                    <span className="text-xs text-gray-400 ml-1">(from catalog)</span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateInput('belt_piw_override', inputs.belt_piw ?? 0.109);
+                      updateInput('belt_pil_override', inputs.belt_pil ?? 0.109);
+                    }}
+                    className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+                  >
+                    Override
+                  </button>
+                </div>
+              )}
+            </div>
           )}
 
           {/* ===== TRACKING SUBSECTION ===== */}

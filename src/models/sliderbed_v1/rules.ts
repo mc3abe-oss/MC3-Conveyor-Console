@@ -387,7 +387,7 @@ export function validateInputs(
   if (inputs.belt_coeff_piw !== undefined && inputs.belt_coeff_piw <= 0) {
     errors.push({
       field: 'belt_coeff_piw',
-      message: 'Belt coefficient piw must be > 0',
+      message: 'PIW must be > 0',
       severity: 'error',
     });
   }
@@ -395,7 +395,7 @@ export function validateInputs(
   if (inputs.belt_coeff_piw !== undefined && (inputs.belt_coeff_piw < 0.05 || inputs.belt_coeff_piw > 0.30)) {
     errors.push({
       field: 'belt_coeff_piw',
-      message: 'Belt coefficient piw should be between 0.05 and 0.30',
+      message: 'PIW should be between 0.05 and 0.30 lb/in',
       severity: 'error',
     });
   }
@@ -403,7 +403,7 @@ export function validateInputs(
   if (inputs.belt_coeff_pil !== undefined && inputs.belt_coeff_pil <= 0) {
     errors.push({
       field: 'belt_coeff_pil',
-      message: 'Belt coefficient pil must be > 0',
+      message: 'PIL must be > 0',
       severity: 'error',
     });
   }
@@ -411,7 +411,7 @@ export function validateInputs(
   if (inputs.belt_coeff_pil !== undefined && (inputs.belt_coeff_pil < 0.05 || inputs.belt_coeff_pil > 0.30)) {
     errors.push({
       field: 'belt_coeff_pil',
-      message: 'Belt coefficient pil should be between 0.05 and 0.30',
+      message: 'PIL should be between 0.05 and 0.30 lb/in',
       severity: 'error',
     });
   }
