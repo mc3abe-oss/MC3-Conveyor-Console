@@ -28,6 +28,10 @@ import {
   FRAME_CONSTRUCTION_TYPE_LABELS,
   SHEET_METAL_GAUGE_LABELS,
   STRUCTURAL_CHANNEL_SERIES_LABELS,
+  // v1.29: Return Support
+  ReturnFrameStyle,
+  ReturnSnubMode,
+  RETURN_FRAME_STYLE_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateEffectiveFrameHeight,
@@ -54,13 +58,19 @@ import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../..
 import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import PulleyConfigModal from './PulleyConfigModal';
 import CleatsConfigModal from './CleatsConfigModal';
+import ReturnSupportModal, { computeSnubsEnabled, computeReturnSpan, computeGravityRollerCenters } from './ReturnSupportModal';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
   CLEAT_PATTERN_LABELS,
+  useCleatCatalog,
+  lookupCleatsMinPulleyDia,
+  CleatPattern,
+  CleatStyle,
+  DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../src/lib/cleat-catalog';
 
 interface TabConveyorPhysicalProps {
@@ -73,8 +83,8 @@ interface TabConveyorPhysicalProps {
   getMinPulleyIssues: () => Issue[];
   /** Application line ID for pulley configuration (calc_recipes.id) */
   applicationLineId?: string | null;
-  /** v1.28: Get issues for a specific section (for banner display) */
-  getIssuesForSection: (sectionKey: SectionKey) => Issue[];
+  /** Get merged issues for a section (pre-calc + post-calc, de-duped) */
+  getMergedIssuesForSection?: (sectionKey: SectionKey) => Issue[];
 }
 
 /**
@@ -116,7 +126,7 @@ export default function TabConveyorPhysical({
   getTrackingIssue,
   getMinPulleyIssues,
   applicationLineId,
-  getIssuesForSection,
+  getMergedIssuesForSection,
 }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
@@ -231,6 +241,9 @@ export default function TabConveyorPhysical({
 
   // v1.24: Cleats configuration modal state
   const [isCleatsModalOpen, setIsCleatsModalOpen] = useState(false);
+
+  // v1.29: Return Support modal state
+  const [isReturnSupportModalOpen, setIsReturnSupportModalOpen] = useState(false);
 
   // Derived tracking mode for display
   const trackingMode = getBeltTrackingMode({ belt_tracking_method: inputs.belt_tracking_method });
@@ -392,6 +405,43 @@ export default function TabConveyorPhysical({
 
   // v1.24: Cleat catalog and handlers moved to CleatsConfigModal
 
+  // Load cleat catalog for min pulley display
+  const { cleatCatalog, cleatCenterFactors } = useCleatCatalog();
+
+  // Compute cleats min pulley diameter for display under summary card
+  const cleatsMinPulleyDiaIn = useMemo(() => {
+    if (
+      inputs.cleats_mode !== 'cleated' ||
+      !inputs.cleat_profile ||
+      !inputs.cleat_size ||
+      !inputs.cleat_pattern ||
+      !inputs.cleat_style ||
+      !inputs.cleat_centers_in
+    ) {
+      return null;
+    }
+    const result = lookupCleatsMinPulleyDia(
+      cleatCatalog,
+      cleatCenterFactors,
+      DEFAULT_CLEAT_MATERIAL_FAMILY,
+      inputs.cleat_profile,
+      inputs.cleat_size,
+      inputs.cleat_pattern as CleatPattern,
+      inputs.cleat_style as CleatStyle,
+      inputs.cleat_centers_in
+    );
+    return result.success ? result.roundedMinDia : null;
+  }, [
+    cleatCatalog,
+    cleatCenterFactors,
+    inputs.cleats_mode,
+    inputs.cleat_profile,
+    inputs.cleat_size,
+    inputs.cleat_pattern,
+    inputs.cleat_style,
+    inputs.cleat_centers_in,
+  ]);
+
   return (
     <div className="space-y-4">
       {/* SECTION: Conveyor Type & Geometry */}
@@ -401,7 +451,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('geometry')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.geometry}
-        issues={getIssuesForSection('geometry')}
+        issues={getMergedIssuesForSection?.('geometry')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Bed Type */}
@@ -693,7 +743,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('beltPulleys')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.beltPulleys}
-        issues={getIssuesForSection('beltPulleys')}
+        issues={getMergedIssuesForSection?.('beltPulleys')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* ===== BELT SUBSECTION ===== */}
@@ -856,8 +906,9 @@ export default function TabConveyorPhysical({
             Cleats
           </h4>
 
-          {/* Cleats Summary Card - styled to match Pulley cards */}
+          {/* Cleats Summary Card - Compact Horizontal Layout */}
           <div className={`border rounded-lg p-4 ${inputs.cleats_mode === 'cleated' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
+            {/* Header row with title, badges, and edit button */}
             <div className="flex items-center justify-between mb-3">
               <h5 className="font-medium text-gray-900">Belt Cleats</h5>
               <div className="flex items-center gap-2">
@@ -867,46 +918,77 @@ export default function TabConveyorPhysical({
                 {inputs.cleats_mode === 'cleated' && (
                   <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
                 )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (inputs.cleats_mode !== 'cleated') {
+                      updateInput('cleats_mode', 'cleated');
+                      updateInput('cleats_enabled', true);
+                      if (!inputs.cleat_centers_in) updateInput('cleat_centers_in', 12);
+                      if (!inputs.cleat_style) updateInput('cleat_style', 'SOLID');
+                      if (!inputs.cleat_pattern) updateInput('cleat_pattern', 'STRAIGHT_CROSS');
+                      if (!inputs.cleat_material_family) updateInput('cleat_material_family', 'PVC_HOT_WELDED');
+                    }
+                    setIsCleatsModalOpen(true);
+                  }}
+                  className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                >
+                  {inputs.cleats_mode === 'cleated' ? 'Edit' : 'Configure'}
+                </button>
               </div>
             </div>
 
             {inputs.cleats_mode === 'cleated' ? (
-              <div className="space-y-1 text-sm">
-                {inputs.cleat_profile && (
-                  <div><span className="text-gray-600">Profile:</span> <span className="font-medium">{inputs.cleat_profile}</span></div>
-                )}
-                {inputs.cleat_size && (
-                  <div><span className="text-gray-600">Size:</span> <span className="font-medium">{inputs.cleat_size}</span></div>
-                )}
-                {inputs.cleat_pattern && (
-                  <div><span className="text-gray-600">Pattern:</span> <span className="font-medium">{CLEAT_PATTERN_LABELS[inputs.cleat_pattern as keyof typeof CLEAT_PATTERN_LABELS] ?? inputs.cleat_pattern}</span></div>
-                )}
-                {inputs.cleat_spacing_in && (
-                  <div><span className="text-gray-600">Centers:</span> <span className="font-medium text-blue-600">{inputs.cleat_spacing_in}"</span></div>
-                )}
+              <div className="text-sm space-y-1.5">
+                {/* Row 1: Profile, Size, Centers */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                  {inputs.cleat_profile && (
+                    <span>
+                      <span className="text-gray-500">Profile:</span>{' '}
+                      <span className="font-medium">{inputs.cleat_profile}</span>
+                    </span>
+                  )}
+                  {inputs.cleat_size && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <span>
+                        <span className="text-gray-500">Size:</span>{' '}
+                        <span className="font-medium">{inputs.cleat_size}</span>
+                      </span>
+                    </>
+                  )}
+                  {inputs.cleat_spacing_in && (
+                    <>
+                      <span className="text-gray-300">|</span>
+                      <span>
+                        <span className="text-gray-500">Centers:</span>{' '}
+                        <span className="font-medium text-blue-600">{inputs.cleat_spacing_in}"</span>
+                      </span>
+                    </>
+                  )}
+                </div>
+                {/* Row 2: Pattern, Min Pulley */}
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-600">
+                  {inputs.cleat_pattern && (
+                    <span>
+                      <span className="text-gray-500">Pattern:</span>{' '}
+                      <span className="font-medium text-gray-900">{CLEAT_PATTERN_LABELS[inputs.cleat_pattern as keyof typeof CLEAT_PATTERN_LABELS] ?? inputs.cleat_pattern}</span>
+                    </span>
+                  )}
+                  {cleatsMinPulleyDiaIn !== null && (
+                    <>
+                      {inputs.cleat_pattern && <span className="text-gray-300">|</span>}
+                      <span>
+                        <span className="text-gray-500">Min Pulley:</span>{' '}
+                        <span className="font-medium text-amber-600">{cleatsMinPulleyDiaIn}"</span>
+                      </span>
+                    </>
+                  )}
+                </div>
               </div>
             ) : (
-              <p className="text-sm text-gray-500 mb-3">Not configured. Cleats help retain product on inclines.</p>
+              <p className="text-sm text-gray-500">Not configured. Cleats help retain product on inclines.</p>
             )}
-
-            <button
-              type="button"
-              onClick={() => {
-                // Set cleats_mode to 'cleated' when adding (if not already)
-                if (inputs.cleats_mode !== 'cleated') {
-                  updateInput('cleats_mode', 'cleated');
-                  updateInput('cleats_enabled', true);
-                  // Set defaults
-                  if (!inputs.cleat_centers_in) updateInput('cleat_centers_in', 12);
-                  if (!inputs.cleat_style) updateInput('cleat_style', 'SOLID');
-                  if (!inputs.cleat_material_family) updateInput('cleat_material_family', 'PVC_HOT_WELDED');
-                }
-                setIsCleatsModalOpen(true);
-              }}
-              className="mt-3 w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            >
-              {inputs.cleats_mode === 'cleated' ? 'Edit Cleats' : 'Configure Cleats'}
-            </button>
           </div>
 
           {/* Cleats Config Modal */}
@@ -930,89 +1012,85 @@ export default function TabConveyorPhysical({
             )}
           </div>
 
-          {/* Pulley Cards */}
+          {/* Pulley Cards - Compact Side-by-Side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* DRIVE PULLEY CARD */}
             <div className={`border rounded-lg p-4 ${drivePulley ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <h5 className="font-medium text-gray-900">Head/Drive Pulley</h5>
-                {drivePulley && (
-                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {drivePulley && (
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
+                  )}
+                  {applicationLineId && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPulleyModalOpen(true)}
+                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                    >
+                      {drivePulley ? 'Edit' : 'Configure'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {pulleysLoading ? (
                 <p className="text-sm text-gray-500">Loading...</p>
               ) : drivePulley ? (
-                <div className="space-y-1 text-sm">
-                  <div><span className="text-gray-600">Style:</span> <span className="font-medium">{drivePulley.style_key}</span></div>
-                  <div><span className="text-gray-600">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
-                  <div><span className="text-gray-600">Lagging:</span> <span className="font-medium">
+                <div className="text-sm space-y-0.5">
+                  <div><span className="text-gray-500">Style:</span> <span className="font-medium">{drivePulley.style_key}</span></div>
+                  <div><span className="text-gray-500">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
+                  <div><span className="text-gray-500">Lagging:</span> <span className="font-medium">
                     {drivePulley.lagging_type === 'NONE' ? 'None' : `${drivePulley.lagging_type} (${drivePulley.lagging_thickness_in || 0}")`}
                   </span></div>
                   {drivePulley.finished_od_in && (
-                    <div><span className="text-gray-600">Finished OD:</span> <span className="font-medium text-blue-600">{drivePulley.finished_od_in}"</span></div>
-                  )}
-                  {drivePulley.face_width_in && (
-                    <div><span className="text-gray-600">Face Width:</span> <span className="font-medium">{drivePulley.face_width_in}"</span></div>
+                    <div><span className="text-gray-500">OD:</span> <span className="font-medium text-blue-600">{drivePulley.finished_od_in}"</span></div>
                   )}
                 </div>
+              ) : !applicationLineId ? (
+                <p className="text-xs text-amber-600">Save application to configure pulleys</p>
               ) : (
-                <p className="text-sm text-gray-500 mb-3">Not configured</p>
-              )}
-
-              {!applicationLineId ? (
-                <p className="text-xs text-amber-600 mt-3">Save application to configure pulleys</p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsPulleyModalOpen(true)}
-                  className="mt-3 w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                >
-                  {drivePulley ? 'Edit Pulleys' : 'Configure Pulleys'}
-                </button>
+                <p className="text-sm text-gray-500">Not configured</p>
               )}
             </div>
 
             {/* TAIL PULLEY CARD */}
             <div className={`border rounded-lg p-4 ${tailPulley ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-2">
                 <h5 className="font-medium text-gray-900">Tail Pulley</h5>
-                {tailPulley && (
-                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
-                )}
+                <div className="flex items-center gap-2">
+                  {tailPulley && (
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
+                  )}
+                  {applicationLineId && (
+                    <button
+                      type="button"
+                      onClick={() => setIsPulleyModalOpen(true)}
+                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                    >
+                      {tailPulley ? 'Edit' : 'Configure'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               {pulleysLoading ? (
                 <p className="text-sm text-gray-500">Loading...</p>
               ) : tailPulley ? (
-                <div className="space-y-1 text-sm">
-                  <div><span className="text-gray-600">Style:</span> <span className="font-medium">{tailPulley.style_key}</span></div>
-                  <div><span className="text-gray-600">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
-                  <div><span className="text-gray-600">Lagging:</span> <span className="font-medium">
+                <div className="text-sm space-y-0.5">
+                  <div><span className="text-gray-500">Style:</span> <span className="font-medium">{tailPulley.style_key}</span></div>
+                  <div><span className="text-gray-500">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
+                  <div><span className="text-gray-500">Lagging:</span> <span className="font-medium">
                     {tailPulley.lagging_type === 'NONE' ? 'None' : `${tailPulley.lagging_type} (${tailPulley.lagging_thickness_in || 0}")`}
                   </span></div>
                   {tailPulley.finished_od_in && (
-                    <div><span className="text-gray-600">Finished OD:</span> <span className="font-medium text-blue-600">{tailPulley.finished_od_in}"</span></div>
-                  )}
-                  {tailPulley.face_width_in && (
-                    <div><span className="text-gray-600">Face Width:</span> <span className="font-medium">{tailPulley.face_width_in}"</span></div>
+                    <div><span className="text-gray-500">OD:</span> <span className="font-medium text-blue-600">{tailPulley.finished_od_in}"</span></div>
                   )}
                 </div>
+              ) : !applicationLineId ? (
+                <p className="text-xs text-amber-600">Save application to configure pulleys</p>
               ) : (
-                <p className="text-sm text-gray-500 mb-3">Not configured</p>
-              )}
-
-              {!applicationLineId ? (
-                <p className="text-xs text-amber-600 mt-3">Save application to configure pulleys</p>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setIsPulleyModalOpen(true)}
-                  className="mt-3 w-full px-3 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                >
-                  {tailPulley ? 'Edit Pulleys' : 'Configure Pulleys'}
-                </button>
+                <p className="text-sm text-gray-500">Not configured</p>
               )}
             </div>
           </div>
@@ -1177,6 +1255,84 @@ export default function TabConveyorPhysical({
             </div>
           )}
 
+          {/* ===== v1.29: RETURN SUPPORT SUBSECTION ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-6">
+            Return Support
+          </h4>
+
+          {/* Return Support Summary Card - Compact Horizontal Layout */}
+          {(() => {
+            const frameStyle = inputs.return_frame_style ?? ReturnFrameStyle.Standard;
+            const snubMode = inputs.return_snub_mode ?? ReturnSnubMode.Auto;
+            const endOffsetIn = inputs.return_end_offset_in ?? 24;
+            const snubsEnabled = computeSnubsEnabled(frameStyle, snubMode);
+            const conveyorLength = inputs.conveyor_length_cc_in ?? 120;
+            const returnSpan = computeReturnSpan(conveyorLength, snubsEnabled, endOffsetIn);
+            const rollerCount = inputs.return_gravity_roller_count ?? Math.max(Math.floor(returnSpan / 60) + 1, 2);
+            const gravityCenters = computeGravityRollerCenters(returnSpan, rollerCount);
+            const gravityDia = inputs.return_gravity_roller_diameter_in ?? 1.9;
+            const snubDia = inputs.return_snub_roller_diameter_in ?? 2.5;
+            const frameStyleLabel = RETURN_FRAME_STYLE_LABELS[frameStyle as ReturnFrameStyle] ?? frameStyle;
+
+            return (
+              <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                {/* Header row with title, badge, and edit button */}
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-medium text-gray-900">Return Rollers</h5>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
+                    <button
+                      type="button"
+                      onClick={() => setIsReturnSupportModalOpen(true)}
+                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                </div>
+
+                {/* Compact horizontal info rows */}
+                <div className="text-sm space-y-1.5">
+                  {/* Row 1: Frame, Snubs, Gravity count */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span>
+                      <span className="text-gray-500">Frame:</span>{' '}
+                      <span className="font-medium">{frameStyleLabel}</span>
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span>
+                      <span className="text-gray-500">Snubs:</span>{' '}
+                      <span className={`font-medium ${snubsEnabled ? 'text-blue-600' : ''}`}>
+                        {snubsEnabled ? 'Yes' : 'No'}
+                      </span>
+                    </span>
+                    <span className="text-gray-300">|</span>
+                    <span>
+                      <span className="text-gray-500">Gravity:</span>{' '}
+                      <span className="font-medium">{rollerCount} @ {gravityCenters?.toFixed(1) ?? '—'}"</span>
+                    </span>
+                  </div>
+                  {/* Row 2: Diameters */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-600">
+                    <span>
+                      <span className="text-gray-500">Gravity Dia:</span>{' '}
+                      <span className="font-medium text-gray-900">{gravityDia}"</span>
+                    </span>
+                    {snubsEnabled && (
+                      <>
+                        <span className="text-gray-300">|</span>
+                        <span>
+                          <span className="text-gray-500">Snub Dia:</span>{' '}
+                          <span className="font-medium text-gray-900">{snubDia}"</span>
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
         </div>
       </AccordionSection>
 
@@ -1187,7 +1343,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('frame')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.frame}
-        issues={getIssuesForSection('frame')}
+        issues={getMergedIssuesForSection?.('frame')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* ===== v1.14: FRAME CONSTRUCTION SUBSECTION ===== */}
@@ -1567,6 +1723,14 @@ export default function TabConveyorPhysical({
         vGuideKey={inputs.v_guide_key}
         beltWidthIn={inputs.belt_width_in}
         onSave={handlePulleySave}
+      />
+
+      {/* Return Support Modal */}
+      <ReturnSupportModal
+        isOpen={isReturnSupportModalOpen}
+        onClose={() => setIsReturnSupportModalOpen(false)}
+        inputs={inputs}
+        updateInput={updateInput}
       />
     </div>
   );

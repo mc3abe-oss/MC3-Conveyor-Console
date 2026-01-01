@@ -441,6 +441,52 @@ export enum FrameHeightMode {
 }
 
 // ============================================================================
+// v1.29: RETURN SUPPORT CONFIGURATION
+// ============================================================================
+
+/**
+ * Return frame style (v1.29)
+ * Determines the frame style for the belt return path.
+ * This is an explicit user selection, NOT derived from frame height.
+ */
+export enum ReturnFrameStyle {
+  /** Standard frame - adequate clearance, no snub rollers needed */
+  Standard = 'STANDARD',
+  /** Low profile frame - reduced clearance, typically uses snub rollers */
+  LowProfile = 'LOW_PROFILE',
+}
+
+/**
+ * Return snub mode (v1.29)
+ * Determines whether snub rollers are used on the return path.
+ */
+export enum ReturnSnubMode {
+  /** Auto: Standard → No snubs, Low Profile → Yes snubs */
+  Auto = 'AUTO',
+  /** Force snub rollers enabled */
+  Yes = 'YES',
+  /** Force snub rollers disabled (advanced) */
+  No = 'NO',
+}
+
+/**
+ * Display labels for ReturnFrameStyle
+ */
+export const RETURN_FRAME_STYLE_LABELS: Record<ReturnFrameStyle, string> = {
+  [ReturnFrameStyle.Standard]: 'Standard',
+  [ReturnFrameStyle.LowProfile]: 'Low Profile',
+};
+
+/**
+ * Display labels for ReturnSnubMode
+ */
+export const RETURN_SNUB_MODE_LABELS: Record<ReturnSnubMode, string> = {
+  [ReturnSnubMode.Auto]: 'Auto',
+  [ReturnSnubMode.Yes]: 'Yes',
+  [ReturnSnubMode.No]: 'No (Advanced)',
+};
+
+// ============================================================================
 // v1.14: CONVEYOR FRAME CONSTRUCTION ENUMS
 // ============================================================================
 
@@ -626,10 +672,11 @@ export interface SliderbedInputs {
   cleat_size?: string;
 
   /**
-   * Cleat pattern (v1.23)
-   * STRAIGHT_CROSS, CURVED_90, CURVED_120, CURVED_150
+   * Cleat pattern (v1.23, expanded v1.29)
+   * STRAIGHT_CROSS (default), STAGGERED, CHEVRON, PARTIAL_WIDTH, CUSTOM
+   * Note: Pattern selection is informational only; does not affect calculations.
    */
-  cleat_pattern?: 'STRAIGHT_CROSS' | 'CURVED_90' | 'CURVED_120' | 'CURVED_150';
+  cleat_pattern?: 'STRAIGHT_CROSS' | 'STAGGERED' | 'CHEVRON' | 'PARTIAL_WIDTH' | 'CUSTOM';
 
   /**
    * Cleat centers in inches (v1.23)
@@ -841,6 +888,54 @@ export interface SliderbedInputs {
 
   /** Custom frame height in inches (required if frame_height_mode = Custom) */
   custom_frame_height_in?: number;
+
+  // =========================================================================
+  // v1.29: RETURN SUPPORT CONFIGURATION
+  // =========================================================================
+
+  /**
+   * Return frame style (v1.29)
+   * Explicit user selection for frame style on return path.
+   * Default: STANDARD
+   */
+  return_frame_style?: ReturnFrameStyle | string;
+
+  /**
+   * Return snub mode (v1.29)
+   * Controls whether snub rollers are used.
+   * Auto: Standard → No, Low Profile → Yes
+   * Default: AUTO
+   */
+  return_snub_mode?: ReturnSnubMode | string;
+
+  /**
+   * Number of gravity return rollers (v1.29)
+   * User-specified count. Minimum 2.
+   * Default: computed from span / 60"
+   */
+  return_gravity_roller_count?: number;
+
+  /**
+   * Gravity roller diameter in inches (v1.29)
+   * Standard return roller diameter.
+   * Default: 1.9"
+   */
+  return_gravity_roller_diameter_in?: number;
+
+  /**
+   * Snub roller diameter in inches (v1.29)
+   * Only relevant when snubs are enabled.
+   * Default: 2.5"
+   */
+  return_snub_roller_diameter_in?: number;
+
+  /**
+   * End offset per end in inches (v1.29)
+   * Distance from pulley center to first return roller center.
+   * When snubs are enabled, this defines the snub zone at each end.
+   * Default: 24"
+   */
+  return_end_offset_in?: number;
 
   // =========================================================================
   // v1.14: CONVEYOR FRAME CONSTRUCTION
@@ -1619,6 +1714,68 @@ export interface SliderbedOutputs {
   snub_roller_quantity?: number;
 
   // =========================================================================
+  // v1.29: RETURN SUPPORT OUTPUTS
+  // =========================================================================
+
+  /**
+   * Whether snub rollers are enabled (v1.29)
+   * Derived from return_frame_style + return_snub_mode.
+   * Auto mode: Standard → false, Low Profile → true
+   */
+  return_snubs_enabled?: boolean;
+
+  /**
+   * Span to support in inches (v1.29)
+   * The return path length that gravity rollers must cover.
+   * With snubs: reduced by snub zones at each end.
+   * Without snubs: full return run length.
+   */
+  return_span_in?: number;
+
+  /**
+   * Number of gravity return rollers (v1.29)
+   * User-specified or computed from return span.
+   */
+  return_gravity_roller_count?: number;
+
+  /**
+   * Computed gravity roller centers in inches (v1.29)
+   * Formula: span / (roller_count - 1)
+   */
+  return_gravity_roller_centers_in?: number;
+
+  /**
+   * Gravity return roller diameter in inches (v1.29)
+   * Default: 1.9"
+   */
+  return_gravity_roller_diameter_in?: number;
+
+  /**
+   * Snub roller diameter in inches (v1.29)
+   * Only present when return_snubs_enabled is true.
+   * Default: 2.5"
+   */
+  return_snub_roller_diameter_in?: number;
+
+  /**
+   * Return frame style (v1.29)
+   * Echo of input for display purposes.
+   */
+  return_frame_style?: ReturnFrameStyle;
+
+  /**
+   * Return snub mode (v1.29)
+   * Echo of input for display purposes.
+   */
+  return_snub_mode?: ReturnSnubMode;
+
+  /**
+   * End offset per end in inches (v1.29)
+   * Echo of input for display purposes.
+   */
+  return_end_offset_in?: number;
+
+  // =========================================================================
   // v1.14: CONVEYOR FRAME CONSTRUCTION OUTPUTS
   // =========================================================================
 
@@ -1876,6 +2033,13 @@ export const DEFAULT_INPUT_VALUES = {
 
   // Frame height defaults (v1.5)
   frame_height_mode: FrameHeightMode.Standard,
+
+  // Return support defaults (v1.29)
+  return_frame_style: ReturnFrameStyle.Standard,
+  return_snub_mode: ReturnSnubMode.Auto,
+  return_gravity_roller_diameter_in: 1.9,
+  return_snub_roller_diameter_in: 2.5,
+  return_end_offset_in: 24,
 
   // Conveyor frame construction defaults (v1.14)
   frame_construction_type: 'sheet_metal' as FrameConstructionType,

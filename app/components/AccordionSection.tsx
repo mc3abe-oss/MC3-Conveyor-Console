@@ -11,7 +11,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Issue, SectionCounts } from './useConfigureIssues';
+import { SectionCounts, Issue } from './useConfigureIssues';
 import StatusLight from './StatusLight';
 import SectionIssuesBanner from './SectionIssuesBanner';
 
@@ -23,7 +23,7 @@ interface AccordionSectionProps {
   children: React.ReactNode;
   /** Issue counts for displaying indicator chips */
   issueCounts?: SectionCounts;
-  /** Full issues for this section (for banner display) */
+  /** Issues to display inline when section is expanded */
   issues?: Issue[];
 }
 
@@ -82,8 +82,10 @@ export default function AccordionSection({
         }`}
       >
         <div className="p-4">
-          {/* v1.28: Show issues banner at top of section content */}
-          {issues && issues.length > 0 && <SectionIssuesBanner issues={issues} />}
+          {/* Inline issues banner (errors/warnings from pre-calc and post-calc) */}
+          {issues && issues.length > 0 && (
+            <SectionIssuesBanner issues={issues} />
+          )}
           {children}
         </div>
       </div>
