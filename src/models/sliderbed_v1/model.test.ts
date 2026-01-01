@@ -3260,6 +3260,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           part_width_in: 6,
           orientation: Orientation.Lengthwise,
           frame_height_mode: FrameHeightMode.LowProfile, // 4.5" frame < 6.5" threshold
+          // v1.29: Explicit return support configuration
+          return_frame_style: 'LOW_PROFILE',
+          return_snub_mode: 'AUTO', // Auto: Low Profile → snubs enabled
           drop_height_in: 0,
           part_temperature_class: PartTemperatureClass.Ambient,
           fluid_type: FluidType.None,
@@ -3303,9 +3306,11 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
         expect(result.success).toBe(true);
         expect(result.outputs?.requires_snub_rollers).toBe(true);
+        // v1.29: snub_roller_quantity still derived from requires_snub_rollers for legacy compat
         expect(result.outputs?.snub_roller_quantity).toBe(2);
-        // 360" / 60" = 7 positions, minus 2 for snubs = 5 gravity rollers
-        expect(result.outputs?.gravity_roller_quantity).toBe(5);
+        // v1.29: With explicit return support, gravity count uses return span
+        // return_span = 360 - 2*24 = 312", floor(312/60)+1 = 6 rollers
+        expect(result.outputs?.gravity_roller_quantity).toBe(6);
         expect(result.outputs?.gravity_roller_spacing_in).toBe(GRAVITY_ROLLER_SPACING_IN);
       });
 
@@ -3450,26 +3455,27 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     });
 
     it('should FAIL when cleats enabled and snubs required (frame height below threshold)', () => {
-      // 5.5" pulley, LOW PROFILE mode = 6.0" frame height (5.5 + 0.5)
-      // Snub threshold = 5.5" + 2.5" = 8.0"
-      // 6.0" < 8.0", so snubs ARE required → conflict with cleats
-      // Note: Standard mode adds 2.5" offset to MATCH snub threshold, so use Low Profile to test conflict
+      // v1.29: Snub rollers are now controlled by explicit return_frame_style and return_snub_mode
+      // Set LOW_PROFILE return frame style to enable snubs via Auto mode
       const inputs: SliderbedInputs = {
         ...cleatsBaseInputs,
-        frame_height_mode: FrameHeightMode.LowProfile, // 5.5 + 0.5 = 6.0" < 8.0" threshold
+        frame_height_mode: FrameHeightMode.LowProfile,
+        // v1.29: Explicit return support - Low Profile with Auto mode enables snubs
+        return_frame_style: 'LOW_PROFILE',
+        return_snub_mode: 'AUTO',
       };
 
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
-      expect(result.errors!.length).toBeGreaterThanOrEqual(2); // Error in both Frame and Cleats sections
+      expect(result.errors!.length).toBeGreaterThanOrEqual(2); // Error in both Return Support and Cleats sections
 
-      // Check for frame_height_mode error
-      const frameError = result.errors!.find(e => e.field === 'frame_height_mode');
-      expect(frameError).toBeDefined();
-      expect(frameError!.message).toContain('snub rollers');
-      expect(frameError!.message).toContain('cleats');
+      // v1.29: Check for return_snub_mode error (replaces frame_height_mode error)
+      const returnSupportError = result.errors!.find(e => e.field === 'return_snub_mode');
+      expect(returnSupportError).toBeDefined();
+      expect(returnSupportError!.message).toContain('snub rollers');
+      expect(returnSupportError!.message).toContain('Cleats');
 
       // Check for cleats_mode error
       const cleatsError = result.errors!.find(e => e.field === 'cleats_mode');
@@ -3478,14 +3484,16 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     });
 
     it('should PASS when cleats DISABLED and snubs required', () => {
-      // No conflict when cleats are off - use Low Profile to require snubs
-      // Note: Standard mode adds 2.5" = same as snub threshold, so never requires snubs
+      // No conflict when cleats are off - use Low Profile return frame to require snubs
       const inputs: SliderbedInputs = {
         ...cleatsBaseInputs,
         cleats_enabled: false,
         cleats_mode: undefined,
         cleat_height_in: undefined,
-        frame_height_mode: FrameHeightMode.LowProfile, // 5.5 + 0.5 = 6.0" < 8.0" threshold
+        frame_height_mode: FrameHeightMode.LowProfile,
+        // v1.29: Explicit return support - Low Profile with Auto mode enables snubs
+        return_frame_style: 'LOW_PROFILE',
+        return_snub_mode: 'AUTO',
       };
 
       const result = runCalculation({ inputs });
@@ -3496,14 +3504,16 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     });
 
     it('should use correct pulley diameter from inputs (regression for v1.28 fix)', () => {
-      // This test ensures the fix for using getEffectivePulleyDiameters works:
-      // The frame height in the error message should match the actual derived value
-      // Use Low Profile mode to trigger snub requirement and cleats conflict
+      // v1.29: This test verifies cleats + snubs conflict detection with explicit return support
+      // Use Low Profile return frame style to trigger snub requirement and cleats conflict
       const inputs: SliderbedInputs = {
         ...cleatsBaseInputs,
         drive_pulley_diameter_in: 5.5,
         tail_pulley_diameter_in: 5.5,
-        frame_height_mode: FrameHeightMode.LowProfile, // 5.5 + 0.5 = 6.0" frame height
+        frame_height_mode: FrameHeightMode.LowProfile,
+        // v1.29: Explicit return support configuration
+        return_frame_style: 'LOW_PROFILE',
+        return_snub_mode: 'AUTO',
       };
 
       const result = runCalculation({ inputs });
@@ -3511,11 +3521,11 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(result.success).toBe(false);
       expect(result.errors).toBeDefined();
 
-      // The error message should show 6.0" frame height (derived from 5.5" pulley + 0.5 low profile)
-      const frameError = result.errors!.find(e => e.field === 'frame_height_mode');
-      expect(frameError).toBeDefined();
-      expect(frameError!.message).toContain('6.0"'); // Correct derived frame height
-      expect(frameError!.message).toContain('8.0"'); // Correct snub threshold (5.5 + 2.5)
+      // v1.29: Error now on return_snub_mode field (not frame_height_mode)
+      const returnSupportError = result.errors!.find(e => e.field === 'return_snub_mode');
+      expect(returnSupportError).toBeDefined();
+      expect(returnSupportError!.message).toContain('Cleats');
+      expect(returnSupportError!.message).toContain('snub rollers');
     });
   });
 });

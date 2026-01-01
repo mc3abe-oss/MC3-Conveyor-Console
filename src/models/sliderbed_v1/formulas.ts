@@ -1211,17 +1211,66 @@ export function calculate(
     totalBeltLengthIn
   );
 
-  // Step 4: Parts on belt
-  const partsOnBelt = calculatePartsOnBelt(
-    inputs.conveyor_length_cc_in,
-    inputs.part_length_in,
-    inputs.part_width_in,
-    partSpacingIn,
-    inputs.orientation
-  );
+  // =========================================================================
+  // v1.29: MATERIAL FORM BRANCHING (PARTS vs BULK)
+  // =========================================================================
+  // Determine material form (default to PARTS for backwards compatibility)
+  const materialFormUsed = (inputs.material_form as MaterialForm | string) ?? MaterialForm.Parts;
+  const isBulkMode = materialFormUsed === MaterialForm.Bulk || materialFormUsed === 'BULK';
 
-  // Step 5: Load on belt from parts
-  const loadOnBeltLbf = calculateLoadOnBelt(partsOnBelt, inputs.part_weight_lbs);
+  // Variables that will be populated differently based on material form
+  let partsOnBelt: number;
+  let loadOnBeltLbf: number;
+  let pitchIn: number;
+  let massFlowLbsPerHr: number | undefined;
+  let volumeFlowFt3PerHr: number | undefined;
+  let densityLbsPerFt3Used: number | undefined;
+  let timeOnBeltMin: number | undefined;
+  let assumptions: string[] = [];
+  let riskFlags: RiskFlag[] = [];
+
+  if (isBulkMode) {
+    // BULK MODE: Calculate load from mass flow and residence time
+    const bulkResult = calculateBulkLoad(
+      inputs,
+      inputs.conveyor_length_cc_in,
+      inputs.belt_speed_fpm
+    );
+
+    // BULK mode doesn't have discrete parts
+    partsOnBelt = 0;
+    loadOnBeltLbf = bulkResult.loadOnBeltLbf;
+    pitchIn = 0; // Not applicable for BULK
+
+    // Capture BULK-specific outputs
+    massFlowLbsPerHr = bulkResult.massFlowLbsPerHr;
+    volumeFlowFt3PerHr = bulkResult.volumeFlowFt3PerHr;
+    densityLbsPerFt3Used = bulkResult.densityLbsPerFt3Used;
+    timeOnBeltMin = bulkResult.timeOnBeltMin;
+    assumptions = bulkResult.assumptions;
+    riskFlags = bulkResult.riskFlags;
+  } else {
+    // PARTS MODE: Existing calculation (unchanged)
+    // Step 4: Parts on belt
+    partsOnBelt = calculatePartsOnBelt(
+      inputs.conveyor_length_cc_in,
+      inputs.part_length_in,
+      inputs.part_width_in,
+      partSpacingIn,
+      inputs.orientation
+    );
+
+    // Step 5: Load on belt from parts
+    loadOnBeltLbf = calculateLoadOnBelt(partsOnBelt, inputs.part_weight_lbs);
+
+    // Step 12 (moved here): Pitch (travel dimension + spacing)
+    pitchIn = calculatePitch(
+      inputs.part_length_in,
+      inputs.part_width_in,
+      partSpacingIn,
+      inputs.orientation
+    );
+  }
 
   // Step 6: Total load
   const totalLoadLbf = calculateTotalLoad(beltWeightLbf, loadOnBeltLbf);
@@ -1251,14 +1300,6 @@ export function calculate(
     frictionPullLb,
     inclinePullLb,
     startingBeltPullLb
-  );
-
-  // Step 12: Pitch (travel dimension + spacing)
-  const pitchIn = calculatePitch(
-    inputs.part_length_in,
-    inputs.part_width_in,
-    partSpacingIn,
-    inputs.orientation
   );
 
   // =========================================================================
@@ -1672,7 +1713,16 @@ export function calculate(
     // v1.6: Speed mode
     speed_mode_used: speedMode,
 
-    // Throughput outputs
+    // v1.29: Material Form & BULK outputs
+    material_form_used: materialFormUsed as MaterialForm,
+    mass_flow_lbs_per_hr: massFlowLbsPerHr,
+    volume_flow_ft3_per_hr: volumeFlowFt3PerHr,
+    density_lbs_per_ft3_used: densityLbsPerFt3Used,
+    time_on_belt_min: timeOnBeltMin,
+    assumptions,
+    risk_flags: riskFlags,
+
+    // Throughput outputs (PARTS mode only when non-zero)
     pitch_in: pitchIn,
     belt_speed_fpm: beltSpeedFpm,
     capacity_pph: capacityPph,
