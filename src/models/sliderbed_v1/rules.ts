@@ -5,7 +5,10 @@
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
- * v1.29 (2025-12-31): Return Support explicit configuration validation
+ * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
+ *                     New BULK validation: bulk_input_method, mass_flow, volume_flow, density
+ *                     Existing PARTS validation unchanged (no math drift)
+ *                     Return Support explicit configuration validation
  *                     - Cleats+snubs check now uses explicit user selection (not frame-height-derived)
  *                     - Low Profile without snubs warning
  *                     - Gravity roller centers warnings (>72" sag, <24" over-engineered)
@@ -48,6 +51,9 @@ import {
   SpeedMode,
   GearmotorMountingStyle,
   GeometryMode,
+  MaterialForm,
+  BulkInputMethod,
+  DensitySource,
   // v1.29: Return Support enums
   ReturnFrameStyle,
   ReturnSnubMode,
@@ -325,40 +331,109 @@ export function validateInputs(
     });
   }
 
-  // PRODUCT / PART
-  if (inputs.part_weight_lbs <= 0) {
-    errors.push({
-      field: 'part_weight_lbs',
-      message: 'Part Weight must be greater than 0',
-      severity: 'error',
-    });
+  // =========================================================================
+  // v1.29: MATERIAL FORM VALIDATION
+  // =========================================================================
+
+  const materialForm = inputs.material_form as MaterialForm | string | undefined;
+  const isBulkMode = materialForm === MaterialForm.Bulk || materialForm === 'BULK';
+
+  if (isBulkMode) {
+    // -------------------------------------------------------------------------
+    // BULK MODE VALIDATION
+    // -------------------------------------------------------------------------
+
+    const bulkMethod = inputs.bulk_input_method as BulkInputMethod | string | undefined;
+
+    // bulk_input_method is required
+    if (!bulkMethod) {
+      errors.push({
+        field: 'bulk_input_method',
+        message: 'Bulk input method must be selected when Material Form is Bulk',
+        severity: 'error',
+      });
+    }
+
+    if (bulkMethod === BulkInputMethod.WeightFlow || bulkMethod === 'WEIGHT_FLOW') {
+      // WEIGHT_FLOW: mass_flow_lbs_per_hr is required
+      if (inputs.mass_flow_lbs_per_hr === undefined || inputs.mass_flow_lbs_per_hr <= 0) {
+        errors.push({
+          field: 'mass_flow_lbs_per_hr',
+          message: 'Mass flow rate must be greater than 0',
+          severity: 'error',
+        });
+      }
+    }
+
+    if (bulkMethod === BulkInputMethod.VolumeFlow || bulkMethod === 'VOLUME_FLOW') {
+      // VOLUME_FLOW: volume_flow, density, and density_source are all required
+      if (inputs.volume_flow_ft3_per_hr === undefined || inputs.volume_flow_ft3_per_hr <= 0) {
+        errors.push({
+          field: 'volume_flow_ft3_per_hr',
+          message: 'Volume flow rate must be greater than 0',
+          severity: 'error',
+        });
+      }
+
+      if (inputs.density_lbs_per_ft3 === undefined || inputs.density_lbs_per_ft3 <= 0) {
+        errors.push({
+          field: 'density_lbs_per_ft3',
+          message: 'Material density must be greater than 0',
+          severity: 'error',
+        });
+      }
+
+      if (!inputs.density_source) {
+        errors.push({
+          field: 'density_source',
+          message: 'Density source must be specified',
+          severity: 'error',
+        });
+      }
+    }
+
+    // Note: PARTS fields (part_weight_lbs, part_length_in, etc.) are NOT validated in BULK mode
+    // They are not required and should be ignored.
+
+  } else {
+    // -------------------------------------------------------------------------
+    // PARTS MODE VALIDATION (default, unchanged from previous versions)
+    // -------------------------------------------------------------------------
+
+    if (inputs.part_weight_lbs <= 0) {
+      errors.push({
+        field: 'part_weight_lbs',
+        message: 'Part Weight must be greater than 0',
+        severity: 'error',
+      });
+    }
+
+    if (inputs.part_length_in <= 0) {
+      errors.push({
+        field: 'part_length_in',
+        message: 'Part Length must be greater than 0',
+        severity: 'error',
+      });
+    }
+
+    if (inputs.part_width_in <= 0) {
+      errors.push({
+        field: 'part_width_in',
+        message: 'Part Width must be greater than 0',
+        severity: 'error',
+      });
+    }
+
+    if (inputs.part_spacing_in < 0) {
+      errors.push({
+        field: 'part_spacing_in',
+        message: 'Part Spacing must be >= 0',
+        severity: 'error',
+      });
+    }
   }
 
-  if (inputs.part_length_in <= 0) {
-    errors.push({
-      field: 'part_length_in',
-      message: 'Part Length must be greater than 0',
-      severity: 'error',
-    });
-  }
-
-  if (inputs.part_width_in <= 0) {
-    errors.push({
-      field: 'part_width_in',
-      message: 'Part Width must be greater than 0',
-      severity: 'error',
-    });
-  }
-
-  if (inputs.part_spacing_in < 0) {
-    errors.push({
-      field: 'part_spacing_in',
-      message: 'Part Spacing must be >= 0',
-      severity: 'error',
-    });
-  }
-
-  // DROP HEIGHT
+  // DROP HEIGHT (applies to both modes)
   if (inputs.drop_height_in < 0) {
     errors.push({
       field: 'drop_height_in',
@@ -943,6 +1018,37 @@ export function applyApplicationRules(
       message: 'Incline exceeds 20°. Product retention by friction alone may be insufficient. Cleats or other retention features are typically required at this angle.',
       severity: 'warning',
     });
+  }
+
+  // =========================================================================
+  // v1.29: BULK MODE WARNINGS
+  // =========================================================================
+
+  const materialForm = inputs.material_form as MaterialForm | string | undefined;
+  const isBulkMode = materialForm === MaterialForm.Bulk || materialForm === 'BULK';
+
+  if (isBulkMode) {
+    // ASSUMED_CLASS density warning
+    if (inputs.density_source === DensitySource.AssumedClass || inputs.density_source === 'ASSUMED_CLASS') {
+      warnings.push({
+        field: 'density_lbs_per_ft3',
+        message: 'Density assumed from material class. Verify for accuracy.',
+        severity: 'warning',
+      });
+    }
+
+    // Max lump size warning (if provided)
+    if (inputs.max_lump_size_in !== undefined && inputs.max_lump_size_in > 0) {
+      const beltWidthIn = inputs.belt_width_in ?? 0;
+      const lumpThreshold = beltWidthIn * 0.8;
+      if (inputs.max_lump_size_in > lumpThreshold) {
+        warnings.push({
+          field: 'max_lump_size_in',
+          message: `Max lump size (${inputs.max_lump_size_in}") exceeds 80% of belt width (${lumpThreshold.toFixed(1)}"). Consider wider belt or material screening.`,
+          severity: 'warning',
+        });
+      }
+    }
   }
 
   // =========================================================================
