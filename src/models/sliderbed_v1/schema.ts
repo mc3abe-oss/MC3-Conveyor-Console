@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.27 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.29 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,14 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
+ *                     New MaterialForm enum (PARTS | BULK)
+ *                     New BulkInputMethod enum (WEIGHT_FLOW | VOLUME_FLOW)
+ *                     New DensitySource enum (KNOWN | ASSUMED_CLASS)
+ *                     New BULK inputs: bulk_input_method, mass_flow_lbs_per_hr,
+ *                     volume_flow_ft3_per_hr, density_lbs_per_ft3, density_source, max_lump_size_in
+ *                     New outputs: mass_flow_lbs_per_hr (canonical), assumptions, risk_flags
+ *                     Deprecated: throughput_units_per_hr (orphaned, never consumed)
  * v1.27 (2025-12-30): PCI Pulley Guide integration - tube stress checks
  *                     New inputs: hub_centers_in, drive_tube_od_in, drive_tube_wall_in,
  *                     tail_tube_od_in, tail_tube_wall_in, enforce_pci_checks
@@ -82,6 +90,84 @@ export enum ProcessType {
   Inspection = 'Inspection',
   Machining = 'Machining',
   Other = 'Other',
+}
+
+// ============================================================================
+// v1.29: MATERIAL FORM & BULK HANDLING ENUMS
+// ============================================================================
+
+/**
+ * Material form selector (v1.29)
+ * Determines whether product is discrete parts or bulk material.
+ * - PARTS: Discrete items with individual dimensions and weights
+ * - BULK: Continuous material specified by flow rate
+ */
+export enum MaterialForm {
+  Parts = 'PARTS',
+  Bulk = 'BULK',
+}
+
+/**
+ * Bulk input method (v1.29)
+ * Determines how bulk material flow is specified.
+ * Required when material_form = BULK.
+ */
+export enum BulkInputMethod {
+  /** User provides mass flow in lbs/hr directly */
+  WeightFlow = 'WEIGHT_FLOW',
+  /** User provides volume flow in ft³/hr + density */
+  VolumeFlow = 'VOLUME_FLOW',
+}
+
+/**
+ * Density source (v1.29)
+ * Indicates whether density value is known or assumed.
+ * Required when bulk_input_method = VOLUME_FLOW.
+ */
+export enum DensitySource {
+  /** Density value is known/measured */
+  Known = 'KNOWN',
+  /** Density value is assumed from material class (triggers warning) */
+  AssumedClass = 'ASSUMED_CLASS',
+}
+
+/**
+ * Display labels for MaterialForm enum values
+ */
+export const MATERIAL_FORM_LABELS: Record<MaterialForm, string> = {
+  [MaterialForm.Parts]: 'Parts (discrete items)',
+  [MaterialForm.Bulk]: 'Bulk (continuous material)',
+};
+
+/**
+ * Display labels for BulkInputMethod enum values
+ */
+export const BULK_INPUT_METHOD_LABELS: Record<BulkInputMethod, string> = {
+  [BulkInputMethod.WeightFlow]: 'Weight flow (lbs/hr)',
+  [BulkInputMethod.VolumeFlow]: 'Volume flow (ft³/hr)',
+};
+
+/**
+ * Display labels for DensitySource enum values
+ */
+export const DENSITY_SOURCE_LABELS: Record<DensitySource, string> = {
+  [DensitySource.Known]: 'Known / Measured',
+  [DensitySource.AssumedClass]: 'Assumed from material class',
+};
+
+/**
+ * Risk flag structure for BULK mode (v1.29)
+ * Used to surface assumptions and potential issues to the user.
+ */
+export interface RiskFlag {
+  /** Unique identifier for the risk */
+  code: string;
+  /** Severity level */
+  level: 'info' | 'warning' | 'error';
+  /** Human-readable message */
+  message: string;
+  /** Field this risk is associated with (optional) */
+  field?: string;
 }
 
 export enum PartsSharp {
@@ -666,10 +752,65 @@ export interface SliderbedInputs {
   /** Belt Speed in FPM (feet per minute) */
   belt_speed_fpm: number;
 
-  /** Throughput in units per hour (optional) */
+  /**
+   * @deprecated v1.29: Orphaned field - never consumed by formulas or rules.
+   * Kept for schema stability. Ignored at runtime.
+   * Use required_throughput_pph for PARTS mode throughput requirements.
+   */
   throughput_units_per_hr?: number;
 
-  // PRODUCT / PART
+  // =========================================================================
+  // v1.29: MATERIAL FORM & BULK INPUTS
+  // =========================================================================
+
+  /**
+   * Material form selector (v1.29)
+   * Determines whether product is discrete parts or bulk material.
+   * Default: PARTS (preserves existing behavior)
+   */
+  material_form?: MaterialForm | string;
+
+  /**
+   * Bulk input method (v1.29)
+   * Required when material_form = BULK.
+   * Determines how bulk material flow is specified.
+   */
+  bulk_input_method?: BulkInputMethod | string;
+
+  /**
+   * Mass flow rate in lbs/hr (v1.29)
+   * Required when bulk_input_method = WEIGHT_FLOW.
+   * Also used for VOLUME_FLOW after conversion from volume × density.
+   */
+  mass_flow_lbs_per_hr?: number;
+
+  /**
+   * Volume flow rate in ft³/hr (v1.29)
+   * Required when bulk_input_method = VOLUME_FLOW.
+   */
+  volume_flow_ft3_per_hr?: number;
+
+  /**
+   * Material density in lbs/ft³ (v1.29)
+   * Required when bulk_input_method = VOLUME_FLOW.
+   */
+  density_lbs_per_ft3?: number;
+
+  /**
+   * Density source (v1.29)
+   * Required when bulk_input_method = VOLUME_FLOW.
+   * ASSUMED_CLASS triggers a warning about density accuracy.
+   */
+  density_source?: DensitySource | string;
+
+  /**
+   * Maximum lump/piece size in inches (v1.29)
+   * Optional - for rules/warnings only (e.g., lump vs belt width).
+   * No calculation logic depends on this in v1.29.
+   */
+  max_lump_size_in?: number;
+
+  // PRODUCT / PART (PARTS mode only)
   /** Part Weight in lbs */
   part_weight_lbs: number;
 
@@ -1343,7 +1484,59 @@ export interface SliderbedOutputs {
   /** Speed mode used in calculation */
   speed_mode_used?: SpeedMode | string;
 
-  // THROUGHPUT OUTPUTS
+  // =========================================================================
+  // v1.29: MATERIAL FORM & BULK OUTPUTS
+  // =========================================================================
+
+  /**
+   * Material form used in calculation (v1.29)
+   * PARTS or BULK
+   */
+  material_form_used?: MaterialForm | string;
+
+  /**
+   * Mass flow rate in lbs/hr (v1.29)
+   * Canonical flow output for BULK mode.
+   * For PARTS mode: capacity_pph × part_weight_lbs (optional derived output).
+   * For BULK mode: input directly (WEIGHT_FLOW) or volume × density (VOLUME_FLOW).
+   */
+  mass_flow_lbs_per_hr?: number;
+
+  /**
+   * Volume flow rate in ft³/hr (v1.29)
+   * Echo of input when bulk_input_method = VOLUME_FLOW.
+   * Undefined for PARTS mode or WEIGHT_FLOW.
+   */
+  volume_flow_ft3_per_hr?: number;
+
+  /**
+   * Density value used in calculation (v1.29)
+   * Only populated when bulk_input_method = VOLUME_FLOW.
+   */
+  density_lbs_per_ft3_used?: number;
+
+  /**
+   * Residence time on belt in minutes (v1.29)
+   * time_on_belt_min = conveyor_length_cc_in / (belt_speed_fpm × 12)
+   * Used in BULK load calculation.
+   */
+  time_on_belt_min?: number;
+
+  /**
+   * Assumptions made during calculation (v1.29)
+   * Human-readable strings describing assumptions.
+   * Always present (may be empty array).
+   */
+  assumptions?: string[];
+
+  /**
+   * Risk flags from calculation (v1.29)
+   * Structured warnings/info for transparency.
+   * Always present (may be empty array).
+   */
+  risk_flags?: RiskFlag[];
+
+  // THROUGHPUT OUTPUTS (PARTS mode)
   /** Pitch in inches (travel dimension + spacing) */
   pitch_in: number;
 
@@ -1799,6 +1992,9 @@ export const DEFAULT_INPUT_VALUES = {
   geometry_mode: GeometryMode.LengthAngle,
   conveyor_incline_deg: 0,
   // horizontal_run_in is derived in L_ANGLE mode, not set by default
+
+  // Material form defaults (v1.29)
+  material_form: MaterialForm.Parts, // Default to PARTS to preserve existing behavior
 
   drop_height_in: 0,
   part_spacing_in: 0,

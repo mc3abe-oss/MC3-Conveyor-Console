@@ -5225,6 +5225,231 @@ describe('PCI Tube Stress Calculations (v1.27)', () => {
 });
 
 // ============================================================================
+// v1.29: MATERIAL FORM & BULK MODE TESTS
+// ============================================================================
+
+describe('Material Form - PARTS vs BULK (v1.29)', () => {
+  // Base inputs for testing - shared across all BULK tests
+  const BULK_BASE_INPUTS: SliderbedInputs = {
+    conveyor_length_cc_in: 120, // 10 ft
+    belt_width_in: 24,
+    belt_speed_fpm: 60, // 60 FPM
+    pulley_diameter_in: 4,
+    drive_pulley_diameter_in: 4,
+    tail_pulley_diameter_in: 4,
+    conveyor_incline_deg: 0,
+    // These are required for PARTS but should be ignored in BULK
+    part_weight_lbs: 1,
+    part_length_in: 12,
+    part_width_in: 6,
+    part_spacing_in: 0,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    drive_rpm: 100, // Will be calculated from belt speed
+    // Application fields
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: ['Industrial'],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+  };
+
+  // Test 1: Legacy config (no material_form) defaults to PARTS
+  it('should default material_form to PARTS for legacy configs', () => {
+    // Inputs without material_form should calculate as PARTS
+    const inputs: SliderbedInputs = { ...BULK_BASE_INPUTS };
+    // Remove material_form to simulate legacy config
+    delete (inputs as Record<string, unknown>).material_form;
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    // Should have PARTS-specific outputs
+    expect(result.outputs?.parts_on_belt).toBeDefined();
+    expect(result.outputs?.parts_on_belt).toBeGreaterThan(0);
+    expect(result.outputs?.capacity_pph).toBeDefined();
+    expect(result.outputs?.pitch_in).toBeDefined();
+  });
+
+  // Test 2: Explicit PARTS mode matches legacy calculation
+  it('should calculate PARTS mode identically to legacy', () => {
+    const legacyInputs: SliderbedInputs = { ...BULK_BASE_INPUTS };
+    delete (legacyInputs as Record<string, unknown>).material_form;
+
+    const partsInputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'PARTS',
+    };
+
+    const legacyResult = runCalculation({ inputs: legacyInputs });
+    const partsResult = runCalculation({ inputs: partsInputs });
+
+    expect(legacyResult.success).toBe(true);
+    expect(partsResult.success).toBe(true);
+
+    // All outputs must be identical - no math drift
+    expect(partsResult.outputs?.parts_on_belt).toBe(legacyResult.outputs?.parts_on_belt);
+    expect(partsResult.outputs?.load_on_belt_lbf).toBe(legacyResult.outputs?.load_on_belt_lbf);
+    expect(partsResult.outputs?.capacity_pph).toBe(legacyResult.outputs?.capacity_pph);
+    expect(partsResult.outputs?.total_belt_pull_lb).toBe(legacyResult.outputs?.total_belt_pull_lb);
+  });
+
+  // Test 3: PARTS validation - zero weight should fail
+  it('should error when PARTS mode has zero part weight', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'PARTS',
+      part_weight_lbs: 0, // Invalid
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.some(e => e.field === 'part_weight_lbs')).toBe(true);
+  });
+
+  // Test 4: PARTS edge case - crosswise orientation
+  it('should handle crosswise orientation correctly', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'PARTS',
+      orientation: Orientation.Crosswise,
+      part_length_in: 6,
+      part_width_in: 12,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    // In crosswise, travel dimension is width (12")
+    expect(result.outputs?.pitch_in).toBe(12); // width + 0 spacing
+  });
+
+  // Test 5: PARTS edge case - zero spacing
+  it('should handle zero part spacing correctly', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'PARTS',
+      part_spacing_in: 0,
+      part_length_in: 12,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    // Pitch should equal travel dimension when spacing is 0
+    expect(result.outputs?.pitch_in).toBe(12);
+    // Parts on belt = 120" / 12" = 10
+    expect(result.outputs?.parts_on_belt).toBeCloseTo(10, 5);
+  });
+
+  // Test 6: BULK validation - missing bulk_input_method should fail
+  it('should error when BULK mode has no bulk_input_method', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      // bulk_input_method not provided
+    };
+
+    const result = runCalculation({ inputs });
+
+    // Should fail validation - bulk_input_method required
+    expect(result.errors?.some(e => e.field === 'bulk_input_method')).toBe(true);
+  });
+
+  // Test 7: BULK WEIGHT_FLOW validation - zero mass flow should fail
+  it('should error when BULK WEIGHT_FLOW has zero mass flow', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 0, // Invalid
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'mass_flow_lbs_per_hr')).toBe(true);
+  });
+
+  // Test 8: BULK VOLUME_FLOW validation - zero volume flow should fail
+  it('should error when BULK VOLUME_FLOW has zero volume flow', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'VOLUME_FLOW',
+      volume_flow_ft3_per_hr: 0, // Invalid
+      density_lbs_per_ft3: 50,
+      density_source: 'KNOWN',
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'volume_flow_ft3_per_hr')).toBe(true);
+  });
+
+  // Test 9: BULK VOLUME_FLOW validation - zero density should fail
+  it('should error when BULK VOLUME_FLOW has zero density', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'VOLUME_FLOW',
+      volume_flow_ft3_per_hr: 100,
+      density_lbs_per_ft3: 0, // Invalid
+      density_source: 'KNOWN',
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'density_lbs_per_ft3')).toBe(true);
+  });
+
+  // Test 10: BULK VOLUME_FLOW validation - missing density_source should fail
+  it('should error when BULK VOLUME_FLOW has no density_source', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'VOLUME_FLOW',
+      volume_flow_ft3_per_hr: 100,
+      density_lbs_per_ft3: 50,
+      // density_source not provided
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'density_source')).toBe(true);
+  });
+});
+
+// ============================================================================
 // EXCEL PARITY TEST FIXTURES
 // ============================================================================
 

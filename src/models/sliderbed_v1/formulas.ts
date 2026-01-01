@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.27 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.29 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,10 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
+ *                     New BULK load formula using residence-time method
+ *                     New canonical outputs: mass_flow_lbs_per_hr, time_on_belt_min
+ *                     PARTS mode unchanged (no math drift)
  * v1.27 (2025-12-30): PCI Pulley Guide integration - tube stress checks
  *                     Wires shaftCalc radial_load, T1, T2 to outputs
  *                     New PCI tube stress calculation per Appendix A formula
@@ -41,6 +45,10 @@ import {
   FrameConstructionType,
   SheetMetalGauge,
   StructuralChannelSeries,
+  MaterialForm,
+  BulkInputMethod,
+  DensitySource,
+  RiskFlag,
 } from './schema';
 import { buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
@@ -316,6 +324,158 @@ export function calculateLoadOnBelt(
   partWeightLbs: number
 ): number {
   return partsOnBelt * partWeightLbs;
+}
+
+// ============================================================================
+// v1.29: BULK LOAD CALCULATIONS
+// ============================================================================
+
+/**
+ * Calculate residence time on belt in minutes (v1.29)
+ *
+ * Formula:
+ *   time_on_belt_min = conveyor_length_cc_in / (belt_speed_fpm × 12)
+ *
+ * Note: belt_speed_fpm × 12 converts FPM to inches per minute
+ *
+ * Guards:
+ *   - belt_speed_fpm > 0 (required, validated by rules.ts)
+ *   - Returns 0 if belt_speed_fpm <= 0 (fallback, rules should catch first)
+ */
+export function calculateTimeOnBeltMin(
+  conveyorLengthCcIn: number,
+  beltSpeedFpm: number
+): number {
+  if (beltSpeedFpm <= 0) {
+    return 0; // Fallback - rules should catch this first
+  }
+  return conveyorLengthCcIn / (beltSpeedFpm * 12);
+}
+
+/**
+ * Calculate load on belt for BULK material using residence-time method (v1.29)
+ *
+ * Formula:
+ *   load_on_belt_lbf = (mass_flow_lbs_per_hr / 60) × time_on_belt_min
+ *
+ * Where:
+ *   - mass_flow_lbs_per_hr / 60 = mass arriving on belt per minute (lbs/min)
+ *   - time_on_belt_min = residence time on belt
+ *
+ * This is the steady-state load: material arrives at rate R, spends time T on belt,
+ * so instantaneous load = R × T.
+ */
+export function calculateBulkLoadOnBelt(
+  massFlowLbsPerHr: number,
+  timeOnBeltMin: number
+): number {
+  return (massFlowLbsPerHr / 60) * timeOnBeltMin;
+}
+
+/**
+ * Calculate mass flow from volume flow and density (v1.29)
+ *
+ * Formula:
+ *   mass_flow_lbs_per_hr = volume_flow_ft3_per_hr × density_lbs_per_ft3
+ *
+ * Used when bulk_input_method = VOLUME_FLOW
+ */
+export function calculateMassFlowFromVolume(
+  volumeFlowFt3PerHr: number,
+  densityLbsPerFt3: number
+): number {
+  return volumeFlowFt3PerHr * densityLbsPerFt3;
+}
+
+/**
+ * Calculate mass flow for PARTS mode (derived output, optional)
+ *
+ * Formula:
+ *   mass_flow_lbs_per_hr = capacity_pph × part_weight_lbs
+ *
+ * This provides a canonical output that works across both modes.
+ */
+export function calculatePartsMassFlow(
+  capacityPph: number,
+  partWeightLbs: number
+): number {
+  return capacityPph * partWeightLbs;
+}
+
+/**
+ * Get BULK load calculation results (v1.29)
+ *
+ * This is a helper that computes all BULK-specific outputs in one call.
+ * Returns load_on_belt_lbf plus intermediate values for transparency.
+ */
+export interface BulkLoadResult {
+  /** Effective mass flow rate used (lbs/hr) */
+  massFlowLbsPerHr: number;
+  /** Volume flow rate (ft³/hr) - only if VOLUME_FLOW method */
+  volumeFlowFt3PerHr?: number;
+  /** Density used (lbs/ft³) - only if VOLUME_FLOW method */
+  densityLbsPerFt3Used?: number;
+  /** Residence time on belt (minutes) */
+  timeOnBeltMin: number;
+  /** Load on belt (lbf) - canonical output */
+  loadOnBeltLbf: number;
+  /** Assumptions made during calculation */
+  assumptions: string[];
+  /** Risk flags for transparency */
+  riskFlags: RiskFlag[];
+}
+
+export function calculateBulkLoad(
+  inputs: SliderbedInputs,
+  conveyorLengthCcIn: number,
+  beltSpeedFpm: number
+): BulkLoadResult {
+  const assumptions: string[] = [];
+  const riskFlags: RiskFlag[] = [];
+
+  let massFlowLbsPerHr: number;
+  let volumeFlowFt3PerHr: number | undefined;
+  let densityLbsPerFt3Used: number | undefined;
+
+  const method = inputs.bulk_input_method as BulkInputMethod;
+
+  if (method === BulkInputMethod.VolumeFlow) {
+    // VOLUME_FLOW: convert volume × density to mass
+    volumeFlowFt3PerHr = inputs.volume_flow_ft3_per_hr ?? 0;
+    densityLbsPerFt3Used = inputs.density_lbs_per_ft3 ?? 0;
+    massFlowLbsPerHr = calculateMassFlowFromVolume(volumeFlowFt3PerHr, densityLbsPerFt3Used);
+
+    // Check density source
+    if (inputs.density_source === DensitySource.AssumedClass || inputs.density_source === 'ASSUMED_CLASS') {
+      assumptions.push('Density assumed from material class. Verify for accuracy.');
+      riskFlags.push({
+        code: 'DENSITY_ASSUMED',
+        level: 'warning',
+        message: 'Density assumed from material class. Verify for accuracy.',
+        field: 'density_lbs_per_ft3',
+      });
+    }
+  } else {
+    // WEIGHT_FLOW: use mass flow directly
+    massFlowLbsPerHr = inputs.mass_flow_lbs_per_hr ?? 0;
+  }
+
+  // Calculate residence time and load
+  const timeOnBeltMin = calculateTimeOnBeltMin(conveyorLengthCcIn, beltSpeedFpm);
+  const loadOnBeltLbf = calculateBulkLoadOnBelt(massFlowLbsPerHr, timeOnBeltMin);
+
+  // Add standard assumption for BULK mode
+  assumptions.push('Bulk load on belt estimated from mass flow and residence time (length/speed).');
+
+  return {
+    massFlowLbsPerHr,
+    volumeFlowFt3PerHr,
+    densityLbsPerFt3Used,
+    timeOnBeltMin,
+    loadOnBeltLbf,
+    assumptions,
+    riskFlags,
+  };
 }
 
 /**

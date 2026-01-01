@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.14 - INPUT MIGRATION
+ * SLIDERBED CONVEYOR v1.29 - INPUT MIGRATION
  *
  * Handles migration of legacy inputs to the new schema.
  *
@@ -41,6 +41,12 @@
  * - Legacy configs may not have frame_construction_type field
  * - Default to 'sheet_metal' with gauge '12_GA' (standard build)
  * - This ensures frame_side_thickness_in can be derived in formulas
+ *
+ * MATERIAL FORM MIGRATION (v1.29):
+ * - Legacy configs do not have material_form field
+ * - Default to PARTS to preserve existing behavior exactly
+ * - All PARTS logic remains unchanged (no math drift)
+ * - BULK fields are only validated when material_form = BULK
  */
 
 import {
@@ -53,6 +59,7 @@ import {
   GeometryMode,
   FrameConstructionType,
   SheetMetalGauge,
+  MaterialForm,
 } from './schema';
 import { horizontalFromAxis, normalizeGeometry, DerivedGeometry } from './geometry';
 // PHASE 0: Legacy pulley catalog import removed - will be replaced by application_pulleys in Phase 2
@@ -294,6 +301,20 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
     migrated.frame_sheet_metal_gauge = undefined;
     migrated.frame_structural_channel_series = undefined;
   }
+
+  // =========================================================================
+  // v1.29: MATERIAL FORM MIGRATION
+  // =========================================================================
+
+  // Default material_form to PARTS for legacy configs
+  // This preserves existing behavior exactly - no math drift
+  if (migrated.material_form === undefined) {
+    migrated.material_form = MaterialForm.Parts;
+  }
+
+  // Note: BULK-specific fields (bulk_input_method, mass_flow_lbs_per_hr, etc.)
+  // are NOT defaulted here. They are only required when material_form = BULK.
+  // Validation in rules.ts will enforce their presence when needed.
 
   return migrated;
 }
