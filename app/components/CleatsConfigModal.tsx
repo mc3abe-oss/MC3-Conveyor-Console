@@ -89,17 +89,19 @@ export default function CleatsConfigModal({
       : null;
 
   // Handle profile change (cascading reset)
+  // Pattern defaults to STRAIGHT_CROSS per design (informational only)
   const handleCleatProfileChange = (profile: string | undefined) => {
     updateInput('cleat_profile', profile);
     updateInput('cleat_size', undefined);
-    updateInput('cleat_pattern', undefined);
+    updateInput('cleat_pattern', DEFAULT_CLEAT_PATTERN);
     updateInput('cleat_height_in', undefined);
   };
 
   // Handle size change (cascading reset + height derivation)
+  // Pattern defaults to STRAIGHT_CROSS per design (informational only)
   const handleCleatSizeChange = (size: string | undefined) => {
     updateInput('cleat_size', size);
-    updateInput('cleat_pattern', undefined);
+    updateInput('cleat_pattern', DEFAULT_CLEAT_PATTERN);
 
     // Derive cleat_height_in from size string
     if (size) {

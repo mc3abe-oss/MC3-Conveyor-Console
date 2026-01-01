@@ -2217,6 +2217,44 @@ describe('Belt Cleats (v1.3)', () => {
         )
       ).toBe(true);
     });
+
+    // Regression test: cleat_pattern is informational only and should not cause validation errors
+    // See: BUG fix where UI shows default pattern but validation fired on undefined field
+    it('should succeed with cleats enabled and no cleat_pattern specified (defaults to STRAIGHT_CROSS)', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleats_mode: 'cleated' as const,
+        cleat_height_in: 1,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        // cleat_pattern intentionally omitted - should default and not cause error
+      };
+      const result = runCalculation({ inputs });
+
+      // Calculation should succeed - pattern is informational only
+      expect(result.success).toBe(true);
+      // No errors related to cleat_pattern
+      expect(
+        result.errors?.some((e) => e.field === 'cleat_pattern')
+      ).toBeFalsy();
+    });
+
+    it('should succeed with explicit cleat_pattern = STRAIGHT_CROSS', () => {
+      const inputs = {
+        ...baseInputs,
+        cleats_enabled: true,
+        cleats_mode: 'cleated' as const,
+        cleat_height_in: 1,
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        cleat_pattern: 'STRAIGHT_CROSS',
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.cleats_enabled).toBe(true);
+    });
   });
 });
 
