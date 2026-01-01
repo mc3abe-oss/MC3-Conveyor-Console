@@ -1857,7 +1857,8 @@ describe('Split Pulley Diameter (v1.3)', () => {
       expect(result.errors?.some((e) => e.field === 'drive_pulley_diameter_in')).toBe(true);
     });
 
-    it('should warn on mismatched pulley diameters', () => {
+    // v1.24: Removed "different diameters" warning - valid in our system
+    it('should NOT warn on mismatched pulley diameters (v1.24)', () => {
       const inputs = {
         ...baseInputs,
         drive_pulley_diameter_in: 4,
@@ -1866,14 +1867,16 @@ describe('Split Pulley Diameter (v1.3)', () => {
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
+      // Warning was removed in v1.24
       expect(
         result.warnings?.some(
           (w) => w.field === 'tail_pulley_diameter_in' && w.message.includes('different')
         )
-      ).toBe(true);
+      ).toBeFalsy();
     });
 
-    it('should show info for non-standard pulley diameters', () => {
+    // v1.24: Removed "non-standard" info - catalog defines valid options
+    it('should NOT show info for non-standard pulley diameters (v1.24)', () => {
       const inputs = {
         ...baseInputs,
         drive_pulley_diameter_in: 4.5, // Non-standard
@@ -1882,11 +1885,12 @@ describe('Split Pulley Diameter (v1.3)', () => {
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
+      // Info was removed in v1.24
       expect(
         result.warnings?.some(
-          (w) => w.field === 'drive_pulley_diameter_in' && w.severity === 'info'
+          (w) => w.field === 'drive_pulley_diameter_in' && w.message.includes('non-standard')
         )
-      ).toBe(true);
+      ).toBeFalsy();
     });
   });
 });

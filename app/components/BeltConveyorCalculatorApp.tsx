@@ -194,15 +194,9 @@ export default function BeltConveyorCalculatorApp() {
       loadUrl = `/api/applications/load?so=${encodeURIComponent(soBase)}`;
       if (suffix) loadUrl += `&suffix=${encodeURIComponent(suffix)}`;
       if (jobLine) loadUrl += `&jobLine=${encodeURIComponent(jobLine)}`;
-    } else {
-      // No URL params - check localStorage for last used
-      if (typeof window !== 'undefined') {
-        const lastAppId = localStorage.getItem(LAST_APP_KEY);
-        if (lastAppId) {
-          loadUrl = `/api/applications/load?app=${encodeURIComponent(lastAppId)}`;
-        }
-      }
     }
+    // No URL params = start fresh (blank state)
+    // Removed auto-load from localStorage - user must explicitly navigate to an SO/Quote
 
     if (!loadUrl) {
       // No app to load - start fresh (Draft Application)

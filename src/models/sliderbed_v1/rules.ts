@@ -55,11 +55,6 @@ import {
   calculateEffectiveFrameHeight,
   calculateRequiresSnubRollers,
 } from './formulas';
-// PHASE 0: Legacy pulley catalog import removed - will be replaced by application_pulleys in Phase 2
-// Stub function to maintain API compatibility during transition
-function isPulleyKeyValid(_key: string | undefined): boolean {
-  return false; // Legacy pulley catalog no longer exists
-}
 
 /**
  * v1.24: Parse cleat height from cleat_size string.
@@ -939,34 +934,13 @@ export function applyApplicationRules(
   // v1.3: PULLEY DIAMETER WARNINGS
   // =========================================================================
 
-  // Mismatched pulley diameters warning
+  // v1.24: Removed outdated pulley diameter warnings:
+  // - "Different diameters" warning (valid in our system, no value)
+  // - "Non-standard diameter" info (catalog now defines valid options)
+
+  // Compute effective pulley diameters for belt minimum warnings
   const drivePulley = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
   const tailPulley = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in;
-
-  if (drivePulley !== undefined && tailPulley !== undefined && drivePulley !== tailPulley) {
-    warnings.push({
-      field: 'tail_pulley_diameter_in',
-      message: `Drive and tail pulleys have different diameters (${drivePulley}" vs ${tailPulley}"). This is valid but verify belt tracking is correct.`,
-      severity: 'warning',
-    });
-  }
-
-  // Non-standard pulley diameter info
-  const presetArray = PULLEY_DIAMETER_PRESETS as readonly number[];
-  if (drivePulley !== undefined && !presetArray.includes(drivePulley)) {
-    warnings.push({
-      field: 'drive_pulley_diameter_in',
-      message: `Drive pulley diameter (${drivePulley}") is non-standard. Standard sizes: ${presetArray.join(', ')}"`,
-      severity: 'info',
-    });
-  }
-  if (tailPulley !== undefined && tailPulley !== drivePulley && !presetArray.includes(tailPulley)) {
-    warnings.push({
-      field: 'tail_pulley_diameter_in',
-      message: `Tail pulley diameter (${tailPulley}") is non-standard. Standard sizes: ${presetArray.join(', ')}"`,
-      severity: 'info',
-    });
-  }
 
   // =========================================================================
   // v1.11: BELT MINIMUM PULLEY DIAMETER WARNINGS
@@ -1076,9 +1050,11 @@ export function applyApplicationRules(
 
   // =========================================================================
   // BELT SELECTION VALIDATION
+  // v1.24: Changed from hard errors to warnings (NON-BLOCKING)
   // =========================================================================
 
   // Pulley diameter vs belt minimum (v1.3: check both drive and tail)
+  // v1.24: Changed to warnings only - not hard stops
   if (inputs.belt_catalog_key) {
     const isVGuidedBelt = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
                           inputs.belt_tracking_method === 'V-guided';
@@ -1086,112 +1062,29 @@ export function applyApplicationRules(
       ? inputs.belt_min_pulley_dia_with_vguide_in
       : inputs.belt_min_pulley_dia_no_vguide_in;
 
-    // v1.3: Check drive pulley
+    // v1.3/v1.24: Check drive pulley (WARNING only)
     if (minPulleyDia !== undefined && drivePulley !== undefined && drivePulley < minPulleyDia) {
-      errors.push({
+      warnings.push({
         field: 'drive_pulley_diameter_in',
-        message: `Drive pulley diameter (${drivePulley}") is below the belt minimum (${minPulleyDia}" for ${isVGuidedBelt ? 'V-guided' : 'crowned'} tracking). Increase pulley diameter or select a different belt.`,
-        severity: 'error',
+        message: `Drive pulley diameter (${drivePulley}") is below the belt minimum (${minPulleyDia}" for ${isVGuidedBelt ? 'V-guided' : 'crowned'} tracking). This may cause belt damage or tracking issues.`,
+        severity: 'warning',
       });
     }
 
-    // v1.3: Check tail pulley
+    // v1.3/v1.24: Check tail pulley (WARNING only)
     if (minPulleyDia !== undefined && tailPulley !== undefined && tailPulley < minPulleyDia) {
-      errors.push({
+      warnings.push({
         field: 'tail_pulley_diameter_in',
-        message: `Tail pulley diameter (${tailPulley}") is below the belt minimum (${minPulleyDia}" for ${isVGuidedBelt ? 'V-guided' : 'crowned'} tracking). Increase pulley diameter or select a different belt.`,
-        severity: 'error',
+        message: `Tail pulley diameter (${tailPulley}") is below the belt minimum (${minPulleyDia}" for ${isVGuidedBelt ? 'V-guided' : 'crowned'} tracking). This may cause belt damage or tracking issues.`,
+        severity: 'warning',
       });
     }
   }
 
   // =========================================================================
-  // v1.15: PULLEY CATALOG SELECTION INFO
-  // v1.16: Add warnings for missing catalog pulleys
-  // v1.17: Override-based validation (no silent defaults)
+  // v1.15-v1.17: PULLEY CATALOG SELECTION (REMOVED in v1.24)
+  // Legacy catalog validation removed - pulleys now configured via application_pulleys table
   // =========================================================================
-
-  // DRIVE PULLEY validation
-  if (inputs.drive_pulley_manual_override) {
-    // Override enabled - must have manual diameter
-    if (inputs.drive_pulley_diameter_in === undefined || inputs.drive_pulley_diameter_in === null) {
-      warnings.push({
-        field: 'drive_pulley_diameter_in',
-        message: 'Override enabled but no drive pulley diameter specified.',
-        severity: 'warning',
-      });
-    }
-    // Info: using manual override
-    if (inputs.head_pulley_catalog_key && isPulleyKeyValid(inputs.head_pulley_catalog_key)) {
-      warnings.push({
-        field: 'head_pulley_catalog_key',
-        message: 'Catalog diameter overridden by manual entry.',
-        severity: 'info',
-      });
-    }
-  } else {
-    // Not overriding - need valid catalog selection
-    if (!inputs.head_pulley_catalog_key) {
-      warnings.push({
-        field: 'head_pulley_catalog_key',
-        message: 'Select a drive pulley from catalog or enable override to specify diameter manually.',
-        severity: 'warning',
-      });
-    } else if (!isPulleyKeyValid(inputs.head_pulley_catalog_key)) {
-      warnings.push({
-        field: 'head_pulley_catalog_key',
-        message: `Selected drive pulley not found in catalog (${inputs.head_pulley_catalog_key}).`,
-        severity: 'warning',
-      });
-    } else {
-      warnings.push({
-        field: 'head_pulley_catalog_key',
-        message: `Drive pulley selected from catalog: ${inputs.head_pulley_catalog_key}`,
-        severity: 'info',
-      });
-    }
-  }
-
-  // TAIL PULLEY validation
-  if (inputs.tail_pulley_manual_override) {
-    // Override enabled - must have manual diameter
-    if (inputs.tail_pulley_diameter_in === undefined || inputs.tail_pulley_diameter_in === null) {
-      warnings.push({
-        field: 'tail_pulley_diameter_in',
-        message: 'Override enabled but no tail pulley diameter specified.',
-        severity: 'warning',
-      });
-    }
-    // Info: using manual override
-    if (inputs.tail_pulley_catalog_key && isPulleyKeyValid(inputs.tail_pulley_catalog_key)) {
-      warnings.push({
-        field: 'tail_pulley_catalog_key',
-        message: 'Catalog diameter overridden by manual entry.',
-        severity: 'info',
-      });
-    }
-  } else {
-    // Not overriding - need valid catalog selection
-    if (!inputs.tail_pulley_catalog_key) {
-      warnings.push({
-        field: 'tail_pulley_catalog_key',
-        message: 'Select a tail pulley from catalog or enable override to specify diameter manually.',
-        severity: 'warning',
-      });
-    } else if (!isPulleyKeyValid(inputs.tail_pulley_catalog_key)) {
-      warnings.push({
-        field: 'tail_pulley_catalog_key',
-        message: `Selected tail pulley not found in catalog (${inputs.tail_pulley_catalog_key}).`,
-        severity: 'warning',
-      });
-    } else {
-      warnings.push({
-        field: 'tail_pulley_catalog_key',
-        message: `Tail pulley selected from catalog: ${inputs.tail_pulley_catalog_key}`,
-        severity: 'info',
-      });
-    }
-  }
 
   // =========================================================================
   // APPLICATION / DEMAND WARNINGS

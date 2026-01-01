@@ -18,7 +18,7 @@ import {
   FrameHeightMode,
   EndSupportType,
   derivedLegsRequired,
-  PulleySurfaceType,
+  // v1.24: PulleySurfaceType removed - now per-pulley via PulleyConfigModal
   GeometryMode,
   TRACKING_MODE_LABELS,
   TrackingMode,
@@ -184,14 +184,29 @@ export default function TabConveyorPhysical({
   const drivePulleyIssue = minPulleyIssues.find(i => i.code === IssueCode.MIN_PULLEY_DRIVE_TOO_SMALL);
   const tailPulleyIssue = minPulleyIssues.find(i => i.code === IssueCode.MIN_PULLEY_TAIL_TOO_SMALL);
 
-  // Compute min pulley and cleat multiplier locally for display (matches useConfigureIssues logic)
-  const minPulleyBaseFromBelt = (inputs.belt_tracking_method === BeltTrackingMethod.VGuided || inputs.belt_tracking_method === 'V-guided')
+  // v1.24: Compute governing min pulley diameter = max(belt, vguide, cleats)
+  const isVGuided = inputs.belt_tracking_method === BeltTrackingMethod.VGuided || inputs.belt_tracking_method === 'V-guided';
+  const minPulleyBaseFromBelt = isVGuided
     ? inputs.belt_min_pulley_dia_with_vguide_in
     : inputs.belt_min_pulley_dia_no_vguide_in;
 
+  // V-guide min pulley (PU takes precedence if available for PU belts)
+  const beltFamily = inputs.belt_family;
+  let vguideMinPulley: number | undefined;
+  if (isVGuided) {
+    if (beltFamily === 'PU' && inputs.vguide_min_pulley_dia_solid_pu_in != null) {
+      vguideMinPulley = inputs.vguide_min_pulley_dia_solid_pu_in;
+    } else {
+      vguideMinPulley = inputs.vguide_min_pulley_dia_solid_in;
+    }
+  }
+
   let minPulleyRequired: number | undefined;
   let cleatSpacingMultiplier: number | undefined;
+  let governingSource: 'belt' | 'vguide' | 'cleats' | undefined;
 
+  // Start with belt minimum
+  let beltMinWithCleats = minPulleyBaseFromBelt;
   if (minPulleyBaseFromBelt !== undefined) {
     const cleatsEnabled = inputs.cleats_enabled === true;
     const isHotWeldedCleats = inputs.belt_cleat_method === 'hot_welded';
@@ -199,9 +214,20 @@ export default function TabConveyorPhysical({
     if (cleatsEnabled && isHotWeldedCleats) {
       const cleatSpacingIn = inputs.cleat_spacing_in ?? 12;
       cleatSpacingMultiplier = getCleatSpacingMultiplier(cleatSpacingIn);
+      beltMinWithCleats = minPulleyBaseFromBelt * (cleatSpacingMultiplier ?? 1);
     }
-    // Use issue data for min pulley required if available, otherwise compute
-    minPulleyRequired = drivePulleyIssue?.minPulleyData?.requiredIn ?? tailPulleyIssue?.minPulleyData?.requiredIn ?? minPulleyBaseFromBelt;
+  }
+
+  // Compute governing minimum = max(belt with cleats, vguide)
+  const candidates = [
+    { value: beltMinWithCleats, source: 'belt' as const },
+    { value: vguideMinPulley, source: 'vguide' as const },
+  ].filter(c => c.value !== undefined && c.value > 0);
+
+  if (candidates.length > 0) {
+    const governing = candidates.reduce((max, c) => (c.value! > (max.value ?? 0) ? c : max));
+    minPulleyRequired = governing.value;
+    governingSource = governing.source;
   }
 
   // Derive warning states from issues (used in legacy override section)
@@ -1293,15 +1319,31 @@ export default function TabConveyorPhysical({
             </div>
           </div>
 
-          {/* Min Pulley Requirements */}
+          {/* Min Pulley Requirements - Governing */}
           {minPulleyRequired !== undefined && (
             <div className="text-xs text-gray-600 bg-gray-100 rounded px-3 py-2">
-              <span className="font-medium">Min pulley diameter:</span> {minPulleyRequired}" ({trackingLabel})
-              {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && (
+              <span className="font-medium">Min pulley diameter (Governing):</span>{' '}
+              <span className="text-blue-700 font-semibold">{minPulleyRequired.toFixed(1)}"</span>
+              <span className="ml-1 text-gray-500">
+                ({governingSource === 'vguide' ? 'V-guide' : governingSource === 'cleats' ? 'Cleats' : 'Belt'})
+              </span>
+              {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && governingSource === 'belt' && (
                 <span className="ml-2 text-amber-600">
                   (includes {cleatSpacingMultiplier.toFixed(2)}x cleat factor)
                 </span>
               )}
+            </div>
+          )}
+
+          {/* v1.24: Warnings when configured pulley OD is below governing minimum */}
+          {minPulleyRequired !== undefined && drivePulley?.finished_od_in && drivePulley.finished_od_in < minPulleyRequired && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              <span className="font-medium">Warning:</span> Drive pulley diameter ({drivePulley.finished_od_in}") is below recommended minimum ({minPulleyRequired.toFixed(1)}"). This may cause belt damage or tracking issues.
+            </div>
+          )}
+          {minPulleyRequired !== undefined && tailPulley?.finished_od_in && tailPulley.finished_od_in < minPulleyRequired && (
+            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+              <span className="font-medium">Warning:</span> Tail pulley diameter ({tailPulley.finished_od_in}") is below recommended minimum ({minPulleyRequired.toFixed(1)}"). This may cause belt damage or tracking issues.
             </div>
           )}
 
@@ -1373,24 +1415,7 @@ export default function TabConveyorPhysical({
             </div>
           </details>
 
-          {/* Pulley Surface Type */}
-          <div>
-            <label htmlFor="pulley_surface_type" className="label">
-              Pulley Surface Type
-            </label>
-            <select
-              id="pulley_surface_type"
-              className="input"
-              value={inputs.pulley_surface_type}
-              onChange={(e) => updateInput('pulley_surface_type', e.target.value)}
-            >
-              {Object.values(PulleySurfaceType).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* v1.24: Removed Pulley Surface Type dropdown - now controlled per-pulley via PulleyConfigModal */}
 
           {/* Shaft Diameter Mode */}
           <div>
