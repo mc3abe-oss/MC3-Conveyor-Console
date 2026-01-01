@@ -13,11 +13,14 @@ export type PulleyPosition = 'DRIVE' | 'TAIL';
 export type FaceProfile = 'FLAT' | 'CROWNED' | 'V_GUIDED';
 export type LaggingType = 'NONE' | 'RUBBER' | 'URETHANE';
 
+export type WallValidationStatus = 'NOT_VALIDATED' | 'PASS' | 'RECOMMEND_UPGRADE' | 'FAIL_ENGINEERING_REQUIRED';
+
 export interface ApplicationPulley {
   id: string;
   application_line_id: string;
   position: PulleyPosition;
   style_key: string;
+  model_key: string | null;  // v1.24: FK to pulley_library_models
   face_profile: FaceProfile;
   v_guide_key: string | null;
   lagging_type: LaggingType;
@@ -28,6 +31,9 @@ export interface ApplicationPulley {
   hub_centers_in: number | null;
   finished_od_in: number | null;
   enforce_pci_checks: boolean;
+  override_reason: string | null;  // v1.24: for when user deviates from defaults
+  wall_validation_status: WallValidationStatus;  // v1.24
+  wall_validation_result: Record<string, unknown> | null;  // v1.24: JSONB
   notes: string | null;
   created_at: string;
   updated_at: string;
