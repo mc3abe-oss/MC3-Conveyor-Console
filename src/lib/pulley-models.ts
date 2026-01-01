@@ -352,21 +352,45 @@ export function getWallOptions(model: PulleyModel): number[] {
 
 /**
  * Format wall thickness for display
+ *
+ * Rules:
+ * - Sheet gauge thicknesses show gauge callout (e.g., "0.134" (10 ga)")
+ * - Plate thicknesses show inch fractions only (e.g., "0.188" (3/16")")
+ * - Other thicknesses show decimal only
+ *
+ * Uses tolerance-based lookup for floating point safety.
  */
 export function formatWallThickness(wallIn: number): string {
-  // Common gauge mappings
-  const gaugeMap: Record<number, string> = {
-    0.109: '13 ga',
-    0.134: '11 ga',
-    0.165: '8 ga',
-    0.188: '3/16"',
-    0.250: '1/4"',
-    0.375: '3/8"',
-  };
+  const TOLERANCE = 0.002; // Allow small float tolerance for matching
 
-  const gauge = gaugeMap[wallIn];
-  if (gauge) {
-    return `${wallIn}" (${gauge})`;
+  // Sheet gauge mappings (true gauge thicknesses)
+  const gaugeThicknesses: Array<{ nominal: number; label: string }> = [
+    { nominal: 0.109, label: '12 ga' },  // 12 ga ≈ 0.1046", 0.109 is common industrial callout
+    { nominal: 0.134, label: '10 ga' },  // 10 ga = 0.1345"
+    { nominal: 0.165, label: '8 ga' },   // 8 ga = 0.1644"
+  ];
+
+  // Plate thicknesses (show fractions, NOT gauge)
+  const plateThicknesses: Array<{ nominal: number; label: string }> = [
+    { nominal: 0.188, label: '3/16"' },  // 3/16" = 0.1875"
+    { nominal: 0.250, label: '1/4"' },   // 1/4" = 0.25"
+    { nominal: 0.375, label: '3/8"' },   // 3/8" = 0.375"
+  ];
+
+  // Check gauge thicknesses
+  for (const g of gaugeThicknesses) {
+    if (Math.abs(wallIn - g.nominal) < TOLERANCE) {
+      return `${wallIn}" (${g.label})`;
+    }
   }
+
+  // Check plate thicknesses
+  for (const p of plateThicknesses) {
+    if (Math.abs(wallIn - p.nominal) < TOLERANCE) {
+      return `${wallIn}" (${p.label})`;
+    }
+  }
+
+  // Default: just show decimal
   return `${wallIn}"`;
 }

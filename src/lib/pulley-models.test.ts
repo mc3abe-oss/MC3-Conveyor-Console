@@ -273,14 +273,42 @@ describe('getWallOptions', () => {
 });
 
 describe('formatWallThickness', () => {
-  it('formats common gauge thicknesses', () => {
-    expect(formatWallThickness(0.134)).toBe('0.134" (11 ga)');
-    expect(formatWallThickness(0.109)).toBe('0.109" (13 ga)');
+  it('formats sheet gauge thicknesses with correct gauge callouts', () => {
+    // 0.134" is 10 gauge (NOT 11 gauge) - regression test
+    expect(formatWallThickness(0.134)).toBe('0.134" (10 ga)');
+    expect(formatWallThickness(0.134)).toContain('10 ga');
+
+    // 0.109" commonly called 12 ga in industry
+    expect(formatWallThickness(0.109)).toBe('0.109" (12 ga)');
+
+    // 0.165" is 8 gauge
+    expect(formatWallThickness(0.165)).toBe('0.165" (8 ga)');
+  });
+
+  it('formats plate thicknesses with fractions, NO gauge', () => {
+    // 3/16" plate - regression test: should NOT contain "ga"
     expect(formatWallThickness(0.188)).toBe('0.188" (3/16")');
+    expect(formatWallThickness(0.188)).not.toContain('ga');
+
+    // 1/4" plate
     expect(formatWallThickness(0.250)).toBe('0.25" (1/4")');
+    expect(formatWallThickness(0.250)).not.toContain('ga');
+
+    // 3/8" plate
+    expect(formatWallThickness(0.375)).toBe('0.375" (3/8")');
+    expect(formatWallThickness(0.375)).not.toContain('ga');
   });
 
   it('formats unknown thicknesses as decimal only', () => {
     expect(formatWallThickness(0.200)).toBe('0.2"');
+    expect(formatWallThickness(0.200)).not.toContain('ga');
+    expect(formatWallThickness(0.200)).not.toContain('/');
+  });
+
+  it('handles float tolerance for lookups', () => {
+    // Slight variations should still match
+    expect(formatWallThickness(0.1339)).toContain('10 ga');
+    expect(formatWallThickness(0.1341)).toContain('10 ga');
+    expect(formatWallThickness(0.1879)).toContain('3/16"');
   });
 });
