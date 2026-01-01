@@ -3,13 +3,17 @@
  *
  * CRITICAL: Content is hidden via CSS (display:none), NOT unmounted.
  * This preserves input state when sections are collapsed.
+ *
+ * v1.28: Added issues prop and SectionIssuesBanner to ensure red/yellow
+ * headers always have a visible explanation.
  */
 
 'use client';
 
 import { useState } from 'react';
-import { SectionCounts } from './useConfigureIssues';
+import { Issue, SectionCounts } from './useConfigureIssues';
 import StatusLight from './StatusLight';
+import SectionIssuesBanner from './SectionIssuesBanner';
 
 interface AccordionSectionProps {
   id: string;
@@ -19,6 +23,8 @@ interface AccordionSectionProps {
   children: React.ReactNode;
   /** Issue counts for displaying indicator chips */
   issueCounts?: SectionCounts;
+  /** Full issues for this section (for banner display) */
+  issues?: Issue[];
 }
 
 export default function AccordionSection({
@@ -28,6 +34,7 @@ export default function AccordionSection({
   onToggle,
   children,
   issueCounts,
+  issues,
 }: AccordionSectionProps) {
   return (
     <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -74,7 +81,11 @@ export default function AccordionSection({
           isExpanded ? 'block' : 'hidden'
         }`}
       >
-        <div className="p-4">{children}</div>
+        <div className="p-4">
+          {/* v1.28: Show issues banner at top of section content */}
+          {issues && issues.length > 0 && <SectionIssuesBanner issues={issues} />}
+          {children}
+        </div>
       </div>
     </div>
   );

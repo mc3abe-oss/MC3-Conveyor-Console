@@ -1230,6 +1230,18 @@ export interface SliderbedInputs {
   tail_tube_wall_in?: number;
 
   /**
+   * v1.28: Drive pulley face width (inches) - from application_pulleys modal
+   * When set, overrides the legacy pulley_face_length_in calculation
+   */
+  drive_pulley_face_width_in?: number;
+
+  /**
+   * v1.28: Tail pulley face width (inches) - from application_pulleys modal
+   * Used for display, drive face width governs output
+   */
+  tail_pulley_face_width_in?: number;
+
+  /**
    * Enforce PCI checks as hard errors (default: false)
    * When false: violations are warnings
    * When true: violations are errors that block calculation

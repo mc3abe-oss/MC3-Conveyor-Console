@@ -73,6 +73,8 @@ interface TabConveyorPhysicalProps {
   getMinPulleyIssues: () => Issue[];
   /** Application line ID for pulley configuration (calc_recipes.id) */
   applicationLineId?: string | null;
+  /** v1.28: Get issues for a specific section (for banner display) */
+  getIssuesForSection: (sectionKey: SectionKey) => Issue[];
 }
 
 /**
@@ -114,6 +116,7 @@ export default function TabConveyorPhysical({
   getTrackingIssue,
   getMinPulleyIssues,
   applicationLineId,
+  getIssuesForSection,
 }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
@@ -281,6 +284,12 @@ export default function TabConveyorPhysical({
         updateInput('drive_tube_wall_in', drivePulley.shell_wall_in);
       }
     }
+    // v1.28: Sync face width for results alignment
+    if (drivePulley?.face_width_in) {
+      if (inputs.drive_pulley_face_width_in !== drivePulley.face_width_in) {
+        updateInput('drive_pulley_face_width_in', drivePulley.face_width_in);
+      }
+    }
 
     // Tail pulley sync
     if (tailPulley?.finished_od_in) {
@@ -296,6 +305,12 @@ export default function TabConveyorPhysical({
     if (tailPulley?.shell_wall_in) {
       if (inputs.tail_tube_wall_in !== tailPulley.shell_wall_in) {
         updateInput('tail_tube_wall_in', tailPulley.shell_wall_in);
+      }
+    }
+    // v1.28: Sync tail face width for display
+    if (tailPulley?.face_width_in) {
+      if (inputs.tail_pulley_face_width_in !== tailPulley.face_width_in) {
+        updateInput('tail_pulley_face_width_in', tailPulley.face_width_in);
       }
     }
   }, [drivePulley, tailPulley]);
@@ -386,6 +401,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('geometry')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.geometry}
+        issues={getIssuesForSection('geometry')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Bed Type */}
@@ -677,6 +693,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('beltPulleys')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.beltPulleys}
+        issues={getIssuesForSection('beltPulleys')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* ===== BELT SUBSECTION ===== */}
@@ -1170,6 +1187,7 @@ export default function TabConveyorPhysical({
         isExpanded={isExpanded('frame')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.frame}
+        issues={getIssuesForSection('frame')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* ===== v1.14: FRAME CONSTRUCTION SUBSECTION ===== */}

@@ -594,13 +594,22 @@ export function calculatePulleyFaceExtra(
 /**
  * Calculate pulley face length in inches
  *
+ * v1.28: If configuredFaceWidthIn is provided (from application_pulleys modal),
+ * use that value directly. Otherwise, compute legacy: belt_width + extra
+ *
  * Formula:
- *   pulley_face_length_in = belt_width_in + pulley_face_extra_in
+ *   pulley_face_length_in = configuredFaceWidthIn ?? (belt_width_in + pulley_face_extra_in)
  */
 export function calculatePulleyFaceLength(
   beltWidthIn: number,
-  pulleyFaceExtraIn: number
+  pulleyFaceExtraIn: number,
+  configuredFaceWidthIn?: number
 ): number {
+  // v1.28: Use configured face width from pulley modal if available
+  if (configuredFaceWidthIn != null && configuredFaceWidthIn > 0) {
+    return configuredFaceWidthIn;
+  }
+  // Legacy calculation
   return beltWidthIn + pulleyFaceExtraIn;
 }
 
@@ -1071,7 +1080,12 @@ export function calculate(
   const isVGuided = calculateIsVGuided(beltTrackingMethod);
   const pulleyRequiresCrown = calculatePulleyRequiresCrown(isVGuided);
   const pulleyFaceExtraIn = calculatePulleyFaceExtra(isVGuided, parameters);
-  const pulleyFaceLengthIn = calculatePulleyFaceLength(inputs.belt_width_in, pulleyFaceExtraIn);
+  // v1.28: Use configured face width from application_pulleys if available
+  const pulleyFaceLengthIn = calculatePulleyFaceLength(
+    inputs.belt_width_in,
+    pulleyFaceExtraIn,
+    inputs.drive_pulley_face_width_in
+  );
 
   // Step 18: Shaft diameter calculations (v1.12 - von Mises based)
   // v1.27: Also extract radial_load, T1, T2 for PCI tube stress

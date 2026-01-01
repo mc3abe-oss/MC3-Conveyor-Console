@@ -179,7 +179,7 @@ export default function CalculatorForm({
   };
 
   // Compute validation issues (includes pre-calc tracking and min pulley checks)
-  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues } = useConfigureIssues(inputs);
+  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs);
 
   // Handle Enter key press to trigger recalculation
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -234,7 +234,7 @@ export default function CalculatorForm({
         <div className="p-6">
           {/* Application Tab */}
           {activeTab === 'application' && (
-            <TabApplicationDemand inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+            <TabApplicationDemand inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
           )}
 
           {/* Physical Tab */}
@@ -246,17 +246,18 @@ export default function CalculatorForm({
               getTrackingIssue={getTrackingIssue}
               getMinPulleyIssues={getMinPulleyIssues}
               applicationLineId={applicationLineId}
+              getIssuesForSection={getIssuesForSection}
             />
           )}
 
           {/* Drive & Controls Tab */}
           {activeTab === 'drive' && (
-            <TabDriveControls inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+            <TabDriveControls inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
           )}
 
           {/* Build Options Tab */}
           {activeTab === 'build' && (
-            <TabBuildOptions inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} />
+            <TabBuildOptions inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
           )}
         </div>
       </div>

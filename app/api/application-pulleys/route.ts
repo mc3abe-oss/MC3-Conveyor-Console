@@ -175,19 +175,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Compute finished_od_in from shell_od_in + 2 * lagging_thickness
+    const shellOdIn = body.shell_od_in ?? null;
+    const laggingThicknessIn = laggingType !== 'NONE' ? (body.lagging_thickness_in ?? 0) : 0;
+    const finishedOdIn = shellOdIn != null ? shellOdIn + 2 * laggingThicknessIn : null;
+
     const upsertData = {
       application_line_id: body.application_line_id,
       position: body.position,
       style_key: body.style_key,
+      model_key: body.model_key ?? null,  // v1.24: Persist model_key for hydration
       face_profile: faceProfile,
       v_guide_key: faceProfile === 'V_GUIDED' ? body.v_guide_key : null,
       lagging_type: laggingType,
       lagging_thickness_in: laggingType !== 'NONE' ? body.lagging_thickness_in : null,
       face_width_in: body.face_width_in ?? null,
-      shell_od_in: body.shell_od_in ?? null,
+      shell_od_in: shellOdIn,
       shell_wall_in: body.shell_wall_in ?? null,
       hub_centers_in: body.hub_centers_in ?? null,
+      finished_od_in: finishedOdIn,  // v1.24: Computed finished OD
       enforce_pci_checks: body.enforce_pci_checks ?? false,
+      wall_validation_status: body.wall_validation_status ?? 'NOT_VALIDATED',  // v1.24
+      wall_validation_result: body.wall_validation_result ?? null,  // v1.24
       notes: body.notes?.trim() || null,
     };
 

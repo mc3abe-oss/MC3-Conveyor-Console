@@ -17,15 +17,17 @@ import {
 import CatalogSelect from './CatalogSelect';
 import EnvironmentFactorsSelect from './EnvironmentFactorsSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
-import { SectionCounts, SectionKey } from './useConfigureIssues';
+import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabApplicationDemandProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
   sectionCounts: Record<SectionKey, SectionCounts>;
+  /** v1.28: Get issues for a specific section (for banner display) */
+  getIssuesForSection: (sectionKey: SectionKey) => Issue[];
 }
 
-export default function TabApplicationDemand({ inputs, updateInput, sectionCounts }: TabApplicationDemandProps) {
+export default function TabApplicationDemand({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabApplicationDemandProps) {
   const { handleToggle, isExpanded } = useAccordionState();
 
   return (
@@ -37,6 +39,7 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
         isExpanded={isExpanded('product')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.product}
+        issues={getIssuesForSection('product')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* 1. Process Type */}
@@ -242,6 +245,7 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
         isExpanded={isExpanded('throughput')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.throughput}
+        issues={getIssuesForSection('throughput')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* 11. Part Spacing (in) */}
@@ -309,6 +313,7 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
         isExpanded={isExpanded('environment')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.environment}
+        issues={getIssuesForSection('environment')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* 14. Environment Factors (v1.9 - Multi-select dropdown) */}

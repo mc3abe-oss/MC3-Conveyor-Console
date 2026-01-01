@@ -22,15 +22,17 @@ import {
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
-import { SectionCounts, SectionKey } from './useConfigureIssues';
+import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabBuildOptionsProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
   sectionCounts: Record<SectionKey, SectionCounts>;
+  /** v1.28: Get issues for a specific section (for banner display) */
+  getIssuesForSection: (sectionKey: SectionKey) => Issue[];
 }
 
-export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: TabBuildOptionsProps) {
+export default function TabBuildOptions({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabBuildOptionsProps) {
   const [sensorDropdownOpen, setSensorDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -76,6 +78,7 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: 
         isExpanded={isExpanded('guards')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.guards}
+        issues={getIssuesForSection('guards')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Bottom covers */}
@@ -159,6 +162,7 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: 
         isExpanded={isExpanded('guides')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.guides}
+        issues={getIssuesForSection('guides')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Side rails */}
@@ -214,6 +218,7 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: 
         isExpanded={isExpanded('beltpulley')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.beltpulley}
+        issues={getIssuesForSection('beltpulley')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Belt Lacing group */}
@@ -269,6 +274,7 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: 
         isExpanded={isExpanded('sensors')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.sensors}
+        issues={getIssuesForSection('sensors')}
       >
         <div className="grid grid-cols-1 gap-4">
           <div ref={dropdownRef} className="relative">
@@ -368,6 +374,7 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts }: 
         isExpanded={isExpanded('documentation')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.documentation}
+        issues={getIssuesForSection('documentation')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Spec Source */}

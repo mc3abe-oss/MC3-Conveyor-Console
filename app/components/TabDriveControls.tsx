@@ -25,15 +25,17 @@ import {
 } from '../../src/models/sliderbed_v1/formulas';
 import CatalogSelect from './CatalogSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
-import { SectionCounts, SectionKey } from './useConfigureIssues';
+import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 
 interface TabDriveControlsProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
   sectionCounts: Record<SectionKey, SectionCounts>;
+  /** v1.28: Get issues for a specific section (for banner display) */
+  getIssuesForSection: (sectionKey: SectionKey) => Issue[];
 }
 
-export default function TabDriveControls({ inputs, updateInput, sectionCounts }: TabDriveControlsProps) {
+export default function TabDriveControls({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabDriveControlsProps) {
   const { handleToggle, isExpanded } = useAccordionState();
 
   return (
@@ -45,6 +47,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts }:
         isExpanded={isExpanded('speed')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.speed}
+        issues={getIssuesForSection('speed')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Speed Mode Selector */}
@@ -206,6 +209,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts }:
         isExpanded={isExpanded('electrical')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.electrical}
+        issues={getIssuesForSection('electrical')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Power Feed */}
@@ -272,6 +276,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts }:
         isExpanded={isExpanded('drive')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.drive}
+        issues={getIssuesForSection('drive')}
       >
         <div className="grid grid-cols-1 gap-4">
           {/* Direction Mode */}
@@ -544,6 +549,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts }:
         isExpanded={isExpanded('advanced')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.advanced}
+        issues={getIssuesForSection('advanced')}
       >
         <div className="grid grid-cols-1 gap-4">
             <div>
