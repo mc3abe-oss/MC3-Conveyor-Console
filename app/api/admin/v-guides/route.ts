@@ -16,8 +16,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
-import { getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
 
 interface VGuidePayload {
   key: string;                          // K-code (K10, K13, etc.)
@@ -50,12 +49,7 @@ function buildLabel(key: string, naLetter?: string | null): string {
  */
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const { data: items, error } = await supabase
       .from('v_guides')
@@ -87,12 +81,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -200,12 +189,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {

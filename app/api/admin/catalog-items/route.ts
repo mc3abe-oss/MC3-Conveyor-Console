@@ -9,14 +9,12 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
-import { getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
 
 interface CatalogItemPayload {
   catalog_key: string;
   item_key: string;
   label: string;
-  description?: string | null;
   sort_order?: number | null;
   is_active?: boolean;
 }
@@ -27,12 +25,7 @@ interface CatalogItemPayload {
  */
 export async function GET(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const searchParams = request.nextUrl.searchParams;
     const catalog_key = searchParams.get('catalog_key');
@@ -76,12 +69,7 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -121,7 +109,6 @@ export async function POST(request: NextRequest) {
         catalog_key: body.catalog_key,
         item_key: body.item_key,
         label: body.label,
-        description: body.description || null,
         sort_order: body.sort_order || null,
         is_active: body.is_active !== false,
       })
@@ -152,12 +139,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -204,7 +186,6 @@ export async function PUT(request: NextRequest) {
       .from('catalog_items')
       .update({
         label: body.label,
-        description: body.description,
         sort_order: body.sort_order,
         is_active: body.is_active,
       })

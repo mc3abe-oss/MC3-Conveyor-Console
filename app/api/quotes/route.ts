@@ -1,10 +1,16 @@
 /**
  * GET /api/quotes
- * List all quotes (excludes soft-deleted by default)
+ * List quotes with search, filters, and pagination
  *
  * Query params:
+ *   - search: text search on quote_number, customer_name (optional)
  *   - status: QuoteStatus filter (optional)
+ *   - rangeDays: '30' | '90' - filter by created_at within N days (optional)
+ *   - page: page number, 1-based (default: 1)
+ *   - pageSize: items per page (default: 100, max: 100)
  *   - include_deleted: 'true' to include soft-deleted (optional)
+ *
+ * Response: { data: Quote[], total: number, page: number, pageSize: number }
  *
  * POST /api/quotes
  * Create a new quote with user-provided number
@@ -24,42 +30,93 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
+
+    // Parse query params
+    const search = searchParams.get('search')?.trim() || '';
     const statusFilter = searchParams.get('status') as QuoteStatus | null;
+    const rangeDays = searchParams.get('rangeDays');
     const baseNumber = searchParams.get('base_number');
     const includeDeleted = searchParams.get('include_deleted') === 'true';
 
-    let query = supabase
+    // Pagination
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '100', 10)));
+    const offset = (page - 1) * pageSize;
+
+    // Build query - use count to get total
+    let countQuery = supabase
+      .from('quotes')
+      .select('*', { count: 'exact', head: true });
+
+    let dataQuery = supabase
       .from('quotes')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
 
-    // Filter by status if provided
-    if (statusFilter) {
-      query = query.eq('quote_status', statusFilter);
-    }
+    // Apply filters to both queries
+    const applyFilters = (query: typeof countQuery | typeof dataQuery) => {
+      // Exclude soft-deleted by default
+      if (!includeDeleted) {
+        query = query.is('deleted_at', null);
+      }
 
-    // Filter by base_number if provided
-    if (baseNumber) {
-      query = query.eq('base_number', parseInt(baseNumber, 10));
-    }
+      // Filter by status if provided
+      if (statusFilter) {
+        query = query.eq('quote_status', statusFilter);
+      }
 
-    // Exclude soft-deleted by default
-    if (!includeDeleted) {
-      query = query.is('deleted_at', null);
-    }
+      // Filter by base_number if provided (legacy)
+      if (baseNumber) {
+        query = query.eq('base_number', parseInt(baseNumber, 10));
+      }
 
-    const { data: quotes, error } = await query;
+      // Date range filter (only if no search or explicitly requested)
+      if (rangeDays && !search) {
+        const daysAgo = parseInt(rangeDays, 10);
+        if (!isNaN(daysAgo) && daysAgo > 0) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+          query = query.gte('created_at', cutoffDate.toISOString());
+        }
+      }
 
-    if (error) {
-      console.error('Quotes fetch error:', error);
+      // Search filter - search quote_number and customer_name
+      if (search) {
+        // Use OR filter for search across multiple fields
+        query = query.or(`quote_number.ilike.%${search}%,customer_name.ilike.%${search}%`);
+      }
+
+      return query;
+    };
+
+    countQuery = applyFilters(countQuery) as typeof countQuery;
+    dataQuery = applyFilters(dataQuery) as typeof dataQuery;
+
+    // Execute both queries
+    const [countResult, dataResult] = await Promise.all([
+      countQuery,
+      dataQuery,
+    ]);
+
+    if (countResult.error) {
+      console.error('Quotes count error:', countResult.error);
       return NextResponse.json(
-        { error: 'Failed to fetch quotes', details: error.message },
+        { error: 'Failed to fetch quotes', details: countResult.error.message },
+        { status: 500 }
+      );
+    }
+
+    if (dataResult.error) {
+      console.error('Quotes fetch error:', dataResult.error);
+      return NextResponse.json(
+        { error: 'Failed to fetch quotes', details: dataResult.error.message },
         { status: 500 }
       );
     }
 
     // Add base_number to response if not present (for backward compat)
-    const quotesWithBase = (quotes || []).map(q => {
+    const quotesWithBase = (dataResult.data || []).map(q => {
       if (q.base_number === undefined && q.quote_number) {
         // Extract base_number from quote_number like "Q62633" or "Q62633.2"
         const match = q.quote_number.match(/^Q?(\d+)/i);
@@ -68,7 +125,12 @@ export async function GET(request: NextRequest) {
       return q;
     });
 
-    return NextResponse.json(quotesWithBase);
+    return NextResponse.json({
+      data: quotesWithBase,
+      total: countResult.count || 0,
+      page,
+      pageSize,
+    });
   } catch (error) {
     console.error('Quotes API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

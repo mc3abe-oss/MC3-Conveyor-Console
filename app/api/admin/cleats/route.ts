@@ -9,8 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
-import { getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
 import { CleatPattern, CLEAT_PATTERNS } from '../../../../src/lib/cleat-catalog';
 
 interface CleatCatalogPayload {
@@ -33,12 +32,7 @@ interface CleatCatalogPayload {
  */
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const { data: catalog, error } = await supabase
       .from('cleat_catalog')
@@ -72,12 +66,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -183,12 +172,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {

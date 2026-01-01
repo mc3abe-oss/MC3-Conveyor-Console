@@ -1,10 +1,16 @@
 /**
  * GET /api/sales-orders
- * List all sales orders (excludes soft-deleted by default)
+ * List sales orders with search, filters, and pagination
  *
  * Query params:
+ *   - search: text search on sales_order_number, customer_name (optional)
+ *   - rangeDays: '30' | '90' - filter by created_at within N days (optional)
+ *   - page: page number, 1-based (default: 1)
+ *   - pageSize: items per page (default: 100, max: 100)
  *   - origin_quote_id: filter by source quote (optional)
  *   - include_deleted: 'true' to include soft-deleted (optional)
+ *
+ * Response: { data: SalesOrder[], total: number, page: number, pageSize: number }
  *
  * POST /api/sales-orders
  * Create a new sales order directly (without quote conversion)
@@ -24,41 +30,97 @@ export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
+
+    // Parse query params
+    const search = searchParams.get('search')?.trim() || '';
+    const rangeDays = searchParams.get('rangeDays');
     const originQuoteId = searchParams.get('origin_quote_id');
     const baseNumber = searchParams.get('base_number');
     const includeDeleted = searchParams.get('include_deleted') === 'true';
 
-    let query = supabase
+    // Pagination
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '100', 10)));
+    const offset = (page - 1) * pageSize;
+
+    // Build query - use count to get total
+    let countQuery = supabase
+      .from('sales_orders')
+      .select('*', { count: 'exact', head: true });
+
+    let dataQuery = supabase
       .from('sales_orders')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .range(offset, offset + pageSize - 1);
 
-    // Filter by origin quote if provided
-    if (originQuoteId) {
-      query = query.eq('origin_quote_id', originQuoteId);
-    }
+    // Apply filters to both queries
+    const applyFilters = (query: typeof countQuery | typeof dataQuery) => {
+      // Exclude soft-deleted by default
+      if (!includeDeleted) {
+        query = query.is('deleted_at', null);
+      }
 
-    // Filter by base_number if provided
-    if (baseNumber) {
-      query = query.eq('base_number', parseInt(baseNumber, 10));
-    }
+      // Filter by origin quote if provided
+      if (originQuoteId) {
+        query = query.eq('origin_quote_id', originQuoteId);
+      }
 
-    // Exclude soft-deleted by default
-    if (!includeDeleted) {
-      query = query.is('deleted_at', null);
-    }
+      // Filter by base_number if provided (legacy)
+      if (baseNumber) {
+        query = query.eq('base_number', parseInt(baseNumber, 10));
+      }
 
-    const { data: salesOrders, error } = await query;
+      // Date range filter (only if no search or explicitly requested)
+      if (rangeDays && !search) {
+        const daysAgo = parseInt(rangeDays, 10);
+        if (!isNaN(daysAgo) && daysAgo > 0) {
+          const cutoffDate = new Date();
+          cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
+          query = query.gte('created_at', cutoffDate.toISOString());
+        }
+      }
 
-    if (error) {
-      console.error('Sales orders fetch error:', error);
+      // Search filter - search sales_order_number and customer_name
+      if (search) {
+        // Use OR filter for search across multiple fields
+        query = query.or(`sales_order_number.ilike.%${search}%,customer_name.ilike.%${search}%`);
+      }
+
+      return query;
+    };
+
+    countQuery = applyFilters(countQuery) as typeof countQuery;
+    dataQuery = applyFilters(dataQuery) as typeof dataQuery;
+
+    // Execute both queries
+    const [countResult, dataResult] = await Promise.all([
+      countQuery,
+      dataQuery,
+    ]);
+
+    if (countResult.error) {
+      console.error('Sales orders count error:', countResult.error);
       return NextResponse.json(
-        { error: 'Failed to fetch sales orders', details: error.message },
+        { error: 'Failed to fetch sales orders', details: countResult.error.message },
         { status: 500 }
       );
     }
 
-    return NextResponse.json(salesOrders || []);
+    if (dataResult.error) {
+      console.error('Sales orders fetch error:', dataResult.error);
+      return NextResponse.json(
+        { error: 'Failed to fetch sales orders', details: dataResult.error.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      data: dataResult.data || [],
+      total: countResult.count || 0,
+      page,
+      pageSize,
+    });
   } catch (error) {
     console.error('Sales orders API error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

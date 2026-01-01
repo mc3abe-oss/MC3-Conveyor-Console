@@ -9,8 +9,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
-import { getCurrentUserId } from '../../../../../src/lib/supabase/server';
+import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
 
 interface CleatCenterFactorPayload {
   id?: string;
@@ -29,12 +28,7 @@ const VALID_CENTERS = [4, 6, 8, 12];
  */
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const { data: factors, error } = await supabase
       .from('cleat_center_factors')
@@ -66,12 +60,7 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {
@@ -156,12 +145,7 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
+    const supabase = await createClient();
 
     const userId = await getCurrentUserId();
     if (!userId) {

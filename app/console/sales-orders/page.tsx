@@ -16,12 +16,14 @@ export default function ConsoleSalesOrdersPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/sales-orders');
+      const res = await fetch('/api/sales-orders?rangeDays=90');
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to fetch sales orders');
       }
-      const data = await res.json();
+      const result = await res.json();
+      // Handle paginated response format
+      const data = Array.isArray(result) ? result : result.data || [];
       setSalesOrders(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
