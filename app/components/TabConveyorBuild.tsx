@@ -796,53 +796,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
             </p>
           </div>
 
-          {/* PIW/PIL Override Fields - only show when belt is selected */}
-          {inputs.belt_catalog_key && (
-            <>
-              <div>
-                <label htmlFor="belt_piw_override" className="label">
-                  PIW Override (lb/in) <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_piw_override"
-                  className="input"
-                  value={inputs.belt_piw_override ?? ''}
-                  onChange={(e) =>
-                    updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.001"
-                  min="0.05"
-                  max="0.30"
-                  placeholder={inputs.belt_piw?.toString() ?? ''}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave blank to use catalog value ({inputs.belt_piw ?? 'N/A'} lb/in)
-                </p>
-              </div>
-              <div>
-                <label htmlFor="belt_pil_override" className="label">
-                  PIL Override (lb/in) <span className="text-gray-500">(optional)</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_pil_override"
-                  className="input"
-                  value={inputs.belt_pil_override ?? ''}
-                  onChange={(e) =>
-                    updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.001"
-                  min="0.05"
-                  max="0.30"
-                  placeholder={inputs.belt_pil?.toString() ?? ''}
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  Leave blank to use catalog value ({inputs.belt_pil ?? 'N/A'} lb/in)
-                </p>
-              </div>
-            </>
-          )}
+          {/* PIW/PIL overrides moved to Physical tab Belt section - single source of truth */}
 
           {/* v1.3: Belt Cleats */}
           <div className="border-t border-gray-200 pt-4 mt-2">
