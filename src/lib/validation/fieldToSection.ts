@@ -72,6 +72,14 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
   belt_catalog_key: { tabKey: 'physical', sectionKey: 'beltPulleys' },
   side_loading_severity: { tabKey: 'physical', sectionKey: 'beltPulleys' },
 
+  // v1.29: Return Support fields
+  return_frame_style: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+  return_snub_mode: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+  return_gravity_roller_count: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+  return_gravity_roller_diameter_in: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+  return_snub_roller_diameter_in: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+  return_end_offset_in: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+
   // ===========================================================================
   // Physical Tab - Geometry Section
   // ===========================================================================

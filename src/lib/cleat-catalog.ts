@@ -19,21 +19,48 @@ import { useState, useEffect } from 'react';
 // ENUMS & TYPES
 // =============================================================================
 
-/** Cleat pattern options */
-export type CleatPattern = 'STRAIGHT_CROSS' | 'CURVED_90' | 'CURVED_120' | 'CURVED_150';
+/** Cleat pattern options (v1.29: expanded with industry-standard patterns) */
+export type CleatPattern =
+  | 'STRAIGHT_CROSS'
+  | 'STAGGERED'
+  | 'CHEVRON'
+  | 'PARTIAL_WIDTH'
+  | 'CUSTOM';
 
 export const CLEAT_PATTERNS: CleatPattern[] = [
   'STRAIGHT_CROSS',
-  'CURVED_90',
-  'CURVED_120',
-  'CURVED_150',
+  'STAGGERED',
+  'CHEVRON',
+  'PARTIAL_WIDTH',
+  'CUSTOM',
 ];
 
 export const CLEAT_PATTERN_LABELS: Record<CleatPattern, string> = {
   STRAIGHT_CROSS: 'Straight Cross',
-  CURVED_90: '90° Curved',
-  CURVED_120: '120° Curved',
-  CURVED_150: '150° Curved',
+  STAGGERED: 'Staggered',
+  CHEVRON: 'Chevron (Herringbone)',
+  PARTIAL_WIDTH: 'Partial Width Flights',
+  CUSTOM: 'Custom / Special',
+};
+
+/** Default cleat pattern */
+export const DEFAULT_CLEAT_PATTERN: CleatPattern = 'STRAIGHT_CROSS';
+
+/**
+ * Tooltip descriptions for each cleat pattern.
+ * Provides educational context without affecting calculations.
+ */
+export const CLEAT_PATTERN_TOOLTIPS: Record<CleatPattern, string> = {
+  STRAIGHT_CROSS:
+    'Full-width cleat perpendicular to belt travel. Most common and general-purpose pattern.',
+  STAGGERED:
+    'Alternating partial-width cleats used to reduce material rollback in bulk applications.',
+  CHEVRON:
+    'Angled cleat pattern that helps center product on the belt. Common in food and agricultural conveyors.',
+  PARTIAL_WIDTH:
+    'Cleats that do not span the full belt width. Used for specialty handling or controlled release.',
+  CUSTOM:
+    'Non-standard cleat layouts requiring application-specific review.',
 };
 
 /** Cleat style options */

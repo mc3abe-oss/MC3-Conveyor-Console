@@ -17,7 +17,6 @@ import {
   useCleatCatalog,
   getCleatProfiles,
   getCleatSizesForProfile,
-  getCleatPatternsForProfileSize,
   lookupCleatsMinPulleyDia,
   lookupCleatBaseMinDia12,
   getCentersFactor,
@@ -27,7 +26,10 @@ import {
   CleatPattern,
   CleatStyle,
   CleatCenters,
+  CLEAT_PATTERNS,
   CLEAT_PATTERN_LABELS,
+  CLEAT_PATTERN_TOOLTIPS,
+  DEFAULT_CLEAT_PATTERN,
   CLEAT_STYLE_LABELS,
   CLEAT_STYLES,
   CLEAT_CENTERS_OPTIONS,
@@ -54,9 +56,7 @@ export default function CleatsConfigModal({
   const cleatSizes = inputs.cleat_profile
     ? getCleatSizesForProfile(cleatCatalog, inputs.cleat_profile)
     : [];
-  const cleatPatterns = inputs.cleat_profile && inputs.cleat_size
-    ? getCleatPatternsForProfileSize(cleatCatalog, inputs.cleat_profile, inputs.cleat_size)
-    : [];
+  // Note: cleatPatterns from catalog is no longer used; all patterns are shown unconditionally
 
   // Check if drill & siped is supported for current selection
   const drillSipedSupported = inputs.cleat_profile && inputs.cleat_size && inputs.cleat_pattern
@@ -251,25 +251,56 @@ export default function CleatsConfigModal({
             </select>
           </div>
 
-          {/* Cleat Pattern */}
+          {/* Cleat Pattern with Tooltip */}
           <div>
-            <label htmlFor="modal_cleat_pattern" className="block text-sm font-medium text-gray-700 mb-1">
-              Cleat Pattern
-            </label>
+            <div className="flex items-center gap-2 mb-1">
+              <label htmlFor="modal_cleat_pattern" className="block text-sm font-medium text-gray-700">
+                Cleat Pattern
+              </label>
+              {/* Tooltip trigger */}
+              <div className="relative group">
+                <button
+                  type="button"
+                  className="text-gray-400 hover:text-gray-600 focus:outline-none"
+                  aria-label="Pattern information"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </button>
+                {/* Tooltip content */}
+                <div className="absolute left-0 z-50 hidden group-hover:block w-80 p-3 mt-1 text-sm bg-gray-900 text-white rounded-lg shadow-lg">
+                  <div className="space-y-2">
+                    {CLEAT_PATTERNS.map((pattern) => (
+                      <div key={pattern}>
+                        <span className="font-medium">{CLEAT_PATTERN_LABELS[pattern]}:</span>
+                        <span className="ml-1 text-gray-300">{CLEAT_PATTERN_TOOLTIPS[pattern]}</span>
+                      </div>
+                    ))}
+                    <div className="pt-2 mt-2 border-t border-gray-700 text-xs text-gray-400 italic">
+                      Cleat pattern selection does not affect calculations in this version.
+                    </div>
+                  </div>
+                  {/* Tooltip arrow */}
+                  <div className="absolute -top-1 left-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+                </div>
+              </div>
+            </div>
             <select
               id="modal_cleat_pattern"
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-              value={inputs.cleat_pattern ?? ''}
-              onChange={(e) => updateInput('cleat_pattern', e.target.value || undefined)}
-              disabled={!inputs.cleat_size || cleatPatterns.length === 0}
+              value={inputs.cleat_pattern ?? DEFAULT_CLEAT_PATTERN}
+              onChange={(e) => updateInput('cleat_pattern', e.target.value)}
             >
-              <option value="">Select pattern...</option>
-              {cleatPatterns.map((pattern) => (
+              {CLEAT_PATTERNS.map((pattern) => (
                 <option key={pattern} value={pattern}>
                   {CLEAT_PATTERN_LABELS[pattern]}
                 </option>
               ))}
             </select>
+            <p className="text-xs text-gray-500 mt-1">
+              Pattern selection is informational. Default: Straight Cross.
+            </p>
           </div>
 
           {/* Desired Cleat Centers - User editable */}
