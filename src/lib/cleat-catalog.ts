@@ -8,9 +8,12 @@
  * - Lookup functions for base min pulley diameter
  * - Centers factor lookup and computation
  * - Cache management for API data
+ * - React hook for client-side data fetching (v1.24)
  *
  * IMPORTANT: Do NOT bury cleat logic in belt-catalog.ts. Keep it dedicated here.
  */
+
+import { useState, useEffect } from 'react';
 
 // =============================================================================
 // ENUMS & TYPES
@@ -52,6 +55,35 @@ export const DEFAULT_CLEAT_MATERIAL_FAMILY = 'PVC_HOT_WELDED';
 
 /** Default rounding increment for min pulley diameter */
 export const DEFAULT_ROUNDING_INCREMENT_IN = 0.5;
+
+/**
+ * Map user-specified cleat centers to the applicable bucket for min pulley diameter calc.
+ *
+ * The buckets (12, 8, 6, 4) are used ONLY for min pulley diameter calculation.
+ * This function determines which bucket applies based on the user's desired spacing.
+ *
+ * Mapping:
+ * - centers <= 4  → bucket 4  (tightest, highest min pulley)
+ * - centers <= 6  → bucket 6
+ * - centers <= 8  → bucket 8
+ * - centers > 8   → bucket 12 (loosest, lowest min pulley)
+ *
+ * @param centersIn - User's desired cleat centers in inches
+ * @returns The applicable bucket value (4, 6, 8, or 12)
+ */
+export function getCentersBucket(centersIn: number): CleatCenters {
+  if (centersIn <= 4) return 4;
+  if (centersIn <= 6) return 6;
+  if (centersIn <= 8) return 8;
+  return 12;
+}
+
+/**
+ * Get human-readable label for a centers bucket
+ */
+export function getCentersBucketLabel(bucket: CleatCenters): string {
+  return `${bucket}" bucket`;
+}
 
 // =============================================================================
 // INTERFACES
@@ -409,4 +441,73 @@ export function getCleatCatalogEntry(
       c.cleat_size === size &&
       c.cleat_pattern === pattern
   );
+}
+
+/**
+ * Alias for getUniqueCleatProfiles (v1.24: for modal consistency)
+ */
+export const getCleatProfiles = getUniqueCleatProfiles;
+
+// =============================================================================
+// REACT HOOK FOR CLEAT CATALOG DATA (v1.24)
+// =============================================================================
+
+interface UseCleatCatalogResult {
+  cleatCatalog: CleatCatalogItem[];
+  cleatCenterFactors: CleatCenterFactor[];
+  isLoading: boolean;
+  error: string | null;
+}
+
+/**
+ * React hook to fetch and cache cleat catalog data
+ *
+ * @returns Cleat catalog and center factors with loading state
+ */
+export function useCleatCatalog(): UseCleatCatalogResult {
+  const [cleatCatalog, setCleatCatalog] = useState<CleatCatalogItem[]>(
+    getCachedCleatCatalog() ?? []
+  );
+  const [cleatCenterFactors, setCleatCenterFactors] = useState<CleatCenterFactor[]>(
+    getCachedCleatCenterFactors() ?? []
+  );
+  const [isLoading, setIsLoading] = useState(
+    getCachedCleatCatalog() === null
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Skip fetch if already cached
+    if (getCachedCleatCatalog() !== null) {
+      return;
+    }
+
+    const fetchCleatCatalog = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/cleats');
+        if (response.ok) {
+          const data = await response.json();
+          const catalog = data.catalog || [];
+          const factors = data.centerFactors || [];
+          setCleatCatalog(catalog);
+          setCleatCenterFactors(factors);
+          setCachedCleatCatalog(catalog);
+          setCachedCleatCenterFactors(factors);
+        } else {
+          setError('Failed to fetch cleat catalog');
+        }
+      } catch (err) {
+        console.error('Failed to fetch cleat catalog:', err);
+        setError(err instanceof Error ? err.message : 'Unknown error');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchCleatCatalog();
+  }, []);
+
+  return { cleatCatalog, cleatCenterFactors, isLoading, error };
 }

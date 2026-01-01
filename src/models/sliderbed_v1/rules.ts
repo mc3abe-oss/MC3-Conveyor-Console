@@ -34,7 +34,6 @@ import {
   SideLoadingSeverity,
   BeltTrackingMethod,
   ShaftDiameterMode,
-  PULLEY_DIAMETER_PRESETS,
   ValidationMode,
   HeightInputMode,
   derivedLegsRequired,
@@ -1147,6 +1146,17 @@ export function applyApplicationRules(
       field: 'frame_height_mode',
       message: `Frame height (${effectiveFrameHeight.toFixed(1)}") is below snub roller threshold (${snubThreshold.toFixed(1)}"). Snub rollers will be required at pulley ends.`,
       severity: 'info',
+    });
+  }
+
+  // v1.24: Cleats + Snub rollers incompatibility (hard error)
+  // Cleated belts cannot use snub rollers - the cleats would collide with the rollers
+  const cleatsEnabled = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
+  if (cleatsEnabled && requiresSnubRollers) {
+    errors.push({
+      field: 'cleats_mode',
+      message: `Cleats cannot be used with snub rollers. Current frame height (${effectiveFrameHeight.toFixed(1)}") requires snub rollers (threshold: ${snubThreshold.toFixed(1)}"). Either increase frame height or remove cleats.`,
+      severity: 'error',
     });
   }
 

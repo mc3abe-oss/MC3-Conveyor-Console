@@ -17,6 +17,8 @@ import {
   getCleatSizesForProfile,
   getCleatPatternsForProfileSize,
   isDrillSipedSupported,
+  getCentersBucket,
+  getCentersBucketLabel,
   CLEAT_CENTERS_OPTIONS,
   DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from './cleat-catalog';
@@ -471,5 +473,69 @@ describe('Constants', () => {
 
   it('should have correct DEFAULT_CLEAT_MATERIAL_FAMILY', () => {
     expect(DEFAULT_CLEAT_MATERIAL_FAMILY).toBe('PVC_HOT_WELDED');
+  });
+});
+
+// =============================================================================
+// getCentersBucket Tests (v1.24)
+// =============================================================================
+
+describe('getCentersBucket', () => {
+  it('should return bucket 4 for centers <= 4', () => {
+    expect(getCentersBucket(4)).toBe(4);
+    expect(getCentersBucket(3.5)).toBe(4);
+    expect(getCentersBucket(3)).toBe(4);
+    expect(getCentersBucket(2)).toBe(4);
+    expect(getCentersBucket(1)).toBe(4);
+  });
+
+  it('should return bucket 6 for 4 < centers <= 6', () => {
+    expect(getCentersBucket(6)).toBe(6);
+    expect(getCentersBucket(5)).toBe(6);
+    expect(getCentersBucket(4.5)).toBe(6);
+    expect(getCentersBucket(4.1)).toBe(6);
+  });
+
+  it('should return bucket 8 for 6 < centers <= 8', () => {
+    expect(getCentersBucket(8)).toBe(8);
+    expect(getCentersBucket(7.5)).toBe(8);
+    expect(getCentersBucket(7)).toBe(8);
+    expect(getCentersBucket(6.5)).toBe(8);
+    expect(getCentersBucket(6.1)).toBe(8);
+  });
+
+  it('should return bucket 12 for centers > 8', () => {
+    expect(getCentersBucket(12)).toBe(12);
+    expect(getCentersBucket(10)).toBe(12);
+    expect(getCentersBucket(9)).toBe(12);
+    expect(getCentersBucket(8.1)).toBe(12);
+    expect(getCentersBucket(24)).toBe(12);
+    expect(getCentersBucket(48)).toBe(12);
+  });
+
+  // Task-specified test cases
+  it('should map 3.5 -> bucket 4', () => {
+    expect(getCentersBucket(3.5)).toBe(4);
+  });
+
+  it('should map 5 -> bucket 6', () => {
+    expect(getCentersBucket(5)).toBe(6);
+  });
+
+  it('should map 7.5 -> bucket 8', () => {
+    expect(getCentersBucket(7.5)).toBe(8);
+  });
+
+  it('should map 12 -> bucket 12', () => {
+    expect(getCentersBucket(12)).toBe(12);
+  });
+});
+
+describe('getCentersBucketLabel', () => {
+  it('should return formatted bucket label', () => {
+    expect(getCentersBucketLabel(4)).toBe('4" bucket');
+    expect(getCentersBucketLabel(6)).toBe('6" bucket');
+    expect(getCentersBucketLabel(8)).toBe('8" bucket');
+    expect(getCentersBucketLabel(12)).toBe('12" bucket');
   });
 });

@@ -4204,6 +4204,9 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
           cleat_height_in: 1,
           cleat_edge_offset_in: 0.5,
           drive_pulley_diameter_in: 3.5, // Below 3.75 (adjusted min)
+          // v1.24: Set frame height above snub roller threshold to avoid cleats+snub incompatibility
+          frame_height_mode: FrameHeightMode.Custom,
+          custom_frame_height_in: 8, // Above snub threshold (3.5 + 2.5 = 6)
         };
 
         const result = runCalculation({ inputs });
@@ -4957,8 +4960,9 @@ describe('v1.17 Pulley Diameter Override', () => {
     expect(effectiveDrivePulleyDiameterIn).toBe(5);
   });
 
-  // Case C: no catalog, override=false → validation warning present
-  it('should produce warning when no catalog and override is false (Case C)', () => {
+  // Case C: no catalog, override=false → effective diameter undefined
+  // v1.24: Removed "Select a" warning - pulley selection is now modal-based
+  it('should allow undefined catalog without warning when override is false (Case C)', () => {
     const inputs: SliderbedInputs = {
       ...OVERRIDE_BASE,
       head_pulley_catalog_key: undefined, // No catalog
@@ -4967,12 +4971,9 @@ describe('v1.17 Pulley Diameter Override', () => {
 
     const result = runCalculation({ inputs });
 
-    // Should have warning for missing configuration
-    const hasWarning = result.warnings?.some(
-      (w) => w.field === 'head_pulley_catalog_key' &&
-            w.message.includes('Select a')
-    );
-    expect(hasWarning).toBe(true);
+    // v1.24: No longer expect warning - pulley configuration via modal
+    // Calculation should still succeed with default/fallback values
+    expect(result.success).toBe(true);
   });
 
   // Case D: no catalog, override=true, manual set → effective = manual
@@ -4990,8 +4991,9 @@ describe('v1.17 Pulley Diameter Override', () => {
     expect(effectiveDrivePulleyDiameterIn).toBe(5);
   });
 
-  // Case E: override=true, manual missing → validation warning; effective undefined
-  it('should produce warning and undefined diameter when override is true but manual missing (Case E)', () => {
+  // Case E: override=true, manual missing → effective undefined
+  // v1.24: Removed "Override enabled" warning - pulley selection is now modal-based
+  it('should return undefined diameter when override is true but manual missing (Case E)', () => {
     const inputs: SliderbedInputs = {
       ...OVERRIDE_BASE,
       head_pulley_catalog_key: undefined,
@@ -5004,13 +5006,10 @@ describe('v1.17 Pulley Diameter Override', () => {
     // Effective should be undefined
     expect(effectiveDrivePulleyDiameterIn).toBeUndefined();
 
-    // Should have warning for missing diameter
+    // v1.24: No longer expect warning - pulley configuration via modal
+    // Calculation should still succeed with default/fallback values
     const result = runCalculation({ inputs });
-    const hasWarning = result.warnings?.some(
-      (w) => w.field === 'drive_pulley_diameter_in' &&
-            w.message.includes('Override enabled')
-    );
-    expect(hasWarning).toBe(true);
+    expect(result.success).toBe(true);
   });
 
   // Tail pulley: no catalog, override=false → undefined

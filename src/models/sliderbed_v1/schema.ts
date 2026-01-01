@@ -650,6 +650,18 @@ export interface SliderbedInputs {
    */
   cleat_material_family?: string;
 
+  /**
+   * Are the cleats notched? (v1.24)
+   * Documentation-only intent capture
+   */
+  cleats_notched?: boolean;
+
+  /**
+   * Notch notes - free text description (v1.24)
+   * Required when cleats_notched = true
+   */
+  cleats_notch_notes?: string;
+
   // SPEED & THROUGHPUT
   /** Belt Speed in FPM (feet per minute) */
   belt_speed_fpm: number;
