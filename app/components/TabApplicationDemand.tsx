@@ -13,6 +13,9 @@ import {
   SideLoadingSeverity,
   AmbientTemperatureClass,
   AMBIENT_TEMPERATURE_CLASS_LABELS,
+  MaterialForm,
+  BulkInputMethod,
+  DensitySource,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 import EnvironmentFactorsSelect from './EnvironmentFactorsSelect';
@@ -30,6 +33,12 @@ interface TabApplicationDemandProps {
 export default function TabApplicationDemand({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabApplicationDemandProps) {
   const { handleToggle, isExpanded } = useAccordionState();
 
+  // Determine material form mode
+  const materialForm = (inputs.material_form as MaterialForm | string) ?? MaterialForm.Parts;
+  const isBulkMode = materialForm === MaterialForm.Bulk || materialForm === 'BULK';
+  const bulkInputMethod = (inputs.bulk_input_method as BulkInputMethod | string) ?? BulkInputMethod.WeightFlow;
+  const isVolumeFlow = bulkInputMethod === BulkInputMethod.VolumeFlow || bulkInputMethod === 'VOLUME_FLOW';
+
   return (
     <div className="space-y-4">
       {/* Section A: Product Definition */}
@@ -42,6 +51,33 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
         issues={getIssuesForSection('product')}
       >
         <div className="grid grid-cols-1 gap-4">
+          {/* 0. Material Form (PARTS vs BULK) */}
+          <div>
+            <label className="label">Material Form</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="material_form"
+                  checked={!isBulkMode}
+                  onChange={() => updateInput('material_form', MaterialForm.Parts)}
+                  className="mr-2"
+                />
+                Discrete Parts
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="material_form"
+                  checked={isBulkMode}
+                  onChange={() => updateInput('material_form', MaterialForm.Bulk)}
+                  className="mr-2"
+                />
+                Bulk Material
+              </label>
+            </div>
+          </div>
+
           {/* 1. Process Type */}
           <div>
             <label htmlFor="process_type" className="label">
@@ -70,100 +106,244 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
             />
           </div>
 
-          {/* 3. Part Length (in) */}
-          <div>
-            <label htmlFor="part_length_in" className="label">
-              Part Length (in)
-            </label>
-            <input
-              type="number"
-              id="part_length_in"
-              className="input"
-              value={inputs.part_length_in}
-              onChange={(e) => updateInput('part_length_in', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-          </div>
-
-          {/* 4. Part Width (in) */}
-          <div>
-            <label htmlFor="part_width_in" className="label">
-              Part Width (in)
-            </label>
-            <input
-              type="number"
-              id="part_width_in"
-              className="input"
-              value={inputs.part_width_in}
-              onChange={(e) => updateInput('part_width_in', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-          </div>
-
-          {/* 5. Part Weight (lbs) */}
-          <div>
-            <label htmlFor="part_weight_lbs" className="label">
-              Part Weight (lbs)
-            </label>
-            <input
-              type="number"
-              id="part_weight_lbs"
-              className="input"
-              value={inputs.part_weight_lbs}
-              onChange={(e) => updateInput('part_weight_lbs', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-          </div>
-
-          {/* 6. Orientation */}
-          <div>
-            <label htmlFor="orientation" className="label">
-              Orientation
-            </label>
-            <select
-              id="orientation"
-              className="input"
-              value={inputs.orientation}
-              onChange={(e) => updateInput('orientation', e.target.value as Orientation)}
-              required
-            >
-              <option value={Orientation.Lengthwise}>Lengthwise</option>
-              <option value={Orientation.Crosswise}>Crosswise</option>
-            </select>
-          </div>
-
-          {/* 7. Parts Sharp (Yes / No) */}
-          <div>
-            <label className="label">Parts Sharp</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
+          {/* PARTS-only fields */}
+          {!isBulkMode && (
+            <>
+              {/* 3. Part Length (in) */}
+              <div>
+                <label htmlFor="part_length_in" className="label">
+                  Part Length (in)
+                </label>
                 <input
-                  type="radio"
-                  name="parts_sharp"
-                  checked={inputs.parts_sharp === 'No'}
-                  onChange={() => updateInput('parts_sharp', 'No')}
-                  className="mr-2"
+                  type="number"
+                  id="part_length_in"
+                  className="input"
+                  value={inputs.part_length_in}
+                  onChange={(e) => updateInput('part_length_in', parseFloat(e.target.value) || 0)}
+                  step="0.1"
+                  min="0"
+                  required
                 />
-                No
-              </label>
-              <label className="inline-flex items-center">
+              </div>
+
+              {/* 4. Part Width (in) */}
+              <div>
+                <label htmlFor="part_width_in" className="label">
+                  Part Width (in)
+                </label>
                 <input
-                  type="radio"
-                  name="parts_sharp"
-                  checked={inputs.parts_sharp === 'Yes'}
-                  onChange={() => updateInput('parts_sharp', 'Yes')}
-                  className="mr-2"
+                  type="number"
+                  id="part_width_in"
+                  className="input"
+                  value={inputs.part_width_in}
+                  onChange={(e) => updateInput('part_width_in', parseFloat(e.target.value) || 0)}
+                  step="0.1"
+                  min="0"
+                  required
                 />
-                Yes
-              </label>
+              </div>
+
+              {/* 5. Part Weight (lbs) */}
+              <div>
+                <label htmlFor="part_weight_lbs" className="label">
+                  Part Weight (lbs)
+                </label>
+                <input
+                  type="number"
+                  id="part_weight_lbs"
+                  className="input"
+                  value={inputs.part_weight_lbs}
+                  onChange={(e) => updateInput('part_weight_lbs', parseFloat(e.target.value) || 0)}
+                  step="0.1"
+                  min="0"
+                  required
+                />
+              </div>
+
+              {/* 6. Orientation */}
+              <div>
+                <label htmlFor="orientation" className="label">
+                  Orientation
+                </label>
+                <select
+                  id="orientation"
+                  className="input"
+                  value={inputs.orientation}
+                  onChange={(e) => updateInput('orientation', e.target.value as Orientation)}
+                  required
+                >
+                  <option value={Orientation.Lengthwise}>Lengthwise</option>
+                  <option value={Orientation.Crosswise}>Crosswise</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* BULK-only fields */}
+          {isBulkMode && (
+            <>
+              {/* Bulk Input Method */}
+              <div>
+                <label className="label">Input Method</label>
+                <div className="flex gap-4">
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="bulk_input_method"
+                      checked={!isVolumeFlow}
+                      onChange={() => updateInput('bulk_input_method', BulkInputMethod.WeightFlow)}
+                      className="mr-2"
+                    />
+                    Weight Flow (lbs/hr)
+                  </label>
+                  <label className="inline-flex items-center">
+                    <input
+                      type="radio"
+                      name="bulk_input_method"
+                      checked={isVolumeFlow}
+                      onChange={() => updateInput('bulk_input_method', BulkInputMethod.VolumeFlow)}
+                      className="mr-2"
+                    />
+                    Volume Flow (ft³/hr)
+                  </label>
+                </div>
+              </div>
+
+              {/* Mass Flow (Weight Flow mode) */}
+              {!isVolumeFlow && (
+                <div>
+                  <label htmlFor="mass_flow_lbs_per_hr" className="label">
+                    Mass Flow Rate (lbs/hr)
+                  </label>
+                  <input
+                    type="number"
+                    id="mass_flow_lbs_per_hr"
+                    className="input"
+                    value={inputs.mass_flow_lbs_per_hr ?? ''}
+                    onChange={(e) => updateInput('mass_flow_lbs_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    step="1"
+                    min="0"
+                    required
+                  />
+                </div>
+              )}
+
+              {/* Volume Flow (Volume Flow mode) */}
+              {isVolumeFlow && (
+                <>
+                  <div>
+                    <label htmlFor="volume_flow_ft3_per_hr" className="label">
+                      Volume Flow Rate (ft³/hr)
+                    </label>
+                    <input
+                      type="number"
+                      id="volume_flow_ft3_per_hr"
+                      className="input"
+                      value={inputs.volume_flow_ft3_per_hr ?? ''}
+                      onChange={(e) => updateInput('volume_flow_ft3_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
+                      step="0.1"
+                      min="0"
+                      required
+                    />
+                  </div>
+
+                  {/* Density Source */}
+                  <div>
+                    <label className="label">Density Source</label>
+                    <div className="flex gap-4">
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="density_source"
+                          checked={(inputs.density_source ?? DensitySource.Known) === DensitySource.Known || inputs.density_source === 'KNOWN'}
+                          onChange={() => updateInput('density_source', DensitySource.Known)}
+                          className="mr-2"
+                        />
+                        Known Value
+                      </label>
+                      <label className="inline-flex items-center">
+                        <input
+                          type="radio"
+                          name="density_source"
+                          checked={inputs.density_source === DensitySource.AssumedClass || inputs.density_source === 'ASSUMED_CLASS'}
+                          onChange={() => updateInput('density_source', DensitySource.AssumedClass)}
+                          className="mr-2"
+                        />
+                        Assumed (by class)
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Density Value (Known) */}
+                  {(inputs.density_source === DensitySource.Known || inputs.density_source === 'KNOWN' || !inputs.density_source) && (
+                    <div>
+                      <label htmlFor="density_lbs_per_ft3" className="label">
+                        Bulk Density (lbs/ft³)
+                      </label>
+                      <input
+                        type="number"
+                        id="density_lbs_per_ft3"
+                        className="input"
+                        value={inputs.density_lbs_per_ft3 ?? ''}
+                        onChange={(e) => updateInput('density_lbs_per_ft3', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        step="0.1"
+                        min="0"
+                        required
+                      />
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Max Lump Size (optional) */}
+              <div>
+                <label htmlFor="max_lump_size_in" className="label">
+                  Max Lump Size (in) <span className="text-gray-500">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  id="max_lump_size_in"
+                  className="input"
+                  value={inputs.max_lump_size_in ?? ''}
+                  onChange={(e) => updateInput('max_lump_size_in', e.target.value ? parseFloat(e.target.value) : undefined)}
+                  step="0.5"
+                  min="0"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Largest particle dimension for belt width validation.
+                </p>
+              </div>
+            </>
+          )}
+
+          {/* 7. Parts Sharp (Yes / No) - PARTS only */}
+          {!isBulkMode && (
+            <div>
+              <label className="label">Parts Sharp</label>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="parts_sharp"
+                    checked={inputs.parts_sharp === 'No'}
+                    onChange={() => updateInput('parts_sharp', 'No')}
+                    className="mr-2"
+                  />
+                  No
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="parts_sharp"
+                    checked={inputs.parts_sharp === 'Yes'}
+                    onChange={() => updateInput('parts_sharp', 'Yes')}
+                    className="mr-2"
+                  />
+                  Yes
+                </label>
+              </div>
             </div>
-          </div>
+          )}
 
           {/* 8. Part Temperature */}
           <div>
@@ -238,73 +418,75 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
         </div>
       </AccordionSection>
 
-      {/* Section B: Throughput Requirements */}
-      <AccordionSection
-        id="throughput"
-        title="Throughput Requirements"
-        isExpanded={isExpanded('throughput')}
-        onToggle={handleToggle}
-        issueCounts={sectionCounts.throughput}
-        issues={getIssuesForSection('throughput')}
-      >
-        <div className="grid grid-cols-1 gap-4">
-          {/* 11. Part Spacing (in) */}
-          <div>
-            <label htmlFor="part_spacing_in" className="label">
-              Part Spacing (in)
-            </label>
-            <input
-              type="number"
-              id="part_spacing_in"
-              className="input"
-              value={inputs.part_spacing_in}
-              onChange={(e) => updateInput('part_spacing_in', parseFloat(e.target.value) || 0)}
-              step="0.1"
-              min="0"
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Center-to-center distance between parts in direction of travel.
-            </p>
-          </div>
+      {/* Section B: Throughput Requirements - PARTS only */}
+      {!isBulkMode && (
+        <AccordionSection
+          id="throughput"
+          title="Throughput Requirements"
+          isExpanded={isExpanded('throughput')}
+          onToggle={handleToggle}
+          issueCounts={sectionCounts.throughput}
+          issues={getIssuesForSection('throughput')}
+        >
+          <div className="grid grid-cols-1 gap-4">
+            {/* 11. Part Spacing (in) */}
+            <div>
+              <label htmlFor="part_spacing_in" className="label">
+                Part Spacing (in)
+              </label>
+              <input
+                type="number"
+                id="part_spacing_in"
+                className="input"
+                value={inputs.part_spacing_in}
+                onChange={(e) => updateInput('part_spacing_in', parseFloat(e.target.value) || 0)}
+                step="0.1"
+                min="0"
+                required
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Center-to-center distance between parts in direction of travel.
+              </p>
+            </div>
 
-          {/* 12. Required Throughput (parts/hour) */}
-          <div>
-            <label htmlFor="required_throughput_pph" className="label">
-              Required Throughput (parts/hour) <span className="text-gray-500">(optional)</span>
-            </label>
-            <input
-              type="number"
-              id="required_throughput_pph"
-              className="input"
-              value={inputs.required_throughput_pph || ''}
-              onChange={(e) =>
-                updateInput('required_throughput_pph', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-              step="1"
-              min="0"
-            />
-          </div>
+            {/* 12. Required Throughput (parts/hour) */}
+            <div>
+              <label htmlFor="required_throughput_pph" className="label">
+                Required Throughput (parts/hour) <span className="text-gray-500">(optional)</span>
+              </label>
+              <input
+                type="number"
+                id="required_throughput_pph"
+                className="input"
+                value={inputs.required_throughput_pph || ''}
+                onChange={(e) =>
+                  updateInput('required_throughput_pph', e.target.value ? parseFloat(e.target.value) : undefined)
+                }
+                step="1"
+                min="0"
+              />
+            </div>
 
-          {/* 13. Throughput Margin (%) */}
-          <div>
-            <label htmlFor="throughput_margin_pct" className="label">
-              Throughput Margin (%) <span className="text-gray-500">(optional)</span>
-            </label>
-            <input
-              type="number"
-              id="throughput_margin_pct"
-              className="input"
-              value={inputs.throughput_margin_pct || ''}
-              onChange={(e) =>
-                updateInput('throughput_margin_pct', e.target.value ? parseFloat(e.target.value) : undefined)
-              }
-              step="1"
-              min="0"
-            />
+            {/* 13. Throughput Margin (%) */}
+            <div>
+              <label htmlFor="throughput_margin_pct" className="label">
+                Throughput Margin (%) <span className="text-gray-500">(optional)</span>
+              </label>
+              <input
+                type="number"
+                id="throughput_margin_pct"
+                className="input"
+                value={inputs.throughput_margin_pct || ''}
+                onChange={(e) =>
+                  updateInput('throughput_margin_pct', e.target.value ? parseFloat(e.target.value) : undefined)
+                }
+                step="1"
+                min="0"
+              />
+            </div>
           </div>
-        </div>
-      </AccordionSection>
+        </AccordionSection>
+      )}
 
       {/* Section C: Environmental Factors */}
       <AccordionSection
