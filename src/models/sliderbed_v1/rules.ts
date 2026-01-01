@@ -8,6 +8,12 @@
  * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
  *                     New BULK validation: bulk_input_method, mass_flow, volume_flow, density
  *                     Existing PARTS validation unchanged (no math drift)
+ *                     Return Support explicit configuration validation
+ *                     - Cleats+snubs check now uses explicit user selection (not frame-height-derived)
+ *                     - Low Profile without snubs warning
+ *                     - Gravity roller centers warnings (>72" sag, <24" over-engineered)
+ * v1.28 (2025-12-31): Fix cleats+snub false failure - use getEffectivePulleyDiameters for consistent
+ *                     pulley resolution; show error in Frame section (not just Cleats)
  * v1.27 (2025-12-30): PCI tube stress output validation (applyPciOutputRules)
  * v1.15 (2025-12-26): Pulley catalog selection info messages
  * v1.14 (2025-12-26): Conveyor frame construction validation (gauge/channel conditional requirements)
@@ -48,6 +54,9 @@ import {
   MaterialForm,
   BulkInputMethod,
   DensitySource,
+  // v1.29: Return Support enums
+  ReturnFrameStyle,
+  ReturnSnubMode,
 } from './schema';
 import { hasAngleMismatch } from './migrate';
 import {
@@ -59,6 +68,13 @@ import {
   SNUB_ROLLER_CLEARANCE_THRESHOLD_IN,
   calculateEffectiveFrameHeight,
   calculateRequiresSnubRollers,
+  getEffectivePulleyDiameters,
+  // v1.29: Return Support functions
+  calculateReturnSnubsEnabled,
+  calculateReturnSpan,
+  calculateGravityRollerCenters,
+  calculateDefaultGravityRollerCount,
+  DEFAULT_RETURN_END_OFFSET_IN,
 } from './formulas';
 
 /**
@@ -446,7 +462,7 @@ export function validateInputs(
   if (inputs.belt_coeff_piw !== undefined && inputs.belt_coeff_piw <= 0) {
     errors.push({
       field: 'belt_coeff_piw',
-      message: 'Belt coefficient piw must be > 0',
+      message: 'PIW must be > 0',
       severity: 'error',
     });
   }
@@ -454,7 +470,7 @@ export function validateInputs(
   if (inputs.belt_coeff_piw !== undefined && (inputs.belt_coeff_piw < 0.05 || inputs.belt_coeff_piw > 0.30)) {
     errors.push({
       field: 'belt_coeff_piw',
-      message: 'Belt coefficient piw should be between 0.05 and 0.30',
+      message: 'PIW should be between 0.05 and 0.30 lb/in',
       severity: 'error',
     });
   }
@@ -462,7 +478,7 @@ export function validateInputs(
   if (inputs.belt_coeff_pil !== undefined && inputs.belt_coeff_pil <= 0) {
     errors.push({
       field: 'belt_coeff_pil',
-      message: 'Belt coefficient pil must be > 0',
+      message: 'PIL must be > 0',
       severity: 'error',
     });
   }
@@ -470,7 +486,7 @@ export function validateInputs(
   if (inputs.belt_coeff_pil !== undefined && (inputs.belt_coeff_pil < 0.05 || inputs.belt_coeff_pil > 0.30)) {
     errors.push({
       field: 'belt_coeff_pil',
-      message: 'Belt coefficient pil should be between 0.05 and 0.30',
+      message: 'PIL should be between 0.05 and 0.30 lb/in',
       severity: 'error',
     });
   }
@@ -1043,9 +1059,13 @@ export function applyApplicationRules(
   // - "Different diameters" warning (valid in our system, no value)
   // - "Non-standard diameter" info (catalog now defines valid options)
 
-  // Compute effective pulley diameters for belt minimum warnings
-  const drivePulley = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
-  const tailPulley = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in;
+  // v1.28: Use getEffectivePulleyDiameters for consistent resolution with formulas.ts
+  // This ensures frame height, snub roller checks, etc. use the same pulley values
+  // as the calculation engine, avoiding false positives from stale legacy fields.
+  const { effectiveDrivePulleyDiameterIn, effectiveTailPulleyDiameterIn } =
+    getEffectivePulleyDiameters(inputs);
+  const drivePulley = effectiveDrivePulleyDiameterIn;
+  const tailPulley = effectiveTailPulleyDiameterIn;
 
   // =========================================================================
   // v1.11: BELT MINIMUM PULLEY DIAMETER WARNINGS
@@ -1255,18 +1275,98 @@ export function applyApplicationRules(
     });
   }
 
-  // v1.24: Cleats + Snub rollers incompatibility (hard error)
+  // =========================================================================
+  // v1.29: RETURN SUPPORT VALIDATION
+  // Uses explicit user configuration instead of frame-height-derived logic
+  // =========================================================================
+
+  const returnSnubsEnabled = calculateReturnSnubsEnabled(
+    inputs.return_frame_style,
+    inputs.return_snub_mode
+  );
+  const returnEndOffsetIn = inputs.return_end_offset_in ?? DEFAULT_RETURN_END_OFFSET_IN;
+  const returnSpanIn = calculateReturnSpan(
+    inputs.conveyor_length_cc_in,
+    returnSnubsEnabled,
+    returnEndOffsetIn
+  );
+  const returnGravityRollerCount =
+    inputs.return_gravity_roller_count ??
+    calculateDefaultGravityRollerCount(returnSpanIn);
+  const returnGravityRollerCentersIn = calculateGravityRollerCenters(
+    returnSpanIn,
+    returnGravityRollerCount
+  );
+
+  // v1.29: Cleats + Snub rollers incompatibility (hard error)
   // Cleated belts cannot use snub rollers - the cleats would collide with the rollers
+  // Uses explicit returnSnubsEnabled (user selection) instead of frame-height-derived
   const cleatsEnabled = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
-  if (cleatsEnabled && requiresSnubRollers) {
+  if (cleatsEnabled && returnSnubsEnabled) {
+    // Error in Return Support section (user can disable snubs)
+    errors.push({
+      field: 'return_snub_mode',
+      message: 'Cleats are enabled but snub rollers are also enabled. Cleats and snub rollers are incompatible. Disable snub rollers or remove cleats.',
+      severity: 'error',
+    });
+    // Error in Cleats section (user can remove cleats)
     errors.push({
       field: 'cleats_mode',
-      message: `Cleats cannot be used with snub rollers. Current frame height (${effectiveFrameHeight.toFixed(1)}") requires snub rollers (threshold: ${snubThreshold.toFixed(1)}"). Either increase frame height or remove cleats.`,
+      message: 'Cleats cannot be used with snub rollers. Either disable snub rollers in Return Support configuration or remove cleats.',
       severity: 'error',
     });
   }
 
-  // Low profile mode info
+  // v1.29: Low Profile without Snubs warning
+  // When user explicitly disables snubs on Low Profile, warn that this may cause belt sag
+  const returnFrameStyle = inputs.return_frame_style ?? ReturnFrameStyle.Standard;
+  const returnSnubMode = inputs.return_snub_mode ?? ReturnSnubMode.Auto;
+  if (
+    (returnFrameStyle === ReturnFrameStyle.LowProfile || returnFrameStyle === 'LOW_PROFILE') &&
+    (returnSnubMode === ReturnSnubMode.No || returnSnubMode === 'NO')
+  ) {
+    warnings.push({
+      field: 'return_snub_mode',
+      message: 'Low Profile frame without snub rollers may cause belt sag at pulley ends. Consider enabling snub rollers.',
+      severity: 'warning',
+    });
+  }
+
+  // v1.29: Gravity roller centers warnings
+  if (returnGravityRollerCentersIn !== null) {
+    if (returnGravityRollerCentersIn > 72) {
+      warnings.push({
+        field: 'return_gravity_roller_count',
+        message: `Gravity roller spacing (${returnGravityRollerCentersIn.toFixed(1)}") exceeds 72". Belt may sag between rollers. Consider adding more rollers.`,
+        severity: 'warning',
+      });
+    }
+    if (returnGravityRollerCentersIn < 24) {
+      warnings.push({
+        field: 'return_gravity_roller_count',
+        message: `Gravity roller spacing (${returnGravityRollerCentersIn.toFixed(1)}") is less than 24". This may be over-engineered.`,
+        severity: 'info',
+      });
+    }
+  }
+
+  // v1.29: End offset soft warning (outside 6-60 in range)
+  if (returnEndOffsetIn < 6) {
+    warnings.push({
+      field: 'return_end_offset_in',
+      message: `End offset (${returnEndOffsetIn.toFixed(1)}") is less than 6". Rollers may be too close to pulley.`,
+      severity: 'warning',
+    });
+  }
+  if (returnEndOffsetIn > 60) {
+    warnings.push({
+      field: 'return_end_offset_in',
+      message: `End offset (${returnEndOffsetIn.toFixed(1)}") exceeds 60". Consider reducing to avoid excessive unsupported span near pulleys.`,
+      severity: 'warning',
+    });
+  }
+
+  // Low profile mode info (legacy frame height)
   const frameHeightMode = inputs.frame_height_mode ?? FrameHeightMode.Standard;
   if (frameHeightMode === FrameHeightMode.LowProfile || frameHeightMode === 'Low Profile') {
     warnings.push({

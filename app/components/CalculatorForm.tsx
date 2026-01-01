@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { runCalculation } from '../../src/lib/calculator';
 import {
   SliderbedInputs,
@@ -25,8 +25,10 @@ import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorPhysical from './TabConveyorPhysical';
 import TabDriveControls from './TabDriveControls';
 import TabBuildOptions from './TabBuildOptions';
-import { useConfigureIssues, ConfigureTabKey } from './useConfigureIssues';
+import { useConfigureIssues, ConfigureTabKey, Issue, SectionKey } from './useConfigureIssues';
 import StatusLight from './StatusLight';
+import { ValidationError } from '../../src/models/sliderbed_v1/schema';
+import { getFieldMapping } from '../../src/lib/validation/fieldToSection';
 
 /**
  * Configure sub-tab type (alias to ConfigureTabKey for local use)
@@ -52,6 +54,8 @@ interface Props {
   triggerCalculate?: number; // Counter to trigger calculation from parent
   hideCalculateButton?: boolean; // Hide the form's Calculate button if calculation is triggered externally
   applicationLineId?: string | null; // Application ID for per-line configurations (pulleys)
+  /** Post-calc validation errors from last calculation result (for inline display) */
+  postCalcErrors?: ValidationError[];
 }
 
 export default function CalculatorForm({
@@ -63,6 +67,7 @@ export default function CalculatorForm({
   triggerCalculate,
   hideCalculateButton = false,
   applicationLineId,
+  postCalcErrors,
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -181,6 +186,73 @@ export default function CalculatorForm({
   // Compute validation issues (includes pre-calc tracking and min pulley checks)
   const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs);
 
+  // Convert post-calc ValidationErrors to Issues and organize by section
+  const postCalcIssuesBySection = useMemo(() => {
+    const bySection: Partial<Record<SectionKey, Issue[]>> = {};
+    if (!postCalcErrors) return bySection;
+
+    for (const error of postCalcErrors) {
+      const mapping = getFieldMapping(error.field);
+      if (!mapping) continue;
+
+      const issue: Issue = {
+        severity: error.severity,
+        message: error.message,
+        tabKey: mapping.tabKey,
+        sectionKey: mapping.sectionKey,
+        fieldKeys: error.field ? [error.field as keyof SliderbedInputs] : undefined,
+      };
+
+      if (!bySection[mapping.sectionKey]) {
+        bySection[mapping.sectionKey] = [];
+      }
+      bySection[mapping.sectionKey]!.push(issue);
+    }
+
+    return bySection;
+  }, [postCalcErrors]);
+
+  // Helper to get merged issues for a section (pre-calc + post-calc, de-duped)
+  const getMergedIssuesForSection = useCallback((sectionKey: SectionKey): Issue[] => {
+    const preCalcIssues = getIssuesForSection(sectionKey);
+    const postCalc = postCalcIssuesBySection[sectionKey] ?? [];
+
+    // Merge and de-dupe by message
+    const seen = new Set<string>();
+    const merged: Issue[] = [];
+
+    for (const issue of [...preCalcIssues, ...postCalc]) {
+      if (!seen.has(issue.message)) {
+        seen.add(issue.message);
+        merged.push(issue);
+      }
+    }
+
+    return merged;
+  }, [getIssuesForSection, postCalcIssuesBySection]);
+
+  // Merge section counts (pre-calc + post-calc) for StatusLight indicators
+  const mergedSectionCounts = useMemo(() => {
+    // Start with pre-calc counts
+    const merged = { ...sectionCounts };
+
+    // Add post-calc error counts
+    for (const [sectionKey, issues] of Object.entries(postCalcIssuesBySection)) {
+      const key = sectionKey as SectionKey;
+      if (!merged[key]) continue;
+
+      const errorCount = issues.filter((i) => i.severity === 'error').length;
+      const warningCount = issues.filter((i) => i.severity === 'warning').length;
+
+      merged[key] = {
+        errors: merged[key].errors + errorCount,
+        warnings: merged[key].warnings + warningCount,
+      };
+    }
+
+    return merged;
+  }, [sectionCounts, postCalcIssuesBySection]);
+
   // Handle Enter key press to trigger recalculation
   const handleKeyPress = (e: React.KeyboardEvent) => {
     const target = e.target as HTMLElement;
@@ -242,11 +314,11 @@ export default function CalculatorForm({
             <TabConveyorPhysical
               inputs={inputs}
               updateInput={updateInput}
-              sectionCounts={sectionCounts}
+              sectionCounts={mergedSectionCounts}
               getTrackingIssue={getTrackingIssue}
               getMinPulleyIssues={getMinPulleyIssues}
               applicationLineId={applicationLineId}
-              getIssuesForSection={getIssuesForSection}
+              getMergedIssuesForSection={getMergedIssuesForSection}
             />
           )}
 

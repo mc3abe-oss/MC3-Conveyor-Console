@@ -13,27 +13,52 @@
  * IMPORTANT: Do NOT bury cleat logic in belt-catalog.ts. Keep it dedicated here.
  */
 
-import { useState, useEffect } from 'react';
-
 // =============================================================================
 // ENUMS & TYPES
 // =============================================================================
 
-/** Cleat pattern options */
-export type CleatPattern = 'STRAIGHT_CROSS' | 'CURVED_90' | 'CURVED_120' | 'CURVED_150';
+/** Cleat pattern options (v1.29: expanded with industry-standard patterns) */
+export type CleatPattern =
+  | 'STRAIGHT_CROSS'
+  | 'STAGGERED'
+  | 'CHEVRON'
+  | 'PARTIAL_WIDTH'
+  | 'CUSTOM';
 
 export const CLEAT_PATTERNS: CleatPattern[] = [
   'STRAIGHT_CROSS',
-  'CURVED_90',
-  'CURVED_120',
-  'CURVED_150',
+  'STAGGERED',
+  'CHEVRON',
+  'PARTIAL_WIDTH',
+  'CUSTOM',
 ];
 
 export const CLEAT_PATTERN_LABELS: Record<CleatPattern, string> = {
   STRAIGHT_CROSS: 'Straight Cross',
-  CURVED_90: '90° Curved',
-  CURVED_120: '120° Curved',
-  CURVED_150: '150° Curved',
+  STAGGERED: 'Staggered',
+  CHEVRON: 'Chevron (Herringbone)',
+  PARTIAL_WIDTH: 'Partial Width Flights',
+  CUSTOM: 'Custom / Special',
+};
+
+/** Default cleat pattern */
+export const DEFAULT_CLEAT_PATTERN: CleatPattern = 'STRAIGHT_CROSS';
+
+/**
+ * Tooltip descriptions for each cleat pattern.
+ * Provides educational context without affecting calculations.
+ */
+export const CLEAT_PATTERN_TOOLTIPS: Record<CleatPattern, string> = {
+  STRAIGHT_CROSS:
+    'Full-width cleat perpendicular to belt travel. Most common and general-purpose pattern.',
+  STAGGERED:
+    'Alternating partial-width cleats used to reduce material rollback in bulk applications.',
+  CHEVRON:
+    'Angled cleat pattern that helps center product on the belt. Common in food and agricultural conveyors.',
+  PARTIAL_WIDTH:
+    'Cleats that do not span the full belt width. Used for specialty handling or controlled release.',
+  CUSTOM:
+    'Non-standard cleat layouts requiring application-specific review.',
 };
 
 /** Cleat style options */
@@ -449,65 +474,8 @@ export function getCleatCatalogEntry(
 export const getCleatProfiles = getUniqueCleatProfiles;
 
 // =============================================================================
-// REACT HOOK FOR CLEAT CATALOG DATA (v1.24)
+// REACT HOOK - MOVED TO src/lib/hooks/useCleatCatalog.ts
 // =============================================================================
-
-interface UseCleatCatalogResult {
-  cleatCatalog: CleatCatalogItem[];
-  cleatCenterFactors: CleatCenterFactor[];
-  isLoading: boolean;
-  error: string | null;
-}
-
-/**
- * React hook to fetch and cache cleat catalog data
- *
- * @returns Cleat catalog and center factors with loading state
- */
-export function useCleatCatalog(): UseCleatCatalogResult {
-  const [cleatCatalog, setCleatCatalog] = useState<CleatCatalogItem[]>(
-    getCachedCleatCatalog() ?? []
-  );
-  const [cleatCenterFactors, setCleatCenterFactors] = useState<CleatCenterFactor[]>(
-    getCachedCleatCenterFactors() ?? []
-  );
-  const [isLoading, setIsLoading] = useState(
-    getCachedCleatCatalog() === null
-  );
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    // Skip fetch if already cached
-    if (getCachedCleatCatalog() !== null) {
-      return;
-    }
-
-    const fetchCleatCatalog = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const response = await fetch('/api/cleats');
-        if (response.ok) {
-          const data = await response.json();
-          const catalog = data.catalog || [];
-          const factors = data.centerFactors || [];
-          setCleatCatalog(catalog);
-          setCleatCenterFactors(factors);
-          setCachedCleatCatalog(catalog);
-          setCachedCleatCenterFactors(factors);
-        } else {
-          setError('Failed to fetch cleat catalog');
-        }
-      } catch (err) {
-        console.error('Failed to fetch cleat catalog:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error');
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchCleatCatalog();
-  }, []);
-
-  return { cleatCatalog, cleatCenterFactors, isLoading, error };
-}
+// The useCleatCatalog hook has been moved to a separate file to allow
+// server-side imports of cleat types/constants without React dependencies.
+// Import from: import { useCleatCatalog } from '@/src/lib/hooks/useCleatCatalog';

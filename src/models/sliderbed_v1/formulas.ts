@@ -12,6 +12,10 @@
  *                     New BULK load formula using residence-time method
  *                     New canonical outputs: mass_flow_lbs_per_hr, time_on_belt_min
  *                     PARTS mode unchanged (no math drift)
+ *                     Return Support configuration - explicit user selection
+ *                     Replaces frame-height-derived snub roller logic
+ *                     New: return_frame_style, return_snub_mode, return_gravity_roller_count
+ *                     New outputs: return_snubs_enabled, return_span_in, return_gravity_roller_centers_in
  * v1.27 (2025-12-30): PCI Pulley Guide integration - tube stress checks
  *                     Wires shaftCalc radial_load, T1, T2 to outputs
  *                     New PCI tube stress calculation per Appendix A formula
@@ -49,6 +53,9 @@ import {
   BulkInputMethod,
   DensitySource,
   RiskFlag,
+  // v1.29: Return Support
+  ReturnFrameStyle,
+  ReturnSnubMode,
 } from './schema';
 import { buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
@@ -1045,6 +1052,99 @@ export function calculateFrameHeightCostFlags(
 }
 
 // ============================================================================
+// v1.29: RETURN SUPPORT CONFIGURATION
+// ============================================================================
+
+/**
+ * Default end offset per end (inches)
+ * Distance from pulley center to first return roller center.
+ */
+export const DEFAULT_RETURN_END_OFFSET_IN = 24;
+
+/**
+ * Determine if snub rollers are enabled based on explicit configuration
+ *
+ * v1.29: This replaces the frame-height-derived logic.
+ * Snub roller usage is now an explicit user choice.
+ *
+ * Auto mode behavior:
+ * - Standard frame style → No snubs
+ * - Low Profile frame style → Yes snubs
+ *
+ * @param frameStyle - Return frame style (STANDARD or LOW_PROFILE)
+ * @param snubMode - Return snub mode (AUTO, YES, NO)
+ * @returns True if snub rollers should be used
+ */
+export function calculateReturnSnubsEnabled(
+  frameStyle: ReturnFrameStyle | string | undefined,
+  snubMode: ReturnSnubMode | string | undefined
+): boolean {
+  const style = frameStyle ?? ReturnFrameStyle.Standard;
+  const mode = snubMode ?? ReturnSnubMode.Auto;
+
+  if (mode === ReturnSnubMode.Yes || mode === 'YES') {
+    return true;
+  }
+  if (mode === ReturnSnubMode.No || mode === 'NO') {
+    return false;
+  }
+  // Auto mode: Standard → No, Low Profile → Yes
+  return style === ReturnFrameStyle.LowProfile || style === 'LOW_PROFILE';
+}
+
+/**
+ * Calculate the return span to support with gravity rollers
+ *
+ * When snubs are enabled, they handle the high-tension zones at each end,
+ * so gravity rollers only need to cover the middle section.
+ *
+ * @param conveyorLengthCcIn - Conveyor center-to-center length in inches
+ * @param snubsEnabled - Whether snub rollers are enabled
+ * @param endOffsetIn - End offset per end in inches (default: 24")
+ * @returns Span in inches that gravity rollers must support
+ */
+export function calculateReturnSpan(
+  conveyorLengthCcIn: number,
+  snubsEnabled: boolean,
+  endOffsetIn: number = DEFAULT_RETURN_END_OFFSET_IN
+): number {
+  if (snubsEnabled) {
+    // With snubs, gravity rollers don't cover the ends
+    // Total reduction = 2 * endOffsetIn (once per end)
+    return Math.max(conveyorLengthCcIn - 2 * endOffsetIn, 0);
+  }
+  return conveyorLengthCcIn;
+}
+
+/**
+ * Calculate gravity roller centers from span and count
+ *
+ * @param spanIn - Return span to support in inches
+ * @param rollerCount - Number of gravity rollers
+ * @returns Spacing between rollers in inches, or null if count < 2
+ */
+export function calculateGravityRollerCenters(
+  spanIn: number,
+  rollerCount: number
+): number | null {
+  if (rollerCount < 2) return null;
+  return spanIn / (rollerCount - 1);
+}
+
+/**
+ * Calculate default gravity roller count from span
+ *
+ * Uses the standard 60" spacing as a baseline.
+ *
+ * @param spanIn - Return span to support in inches
+ * @returns Default number of gravity rollers
+ */
+export function calculateDefaultGravityRollerCount(spanIn: number): number {
+  if (spanIn <= 0) return 2;
+  return Math.max(Math.floor(spanIn / GRAVITY_ROLLER_SPACING_IN) + 1, 2);
+}
+
+// ============================================================================
 // MASTER CALCULATION FUNCTION
 // ============================================================================
 
@@ -1385,13 +1485,31 @@ export function calculate(
     requiresSnubRollers
   );
 
-  // Step 20: Roller quantities (v1.5)
-  // Note: Gravity roller count depends on whether snubs are present (snubs replace end positions)
-  const snubRollerQuantity = calculateSnubRollerQuantity(requiresSnubRollers);
-  const gravityRollerQuantity = calculateGravityRollerQuantity(
-    inputs.conveyor_length_cc_in,
-    requiresSnubRollers
+  // Step 20: Return Support configuration (v1.29)
+  // Explicit user selection replaces frame-height-derived snub roller logic
+  const returnSnubsEnabled = calculateReturnSnubsEnabled(
+    inputs.return_frame_style,
+    inputs.return_snub_mode
   );
+  const returnEndOffsetIn = inputs.return_end_offset_in ?? DEFAULT_RETURN_END_OFFSET_IN;
+  const returnSpanIn = calculateReturnSpan(
+    inputs.conveyor_length_cc_in,
+    returnSnubsEnabled,
+    returnEndOffsetIn
+  );
+  // Use user-specified count or calculate default from span
+  const returnGravityRollerCount =
+    inputs.return_gravity_roller_count ??
+    calculateDefaultGravityRollerCount(returnSpanIn);
+  const returnGravityRollerCentersIn = calculateGravityRollerCenters(
+    returnSpanIn,
+    returnGravityRollerCount
+  );
+
+  // Step 20b: Legacy roller quantities (kept for backwards compatibility)
+  // Note: snub_roller_quantity and gravity_roller_quantity are legacy outputs
+  const snubRollerQuantity = calculateSnubRollerQuantity(returnSnubsEnabled);
+  const gravityRollerQuantity = returnGravityRollerCount;
 
   // Step 21: Belt minimum pulley diameter requirements (v1.11)
   // Determine base minimum pulley diameter based on belt spec and tracking method
@@ -1630,10 +1748,23 @@ export function calculate(
     requires_snub_rollers: requiresSnubRollers,
     ...costFlags,
 
-    // v1.5: Roller quantities
+    // v1.5: Roller quantities (legacy - kept for backwards compatibility)
     gravity_roller_quantity: gravityRollerQuantity,
     gravity_roller_spacing_in: GRAVITY_ROLLER_SPACING_IN,
     snub_roller_quantity: snubRollerQuantity,
+
+    // v1.29: Return Support outputs (explicit user configuration)
+    return_snubs_enabled: returnSnubsEnabled,
+    return_span_in: returnSpanIn,
+    return_gravity_roller_count: returnGravityRollerCount,
+    return_gravity_roller_centers_in: returnGravityRollerCentersIn ?? undefined,
+    return_gravity_roller_diameter_in: inputs.return_gravity_roller_diameter_in ?? 1.9,
+    return_snub_roller_diameter_in: returnSnubsEnabled
+      ? (inputs.return_snub_roller_diameter_in ?? 2.5)
+      : undefined,
+    return_frame_style: (inputs.return_frame_style ?? ReturnFrameStyle.Standard) as ReturnFrameStyle,
+    return_snub_mode: (inputs.return_snub_mode ?? ReturnSnubMode.Auto) as ReturnSnubMode,
+    return_end_offset_in: returnEndOffsetIn,
 
     // v1.13: Tracking recommendation outputs
     tracking_lw_ratio: trackingRecommendation.tracking_lw_ratio,

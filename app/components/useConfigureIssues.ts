@@ -54,7 +54,7 @@ export enum IssueCode {
   // v1.23: Cleats issues
   CLEATS_PROFILE_REQUIRED = 'CLEATS_PROFILE_REQUIRED',
   CLEATS_SIZE_REQUIRED = 'CLEATS_SIZE_REQUIRED',
-  CLEATS_PATTERN_REQUIRED = 'CLEATS_PATTERN_REQUIRED',
+  // CLEATS_PATTERN_REQUIRED removed - pattern is informational only
   CLEATS_DRILL_SIPED_CAUTION = 'CLEATS_DRILL_SIPED_CAUTION',
 }
 
@@ -428,18 +428,8 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       });
     }
 
-    // Pattern is required when cleats enabled
-    if (!inputs.cleat_pattern) {
-      issues.push({
-        severity: 'error',
-        code: IssueCode.CLEATS_PATTERN_REQUIRED,
-        message: 'Cleat pattern is required',
-        detail: 'Select a cleat pattern',
-        tabKey: 'physical',
-        sectionKey: 'beltPulleys',
-        fieldKeys: ['cleat_pattern'],
-      });
-    }
+    // NOTE: cleat_pattern validation removed - pattern is informational only
+    // and defaults to STRAIGHT_CROSS. No calculations depend on pattern selection.
 
     // Drill & Siped caution warning
     if (inputs.cleat_style === 'DRILL_SIPED_1IN') {

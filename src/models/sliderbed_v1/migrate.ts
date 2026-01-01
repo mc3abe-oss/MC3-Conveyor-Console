@@ -143,8 +143,11 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
     if (migrated.cleat_centers_in === undefined) {
       migrated.cleat_centers_in = 12;
     }
-    // cleat_profile, cleat_size, cleat_pattern are NOT defaulted
-    // They must be selected by the user from the catalog
+    // cleat_profile, cleat_size must be selected by user from catalog
+    // cleat_pattern defaults to STRAIGHT_CROSS (informational only, no calc impact)
+    if (migrated.cleat_pattern === undefined) {
+      migrated.cleat_pattern = 'STRAIGHT_CROSS';
+    }
   }
 
   // If cleats disabled, DO NOT clear legacy fields (preserve for backward compat)
