@@ -14,7 +14,6 @@
 import { useMemo } from 'react';
 import { SliderbedInputs } from '../../src/models/sliderbed_v1/schema';
 import {
-  useCleatCatalog,
   getCleatProfiles,
   getCleatSizesForProfile,
   lookupCleatsMinPulleyDia,
@@ -35,6 +34,7 @@ import {
   CLEAT_CENTERS_OPTIONS,
   DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../src/lib/cleat-catalog';
+import { useCleatCatalog } from '../../src/lib/hooks/useCleatCatalog';
 
 interface Props {
   isOpen: boolean;

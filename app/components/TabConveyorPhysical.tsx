@@ -66,12 +66,12 @@ import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-t
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
   CLEAT_PATTERN_LABELS,
-  useCleatCatalog,
   lookupCleatsMinPulleyDia,
   CleatPattern,
   CleatStyle,
   DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../src/lib/cleat-catalog';
+import { useCleatCatalog } from '../../src/lib/hooks/useCleatCatalog';
 
 interface TabConveyorPhysicalProps {
   inputs: SliderbedInputs;
