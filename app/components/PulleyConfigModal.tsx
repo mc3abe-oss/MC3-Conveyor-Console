@@ -28,6 +28,18 @@ import {
   PulleyModel,
 } from '../../src/lib/pulley-models';
 import { BeltTrackingMethod } from '../../src/models/sliderbed_v1/schema';
+import {
+  BushingSystemType,
+  HUB_CONNECTION_OPTIONS,
+  getVisibleBushingSystemOptions,
+  getHubConnectionOption,
+  getBushingSystemOption,
+  requiresBushingSystem,
+  isNotIdealForDrive,
+  DEFAULT_DRIVE_HUB_CONNECTION_TYPE,
+  DEFAULT_TAIL_HUB_CONNECTION_TYPE,
+  DEFAULT_BUSHING_SYSTEM,
+} from '../../src/models/sliderbed_v1/pciHubConnections';
 
 interface Props {
   isOpen: boolean;
@@ -60,6 +72,10 @@ interface PulleyFormData {
   hub_centers_in: string;
   enforce_pci_checks: boolean;
   notes: string;
+  // v1.30: Hub Connection (PCI Pages 12-14)
+  hub_connection_type: string;
+  bushing_system: string;
+  hub_details_expanded: boolean;
   // Validation state
   wallValidationStatus: 'NOT_VALIDATED' | 'PASS' | 'RECOMMEND_UPGRADE' | 'FAIL_ENGINEERING_REQUIRED';
   wallValidationResult: WallValidationResult | null;
@@ -80,6 +96,10 @@ const emptyForm: PulleyFormData = {
   hub_centers_in: '',
   enforce_pci_checks: false,
   notes: '',
+  // v1.30: Hub Connection defaults (drive default used for empty form)
+  hub_connection_type: DEFAULT_DRIVE_HUB_CONNECTION_TYPE,
+  bushing_system: DEFAULT_BUSHING_SYSTEM,
+  hub_details_expanded: false,
   wallValidationStatus: 'NOT_VALIDATED',
   wallValidationResult: null,
 };
@@ -146,22 +166,22 @@ export default function PulleyConfigModal({
           setExistingTail(tailPulley || null);
 
           if (drivePulley) {
-            setDriveForm(pulleyToForm(drivePulley, modelsData));
+            setDriveForm(pulleyToForm(drivePulley, modelsData, 'DRIVE'));
           } else {
             // Default to first eligible drive model
             const eligibleDrive = getEligibleModelsForPosition(modelsData, 'DRIVE');
             if (eligibleDrive.length > 0) {
-              setDriveForm(createFormFromModel(eligibleDrive[0]));
+              setDriveForm(createFormFromModel(eligibleDrive[0], 'DRIVE'));
             }
           }
 
           if (tailPulley) {
-            setTailForm(pulleyToForm(tailPulley, modelsData));
+            setTailForm(pulleyToForm(tailPulley, modelsData, 'TAIL'));
           } else {
             // Default to first eligible tail model
             const eligibleTail = getEligibleModelsForPosition(modelsData, 'TAIL');
             if (eligibleTail.length > 0) {
-              setTailForm(createFormFromModel(eligibleTail[0]));
+              setTailForm(createFormFromModel(eligibleTail[0], 'TAIL'));
             }
           }
         }
@@ -189,9 +209,13 @@ export default function PulleyConfigModal({
     return Math.max(modelAllowance, minAllowance);
   }
 
-  function createFormFromModel(model: PulleyLibraryModel): PulleyFormData {
+  function createFormFromModel(model: PulleyLibraryModel, position: TabPosition): PulleyFormData {
     const defaultAllowance = getDefaultAllowance(model);
     const defaultFaceWidth = beltWidthIn ? beltWidthIn + defaultAllowance : undefined;
+    // v1.30: Position-specific hub connection defaults
+    const defaultHubConnection = position === 'DRIVE'
+      ? DEFAULT_DRIVE_HUB_CONNECTION_TYPE
+      : DEFAULT_TAIL_HUB_CONNECTION_TYPE;
     return {
       model_key: model.model_key,
       lagging_type: 'NONE',
@@ -203,13 +227,21 @@ export default function PulleyConfigModal({
       hub_centers_in: '',
       enforce_pci_checks: false,
       notes: '',
+      // v1.30: Hub Connection defaults (position-specific)
+      hub_connection_type: defaultHubConnection,
+      bushing_system: DEFAULT_BUSHING_SYSTEM,
+      hub_details_expanded: false,
       wallValidationStatus: 'NOT_VALIDATED',
       wallValidationResult: null,
     };
   }
 
   // Convert database pulley to form data, finding matching model
-  function pulleyToForm(pulley: ApplicationPulley, allModels: PulleyLibraryModel[]): PulleyFormData {
+  function pulleyToForm(pulley: ApplicationPulley, allModels: PulleyLibraryModel[], position: TabPosition): PulleyFormData {
+    // v1.30: Position-specific hub connection defaults
+    const defaultHubConnection = position === 'DRIVE'
+      ? DEFAULT_DRIVE_HUB_CONNECTION_TYPE
+      : DEFAULT_TAIL_HUB_CONNECTION_TYPE;
     // Find matching model_key
     let effectiveModelKey = pulley.model_key;
 
@@ -260,6 +292,10 @@ export default function PulleyConfigModal({
       hub_centers_in: pulley.hub_centers_in?.toString() || '',
       enforce_pci_checks: pulley.enforce_pci_checks,
       notes: pulley.notes || '',
+      // v1.30: Hub Connection (restore from saved or default)
+      hub_connection_type: (pulley as any).hub_connection_type || defaultHubConnection,
+      bushing_system: (pulley as any).bushing_system || DEFAULT_BUSHING_SYSTEM,
+      hub_details_expanded: false,
       wallValidationStatus: (pulley.wall_validation_status as PulleyFormData['wallValidationStatus']) || 'NOT_VALIDATED',
       wallValidationResult: pulley.wall_validation_result as WallValidationResult | null,
     };
@@ -488,6 +524,9 @@ export default function PulleyConfigModal({
           notes: driveForm.notes.trim() || null,
           wall_validation_status: driveForm.wallValidationStatus,
           wall_validation_result: driveForm.wallValidationResult,
+          // v1.30: Hub Connection
+          hub_connection_type: driveForm.hub_connection_type,
+          bushing_system: requiresBushingSystem(driveForm.hub_connection_type) ? driveForm.bushing_system : null,
         };
 
         const driveRes = await fetch('/api/application-pulleys', {
@@ -525,6 +564,9 @@ export default function PulleyConfigModal({
           notes: tailForm.notes.trim() || null,
           wall_validation_status: tailForm.wallValidationStatus,
           wall_validation_result: tailForm.wallValidationResult,
+          // v1.30: Hub Connection
+          hub_connection_type: tailForm.hub_connection_type,
+          bushing_system: requiresBushingSystem(tailForm.hub_connection_type) ? tailForm.bushing_system : null,
         };
 
         const tailRes = await fetch('/api/application-pulleys', {
@@ -887,6 +929,142 @@ export default function PulleyConfigModal({
                   </div>
                 </div>
               )}
+
+              {/* v1.30: Hub Connection Section (PCI Pages 12-14) */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <label className="block text-sm font-medium text-gray-700">Hub Connection</label>
+                    <span
+                      className="text-gray-400 hover:text-gray-600 cursor-help"
+                      title="Hub choice affects fatigue life, serviceability, alignment/runout, and installation pre-stress. Source: PCI Pulley Selection Guide, Pages 12-14."
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </span>
+                  </div>
+                </div>
+
+                {/* Hub Connection Type Selector */}
+                <select
+                  value={currentForm.hub_connection_type}
+                  onChange={(e) => {
+                    updateForm(activeTab, 'hub_connection_type', e.target.value);
+                    // Reset bushing system to default when changing hub type
+                    if (requiresBushingSystem(e.target.value)) {
+                      updateForm(activeTab, 'bushing_system', DEFAULT_BUSHING_SYSTEM);
+                    }
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500 text-sm"
+                >
+                  {HUB_CONNECTION_OPTIONS.map((opt) => (
+                    <option key={opt.key} value={opt.key}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Short description */}
+                {(() => {
+                  const hubOpt = getHubConnectionOption(currentForm.hub_connection_type);
+                  return hubOpt && (
+                    <p className="text-xs text-gray-600">{hubOpt.shortDescription}</p>
+                  );
+                })()}
+
+                {/* Warning: Not ideal for drive pulley */}
+                {activeTab === 'DRIVE' && isNotIdealForDrive(currentForm.hub_connection_type) && (
+                  <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                    <strong>PCI Note:</strong> This hub type is not ideal for drive pulleys.
+                  </div>
+                )}
+
+                {/* Bushing System Selector (conditional) */}
+                {requiresBushingSystem(currentForm.hub_connection_type) && (
+                  <div className="space-y-2">
+                    <label className="block text-xs font-medium text-gray-600">Bushing System</label>
+                    <div className="flex gap-2 flex-wrap">
+                      {getVisibleBushingSystemOptions().map((opt) => (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          onClick={() => updateForm(activeTab, 'bushing_system', opt.key)}
+                          className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
+                            currentForm.bushing_system === opt.key
+                              ? 'bg-blue-600 text-white border-blue-600'
+                              : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
+                          }`}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Taper-Lock warning */}
+                    {currentForm.bushing_system === BushingSystemType.TaperLock && (
+                      <div className="p-2 bg-amber-50 border border-amber-200 rounded text-xs text-amber-700">
+                        <strong>PCI:</strong> Taper-Lock is not recommended for two-hub pulleys. Some sizes use only 2 bolts at ~170° which can introduce shaft bending and higher runout. <strong>Prefer XT® for improved alignment.</strong>
+                      </div>
+                    )}
+
+                    {/* Bushing description */}
+                    {(() => {
+                      const bushOpt = getBushingSystemOption(currentForm.bushing_system);
+                      return bushOpt && !bushOpt.warning && (
+                        <p className="text-xs text-gray-500">{bushOpt.description}</p>
+                      );
+                    })()}
+                  </div>
+                )}
+
+                {/* Expandable Pros/Cons */}
+                <button
+                  type="button"
+                  onClick={() => updateForm(activeTab, 'hub_details_expanded', !currentForm.hub_details_expanded)}
+                  className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                >
+                  {currentForm.hub_details_expanded ? (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+                      </svg>
+                      Hide details
+                    </>
+                  ) : (
+                    <>
+                      <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                      </svg>
+                      Show pros & cons
+                    </>
+                  )}
+                </button>
+
+                {currentForm.hub_details_expanded && (() => {
+                  const hubOpt = getHubConnectionOption(currentForm.hub_connection_type);
+                  return hubOpt && (
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div>
+                        <div className="font-medium text-green-700 mb-1">Pros</div>
+                        <ul className="list-disc list-inside text-gray-600 space-y-0.5">
+                          {hubOpt.pros.map((pro, i) => (
+                            <li key={i}>{pro}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <div>
+                        <div className="font-medium text-red-700 mb-1">Cons</div>
+                        <ul className="list-disc list-inside text-gray-600 space-y-0.5">
+                          {hubOpt.cons.map((con, i) => (
+                            <li key={i}>{con}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })()}
+              </div>
 
               {/* Notes */}
               <div>

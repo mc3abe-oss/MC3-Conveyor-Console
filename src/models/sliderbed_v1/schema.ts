@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.29 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.30 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,10 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.30 (2026-01-01): PCI Hub Connection Selection (Pages 12-14)
+ *                     New inputs: drive_pulley_hub_connection_type, drive_pulley_bushing_system,
+ *                     tail_pulley_hub_connection_type, tail_pulley_bushing_system
+ *                     New pciHubConnections.ts module with hub types and bushing systems
  * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
  *                     New MaterialForm enum (PARTS | BULK)
  *                     New BulkInputMethod enum (WEIGHT_FLOW | VOLUME_FLOW)
@@ -1476,6 +1480,36 @@ export interface SliderbedInputs {
    * Used for display, drive face width governs output
    */
   tail_pulley_face_width_in?: number;
+
+  // =========================================================================
+  // v1.30: PCI Hub Connection Configuration (Pages 12-14)
+  // =========================================================================
+
+  /**
+   * Drive pulley hub connection type (PCI Pages 12-14)
+   * Default: WELD_ON_HUB_COMPRESSION_BUSHINGS
+   */
+  drive_pulley_hub_connection_type?: string;
+
+  /**
+   * Drive pulley compression bushing system
+   * Only applicable when hub connection requires bushings
+   * Default: XT
+   */
+  drive_pulley_bushing_system?: string;
+
+  /**
+   * Tail pulley hub connection type (PCI Pages 12-14)
+   * Default: WELD_ON_HUB_COMPRESSION_BUSHINGS
+   */
+  tail_pulley_hub_connection_type?: string;
+
+  /**
+   * Tail pulley compression bushing system
+   * Only applicable when hub connection requires bushings
+   * Default: XT
+   */
+  tail_pulley_bushing_system?: string;
 
   /**
    * Enforce PCI checks as hard errors (default: false)

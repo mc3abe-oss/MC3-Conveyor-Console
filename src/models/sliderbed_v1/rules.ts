@@ -1,10 +1,12 @@
 /**
- * SLIDERBED CONVEYOR v1.29 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.30 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.30 (2026-01-01): PCI Hub Connection validation (warnings only, no hard stops)
+ *                     applyHubConnectionRules for Taper-Lock and drive pulley hub type warnings
  * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
  *                     New BULK validation: bulk_input_method, mass_flow, volume_flow, density
  *                     Existing PARTS validation unchanged (no math drift)
@@ -1764,4 +1766,54 @@ export function applyPciOutputRules(
   }
 
   return { errors, warnings };
+}
+
+// ============================================================================
+// v1.30: PCI HUB CONNECTION VALIDATION
+// ============================================================================
+
+/**
+ * Apply PCI hub connection validation rules.
+ * These are warnings only (no hard stops per task requirements).
+ *
+ * @param inputs - Calculator inputs (hub connection selections)
+ * @returns Object with arrays of warnings
+ */
+export function applyHubConnectionRules(
+  inputs: SliderbedInputs
+): { warnings: ValidationWarning[] } {
+  const warnings: ValidationWarning[] = [];
+
+  // Hub types not ideal for drive pulley
+  const NOT_IDEAL_FOR_DRIVE = ['ER_INTERNAL_BEARINGS', 'DEAD_SHAFT_ASSEMBLY'];
+
+  // Check drive pulley hub connection
+  if (inputs.drive_pulley_hub_connection_type) {
+    if (NOT_IDEAL_FOR_DRIVE.includes(inputs.drive_pulley_hub_connection_type)) {
+      warnings.push({
+        field: 'drive_pulley_hub_connection_type',
+        message: `PCI: ${inputs.drive_pulley_hub_connection_type === 'ER_INTERNAL_BEARINGS' ? 'ER internal bearings' : 'Dead shaft assembly'} is not ideal for drive pulleys.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  // Check Taper-Lock bushing system (not recommended for two-hub pulleys)
+  if (inputs.drive_pulley_bushing_system === 'TAPER_LOCK') {
+    warnings.push({
+      field: 'drive_pulley_bushing_system',
+      message: 'PCI: Taper-Lock is not recommended for two-hub pulleys. Prefer XT for improved alignment/runout.',
+      severity: 'warning',
+    });
+  }
+
+  if (inputs.tail_pulley_bushing_system === 'TAPER_LOCK') {
+    warnings.push({
+      field: 'tail_pulley_bushing_system',
+      message: 'PCI: Taper-Lock is not recommended for two-hub pulleys. Prefer XT for improved alignment/runout.',
+      severity: 'warning',
+    });
+  }
+
+  return { warnings };
 }
