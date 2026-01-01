@@ -1,80 +1,22 @@
 'use client';
 
-import Link from 'next/link';
-import Header from '../components/Header';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function AdminPage() {
+/**
+ * Redirect /admin → /console/admin
+ * All pages now live under /console for unified layout
+ */
+export default function AdminRedirectPage() {
+  const router = useRouter();
+
+  useEffect(() => {
+    router.replace('/console/admin');
+  }, [router]);
+
   return (
-    <>
-      <Header loadedConfigurationId={null} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin</h1>
-        <p className="text-gray-600 mb-8">Admin tools and configuration</p>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Link
-            href="/admin/belts"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Belt Catalog Admin</h2>
-            <p className="text-sm text-gray-600">
-              Manage belt catalog entries and revisions
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/pulley-library"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-blue-300 bg-blue-50"
-          >
-            <h2 className="text-lg font-semibold text-blue-900 mb-2">Pulley Library</h2>
-            <p className="text-sm text-blue-700">
-              Manage pulley styles (Drum, Wing) with PCI-aligned stress limits
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/environment-factors"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Environment Factors</h2>
-            <p className="text-sm text-gray-600">
-              Manage environment factor options (Indoor, Outdoor, Washdown, etc.)
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/process-types"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Process Types</h2>
-            <p className="text-sm text-gray-600">
-              Manage process type options for applications (Molding, Stamping, etc.)
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/v-guides"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">V-Guides</h2>
-            <p className="text-sm text-gray-600">
-              Manage V-Guide profiles with EU/NA codes and minimum pulley diameters
-            </p>
-          </Link>
-
-          <Link
-            href="/admin/cleats"
-            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
-          >
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Cleats Admin</h2>
-            <p className="text-sm text-gray-600">
-              Manage cleat catalog entries and center spacing factors
-            </p>
-          </Link>
-        </div>
-
-        {/* PHASE 0: Legacy pulley admin pages removed - Phase 1 will add new pulley library admin */}
-      </main>
-    </>
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-gray-500">Redirecting...</p>
+    </div>
   );
 }

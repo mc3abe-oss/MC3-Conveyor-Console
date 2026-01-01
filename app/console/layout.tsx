@@ -94,14 +94,22 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                 Sales Orders
               </Link>
               <Link
-                href="/recipes"
-                className="px-3 py-2 rounded text-sm font-medium text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white transition-colors"
+                href="/console/recipes"
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  pathname.startsWith('/console/recipes')
+                    ? 'bg-mc3-blue text-white'
+                    : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
+                }`}
               >
                 Recipes
               </Link>
               <Link
-                href="/admin"
-                className="px-3 py-2 rounded text-sm font-medium text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white transition-colors"
+                href="/console/admin"
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  pathname.startsWith('/console/admin')
+                    ? 'bg-mc3-blue text-white'
+                    : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
+                }`}
               >
                 Admin
               </Link>
