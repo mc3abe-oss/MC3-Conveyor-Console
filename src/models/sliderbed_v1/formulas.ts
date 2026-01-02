@@ -819,11 +819,50 @@ export function calculateShaftDiameterLegacy(
 }
 
 // ============================================================================
-// v1.5: FRAME HEIGHT CALCULATIONS
+// v1.33: CLEAT HEIGHT PARSING
 // ============================================================================
 
 /**
- * Frame height constants (v1.5)
+ * Parse cleat height from cleat_size string (v1.33)
+ * Handles: "3", '3"', '3 inch', '3 in', '3 inches'
+ *
+ * @param size - Cleat size string (e.g., '1"', '1.5"', '2"')
+ * @returns Numeric height in inches, or 0 if invalid/missing
+ */
+export function parseCleatHeightFromSize(size: unknown): number {
+  if (!size) return 0;
+  const s = String(size).toLowerCase().trim();
+  const cleaned = s.replace(/["\s]/g, '').replace(/(in|inch|inches)$/i, '');
+  const n = parseFloat(cleaned);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return n;
+}
+
+/**
+ * Get effective cleat height (v1.33)
+ * Uses explicit cleat_height_in if provided, otherwise parses from cleat_size.
+ *
+ * @param cleatsEnabled - Whether cleats are enabled
+ * @param cleatHeightIn - Explicit cleat height (legacy/override)
+ * @param cleatSize - Cleat size string from catalog
+ * @returns Effective cleat height in inches (0 if cleats disabled)
+ */
+export function getEffectiveCleatHeight(
+  cleatsEnabled: boolean,
+  cleatHeightIn?: number,
+  cleatSize?: string
+): number {
+  if (!cleatsEnabled) return 0;
+  if (typeof cleatHeightIn === 'number' && cleatHeightIn > 0) return cleatHeightIn;
+  return parseCleatHeightFromSize(cleatSize);
+}
+
+// ============================================================================
+// v1.5: FRAME HEIGHT CALCULATIONS (v1.33: Updated with cleat/pulley awareness)
+// ============================================================================
+
+/**
+ * Frame height constants (v1.5, v1.33)
  */
 export const FRAME_HEIGHT_CONSTANTS = {
   /**
@@ -838,10 +877,90 @@ export const FRAME_HEIGHT_CONSTANTS = {
   MIN_FRAME_HEIGHT_IN: 3.0,
   /** Threshold below which design review is required */
   DESIGN_REVIEW_THRESHOLD_IN: 4.0,
+  /** Default return roller diameter (v1.33) */
+  DEFAULT_RETURN_ROLLER_DIAMETER_IN: 2.0,
 } as const;
 
 /**
- * Calculate effective frame height in inches based on mode
+ * Frame height breakdown result (v1.33)
+ */
+export interface FrameHeightBreakdown {
+  largest_pulley_in: number;
+  cleat_height_in: number;
+  cleat_adder_in: number;
+  return_roller_in: number;
+  total_in: number;
+  formula: string;
+}
+
+/**
+ * Calculate frame height with full breakdown (v1.33)
+ *
+ * New formula:
+ *   frame_height = largest_pulley + (2 * cleat_height) + return_roller
+ *
+ * This replaces the old mode-based calculation for computed heights.
+ * Custom mode still uses user-specified value but gets breakdown for display.
+ *
+ * @param drivePulleyDiameterIn - Drive pulley diameter in inches
+ * @param tailPulleyDiameterIn - Tail pulley diameter in inches
+ * @param cleatHeightIn - Cleat height in inches (0 if cleats disabled)
+ * @param returnRollerDiameterIn - Return roller diameter (default 2.0")
+ * @param frameHeightMode - Frame height mode (Standard, Low Profile, Custom)
+ * @param customFrameHeightIn - Custom frame height (only used if mode is Custom)
+ * @returns Frame height breakdown with all components
+ */
+export function calculateFrameHeightWithBreakdown(
+  drivePulleyDiameterIn: number,
+  tailPulleyDiameterIn: number,
+  cleatHeightIn: number,
+  returnRollerDiameterIn: number,
+  frameHeightMode?: FrameHeightMode | string,
+  customFrameHeightIn?: number
+): FrameHeightBreakdown {
+  const largestPulley = Math.max(drivePulleyDiameterIn, tailPulleyDiameterIn);
+  const cleatAdder = 2 * cleatHeightIn;
+  const mode = frameHeightMode ?? FrameHeightMode.Standard;
+
+  // For Custom mode, use user-specified value
+  if (mode === FrameHeightMode.Custom || mode === 'Custom') {
+    const customTotal = customFrameHeightIn ?? (largestPulley + cleatAdder + returnRollerDiameterIn);
+    return {
+      largest_pulley_in: largestPulley,
+      cleat_height_in: cleatHeightIn,
+      cleat_adder_in: cleatAdder,
+      return_roller_in: returnRollerDiameterIn,
+      total_in: customTotal,
+      formula: `Custom: ${customTotal.toFixed(2)}"`,
+    };
+  }
+
+  // Standard and Low Profile: compute from components
+  const total = largestPulley + cleatAdder + returnRollerDiameterIn;
+
+  // Build human-readable formula
+  const parts: string[] = [];
+  parts.push(`Largest pulley: ${largestPulley.toFixed(2)}"`);
+  if (cleatHeightIn > 0) {
+    parts.push(`Cleats: 2 × ${cleatHeightIn.toFixed(2)}" = ${cleatAdder.toFixed(2)}"`);
+  }
+  parts.push(`Return roller: ${returnRollerDiameterIn.toFixed(2)}"`);
+  parts.push(`Total: ${total.toFixed(2)}"`);
+
+  return {
+    largest_pulley_in: largestPulley,
+    cleat_height_in: cleatHeightIn,
+    cleat_adder_in: cleatAdder,
+    return_roller_in: returnRollerDiameterIn,
+    total_in: total,
+    formula: parts.join('; '),
+  };
+}
+
+/**
+ * Calculate effective frame height in inches based on mode (LEGACY - kept for compatibility)
+ *
+ * @deprecated Use calculateFrameHeightWithBreakdown for new code
  *
  * Formula:
  *   Standard: drive_pulley_diameter_in + 1.0"
@@ -1508,12 +1627,27 @@ export function calculate(
     }
   }
 
-  // Step 19: Frame height calculations (v1.5)
-  const effectiveFrameHeightIn = calculateEffectiveFrameHeight(
-    inputs.frame_height_mode,
+  // Step 19: Frame height calculations (v1.5, v1.33: cleat/pulley awareness)
+  const cleatsEnabledForFrame = inputs.cleats_enabled === true;
+  const effectiveCleatHeightIn = getEffectiveCleatHeight(
+    cleatsEnabledForFrame,
+    inputs.cleat_height_in,
+    inputs.cleat_size
+  );
+  const returnRollerDiameterIn = parameters.return_roller_diameter_in ?? FRAME_HEIGHT_CONSTANTS.DEFAULT_RETURN_ROLLER_DIAMETER_IN;
+
+  // v1.33: Calculate frame height with full breakdown
+  const frameHeightBreakdown = calculateFrameHeightWithBreakdown(
     drivePulleyDiameterIn,
+    tailPulleyDiameterIn,
+    effectiveCleatHeightIn,
+    returnRollerDiameterIn,
+    inputs.frame_height_mode,
     inputs.custom_frame_height_in
   );
+  const effectiveFrameHeightIn = frameHeightBreakdown.total_in;
+  const largestPulleyDiameterIn = frameHeightBreakdown.largest_pulley_in;
+
   // v1.5 FIX: Use largest pulley + 2.5" threshold for snub roller requirement
   const requiresSnubRollers = calculateRequiresSnubRollers(
     effectiveFrameHeightIn,
@@ -1793,8 +1927,11 @@ export function calculate(
     // Aggregate required min pulley diameter
     required_min_pulley_diameter_in: requiredMinPulleyDiaIn,
 
-    // v1.5: Frame height & snub roller outputs
+    // v1.5, v1.33: Frame height & snub roller outputs (with breakdown)
+    largest_pulley_diameter_in: largestPulleyDiameterIn,
+    effective_cleat_height_in: effectiveCleatHeightIn,
     effective_frame_height_in: effectiveFrameHeightIn,
+    frame_height_breakdown: frameHeightBreakdown,
     requires_snub_rollers: requiresSnubRollers,
     ...costFlags,
 
