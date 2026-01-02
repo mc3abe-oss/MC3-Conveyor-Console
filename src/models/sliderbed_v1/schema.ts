@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.30 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.32 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,16 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.32 (2026-01-01): Material to Be Conveyed UI Polish + Bulk Feed Behavior
+ *                     New FeedBehavior enum (CONTINUOUS | INTERMITTENT | SURGE)
+ *                     New inputs: feed_behavior, surge_multiplier, surge_duration_sec
+ *                     Bulk density now always visible (required for Volume, optional for Weight)
+ *                     UI refinements: softer headers, dominant material form toggle
+ * v1.31 (2026-01-01): Product Definition UI Refactor
+ *                     New inputs: smallest_lump_size_in, largest_lump_size_in (replaces max_lump_size_in),
+ *                     application_notes, material_notes
+ *                     Consolidated Material Definition UI (single section)
+ *                     Deprecated: max_lump_size_in (use largest_lump_size_in)
  * v1.30 (2026-01-01): PCI Hub Connection Selection (Pages 12-14)
  *                     New inputs: drive_pulley_hub_connection_type, drive_pulley_bushing_system,
  *                     tail_pulley_hub_connection_type, tail_pulley_bushing_system
@@ -134,6 +144,29 @@ export enum DensitySource {
   /** Density value is assumed from material class (triggers warning) */
   AssumedClass = 'ASSUMED_CLASS',
 }
+
+/**
+ * Feed behavior (v1.32)
+ * Describes how material is fed to the conveyor.
+ * Only applicable when material_form = BULK.
+ */
+export enum FeedBehavior {
+  /** Steady, continuous feed at average rate */
+  Continuous = 'CONTINUOUS',
+  /** Periodic/batch feed with gaps */
+  Intermittent = 'INTERMITTENT',
+  /** Sudden peaks above average (requires surge multiplier) */
+  Surge = 'SURGE',
+}
+
+/**
+ * Display labels for FeedBehavior enum values
+ */
+export const FEED_BEHAVIOR_LABELS: Record<FeedBehavior, string> = {
+  [FeedBehavior.Continuous]: 'Continuous',
+  [FeedBehavior.Intermittent]: 'Intermittent',
+  [FeedBehavior.Surge]: 'Surge',
+};
 
 /**
  * Display labels for MaterialForm enum values
@@ -855,11 +888,50 @@ export interface SliderbedInputs {
   density_source?: DensitySource | string;
 
   /**
+   * @deprecated v1.31: Use largest_lump_size_in instead.
    * Maximum lump/piece size in inches (v1.29)
-   * Optional - for rules/warnings only (e.g., lump vs belt width).
-   * No calculation logic depends on this in v1.29.
+   * Kept for backward compatibility during migration.
    */
   max_lump_size_in?: number;
+
+  /**
+   * Smallest lump/piece size in inches (v1.31)
+   * Optional - for rules/warnings only.
+   * Must be <= largest_lump_size_in if both are provided.
+   */
+  smallest_lump_size_in?: number;
+
+  /**
+   * Largest lump/piece size in inches (v1.31)
+   * Optional - for rules/warnings only (e.g., lump vs belt width).
+   * Replaces max_lump_size_in. Migration: max_lump_size_in → largest_lump_size_in.
+   */
+  largest_lump_size_in?: number;
+
+  /**
+   * Feed behavior (v1.32)
+   * Describes how material is fed to the conveyor.
+   * Only applicable when material_form = BULK.
+   * Default: CONTINUOUS
+   */
+  feed_behavior?: FeedBehavior | string;
+
+  /**
+   * Surge multiplier (v1.32)
+   * Peak flow divided by average flow.
+   * Only applicable when feed_behavior = SURGE.
+   * Default: 1.5
+   * Validation: must be >= 1.0
+   */
+  surge_multiplier?: number;
+
+  /**
+   * Surge duration in seconds (v1.32)
+   * Duration of surge event.
+   * Optional, informational only (no calc impact in v1.32).
+   * Only applicable when feed_behavior = SURGE.
+   */
+  surge_duration_sec?: number;
 
   // PRODUCT / PART (PARTS mode only)
   /** Part Weight in lbs */
@@ -1517,6 +1589,24 @@ export interface SliderbedInputs {
    * When true: violations are errors that block calculation
    */
   enforce_pci_checks?: boolean;
+
+  // =========================================================================
+  // v1.31: APPLICATION & MATERIAL NOTES
+  // =========================================================================
+
+  /**
+   * Application notes (v1.31)
+   * General context and application info.
+   * Optional multiline text stored with the configuration.
+   */
+  application_notes?: string;
+
+  /**
+   * Material notes (v1.31)
+   * Part/material-specific behavior notes.
+   * Optional multiline text stored with the configuration.
+   */
+  material_notes?: string;
 }
 
 // ============================================================================

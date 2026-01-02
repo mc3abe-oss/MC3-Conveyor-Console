@@ -5642,6 +5642,176 @@ describe('Material Form - PARTS vs BULK (v1.29)', () => {
 
     expect(result.errors?.some(e => e.field === 'density_source')).toBe(true);
   });
+
+  // =========================================================================
+  // v1.31: LUMP SIZE VALIDATION TESTS
+  // =========================================================================
+
+  // Test 11: Valid lump size range (smallest < largest)
+  it('should accept valid lump size range (smallest < largest)', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      smallest_lump_size_in: 1,
+      largest_lump_size_in: 4,
+    };
+
+    const result = runCalculation({ inputs });
+
+    // Should not have lump size errors
+    expect(result.errors?.some(e => e.field === 'smallest_lump_size_in') ?? false).toBe(false);
+    expect(result.errors?.some(e => e.field === 'largest_lump_size_in') ?? false).toBe(false);
+  });
+
+  // Test 12: Lump size error when smallest > largest
+  it('should error when smallest lump size exceeds largest', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      smallest_lump_size_in: 5,
+      largest_lump_size_in: 2,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'smallest_lump_size_in')).toBe(true);
+  });
+
+  // Test 13: Negative lump size should error
+  it('should error when lump size is negative', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      smallest_lump_size_in: -1,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'smallest_lump_size_in')).toBe(true);
+  });
+
+  // Test 14: Legacy max_lump_size_in should be used as fallback for largest_lump_size_in
+  it('should use legacy max_lump_size_in as fallback for largest', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      max_lump_size_in: 3, // Legacy field
+      // largest_lump_size_in not provided - should use max_lump_size_in
+    };
+
+    const result = runCalculation({ inputs });
+
+    // Should not error - legacy field is valid
+    expect(result.errors?.some(e => e.field === 'largest_lump_size_in') ?? false).toBe(false);
+  });
+
+  // Test 15: Notes should be persisted (no validation errors)
+  it('should accept application and material notes', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      application_notes: 'This is a test application for bulk material handling.',
+      material_notes: 'Material is granular with some fines.',
+    };
+
+    const result = runCalculation({ inputs });
+
+    // Should calculate successfully with notes
+    expect(result.errors?.length ?? 0).toBe(0);
+  });
+
+  // =========================================================================
+  // v1.32: FEED BEHAVIOR & SURGE VALIDATION TESTS
+  // =========================================================================
+
+  // Test 16: Feed behavior continuous should work without surge fields
+  it('should accept continuous feed behavior without surge fields', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      feed_behavior: 'CONTINUOUS',
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'surge_multiplier') ?? false).toBe(false);
+  });
+
+  // Test 17: Surge feed should warn if multiplier not provided
+  it('should warn when surge selected but no multiplier', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      feed_behavior: 'SURGE',
+      // surge_multiplier not provided
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.warnings?.some(w => w.field === 'surge_multiplier')).toBe(true);
+  });
+
+  // Test 18: Surge multiplier < 1 should error
+  it('should error when surge multiplier is less than 1', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      feed_behavior: 'SURGE',
+      surge_multiplier: 0.5,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'surge_multiplier')).toBe(true);
+  });
+
+  // Test 19: Valid surge config should pass
+  it('should accept valid surge configuration', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      feed_behavior: 'SURGE',
+      surge_multiplier: 1.5,
+      surge_duration_sec: 10,
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.errors?.some(e => e.field === 'surge_multiplier') ?? false).toBe(false);
+  });
+
+  // Test 20: Weight flow without density should warn (optional but encouraged)
+  it('should warn when weight flow has no density', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      // density_lbs_per_ft3 not provided
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.warnings?.some(w => w.field === 'density_lbs_per_ft3')).toBe(true);
+  });
 });
 
 // ============================================================================

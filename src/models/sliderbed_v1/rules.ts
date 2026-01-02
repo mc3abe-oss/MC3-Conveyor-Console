@@ -1,10 +1,14 @@
 /**
- * SLIDERBED CONVEYOR v1.30 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.32 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.32 (2026-01-01): Feed behavior validation (surge_multiplier >= 1.0)
+ *                     Warning for missing density in Weight Flow mode (optional but encouraged)
+ * v1.31 (2026-01-01): Lump size validation (smallest_lump_size_in <= largest_lump_size_in)
+ *                     Update max lump warning to use largest_lump_size_in with fallback
  * v1.30 (2026-01-01): PCI Hub Connection validation (warnings only, no hard stops)
  *                     applyHubConnectionRules for Taper-Lock and drive pulley hub type warnings
  * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
@@ -56,6 +60,7 @@ import {
   MaterialForm,
   BulkInputMethod,
   DensitySource,
+  FeedBehavior,
   // v1.29: Return Support enums
   ReturnFrameStyle,
   ReturnSnubMode,
@@ -1039,17 +1044,82 @@ export function applyApplicationRules(
       });
     }
 
-    // Max lump size warning (if provided)
-    if (inputs.max_lump_size_in !== undefined && inputs.max_lump_size_in > 0) {
+    // v1.31: Lump size validation - smallest must be <= largest if both provided
+    const smallestLump = inputs.smallest_lump_size_in;
+    const largestLump = inputs.largest_lump_size_in ?? inputs.max_lump_size_in; // fallback to legacy
+
+    if (smallestLump !== undefined && smallestLump < 0) {
+      errors.push({
+        field: 'smallest_lump_size_in',
+        message: 'Smallest lump size must be >= 0',
+        severity: 'error',
+      });
+    }
+
+    if (largestLump !== undefined && largestLump < 0) {
+      errors.push({
+        field: 'largest_lump_size_in',
+        message: 'Largest lump size must be >= 0',
+        severity: 'error',
+      });
+    }
+
+    if (smallestLump !== undefined && largestLump !== undefined && smallestLump > largestLump) {
+      errors.push({
+        field: 'smallest_lump_size_in',
+        message: `Smallest lump size (${smallestLump}") cannot exceed largest lump size (${largestLump}")`,
+        severity: 'error',
+      });
+    }
+
+    // Largest lump size warning (if provided) - check against belt width
+    if (largestLump !== undefined && largestLump > 0) {
       const beltWidthIn = inputs.belt_width_in ?? 0;
       const lumpThreshold = beltWidthIn * 0.8;
-      if (inputs.max_lump_size_in > lumpThreshold) {
+      if (largestLump > lumpThreshold) {
         warnings.push({
-          field: 'max_lump_size_in',
-          message: `Max lump size (${inputs.max_lump_size_in}") exceeds 80% of belt width (${lumpThreshold.toFixed(1)}"). Consider wider belt or material screening.`,
+          field: 'largest_lump_size_in',
+          message: `Largest lump size (${largestLump}") exceeds 80% of belt width (${lumpThreshold.toFixed(1)}"). Consider wider belt or material screening.`,
           severity: 'warning',
         });
       }
+    }
+
+    // =========================================================================
+    // v1.32: FEED BEHAVIOR & SURGE VALIDATION
+    // =========================================================================
+
+    const feedBehavior = inputs.feed_behavior as FeedBehavior | string | undefined;
+    const isSurge = feedBehavior === FeedBehavior.Surge || feedBehavior === 'SURGE';
+
+    // Surge multiplier validation (only when surge is selected)
+    if (isSurge) {
+      if (inputs.surge_multiplier !== undefined && inputs.surge_multiplier < 1.0) {
+        errors.push({
+          field: 'surge_multiplier',
+          message: 'Surge multiplier must be >= 1.0 (peak cannot be less than average)',
+          severity: 'error',
+        });
+      }
+      // Warn if surge is selected but multiplier is not provided
+      if (inputs.surge_multiplier === undefined) {
+        warnings.push({
+          field: 'surge_multiplier',
+          message: 'Surge feed selected but no surge multiplier specified. Default of 1.5x will be assumed.',
+          severity: 'warning',
+        });
+      }
+    }
+
+    // v1.32: Warn if weight flow mode has no density (optional but encouraged)
+    const bulkMethod = inputs.bulk_input_method as BulkInputMethod | string | undefined;
+    const isWeightFlow = bulkMethod === BulkInputMethod.WeightFlow || bulkMethod === 'WEIGHT_FLOW';
+    if (isWeightFlow && inputs.density_lbs_per_ft3 === undefined) {
+      warnings.push({
+        field: 'density_lbs_per_ft3',
+        message: 'Bulk density not provided. Specify for more accurate belt loading analysis.',
+        severity: 'warning',
+      });
     }
   }
 

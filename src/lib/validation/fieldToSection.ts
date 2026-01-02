@@ -70,7 +70,6 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
   v_guide_key: { tabKey: 'physical', sectionKey: 'beltPulleys' },
   v_guide_profile_key: { tabKey: 'physical', sectionKey: 'beltPulleys' },
   belt_catalog_key: { tabKey: 'physical', sectionKey: 'beltPulleys' },
-  side_loading_severity: { tabKey: 'physical', sectionKey: 'beltPulleys' },
 
   // v1.29: Return Support fields
   return_frame_style: { tabKey: 'physical', sectionKey: 'beltPulleys' },
@@ -113,18 +112,55 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
   friction_coefficient: { tabKey: 'drive', sectionKey: 'advanced' },
 
   // ===========================================================================
-  // Application Tab - Product Section
+  // Application Tab - Product/Material Section (v1.31 consolidated)
   // ===========================================================================
+  // Material form & type
+  material_form: { tabKey: 'application', sectionKey: 'product' },
+  process_type: { tabKey: 'application', sectionKey: 'product' },
+  material_type: { tabKey: 'application', sectionKey: 'product' },
+  part_temperature_class: { tabKey: 'application', sectionKey: 'product' },
+
+  // PARTS mode fields
   part_weight_lbs: { tabKey: 'application', sectionKey: 'product' },
   part_length_in: { tabKey: 'application', sectionKey: 'product' },
   part_width_in: { tabKey: 'application', sectionKey: 'product' },
+  orientation: { tabKey: 'application', sectionKey: 'product' },
+  parts_sharp: { tabKey: 'application', sectionKey: 'product' },
+  part_spacing_in: { tabKey: 'application', sectionKey: 'product' },
+  required_throughput_pph: { tabKey: 'application', sectionKey: 'product' },
+  throughput_margin_pct: { tabKey: 'application', sectionKey: 'product' },
+
+  // BULK mode fields
+  bulk_input_method: { tabKey: 'application', sectionKey: 'product' },
+  mass_flow_lbs_per_hr: { tabKey: 'application', sectionKey: 'product' },
+  volume_flow_ft3_per_hr: { tabKey: 'application', sectionKey: 'product' },
+  density_lbs_per_ft3: { tabKey: 'application', sectionKey: 'product' },
+  density_source: { tabKey: 'application', sectionKey: 'product' },
+  smallest_lump_size_in: { tabKey: 'application', sectionKey: 'product' },
+  largest_lump_size_in: { tabKey: 'application', sectionKey: 'product' },
+  max_lump_size_in: { tabKey: 'application', sectionKey: 'product' }, // legacy
+  feed_behavior: { tabKey: 'application', sectionKey: 'product' },
+  surge_multiplier: { tabKey: 'application', sectionKey: 'product' },
+  surge_duration_sec: { tabKey: 'application', sectionKey: 'product' },
+
+  // Presentation to belt
   drop_height_in: { tabKey: 'application', sectionKey: 'product' },
+  side_loading_direction: { tabKey: 'application', sectionKey: 'product' },
+  side_loading_severity: { tabKey: 'application', sectionKey: 'product' },
+
+  // Notes (v1.31)
+  application_notes: { tabKey: 'application', sectionKey: 'product' },
+  material_notes: { tabKey: 'application', sectionKey: 'product' },
+
+  // Environment (part of consolidated section)
+  environment_factors: { tabKey: 'application', sectionKey: 'product' },
+  fluid_type: { tabKey: 'application', sectionKey: 'product' },
+  ambient_temperature_class: { tabKey: 'application', sectionKey: 'product' },
 
   // ===========================================================================
-  // Application Tab - Throughput Section
+  // Application Tab - Throughput Section (legacy - routes to product)
   // ===========================================================================
-  part_spacing_in: { tabKey: 'application', sectionKey: 'throughput' },
-  target_pph: { tabKey: 'application', sectionKey: 'throughput' },
+  target_pph: { tabKey: 'application', sectionKey: 'product' },
 
   // ===========================================================================
   // Build Tab - Belt & Pulley Section
