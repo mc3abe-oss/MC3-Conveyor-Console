@@ -83,8 +83,10 @@ export function buildBeltPacket(
     overall_length_in: beltLength,
     endless: true, // Default assumption for sliderbed
     splice_type: inputs.lacing_style ?? 'finger',
-    material: inputs.selected_belt_series?.split(' ')[0] ?? null, // Extract material from series
-    series: inputs.selected_belt_series ?? null,
+    material: (inputs as unknown as Record<string, unknown>).selected_belt_series
+      ? String((inputs as unknown as Record<string, unknown>).selected_belt_series).split(' ')[0]
+      : null,
+    series: ((inputs as unknown as Record<string, unknown>).selected_belt_series as string) ?? null,
     plies: null, // Not in current schema
     total_thickness_in: null, // Would come from belt catalog
 
@@ -95,7 +97,7 @@ export function buildBeltPacket(
 
     v_guide: {
       included: isVGuided,
-      profile: isVGuided ? (inputs.selected_v_guide ?? null) : null,
+      profile: isVGuided ? ((inputs as unknown as Record<string, unknown>).selected_v_guide as string) ?? null : null,
       location: isVGuided ? 'centered' : null,
       bond_type: isVGuided ? 'hot-weld' : null,
     },
@@ -327,7 +329,7 @@ export interface RollerPacketResult {
 
 export function buildRollerPackets(
   inputs: SliderbedInputs,
-  outputs: SliderbedOutputs,
+  _outputs: SliderbedOutputs,
   warnings: OutputMessageV2[]
 ): RollerPacketResult[] {
   const results: RollerPacketResult[] = [];
@@ -496,7 +498,7 @@ export interface SupportPacketsResult {
 
 export function buildSupportPackets(
   inputs: SliderbedInputs,
-  outputs: SliderbedOutputs,
+  _outputs: SliderbedOutputs,
   warnings: OutputMessageV2[],
   hasLegs: boolean,
   hasCasters: boolean

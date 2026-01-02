@@ -189,7 +189,7 @@ export function exportOutputsV2ToJSON(outputs: OutputsV2, pretty = true): string
     return a.localeCompare(b);
   }
 
-  function replacer(this: unknown, key: string, value: unknown): unknown {
+  function replacer(this: unknown, _key: string, value: unknown): unknown {
     if (value && typeof value === 'object' && !Array.isArray(value)) {
       const sorted: Record<string, unknown> = {};
       const keys = Object.keys(value).sort(sortKeys);

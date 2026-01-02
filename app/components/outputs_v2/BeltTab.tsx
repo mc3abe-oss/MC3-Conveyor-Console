@@ -52,8 +52,8 @@ export default function BeltTab({ outputs }: BeltTabProps) {
               </h5>
               <div className="space-y-1">
                 <ComponentField label="Type" value={packet.tracking.type} />
-                {packet.tracking.type === 'crowned' && (
-                  <ComponentField label="Crown Profile" value={packet.tracking.profile} />
+                {packet.tracking.note && (
+                  <p className="text-xs text-gray-500 italic">{packet.tracking.note}</p>
                 )}
               </div>
             </div>
@@ -65,9 +65,9 @@ export default function BeltTab({ outputs }: BeltTabProps) {
                   V-Guide
                 </h5>
                 <div className="space-y-1">
+                  <ComponentField label="Profile" value={packet.v_guide.profile} />
                   <ComponentField label="Location" value={packet.v_guide.location} />
                   <ComponentField label="Bond Type" value={packet.v_guide.bond_type} />
-                  <ComponentField label="Height" value={packet.v_guide.height_in} unit="in" />
                 </div>
               </div>
             )}

@@ -153,8 +153,8 @@ export default function ExportsTab({ outputs }: ExportsTabProps) {
             count={outputs.exports.vendor_packets.rollers.length}
           />
           <PacketStatus label="Drive" present={!!outputs.exports.vendor_packets.drive} />
-          <PacketStatus label="Legs" present={!!outputs.exports.vendor_packets.legs} />
-          <PacketStatus label="Casters" present={!!outputs.exports.vendor_packets.casters} />
+          <PacketStatus label="Legs" present={!!outputs.exports.vendor_packets.supports.legs} />
+          <PacketStatus label="Casters" present={!!outputs.exports.vendor_packets.supports.casters} />
         </div>
       </div>
     </div>

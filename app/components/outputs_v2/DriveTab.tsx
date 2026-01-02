@@ -73,7 +73,6 @@ export default function DriveTab({ outputs }: DriveTabProps) {
                 Output Shaft
               </h5>
               <div className="space-y-1">
-                <ComponentField label="Type" value={packet.output_shaft.type} />
                 <ComponentField label="Diameter" value={packet.output_shaft.diameter_in} unit="in" />
                 <ComponentField label="Key" value={packet.output_shaft.key} />
               </div>

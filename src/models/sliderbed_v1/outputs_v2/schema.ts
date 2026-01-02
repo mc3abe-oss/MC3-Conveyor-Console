@@ -151,6 +151,15 @@ export interface ComponentValidationV2 {
   assumptions: string[];
 }
 
+/** Union of all vendor packet types */
+export type VendorPacketV2 =
+  | VendorPacketBeltV2
+  | VendorPacketPulleyV2
+  | VendorPacketRollerV2
+  | VendorPacketDriveV2
+  | VendorPacketLegsV2
+  | VendorPacketCastersV2;
+
 export interface ComponentV2 {
   component_id: CanonicalComponentId;
   component_type: ComponentType;
@@ -158,7 +167,7 @@ export interface ComponentV2 {
   spec: Record<string, unknown>;
   selection: ComponentSelectionV2;
   validation: ComponentValidationV2;
-  vendor_packet: Record<string, unknown> | null;
+  vendor_packet: VendorPacketV2 | null;
 }
 
 // =============================================================================

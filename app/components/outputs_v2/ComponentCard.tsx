@@ -1,7 +1,9 @@
 'use client';
 
 import clsx from 'clsx';
-import { ComponentV2, ComponentStatus, OutputMessageV2 } from '../../../src/models/sliderbed_v1/outputs_v2';
+import { ComponentV2, OutputMessageV2 } from '../../../src/models/sliderbed_v1/outputs_v2';
+
+type ComponentStatus = 'ok' | 'warning' | 'error';
 
 interface ComponentCardProps {
   component: ComponentV2;
@@ -14,6 +16,8 @@ interface ComponentCardProps {
  * ComponentCard - Displays a component with its status and vendor packet info
  */
 export default function ComponentCard({ component, warnings = [], className, children }: ComponentCardProps) {
+  const status = component.validation.status;
+
   const statusColors: Record<ComponentStatus, string> = {
     ok: 'bg-green-100 text-green-800 border-green-200',
     warning: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -40,7 +44,7 @@ export default function ComponentCard({ component, warnings = [], className, chi
 
   // Get warnings related to this component
   const componentWarnings = warnings.filter(
-    (w) => w.related_component_ids.includes(component.component_id as any)
+    (w) => w.related_component_ids.includes(component.component_id as never)
   );
 
   return (
@@ -56,11 +60,11 @@ export default function ComponentCard({ component, warnings = [], className, chi
         <div
           className={clsx(
             'flex items-center gap-1 px-2 py-1 rounded text-xs font-medium border',
-            statusColors[component.status]
+            statusColors[status]
           )}
         >
-          {statusIcons[component.status]}
-          <span className="capitalize">{component.status}</span>
+          {statusIcons[status]}
+          <span className="capitalize">{status}</span>
         </div>
       </div>
 
@@ -68,16 +72,13 @@ export default function ComponentCard({ component, warnings = [], className, chi
       <div className="p-4">
         {children}
 
-        {/* Validation Messages */}
-        {component.validation.messages.length > 0 && (
+        {/* Validation Assumptions */}
+        {component.validation.assumptions.length > 0 && (
           <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-xs font-medium text-gray-600 mb-1">Validation Notes</p>
-            <ul className="text-xs text-gray-600 space-y-0.5">
-              {component.validation.messages.map((msg, i) => (
-                <li key={i} className="flex items-start gap-1">
-                  <span className="text-gray-400">-</span>
-                  <span>{msg}</span>
-                </li>
+            <p className="text-xs font-medium text-gray-600 mb-1">Assumptions</p>
+            <ul className="text-xs text-gray-500 space-y-0.5">
+              {component.validation.assumptions.map((assumption: string, i: number) => (
+                <li key={i} className="italic">- {assumption}</li>
               ))}
             </ul>
           </div>
@@ -90,7 +91,7 @@ export default function ComponentCard({ component, warnings = [], className, chi
               <div
                 key={i}
                 className={clsx(
-                  'p-2 rounded text-xs',
+                  'p-2 rounded text-xs mb-2',
                   warning.severity === 'warning' && 'bg-yellow-50 text-yellow-800',
                   warning.severity === 'error' && 'bg-red-50 text-red-800',
                   warning.severity === 'info' && 'bg-blue-50 text-blue-800'
@@ -103,18 +104,6 @@ export default function ComponentCard({ component, warnings = [], className, chi
                 )}
               </div>
             ))}
-          </div>
-        )}
-
-        {/* Assumptions */}
-        {component.assumptions && component.assumptions.length > 0 && (
-          <div className="mt-3 pt-3 border-t border-gray-100">
-            <p className="text-xs font-medium text-gray-600 mb-1">Assumptions</p>
-            <ul className="text-xs text-gray-500 space-y-0.5">
-              {component.assumptions.map((assumption, i) => (
-                <li key={i} className="italic">- {assumption}</li>
-              ))}
-            </ul>
           </div>
         )}
       </div>

@@ -58,8 +58,6 @@ export type {
   ComponentV2,
   ComponentType,
   CanonicalComponentId,
-  ComponentStatus,
-  ComponentSpecV2,
   ComponentSelectionV2,
   ComponentValidationV2,
 } from './schema';
@@ -77,6 +75,7 @@ export type {
   VendorPacketLegsV2,
   VendorPacketCastersV2,
   VendorPacketBundleV2,
+  VendorPacketSupportsV2,
   BeltTrackingV2,
   BeltVGuideV2,
   BeltCleatsV2,
@@ -91,7 +90,7 @@ export type {
   RollerBearingV2,
   DriveElectricalV2,
   DriveOutputShaftV2,
-  HeightAdjustmentRangeV2,
+  LegHeightRangeV2,
 } from './schema';
 
 // =============================================================================
@@ -100,8 +99,7 @@ export type {
 
 export type {
   OutputMessageV2,
-  MessageSeverity,
-  MessageImpact,
+  OutputImpact,
   CsvRowsV2,
 } from './schema';
 

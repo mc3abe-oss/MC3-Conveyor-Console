@@ -14,7 +14,6 @@ import {
   CalcResultsV2,
   DesignGeometryV2,
   ComponentV2,
-  OutputMessageV2,
   VendorPacketBundleV2,
   ExportsV2,
   SupportType,
@@ -130,7 +129,7 @@ function buildSummary(inputs: SliderbedInputs, outputs: SliderbedOutputs): Summa
     belt_speed_fpm: outputs.belt_speed_fpm ?? null,
     center_distance_in: inputs.conveyor_length_cc_in ?? null,
     overall_length_in: outputs.total_belt_length_in ?? null,
-    incline_deg: inputs.incline_deg ?? 0,
+    incline_deg: inputs.conveyor_incline_deg ?? 0,
   };
 }
 
