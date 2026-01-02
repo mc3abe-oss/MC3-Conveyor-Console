@@ -63,10 +63,10 @@ import ReturnSupportModal from './ReturnSupportModal';
 import ReturnSupportCard from './conveyorPhysical/cards/ReturnSupportCard';
 import ShaftsCard from './conveyorPhysical/cards/ShaftsCard';
 import FrameHeightBreakdownCard from './conveyorPhysical/cards/FrameHeightBreakdownCard';
+import CleatsPreviewCard from './conveyorPhysical/cards/CleatsPreviewCard';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
-  CLEAT_PATTERN_LABELS,
   lookupCleatsMinPulleyDia,
   CleatPattern,
   CleatStyle,
@@ -75,7 +75,6 @@ import {
 import { useCleatCatalog } from '../../src/lib/hooks/useCleatCatalog';
 import {
   SpecGrid,
-  InlineSpecRow,
   CompactCardHeader,
   FootnoteRow,
   CompactInfoBanner,
@@ -962,45 +961,23 @@ export default function TabConveyorPhysical({
           {/* ===== v1.24: CLEATS SUBSECTION - Summary Card + Modal ===== */}
           <SectionDivider title="Cleats" />
 
-          {/* Cleats Summary Card - Compact */}
-          <CompactCard configured={inputs.cleats_mode === 'cleated'}>
-            <CompactCardHeader
-              title="Belt Cleats"
-              badges={[
-                ...(inputs.cleats_mode === 'cleated' && inputs.cleats_notched ? [{ label: 'Notched', variant: 'warning' as const }] : []),
-                ...(inputs.cleats_mode === 'cleated' ? [{ label: 'Configured', variant: 'success' as const }] : []),
-              ]}
-              actions={
-                <EditButton
-                  onClick={() => {
-                    if (inputs.cleats_mode !== 'cleated') {
-                      updateInput('cleats_mode', 'cleated');
-                      updateInput('cleats_enabled', true);
-                      if (!inputs.cleat_centers_in) updateInput('cleat_centers_in', 12);
-                      if (!inputs.cleat_style) updateInput('cleat_style', 'SOLID');
-                      if (!inputs.cleat_pattern) updateInput('cleat_pattern', 'STRAIGHT_CROSS');
-                      if (!inputs.cleat_material_family) updateInput('cleat_material_family', 'PVC_HOT_WELDED');
-                    }
-                    setIsCleatsModalOpen(true);
-                  }}
-                  configured={inputs.cleats_mode === 'cleated'}
-                />
+          {/* Cleats Summary Card - Extracted to separate component (v1.41) */}
+          <CleatsPreviewCard
+            inputs={inputs}
+            cleatsMinPulleyDiaIn={cleatsMinPulleyDiaIn}
+            onEditClick={() => {
+              // Set defaults when enabling cleats for the first time
+              if (inputs.cleats_mode !== 'cleated') {
+                updateInput('cleats_mode', 'cleated');
+                updateInput('cleats_enabled', true);
+                if (!inputs.cleat_centers_in) updateInput('cleat_centers_in', 12);
+                if (!inputs.cleat_style) updateInput('cleat_style', 'SOLID');
+                if (!inputs.cleat_pattern) updateInput('cleat_pattern', 'STRAIGHT_CROSS');
+                if (!inputs.cleat_material_family) updateInput('cleat_material_family', 'PVC_HOT_WELDED');
               }
-            />
-            {inputs.cleats_mode === 'cleated' ? (
-              <InlineSpecRow
-                items={[
-                  ...(inputs.cleat_profile ? [{ label: 'Profile', value: inputs.cleat_profile }] : []),
-                  ...(inputs.cleat_size ? [{ label: 'Size', value: inputs.cleat_size }] : []),
-                  ...(inputs.cleat_spacing_in ? [{ label: 'Centers', value: `${inputs.cleat_spacing_in}"`, highlight: true }] : []),
-                  ...(inputs.cleat_pattern ? [{ label: 'Pattern', value: CLEAT_PATTERN_LABELS[inputs.cleat_pattern as keyof typeof CLEAT_PATTERN_LABELS] ?? inputs.cleat_pattern }] : []),
-                  ...(cleatsMinPulleyDiaIn !== null ? [{ label: 'Min Pulley', value: `${cleatsMinPulleyDiaIn}"`, className: 'text-amber-600' }] : []),
-                ]}
-              />
-            ) : (
-              <p className="text-xs text-gray-500">Not configured</p>
-            )}
-          </CompactCard>
+              setIsCleatsModalOpen(true);
+            }}
+          />
 
           {/* Cleats Config Modal */}
           <CleatsConfigModal
