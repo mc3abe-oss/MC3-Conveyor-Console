@@ -39,10 +39,11 @@ describe('fieldToSection mapping', () => {
       });
     });
 
-    it('should map lacing_style to build/beltpulley', () => {
+    it('should map lacing_style to physical/beltPulleys', () => {
+      // Lacing was moved from Build Options to Physical tab (UI Cleanup)
       expect(FIELD_TO_SECTION['lacing_style']).toEqual({
-        tabKey: 'build',
-        sectionKey: 'beltpulley',
+        tabKey: 'physical',
+        sectionKey: 'beltPulleys',
       });
     });
   });
@@ -85,7 +86,8 @@ describe('fieldToSection mapping', () => {
       expect(getFieldTabKey('frame_height_mode')).toBe('physical');
       expect(getFieldTabKey('belt_speed_fpm')).toBe('drive');
       expect(getFieldTabKey('part_weight_lbs')).toBe('application');
-      expect(getFieldTabKey('lacing_style')).toBe('build');
+      // Lacing was moved from Build Options to Physical tab (UI Cleanup)
+      expect(getFieldTabKey('lacing_style')).toBe('physical');
     });
 
     it('should return undefined for unknown fields', () => {
