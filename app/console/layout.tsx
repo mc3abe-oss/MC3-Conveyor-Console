@@ -35,7 +35,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
   };
 
   const handleMobileNavigate = (href: string) => {
-    router.push(href);
+    router.push(href as '/console/belt');
   };
 
   const handleMobileProductChange = () => {
