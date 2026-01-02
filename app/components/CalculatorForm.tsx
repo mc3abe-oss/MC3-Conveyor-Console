@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { runCalculation } from '../../src/lib/calculator';
 import {
   SliderbedInputs,
+  SliderbedOutputs,
   CalculationResult,
   buildDefaultInputs,
 } from '../../src/models/sliderbed_v1/schema';
@@ -42,6 +43,8 @@ interface Props {
   applicationLineId?: string | null; // Application ID for per-line configurations (pulleys)
   /** Post-calc validation errors from last calculation result (for inline display) */
   postCalcErrors?: ValidationError[];
+  /** Calculated outputs for display in sub-tabs (e.g., shaft diameters) */
+  outputs?: SliderbedOutputs | null;
 }
 
 export default function CalculatorForm({
@@ -54,6 +57,7 @@ export default function CalculatorForm({
   hideCalculateButton = false,
   applicationLineId,
   postCalcErrors,
+  outputs,
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -244,6 +248,7 @@ export default function CalculatorForm({
               getMinPulleyIssues={getMinPulleyIssues}
               applicationLineId={applicationLineId}
               getMergedIssuesForSection={getMergedIssuesForSection}
+              outputs={outputs}
             />
           )}
 

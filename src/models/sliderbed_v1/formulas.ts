@@ -1888,6 +1888,14 @@ export function calculate(
     drive_shaft_diameter_in: driveShaftDiameterIn,
     tail_shaft_diameter_in: tailShaftDiameterIn,
 
+    // v1.37: Shaft step-down pass-through
+    drive_shaft_stepdown_to_dia_in: inputs.drive_shaft_stepdown_to_dia_in,
+    drive_shaft_stepdown_left_len_in: inputs.drive_shaft_stepdown_left_len_in,
+    drive_shaft_stepdown_right_len_in: inputs.drive_shaft_stepdown_right_len_in,
+    tail_shaft_stepdown_to_dia_in: inputs.tail_shaft_stepdown_to_dia_in,
+    tail_shaft_stepdown_left_len_in: inputs.tail_shaft_stepdown_left_len_in,
+    tail_shaft_stepdown_right_len_in: inputs.tail_shaft_stepdown_right_len_in,
+
     // v1.3: Split pulley diameters
     drive_pulley_diameter_in: drivePulleyDiameterIn,
     tail_pulley_diameter_in: tailPulleyDiameterIn,

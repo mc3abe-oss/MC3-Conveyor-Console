@@ -1220,6 +1220,7 @@ export default function BeltConveyorCalculatorApp() {
             hideCalculateButton={true}
             applicationLineId={loadedConfigurationId}
             postCalcErrors={result?.errors}
+            outputs={result?.outputs}
           />
 
           {/* View Results CTA */}

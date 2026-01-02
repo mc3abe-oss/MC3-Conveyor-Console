@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.32 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.37 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,10 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.37 (2026-01-02): Shaft Step-Down Specification
+ *                     New inputs: drive_shaft_stepdown_to_dia_in, drive_shaft_stepdown_left_len_in,
+ *                                 drive_shaft_stepdown_right_len_in, tail_shaft_stepdown_*
+ *                     Pass-through to outputs for BOM/drawing downstream
  * v1.32 (2026-01-01): Material to Be Conveyed UI Polish + Bulk Feed Behavior
  *                     New FeedBehavior enum (CONTINUOUS | INTERMITTENT | SURGE)
  *                     New inputs: feed_behavior, surge_multiplier, surge_duration_sec
@@ -1331,6 +1335,28 @@ export interface SliderbedInputs {
   tail_shaft_diameter_in?: number;
 
   // =========================================================================
+  // v1.37: SHAFT STEP-DOWN SPECIFICATION
+  // =========================================================================
+
+  /** Drive shaft step-down to diameter in inches */
+  drive_shaft_stepdown_to_dia_in?: number;
+
+  /** Drive shaft step-down left length in inches */
+  drive_shaft_stepdown_left_len_in?: number;
+
+  /** Drive shaft step-down right length in inches */
+  drive_shaft_stepdown_right_len_in?: number;
+
+  /** Tail shaft step-down to diameter in inches */
+  tail_shaft_stepdown_to_dia_in?: number;
+
+  /** Tail shaft step-down left length in inches */
+  tail_shaft_stepdown_left_len_in?: number;
+
+  /** Tail shaft step-down right length in inches */
+  tail_shaft_stepdown_right_len_in?: number;
+
+  // =========================================================================
   // BELT SELECTION
   // =========================================================================
 
@@ -1852,6 +1878,28 @@ export interface SliderbedOutputs {
 
   /** Tail shaft diameter in inches (input or calculated) */
   tail_shaft_diameter_in: number;
+
+  // =========================================================================
+  // v1.37: SHAFT STEP-DOWN OUTPUTS (pass-through from inputs)
+  // =========================================================================
+
+  /** Drive shaft step-down to diameter in inches */
+  drive_shaft_stepdown_to_dia_in?: number;
+
+  /** Drive shaft step-down left length in inches */
+  drive_shaft_stepdown_left_len_in?: number;
+
+  /** Drive shaft step-down right length in inches */
+  drive_shaft_stepdown_right_len_in?: number;
+
+  /** Tail shaft step-down to diameter in inches */
+  tail_shaft_stepdown_to_dia_in?: number;
+
+  /** Tail shaft step-down left length in inches */
+  tail_shaft_stepdown_left_len_in?: number;
+
+  /** Tail shaft step-down right length in inches */
+  tail_shaft_stepdown_right_len_in?: number;
 
   // PULLEY DIAMETER OUTPUTS (v1.3)
   /** Drive pulley diameter used in inches */

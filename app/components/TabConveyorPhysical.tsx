@@ -12,6 +12,7 @@
 
 import {
   SliderbedInputs,
+  SliderbedOutputs,
   BeltTrackingMethod,
   ShaftDiameterMode,
   PULLEY_DIAMETER_PRESETS,
@@ -90,6 +91,8 @@ interface TabConveyorPhysicalProps {
   applicationLineId?: string | null;
   /** Get merged issues for a section (pre-calc + post-calc, de-duped) */
   getMergedIssuesForSection?: (sectionKey: SectionKey) => Issue[];
+  /** Calculation outputs for displaying calculated shaft values (v1.37) */
+  outputs?: SliderbedOutputs | null;
 }
 
 /**
@@ -132,6 +135,7 @@ export default function TabConveyorPhysical({
   getMinPulleyIssues,
   applicationLineId,
   getMergedIssuesForSection,
+  outputs,
 }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
@@ -249,6 +253,9 @@ export default function TabConveyorPhysical({
 
   // v1.29: Return Support modal state
   const [isReturnSupportModalOpen, setIsReturnSupportModalOpen] = useState(false);
+
+  // v1.37: Shaft edit state (inline edit, not modal)
+  const [isShaftEditing, setIsShaftEditing] = useState(false);
 
   // Derived tracking mode for display
   const trackingMode = getBeltTrackingMode({ belt_tracking_method: inputs.belt_tracking_method });
@@ -1311,67 +1318,313 @@ export default function TabConveyorPhysical({
 
           {/* v1.24: Removed Pulley Surface Type dropdown - now controlled per-pulley via PulleyConfigModal */}
 
-          {/* Shaft Diameter Mode */}
-          <div>
-            <label htmlFor="shaft_diameter_mode" className="label">
-              Shaft Diameter Mode
-            </label>
-            <select
-              id="shaft_diameter_mode"
-              className="input"
-              value={inputs.shaft_diameter_mode}
-              onChange={(e) => updateInput('shaft_diameter_mode', e.target.value)}
-            >
-              {Object.values(ShaftDiameterMode).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* v1.37: Shafts Card UI with Step-Down Support */}
+          {(() => {
+            const isManualMode = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual || inputs.shaft_diameter_mode === 'Manual';
+            const hasOverrides = isManualMode && (inputs.drive_shaft_diameter_in !== undefined || inputs.tail_shaft_diameter_in !== undefined);
 
-          {/* Manual shaft diameters */}
-          {(inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
-            inputs.shaft_diameter_mode === 'Manual') && (
-            <div className="ml-4 pl-4 border-l-2 border-gray-200 space-y-4">
-              <div>
-                <label htmlFor="drive_shaft_diameter_in" className="label">
-                  Drive Shaft Diameter (in)
-                </label>
-                <input
-                  type="number"
-                  id="drive_shaft_diameter_in"
-                  className="input"
-                  value={inputs.drive_shaft_diameter_in || ''}
-                  onChange={(e) =>
-                    updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.125"
-                  min="0.5"
-                  max="4.0"
-                  required
-                />
+            // Get calculated values from outputs (if available)
+            const calcDriveShaft = outputs?.drive_shaft_diameter_in;
+            const calcTailShaft = outputs?.tail_shaft_diameter_in;
+
+            // Display values: use overrides if in manual mode, otherwise calculated
+            const displayDriveShaft = isManualMode && inputs.drive_shaft_diameter_in !== undefined
+              ? inputs.drive_shaft_diameter_in
+              : calcDriveShaft;
+            const displayTailShaft = isManualMode && inputs.tail_shaft_diameter_in !== undefined
+              ? inputs.tail_shaft_diameter_in
+              : calcTailShaft;
+
+            // Step-down helpers
+            const driveHasStepdown = (inputs.drive_shaft_stepdown_left_len_in ?? 0) > 0 ||
+              (inputs.drive_shaft_stepdown_right_len_in ?? 0) > 0;
+            const tailHasStepdown = (inputs.tail_shaft_stepdown_left_len_in ?? 0) > 0 ||
+              (inputs.tail_shaft_stepdown_right_len_in ?? 0) > 0;
+
+            // Handlers
+            const handleEdit = () => {
+              setIsShaftEditing(true);
+              if (!isManualMode) {
+                updateInput('shaft_diameter_mode', ShaftDiameterMode.Manual);
+              }
+            };
+
+            const handleRevert = () => {
+              updateInput('shaft_diameter_mode', ShaftDiameterMode.Calculated);
+              updateInput('drive_shaft_diameter_in', undefined);
+              updateInput('tail_shaft_diameter_in', undefined);
+              // Clear step-down values
+              updateInput('drive_shaft_stepdown_to_dia_in', undefined);
+              updateInput('drive_shaft_stepdown_left_len_in', undefined);
+              updateInput('drive_shaft_stepdown_right_len_in', undefined);
+              updateInput('tail_shaft_stepdown_to_dia_in', undefined);
+              updateInput('tail_shaft_stepdown_left_len_in', undefined);
+              updateInput('tail_shaft_stepdown_right_len_in', undefined);
+              setIsShaftEditing(false);
+            };
+
+            const handleDone = () => {
+              setIsShaftEditing(false);
+            };
+
+            // Validation warnings
+            const driveStepdownWarnings: string[] = [];
+            if (inputs.drive_shaft_stepdown_to_dia_in !== undefined && displayDriveShaft !== undefined &&
+                inputs.drive_shaft_stepdown_to_dia_in > displayDriveShaft) {
+              driveStepdownWarnings.push('Step-down diameter exceeds base diameter');
+            }
+            if (driveHasStepdown && inputs.drive_shaft_stepdown_to_dia_in === undefined) {
+              driveStepdownWarnings.push('Step-down lengths set but diameter not specified');
+            }
+            if (inputs.drive_shaft_stepdown_to_dia_in !== undefined && !driveHasStepdown) {
+              driveStepdownWarnings.push('Step-down diameter set but no lengths specified');
+            }
+
+            const tailStepdownWarnings: string[] = [];
+            if (inputs.tail_shaft_stepdown_to_dia_in !== undefined && displayTailShaft !== undefined &&
+                inputs.tail_shaft_stepdown_to_dia_in > displayTailShaft) {
+              tailStepdownWarnings.push('Step-down diameter exceeds base diameter');
+            }
+            if (tailHasStepdown && inputs.tail_shaft_stepdown_to_dia_in === undefined) {
+              tailStepdownWarnings.push('Step-down lengths set but diameter not specified');
+            }
+            if (inputs.tail_shaft_stepdown_to_dia_in !== undefined && !tailHasStepdown) {
+              tailStepdownWarnings.push('Step-down diameter set but no lengths specified');
+            }
+
+            return (
+              <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+                {/* Header */}
+                <div className="flex items-center justify-between mb-3">
+                  <h5 className="font-medium text-gray-900">Shafts</h5>
+                  <div className="flex items-center gap-2">
+                    {hasOverrides && (
+                      <button
+                        type="button"
+                        onClick={handleRevert}
+                        className="text-xs text-gray-500 hover:text-gray-700"
+                      >
+                        Revert to Calculated
+                      </button>
+                    )}
+                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">
+                      {isManualMode ? 'Override' : 'Configured'}
+                    </span>
+                    {!isShaftEditing ? (
+                      <button
+                        type="button"
+                        onClick={handleEdit}
+                        className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                      >
+                        Edit
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleDone}
+                        className="px-3 py-1 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-100 rounded transition-colors"
+                      >
+                        Done
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Read-only summary (when not editing) */}
+                {!isShaftEditing && (
+                  <div className="text-sm space-y-1.5">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                      <span>
+                        <span className="text-gray-500">Drive:</span>{' '}
+                        <span className="font-medium">
+                          {displayDriveShaft !== undefined ? `${displayDriveShaft.toFixed(3)}"` : '—'}
+                        </span>
+                        {isManualMode && inputs.drive_shaft_diameter_in !== undefined && (
+                          <span className="text-xs text-amber-600 ml-1">(override)</span>
+                        )}
+                        {driveHasStepdown && (
+                          <span className="text-xs text-blue-600 ml-1">
+                            (step-down to {inputs.drive_shaft_stepdown_to_dia_in ?? '?'}")
+                          </span>
+                        )}
+                      </span>
+                      <span className="text-gray-300">|</span>
+                      <span>
+                        <span className="text-gray-500">Tail:</span>{' '}
+                        <span className="font-medium">
+                          {displayTailShaft !== undefined ? `${displayTailShaft.toFixed(3)}"` : '—'}
+                        </span>
+                        {isManualMode && inputs.tail_shaft_diameter_in !== undefined && (
+                          <span className="text-xs text-amber-600 ml-1">(override)</span>
+                        )}
+                        {tailHasStepdown && (
+                          <span className="text-xs text-blue-600 ml-1">
+                            (step-down to {inputs.tail_shaft_stepdown_to_dia_in ?? '?'}")
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    {!outputs && (
+                      <p className="text-xs text-gray-500 italic">Calculate to see computed values</p>
+                    )}
+                  </div>
+                )}
+
+                {/* Edit mode (inline) */}
+                {isShaftEditing && (
+                  <div className="space-y-4">
+                    {/* Drive Shaft Section */}
+                    <div className="border-b border-green-200 pb-4">
+                      <h6 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Drive Shaft</h6>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Base Diameter (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.drive_shaft_diameter_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder={calcDriveShaft !== undefined ? `Calc: ${calcDriveShaft.toFixed(3)}` : '—'}
+                            step="0.125"
+                            min="0.5"
+                            max="4.0"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Step-Down To Dia (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.drive_shaft_stepdown_to_dia_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('drive_shaft_stepdown_to_dia_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder="Optional"
+                            step="0.125"
+                            min="0.25"
+                            max="3.0"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Left Step-Down Length (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.drive_shaft_stepdown_left_len_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('drive_shaft_stepdown_left_len_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder="0"
+                            step="0.25"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Right Step-Down Length (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.drive_shaft_stepdown_right_len_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('drive_shaft_stepdown_right_len_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder="0"
+                            step="0.25"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                      {driveStepdownWarnings.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {driveStepdownWarnings.map((w, i) => (
+                            <p key={i} className="text-xs text-amber-600">{w}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Tail Shaft Section */}
+                    <div>
+                      <h6 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Tail Shaft</h6>
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Base Diameter (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.tail_shaft_diameter_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder={calcTailShaft !== undefined ? `Calc: ${calcTailShaft.toFixed(3)}` : '—'}
+                            step="0.125"
+                            min="0.5"
+                            max="4.0"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Step-Down To Dia (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.tail_shaft_stepdown_to_dia_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('tail_shaft_stepdown_to_dia_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder="Optional"
+                            step="0.125"
+                            min="0.25"
+                            max="3.0"
+                          />
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 mt-2">
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Left Step-Down Length (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.tail_shaft_stepdown_left_len_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('tail_shaft_stepdown_left_len_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder="0"
+                            step="0.25"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-medium text-gray-600 block mb-1">Right Step-Down Length (in)</label>
+                          <input
+                            type="number"
+                            className="input text-sm"
+                            value={inputs.tail_shaft_stepdown_right_len_in ?? ''}
+                            onChange={(e) =>
+                              updateInput('tail_shaft_stepdown_right_len_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                            }
+                            placeholder="0"
+                            step="0.25"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                      {tailStepdownWarnings.length > 0 && (
+                        <div className="mt-2 space-y-1">
+                          {tailStepdownWarnings.map((w, i) => (
+                            <p key={i} className="text-xs text-amber-600">{w}</p>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
-              <div>
-                <label htmlFor="tail_shaft_diameter_in" className="label">
-                  Tail Shaft Diameter (in)
-                </label>
-                <input
-                  type="number"
-                  id="tail_shaft_diameter_in"
-                  className="input"
-                  value={inputs.tail_shaft_diameter_in || ''}
-                  onChange={(e) =>
-                    updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                  }
-                  step="0.125"
-                  min="0.5"
-                  max="4.0"
-                  required
-                />
-              </div>
-            </div>
-          )}
+            );
+          })()}
 
           {/* ===== v1.29: RETURN SUPPORT SUBSECTION ===== */}
           <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-6">
