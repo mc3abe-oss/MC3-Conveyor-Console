@@ -11,6 +11,9 @@
  * - Import actual Excel cases into fixtures.ts
  * - Each fixture should include inputs, expected outputs, and tolerances
  * - Tests will automatically run against all fixtures
+ *
+ * NOTE: This file contains intentionally skipped tests.
+ * Search for "describe.skip" or "[SKIP:" to find them.
  */
 
 import { runCalculation } from '../../lib/calculator/engine';
@@ -5351,11 +5354,29 @@ describe('Frame Construction Migration (v1.14)', () => {
 });
 
 // ============================================================================
-// v1.16: CATALOG DIAMETER AUTHORITY TESTS
+// [SKIP: Pulley Catalog Phase 2] v1.16 CATALOG DIAMETER AUTHORITY TESTS
 // ============================================================================
 
-// PHASE 0: Legacy pulley catalog removed - these tests will be rewritten in Phase 2
-describe.skip('v1.16 Catalog Diameter Authority', () => {
+/**
+ * TODO: Unskip when pulley_models + catalog effective diameter authority is implemented
+ *
+ * WHY SKIPPED: Legacy pulley catalog was removed in the pulley system refactor.
+ *              These tests reference catalog keys and effective diameters that
+ *              no longer exist in the current implementation.
+ *
+ * WHEN TO UNSKIP: When Pulley Catalog Phase 2 is complete, specifically:
+ *   - pulley_models system provides catalog effective diameters
+ *   - drive/tail pulley selection uses catalog diameter authority
+ *
+ * WHAT TO VERIFY: All 6 tests must pass and protect:
+ *   - Catalog diameter lookup for drive pulley
+ *   - Catalog diameter lookup for tail pulley
+ *   - Manual diameter fallback when no catalog key
+ *   - Manual diameter fallback when invalid catalog key
+ *   - Both pulleys using catalog diameters
+ *   - End-to-end outputs using catalog diameters
+ */
+describe.skip('[SKIP: Pulley Catalog Phase 2] v1.16 Catalog Diameter Authority', () => {
   // Minimal BASE_INPUTS for these tests
   const BASE_INPUTS: SliderbedInputs = {
     belt_width_in: 18,
