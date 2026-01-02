@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { createClient } from '../../src/lib/supabase/browser';
+import { getAuthCallbackUrl, logAuthEmailUrlSource } from '../../src/lib/auth/canonical-url';
 import Link from 'next/link';
 import MC3Logo from '../components/MC3Logo';
 import { APP_NAME } from '../../src/lib/brand';
@@ -51,9 +52,17 @@ export default function SignupPage() {
 
     const supabase = createClient();
 
+    // Get the canonical production URL for email confirmation link
+    // This ensures we never use preview deployment URLs
+    const emailRedirectTo = getAuthCallbackUrl();
+    logAuthEmailUrlSource(); // Log for debugging
+
     const { error: signUpError } = await supabase.auth.signUp({
       email: email.trim().toLowerCase(),
       password,
+      options: {
+        emailRedirectTo,
+      },
     });
 
     if (signUpError) {
