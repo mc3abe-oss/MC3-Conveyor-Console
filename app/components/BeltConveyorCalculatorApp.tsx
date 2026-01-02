@@ -14,6 +14,7 @@ import MobileBottomActionBar from './MobileBottomActionBar';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
+import { MODEL_KEY } from '../../src/lib/model-identity';
 
 type ViewMode = 'configure' | 'results' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
@@ -149,7 +150,7 @@ export default function BeltConveyorCalculatorApp() {
         metadata: {
           calculated_at: application.updated_at || new Date().toISOString(),
           model_version_id: application.model_version || 'unknown',
-          model_key: 'belt_conveyor_v1',
+          model_key: MODEL_KEY,
         },
       });
       setCalcStatus('ok');
