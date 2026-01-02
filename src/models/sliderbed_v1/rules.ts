@@ -1372,22 +1372,16 @@ export function applyApplicationRules(
     returnGravityRollerCount
   );
 
-  // v1.29: Cleats + Snub rollers incompatibility (hard error)
-  // Cleated belts cannot use snub rollers - the cleats would collide with the rollers
+  // v1.37: Cleats + Snub rollers warning (allowed but warn)
+  // Cleats can interfere with snub wrap - user should verify clearance
   // Uses explicit returnSnubsEnabled (user selection) instead of frame-height-derived
   const cleatsEnabled = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
   if (cleatsEnabled && returnSnubsEnabled) {
-    // Error in Return Support section (user can disable snubs)
-    errors.push({
+    // Warning in Return Support section
+    warnings.push({
       field: 'return_snub_mode',
-      message: 'Cleats are enabled but snub rollers are also enabled. Cleats and snub rollers are incompatible. Disable snub rollers or remove cleats.',
-      severity: 'error',
-    });
-    // Error in Cleats section (user can remove cleats)
-    errors.push({
-      field: 'cleats_mode',
-      message: 'Cleats cannot be used with snub rollers. Either disable snub rollers in Return Support configuration or remove cleats.',
-      severity: 'error',
+      message: 'Snub rollers with cleats: Cleats can interfere with snub wrap and may cause noise, wear, or belt damage. Verify clearance and snub diameter.',
+      severity: 'warning',
     });
   }
 

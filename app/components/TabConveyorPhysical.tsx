@@ -1663,12 +1663,24 @@ export default function TabConveyorPhysical({
             const gravityDia = inputs.return_gravity_roller_diameter_in ?? 1.9;
             const snubDia = inputs.return_snub_roller_diameter_in ?? 2.5;
             const frameStyleLabel = RETURN_FRAME_STYLE_LABELS[frameStyle as ReturnFrameStyle] ?? frameStyle;
+            // v1.37: Cleats + snubs warning indicator
+            const cleatsEnabledForReturn = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
+            const showCleatsSnubsWarning = cleatsEnabledForReturn && snubsEnabled;
 
             return (
               <div className="border border-green-200 bg-green-50 rounded-lg p-4">
                 {/* Header row with title, badge, and edit button */}
                 <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-medium text-gray-900">Return Rollers</h5>
+                  <div className="flex items-center gap-2">
+                    <h5 className="font-medium text-gray-900">Return Rollers</h5>
+                    {showCleatsSnubsWarning && (
+                      <span title="Snub rollers with cleats - verify clearance">
+                        <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
                     <button

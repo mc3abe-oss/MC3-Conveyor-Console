@@ -3918,78 +3918,92 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(result.errors).toBeUndefined();
     });
 
-    it('should FAIL when cleats enabled and snubs required (frame height below threshold)', () => {
-      // v1.29: Snub rollers are now controlled by explicit return_frame_style and return_snub_mode
-      // Set LOW_PROFILE return frame style to enable snubs via Auto mode
+    it('should WARN when cleats enabled and snubs enabled via AUTO (v1.37)', () => {
+      // v1.37: Snub rollers with cleats is now a warning, not an error
+      // Use Standard frame_height_mode but Low Profile return_frame_style to enable snubs via Auto
       const inputs: SliderbedInputs = {
         ...cleatsBaseInputs,
-        frame_height_mode: FrameHeightMode.LowProfile,
-        // v1.29: Explicit return support - Low Profile with Auto mode enables snubs
+        frame_height_mode: FrameHeightMode.Standard, // Standard frame height (not Low Profile)
+        // v1.37: Explicit return support - Low Profile return style with Auto mode enables snubs
         return_frame_style: 'LOW_PROFILE',
         return_snub_mode: 'AUTO',
       };
 
       const result = runCalculation({ inputs });
 
-      expect(result.success).toBe(false);
-      expect(result.errors).toBeDefined();
-      expect(result.errors!.length).toBeGreaterThanOrEqual(2); // Error in both Return Support and Cleats sections
+      // v1.37: Now passes with warning instead of failing with error
+      expect(result.success).toBe(true);
+      expect(result.warnings).toBeDefined();
 
-      // v1.29: Check for return_snub_mode error (replaces frame_height_mode error)
-      const returnSupportError = result.errors!.find(e => e.field === 'return_snub_mode');
-      expect(returnSupportError).toBeDefined();
-      expect(returnSupportError!.message).toContain('snub rollers');
-      expect(returnSupportError!.message).toContain('Cleats');
-
-      // Check for cleats_mode error
-      const cleatsError = result.errors!.find(e => e.field === 'cleats_mode');
-      expect(cleatsError).toBeDefined();
-      expect(cleatsError!.message).toContain('Cleats cannot be used with snub rollers');
+      // v1.37: Check for return_snub_mode warning (not error)
+      const returnSupportWarning = result.warnings!.find(w => w.field === 'return_snub_mode');
+      expect(returnSupportWarning).toBeDefined();
+      expect(returnSupportWarning!.message).toContain('Snub rollers with cleats');
+      expect(returnSupportWarning!.message).toContain('noise, wear, or belt damage');
     });
 
-    it('should PASS when cleats DISABLED and snubs required', () => {
-      // No conflict when cleats are off - use Low Profile return frame to require snubs
+    it('should PASS without warning when cleats DISABLED and snubs enabled (v1.37)', () => {
+      // v1.37: No warning when cleats are off - snubs with no cleats is fine
       const inputs: SliderbedInputs = {
         ...cleatsBaseInputs,
         cleats_enabled: false,
         cleats_mode: undefined,
         cleat_height_in: undefined,
-        frame_height_mode: FrameHeightMode.LowProfile,
-        // v1.29: Explicit return support - Low Profile with Auto mode enables snubs
-        return_frame_style: 'LOW_PROFILE',
-        return_snub_mode: 'AUTO',
+        frame_height_mode: FrameHeightMode.Standard, // Use Standard frame height
+        // v1.37: Explicit return support - enable snubs via YES mode
+        return_frame_style: 'STANDARD',
+        return_snub_mode: 'YES',
       };
 
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      expect(result.outputs?.requires_snub_rollers).toBe(true);
+      // Snubs should be enabled (snub_roller_quantity = 2)
       expect(result.outputs?.snub_roller_quantity).toBe(2);
+      // v1.37: Should have no cleats+snubs warning since cleats are disabled
+      const snubWarning = result.warnings?.find(w => w.field === 'return_snub_mode' && w.message.includes('Snub rollers with cleats'));
+      expect(snubWarning).toBeUndefined();
     });
 
-    it('should use correct pulley diameter from inputs (regression for v1.28 fix)', () => {
-      // v1.29: This test verifies cleats + snubs conflict detection with explicit return support
-      // Use Low Profile return frame style to trigger snub requirement and cleats conflict
+    it('should WARN when cleats + snubs with YES mode (v1.37)', () => {
+      // v1.37: This test verifies cleats + snubs warning with explicit snub_mode=YES
       const inputs: SliderbedInputs = {
         ...cleatsBaseInputs,
         drive_pulley_diameter_in: 5.5,
         tail_pulley_diameter_in: 5.5,
-        frame_height_mode: FrameHeightMode.LowProfile,
-        // v1.29: Explicit return support configuration
-        return_frame_style: 'LOW_PROFILE',
-        return_snub_mode: 'AUTO',
+        frame_height_mode: FrameHeightMode.Standard,
+        // v1.37: Explicit snub mode YES triggers warning with cleats
+        return_frame_style: 'STANDARD',
+        return_snub_mode: 'YES',
       };
 
       const result = runCalculation({ inputs });
 
-      expect(result.success).toBe(false);
-      expect(result.errors).toBeDefined();
+      // v1.37: Now passes with warning instead of failing with error
+      expect(result.success).toBe(true);
+      expect(result.warnings).toBeDefined();
 
-      // v1.29: Error now on return_snub_mode field (not frame_height_mode)
-      const returnSupportError = result.errors!.find(e => e.field === 'return_snub_mode');
-      expect(returnSupportError).toBeDefined();
-      expect(returnSupportError!.message).toContain('Cleats');
-      expect(returnSupportError!.message).toContain('snub rollers');
+      // v1.37: Warning on return_snub_mode field
+      const returnSupportWarning = result.warnings!.find(w => w.field === 'return_snub_mode');
+      expect(returnSupportWarning).toBeDefined();
+      expect(returnSupportWarning!.message).toContain('Snub rollers with cleats');
+    });
+
+    it('should NOT warn when cleats enabled and snubs NO (v1.37)', () => {
+      // v1.37: No warning when snubs are explicitly disabled
+      const inputs: SliderbedInputs = {
+        ...cleatsBaseInputs,
+        frame_height_mode: FrameHeightMode.Standard,
+        return_frame_style: 'STANDARD',
+        return_snub_mode: 'NO',
+      };
+
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Should have no cleats+snubs warning
+      const snubWarning = result.warnings?.find(w => w.field === 'return_snub_mode' && w.message.includes('Snub rollers with cleats'));
+      expect(snubWarning).toBeUndefined();
     });
   });
 });

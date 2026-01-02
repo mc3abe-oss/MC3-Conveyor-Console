@@ -20,7 +20,6 @@ import {
   SliderbedInputs,
   ReturnFrameStyle,
   ReturnSnubMode,
-  RETURN_FRAME_STYLE_LABELS,
   RETURN_SNUB_MODE_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 
@@ -146,6 +145,10 @@ export default function ReturnSupportModal({
   // Total reduction when snubs enabled
   const totalReduction = 2 * endOffsetIn;
 
+  // v1.37: Cleats + Snubs warning (allowed but warn)
+  const cleatsEnabled = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
+  const showCleatsSnubsWarning = cleatsEnabled && snubsEnabled;
+
   if (!isOpen) return null;
 
   return (
@@ -175,56 +178,44 @@ export default function ReturnSupportModal({
 
         {/* Content */}
         <div className="px-6 py-4 space-y-5">
-          {/* Frame Style + Snub Mode row */}
-          <div className="grid grid-cols-2 gap-4">
-            {/* Frame Style */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Frame Style
-              </label>
-              <div className="flex flex-col gap-1">
-                {Object.entries(RETURN_FRAME_STYLE_LABELS).map(([value, label]) => (
-                  <label key={value} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="frame_style"
-                      value={value}
-                      checked={frameStyle === value}
-                      onChange={(e) => updateInput('return_frame_style', e.target.value)}
-                      className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-900">{label}</span>
-                  </label>
-                ))}
-              </div>
+          {/* Snub Rollers */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Snub Rollers
+            </label>
+            <select
+              value={snubMode as string}
+              onChange={(e) => updateInput('return_snub_mode', e.target.value)}
+              className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
+            >
+              {Object.entries(RETURN_SNUB_MODE_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+            <div className="mt-2">
+              <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                snubsEnabled
+                  ? 'bg-blue-100 text-blue-800'
+                  : 'bg-gray-100 text-gray-600'
+              }`}>
+                {snubsEnabled ? 'Snubs Enabled' : 'No Snubs'}
+              </span>
             </div>
-
-            {/* Snub Mode */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Snub Rollers
-              </label>
-              <select
-                value={snubMode as string}
-                onChange={(e) => updateInput('return_snub_mode', e.target.value)}
-                className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm"
-              >
-                {Object.entries(RETURN_SNUB_MODE_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <div className="mt-2">
-                <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                  snubsEnabled
-                    ? 'bg-blue-100 text-blue-800'
-                    : 'bg-gray-100 text-gray-600'
-                }`}>
-                  {snubsEnabled ? 'Snubs Enabled' : 'No Snubs'}
-                </span>
+            {/* v1.37: Cleats + Snubs warning */}
+            {showCleatsSnubsWarning && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                <div className="flex items-start gap-2">
+                  <svg className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  </svg>
+                  <p className="text-xs text-amber-700">
+                    <strong>Snub rollers with cleats:</strong> Cleats can interfere with snub wrap and may cause noise, wear, or belt damage. Verify clearance and snub diameter.
+                  </p>
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
           {/* End Offset (only when snubs enabled) */}
