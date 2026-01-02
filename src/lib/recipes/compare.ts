@@ -33,7 +33,54 @@ export function getFieldType(value: unknown): FieldType {
   if (value === null) return 'null';
   if (typeof value === 'number') return 'numeric';
   if (typeof value === 'boolean') return 'boolean';
+  if (Array.isArray(value)) return 'array';
+  if (typeof value === 'object') return 'object';
   return 'string';  // includes enums
+}
+
+// ============================================================================
+// DEEP EQUALITY
+// ============================================================================
+
+/**
+ * Deep equality comparison for arrays and objects.
+ * Uses a simple recursive approach suitable for JSON-serializable data.
+ *
+ * @param a - First value
+ * @param b - Second value
+ * @returns True if deeply equal
+ */
+export function deepEqual(a: unknown, b: unknown): boolean {
+  // Primitive or reference equality
+  if (a === b) return true;
+
+  // Type check
+  if (typeof a !== typeof b) return false;
+  if (a === null || b === null) return a === b;
+
+  // Array comparison
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return false;
+    return a.every((val, idx) => deepEqual(val, b[idx]));
+  }
+
+  // One is array, other is not
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+
+  // Object comparison
+  if (typeof a === 'object' && typeof b === 'object') {
+    const aKeys = Object.keys(a as object);
+    const bKeys = Object.keys(b as object);
+
+    if (aKeys.length !== bKeys.length) return false;
+
+    return aKeys.every((key) =>
+      Object.prototype.hasOwnProperty.call(b, key) &&
+      deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
+    );
+  }
+
+  return false;
 }
 
 // ============================================================================
@@ -171,6 +218,32 @@ export function compareField(
     return {
       field,
       fieldType: 'string',
+      expected,
+      actual,
+      passed,
+      reason: passed ? undefined : 'value_mismatch',
+    };
+  }
+
+  // Array: deep equality comparison
+  if (expectedType === 'array') {
+    const passed = deepEqual(expected, actual);
+    return {
+      field,
+      fieldType: 'array',
+      expected,
+      actual,
+      passed,
+      reason: passed ? undefined : 'value_mismatch',
+    };
+  }
+
+  // Object: deep equality comparison
+  if (expectedType === 'object') {
+    const passed = deepEqual(expected, actual);
+    return {
+      field,
+      fieldType: 'object',
       expected,
       actual,
       passed,

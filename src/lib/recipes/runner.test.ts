@@ -97,12 +97,7 @@ describe('runRecipe', () => {
     expect(result.passed).toBeNull();  // No expected_outputs = no comparison
   });
 
-  // TODO: Fix compareOutputs to handle array/object fields correctly
-  // Bug: compareField treats arrays as strings, causing [] !== [] to fail
-  // The comparison logic (compare.ts) marks identical arrays as 'value_mismatch'
-  // because it uses reference equality for non-primitive types.
-  // Tracked in: https://github.com/mc3abe-oss/belt-conveyor-ninja/issues/TBD
-  it.skip('compares against expected outputs when provided', async () => {
+  it('compares against expected outputs when provided', async () => {
     // First run to get actual outputs
     const firstRun = await runRecipe({
       recipe: testRecipe,
@@ -129,8 +124,7 @@ describe('runRecipe', () => {
     expect(result.output_diff!.length).toBeGreaterThan(0);
   });
 
-  // TODO: Same issue as above - compareField doesn't handle arrays/objects
-  it.skip('detects drift when outputs change', async () => {
+  it('detects drift when outputs change', async () => {
     // First run to get actual outputs
     const firstRun = await runRecipe({
       recipe: testRecipe,

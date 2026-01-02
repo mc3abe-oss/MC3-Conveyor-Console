@@ -288,7 +288,7 @@ export interface RecipeRunCreateInput {
 // COMPARISON RESULTS
 // ============================================================================
 
-export type FieldType = 'numeric' | 'boolean' | 'string' | 'null' | 'missing';
+export type FieldType = 'numeric' | 'boolean' | 'string' | 'array' | 'object' | 'null' | 'missing';
 
 /**
  * Per-field comparison result.

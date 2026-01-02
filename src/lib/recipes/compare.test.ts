@@ -38,6 +38,18 @@ describe('getFieldType', () => {
     expect(getFieldType('')).toBe('string');
     expect(getFieldType('EnumValue')).toBe('string');
   });
+
+  it('identifies array', () => {
+    expect(getFieldType([])).toBe('array');
+    expect(getFieldType([1, 2, 3])).toBe('array');
+    expect(getFieldType(['a', 'b'])).toBe('array');
+  });
+
+  it('identifies object', () => {
+    expect(getFieldType({})).toBe('object');
+    expect(getFieldType({ a: 1 })).toBe('object');
+    expect(getFieldType({ nested: { value: true } })).toBe('object');
+  });
 });
 
 describe('getDefaultTolerance', () => {
@@ -160,6 +172,92 @@ describe('compareField', () => {
     it('is case-sensitive', () => {
       const result = compareField('field', 'Hello', 'hello');
       expect(result.passed).toBe(false);
+    });
+  });
+
+  describe('array comparison', () => {
+    it('passes when arrays are deeply equal', () => {
+      const result = compareField('field', [1, 2, 3], [1, 2, 3]);
+      expect(result.passed).toBe(true);
+      expect(result.fieldType).toBe('array');
+    });
+
+    it('passes when empty arrays match', () => {
+      const result = compareField('field', [], []);
+      expect(result.passed).toBe(true);
+      expect(result.fieldType).toBe('array');
+    });
+
+    it('passes when nested arrays match', () => {
+      const result = compareField('field', [[1, 2], [3, 4]], [[1, 2], [3, 4]]);
+      expect(result.passed).toBe(true);
+    });
+
+    it('fails when arrays have different lengths', () => {
+      const result = compareField('field', [1, 2], [1, 2, 3]);
+      expect(result.passed).toBe(false);
+      expect(result.reason).toBe('value_mismatch');
+    });
+
+    it('fails when array elements differ', () => {
+      const result = compareField('field', [1, 2, 3], [1, 2, 4]);
+      expect(result.passed).toBe(false);
+      expect(result.reason).toBe('value_mismatch');
+    });
+
+    it('fails when array order differs', () => {
+      const result = compareField('field', [1, 2, 3], [3, 2, 1]);
+      expect(result.passed).toBe(false);
+      expect(result.reason).toBe('value_mismatch');
+    });
+  });
+
+  describe('object comparison', () => {
+    it('passes when objects are deeply equal', () => {
+      const result = compareField('field', { a: 1, b: 2 }, { a: 1, b: 2 });
+      expect(result.passed).toBe(true);
+      expect(result.fieldType).toBe('object');
+    });
+
+    it('passes when empty objects match', () => {
+      const result = compareField('field', {}, {});
+      expect(result.passed).toBe(true);
+      expect(result.fieldType).toBe('object');
+    });
+
+    it('passes when nested objects match', () => {
+      const result = compareField(
+        'field',
+        { a: { b: { c: 1 } } },
+        { a: { b: { c: 1 } } }
+      );
+      expect(result.passed).toBe(true);
+    });
+
+    it('passes regardless of key order', () => {
+      const result = compareField('field', { a: 1, b: 2 }, { b: 2, a: 1 });
+      expect(result.passed).toBe(true);
+    });
+
+    it('fails when objects have different keys', () => {
+      const result = compareField('field', { a: 1 }, { b: 1 });
+      expect(result.passed).toBe(false);
+      expect(result.reason).toBe('value_mismatch');
+    });
+
+    it('fails when object values differ', () => {
+      const result = compareField('field', { a: 1 }, { a: 2 });
+      expect(result.passed).toBe(false);
+      expect(result.reason).toBe('value_mismatch');
+    });
+
+    it('handles objects with array values', () => {
+      const result = compareField(
+        'field',
+        { items: [1, 2, 3] },
+        { items: [1, 2, 3] }
+      );
+      expect(result.passed).toBe(true);
     });
   });
 
