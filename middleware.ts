@@ -1,38 +1,76 @@
 /**
- * Next.js Middleware - Auth Gate
+ * Next.js Middleware - Auth Gate (FAIL-CLOSED)
  *
- * Protects all routes except public ones (login, signup, assets).
- * Refreshes session on each request to prevent unexpected logouts.
+ * Security model:
+ * - ALL routes protected by default (fail-closed)
+ * - Public routes must be EXPLICITLY allowlisted
+ * - Errors redirect to login (never allow through)
+ * - Dev bypass ONLY when AUTH_BYPASS_DEV=true AND NODE_ENV=development
  */
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from './src/lib/supabase/middleware';
 
-// Routes that don't require authentication
-const PUBLIC_ROUTES = ['/login', '/signup'];
+/**
+ * EXPLICIT PUBLIC ROUTES ALLOWLIST
+ *
+ * Only these routes are accessible without authentication.
+ * All other routes require valid auth or will redirect to /login.
+ */
+export const PUBLIC_ROUTES = ['/login', '/signup'];
+
+/**
+ * Check if dev bypass is enabled.
+ * ONLY allows bypass when BOTH conditions are true:
+ * - NODE_ENV === 'development'
+ * - AUTH_BYPASS_DEV === 'true'
+ */
+function isDevBypassEnabled(): boolean {
+  return (
+    process.env.NODE_ENV === 'development' &&
+    process.env.AUTH_BYPASS_DEV === 'true'
+  );
+}
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Skip auth if Supabase is not configured (allows deploy without env vars)
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    console.warn('Supabase not configured - skipping auth middleware');
-    return NextResponse.next();
+  // Check if Supabase is configured
+  const supabaseConfigured =
+    !!process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+  // If Supabase not configured, check for dev bypass
+  if (!supabaseConfigured) {
+    if (isDevBypassEnabled()) {
+      // Dev bypass enabled: allow request through
+      console.warn('[Auth] Dev bypass enabled - skipping auth');
+      return NextResponse.next();
+    }
+
+    // No bypass: return 503 error (not silent pass-through)
+    console.error('[Auth] Supabase not configured and no dev bypass');
+    return NextResponse.json(
+      {
+        error: 'Authentication service not configured',
+        message: 'Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY, or enable AUTH_BYPASS_DEV=true in development',
+      },
+      { status: 503 }
+    );
   }
 
   try {
-    // Allow public routes
+    // Allow public routes (still update session if logged in)
     if (PUBLIC_ROUTES.some((route) => pathname.startsWith(route))) {
-      // Still update session in case user is already logged in
       const { supabaseResponse } = await updateSession(request);
       return supabaseResponse;
     }
 
-    // Check authentication
+    // Check authentication for protected routes
     const { user, supabaseResponse } = await updateSession(request);
 
     if (!user) {
-      // Redirect to login with return URL
+      // Not authenticated: redirect to login with return URL
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('next', pathname);
       return NextResponse.redirect(loginUrl);
@@ -40,9 +78,13 @@ export async function middleware(request: NextRequest) {
 
     return supabaseResponse;
   } catch (error) {
-    console.error('Middleware error:', error);
-    // On error, allow request through to avoid blocking the site
-    return NextResponse.next();
+    // FAIL-CLOSED: On ANY error, redirect to login
+    // Never allow request through on error
+    console.error('[Auth] Middleware error (fail-closed):', error);
+    const loginUrl = new URL('/login', request.url);
+    loginUrl.searchParams.set('next', pathname);
+    loginUrl.searchParams.set('error', 'auth_error');
+    return NextResponse.redirect(loginUrl);
   }
 }
 

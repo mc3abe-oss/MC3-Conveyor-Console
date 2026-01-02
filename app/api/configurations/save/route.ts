@@ -12,6 +12,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
 import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { hashCanonical, stripUndefined } from '../../../../src/lib/recipes/hash';
+import { MODEL_VERSION_ID } from '../../../../src/lib/model-identity';
 
 interface SaveRequestBody {
   reference_type: 'QUOTE' | 'SALES_ORDER';  // v1: Every application must be linked to Quote or SO
@@ -197,7 +198,7 @@ export async function POST(request: NextRequest) {
       recipe_tier: 'regression',
       recipe_status: 'active',
       model_key,
-      model_version_id: 'v1.13.0', // Current version
+      model_version_id: MODEL_VERSION_ID, // From canonical model identity
       inputs: combinedInputs,
       inputs_hash: inputsHash,
       source: 'calculator',

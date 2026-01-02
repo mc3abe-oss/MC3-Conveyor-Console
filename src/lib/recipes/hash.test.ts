@@ -10,8 +10,10 @@ describe('canonicalStringify', () => {
       expect(canonicalStringify(null)).toBe('null');
     });
 
-    it('handles undefined at top level', () => {
-      expect(canonicalStringify(undefined)).toBe('undefined');
+    it('handles undefined at top level (treated as null for consistency)', () => {
+      // After normalization, undefined is treated as null
+      // This ensures {a: undefined} equals {} after canonicalization
+      expect(canonicalStringify(undefined)).toBe('null');
     });
 
     it('handles strings', () => {

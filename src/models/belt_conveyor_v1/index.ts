@@ -171,6 +171,7 @@ import { calculate } from './formulas';
 import { validate } from './rules';
 import type { BeltConveyorInputs, BeltConveyorParameters, CalculationResult } from './schema';
 import { DEFAULT_PARAMETERS } from './schema';
+import { MODEL_KEY, MODEL_VERSION_ID } from '../../lib/model-identity';
 
 /**
  * Convenience function to run full calculation with validation
@@ -193,9 +194,9 @@ export function calculateBeltConveyor(
       errors,
       warnings,
       metadata: {
-        model_version_id: 'belt_conveyor_v1',
+        model_version_id: MODEL_VERSION_ID,
         calculated_at: new Date().toISOString(),
-        model_key: 'belt_conveyor_v1',
+        model_key: MODEL_KEY,
       },
     };
   }
@@ -208,9 +209,9 @@ export function calculateBeltConveyor(
     outputs,
     warnings,
     metadata: {
-      model_version_id: 'belt_conveyor_v1',
+      model_version_id: MODEL_VERSION_ID,
       calculated_at: new Date().toISOString(),
-      model_key: 'belt_conveyor_v1',
+      model_key: MODEL_KEY,
     },
   };
 }

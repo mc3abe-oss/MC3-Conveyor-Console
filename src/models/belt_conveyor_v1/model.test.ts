@@ -431,7 +431,10 @@ describe('Calculation Result', () => {
     expect(result.premium_flags.premium_level).toBe(PremiumLevel.Premium);
   });
 
-  it('calculateBeltConveyor should include metadata with belt_conveyor_v1 model_key', () => {
+  it('calculateBeltConveyor should include metadata with belt_conveyor_v1 model_key', async () => {
+    // Import canonical model identity for comparison
+    const { MODEL_KEY, MODEL_VERSION_ID } = await import('../../lib/model-identity');
+
     const inputs: BeltConveyorInputs = {
       ...LEGACY_SLIDERBED_INPUTS,
       bed_type: BedType.SliderBed,
@@ -440,8 +443,8 @@ describe('Calculation Result', () => {
     const result = calculateBeltConveyor(inputs, DEFAULT_PARAMETERS);
 
     expect(result.success).toBe(true);
-    expect(result.metadata.model_key).toBe('belt_conveyor_v1');
-    expect(result.metadata.model_version_id).toBe('belt_conveyor_v1');
+    expect(result.metadata.model_key).toBe(MODEL_KEY);
+    expect(result.metadata.model_version_id).toBe(MODEL_VERSION_ID);
   });
 });
 

@@ -18,6 +18,7 @@ import {
 } from '../../models/sliderbed_v1/schema';
 import { calculate } from '../../models/sliderbed_v1/formulas';
 import { validate } from '../../models/sliderbed_v1/rules';
+import { MODEL_KEY, MODEL_VERSION_ID } from '../model-identity';
 
 // ============================================================================
 // INPUT NORMALIZATION
@@ -61,7 +62,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
   const {
     inputs: rawInputs,
     parameters: parameterOverrides,
-    model_version_id = 'sliderbed_v1_factory_default',
+    model_version_id = MODEL_VERSION_ID,
   } = request;
 
   // Normalize inputs for backward compatibility (legacy field names)
@@ -85,7 +86,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
       metadata: {
         model_version_id,
         calculated_at: new Date().toISOString(),
-        model_key: 'belt_conveyor_v1',
+        model_key: MODEL_KEY,
       },
     };
   }
@@ -101,7 +102,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
     metadata: {
       model_version_id,
       calculated_at: new Date().toISOString(),
-      model_key: 'belt_conveyor_v1',
+      model_key: MODEL_KEY,
     },
   };
 }
