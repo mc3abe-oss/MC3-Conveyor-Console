@@ -559,15 +559,16 @@ export type ValidationMode = 'draft' | 'commit';
 // ============================================================================
 
 /**
- * Frame height mode (v1.5)
+ * Frame height mode (v1.5, updated v1.36)
  * Determines how frame height is specified.
+ * Note: Both Standard and Low Profile use the same explicit frame_clearance_in input.
  */
 export enum FrameHeightMode {
-  /** Standard frame height: largest_pulley_diameter_in + 2.5" (no snub rollers required) */
+  /** Standard frame height: uses gravity return rollers (no snub rollers required) */
   Standard = 'Standard',
-  /** Low profile frame height: drive_pulley_diameter_in + 0.5" (snub rollers typically required) */
+  /** Low profile frame height: uses snub rollers (snub rollers typically required) */
   LowProfile = 'Low Profile',
-  /** Custom frame height: user-specified value */
+  /** Custom frame height: user-specified reference value */
   Custom = 'Custom',
 }
 
@@ -1105,7 +1106,7 @@ export interface SliderbedInputs {
   adjustment_required_in?: number;
 
   // =========================================================================
-  // v1.5: FRAME HEIGHT
+  // v1.5: FRAME HEIGHT (updated v1.36)
   // =========================================================================
 
   /** Frame height mode (Standard, Low Profile, Custom) */
@@ -1113,6 +1114,14 @@ export interface SliderbedInputs {
 
   /** Custom frame height in inches (required if frame_height_mode = Custom) */
   custom_frame_height_in?: number;
+
+  /**
+   * Frame clearance in inches (v1.36)
+   * Explicit user-editable clearance added to required frame height.
+   * Used in BOTH Standard and Low Profile modes.
+   * Default: 0.50", Range: 0.00" – 3.00", Step: 0.125"
+   */
+  frame_clearance_in?: number;
 
   // =========================================================================
   // v1.29: RETURN SUPPORT CONFIGURATION
@@ -1683,18 +1692,13 @@ export interface SliderbedParameters {
    */
   return_roller_diameter_in: number;
 
-  // v1.34: Frame Standard clearance parameters
+  // v1.36: Frame clearance parameter (replaces separate Standard/Low Profile clearances)
   /**
-   * Frame clearance for Low Profile standard (inches).
-   * Default: 0.5". Added to required frame height for reference frame height.
+   * Default frame clearance in inches (v1.36).
+   * Default: 0.50". Added to required frame height for reference frame height.
+   * Used in BOTH Standard and Low Profile modes. User can override via input.
    */
-  frame_clearance_low_profile_in: number;
-
-  /**
-   * Frame clearance for Standard frame (inches).
-   * Default: 2.5". Added to required frame height for reference frame height.
-   */
-  frame_clearance_standard_in: number;
+  frame_clearance_default_in: number;
 
   /**
    * Maximum frame height for Low Profile classification (inches).
@@ -2400,9 +2404,8 @@ export const DEFAULT_PARAMETERS: SliderbedParameters = {
   pulley_face_extra_v_guided_in: 0.5,
   pulley_face_extra_crowned_in: 2.0,
   return_roller_diameter_in: 2.0,
-  // v1.34: Frame Standard clearance parameters
-  frame_clearance_low_profile_in: 0.5,
-  frame_clearance_standard_in: 2.5,
+  // v1.36: Frame clearance parameter (single value for both modes)
+  frame_clearance_default_in: 0.5,
   low_profile_max_frame_height_in: 10.0,
 };
 
@@ -2489,8 +2492,9 @@ export const DEFAULT_INPUT_VALUES = {
   // Note: height_input_mode, reference_end, tail_tob_in, drive_tob_in, adjustment_required_in
   // are intentionally NOT listed here because they must NOT exist when legs_required=false
 
-  // Frame height defaults (v1.5)
+  // Frame height defaults (v1.5, updated v1.36)
   frame_height_mode: FrameHeightMode.Standard,
+  frame_clearance_in: 0.5, // v1.36: explicit clearance, default 0.50" for both Standard and Low Profile
 
   // Return support defaults (v1.29)
   return_frame_style: ReturnFrameStyle.Standard,
@@ -2613,8 +2617,9 @@ export function buildDefaultInputs(): SliderbedInputs {
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
 
-    // Frame height (v1.5)
+    // Frame height (v1.5, updated v1.36)
     frame_height_mode: FrameHeightMode.Standard,
+    frame_clearance_in: 0.5, // v1.36: explicit clearance
 
     // Per-end support types (v1.4)
     tail_support_type: EndSupportType.External,

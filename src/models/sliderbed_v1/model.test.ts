@@ -2834,23 +2834,23 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
   const { FrameHeightMode } = require('./schema');
 
   describe('calculateEffectiveFrameHeight', () => {
-    it('should calculate Standard frame height as pulley + 2.5"', () => {
-      // Standard mode uses 2.5" offset to match snub threshold (no snubs needed)
+    // v1.36: Both Standard and Low Profile now use the same default clearance (0.5")
+    it('should calculate Standard frame height as pulley + 0.5" (v1.36)', () => {
       const frameHeight = calculateEffectiveFrameHeight(
         FrameHeightMode.Standard,
         4, // 4" pulley
         undefined
       );
-      expect(frameHeight).toBe(6.5); // 4 + 2.5
+      expect(frameHeight).toBe(4.5); // 4 + 0.5 (v1.36: single default clearance)
     });
 
-    it('should calculate Low Profile frame height as pulley + 0.5"', () => {
+    it('should calculate Low Profile frame height as pulley + 0.5" (v1.36)', () => {
       const frameHeight = calculateEffectiveFrameHeight(
         FrameHeightMode.LowProfile,
         4, // 4" pulley
         undefined
       );
-      expect(frameHeight).toBe(4.5); // 4 + 0.5
+      expect(frameHeight).toBe(4.5); // 4 + 0.5 (same as Standard now)
     });
 
     it('should use custom frame height when mode is Custom', () => {
@@ -2862,31 +2862,31 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(frameHeight).toBe(3.5);
     });
 
-    it('should fall back to standard when Custom mode has no value', () => {
+    it('should fall back to default clearance when Custom mode has no value (v1.36)', () => {
       const frameHeight = calculateEffectiveFrameHeight(
         FrameHeightMode.Custom,
         4, // pulley
         undefined // no custom value
       );
-      expect(frameHeight).toBe(6.5); // Falls back to standard (4 + 2.5)
+      expect(frameHeight).toBe(4.5); // Falls back to default (4 + 0.5)
     });
 
-    it('should default to Standard when mode is undefined', () => {
+    it('should default to Standard with 0.5" clearance when mode is undefined (v1.36)', () => {
       const frameHeight = calculateEffectiveFrameHeight(
         undefined,
         6, // 6" pulley
         undefined
       );
-      expect(frameHeight).toBe(8.5); // 6 + 2.5 (Standard offset)
+      expect(frameHeight).toBe(6.5); // 6 + 0.5 (default clearance)
     });
 
-    it('should handle string enum values', () => {
+    it('should handle string enum values (v1.36)', () => {
       const frameHeight = calculateEffectiveFrameHeight(
         'Low Profile',
         4,
         undefined
       );
-      expect(frameHeight).toBe(4.5);
+      expect(frameHeight).toBe(4.5); // Same as Standard (0.5" clearance)
     });
   });
 
@@ -3053,37 +3053,78 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       ...APPLICATION_DEFAULTS,
     };
 
-    it('should output frame height for Standard mode', () => {
+    it('should output frame height for Standard mode (v1.36)', () => {
       const inputs = {
         ...baseInputs,
         frame_height_mode: FrameHeightMode.Standard,
+        // frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      // v1.33: New formula: largest_pulley (4") + 2*cleat_height (0) + return_roller (2") = 6"
-      expect(result.outputs?.effective_frame_height_in).toBe(6);
-      // 6" frame < 6.5" threshold → snubs required
-      expect(result.outputs?.requires_snub_rollers).toBe(true);
+      // v1.36: Standard formula: Required = largest_pulley (4") + return_roller (2") = 6"
+      // Reference = Required + clearance (0.5") = 6.5"
+      expect(result.outputs?.required_frame_height_in).toBe(6);
+      expect(result.outputs?.reference_frame_height_in).toBe(6.5);
+      expect(result.outputs?.effective_frame_height_in).toBe(6.5); // Legacy: uses reference
+      expect(result.outputs?.clearance_for_selected_standard_in).toBe(0.5);
+      // 6.5" frame >= 6.5" threshold → snubs NOT required
+      expect(result.outputs?.requires_snub_rollers).toBe(false);
       expect(result.outputs?.cost_flag_low_profile).toBe(false);
       expect(result.outputs?.cost_flag_custom_frame).toBe(false);
       expect(result.outputs?.cost_flag_design_review).toBe(false);
     });
 
-    it('should output frame height for Low Profile mode', () => {
+    it('should output frame height for Low Profile mode (v1.36)', () => {
       const inputs = {
         ...baseInputs,
         frame_height_mode: FrameHeightMode.LowProfile,
+        // frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      // v1.35: Low Profile formula: largest_pulley (4") + 0.5" = 4.5"
-      // (Snubs handle return, no return roller clearance needed)
-      expect(result.outputs?.effective_frame_height_in).toBe(4.5);
+      // v1.36: Low Profile formula: Required = largest_pulley (4") only = 4"
+      // Reference = Required + clearance (0.5") = 4.5"
+      expect(result.outputs?.required_frame_height_in).toBe(4);
+      expect(result.outputs?.reference_frame_height_in).toBe(4.5);
+      expect(result.outputs?.effective_frame_height_in).toBe(4.5); // Legacy: uses reference
+      expect(result.outputs?.clearance_for_selected_standard_in).toBe(0.5);
       // 4.5" frame < 6.5" threshold → snubs required
       expect(result.outputs?.requires_snub_rollers).toBe(true);
       expect(result.outputs?.cost_flag_low_profile).toBe(true);
+    });
+
+    it('should use user-specified frame_clearance_in (v1.36)', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.Standard,
+        frame_clearance_in: 1.25, // User override
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // v1.36: Standard formula: Required = largest_pulley (4") + return_roller (2") = 6"
+      // Reference = Required + clearance (1.25") = 7.25"
+      expect(result.outputs?.required_frame_height_in).toBe(6);
+      expect(result.outputs?.reference_frame_height_in).toBe(7.25);
+      expect(result.outputs?.clearance_for_selected_standard_in).toBe(1.25);
+    });
+
+    it('should use user-specified frame_clearance_in in Low Profile mode (v1.36)', () => {
+      const inputs = {
+        ...baseInputs,
+        frame_height_mode: FrameHeightMode.LowProfile,
+        frame_clearance_in: 1.0, // User override
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // v1.36: Low Profile formula: Required = largest_pulley (4") = 4"
+      // Reference = Required + clearance (1.0") = 5.0"
+      expect(result.outputs?.required_frame_height_in).toBe(4);
+      expect(result.outputs?.reference_frame_height_in).toBe(5.0);
+      expect(result.outputs?.clearance_for_selected_standard_in).toBe(1.0);
     });
 
     it('should output frame height for Custom mode', () => {
@@ -3259,8 +3300,8 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       ...FRAME_TEST_DEFAULTS,
     } as SliderbedInputs;
 
-    // Test 1: No cleats - frame_height = largest_pulley + 0 + return_roller = 4 + 0 + 2 = 6
-    it('should compute frame height without cleats: drive=4, tail=4, cleat=0, returnRoller=2 -> 6"', () => {
+    // Test 1: No cleats - frame_height = largest_pulley + 0 + return_roller + clearance = 4 + 0 + 2 + 0.5 = 6.5 (v1.36)
+    it('should compute frame height without cleats: drive=4, tail=4, cleat=0, returnRoller=2 -> 6.5"', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 4,
@@ -3272,13 +3313,13 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(result.success).toBe(true);
       expect(result.outputs?.largest_pulley_diameter_in).toBe(4);
       expect(result.outputs?.effective_cleat_height_in).toBe(0);
-      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(6, 2);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(6.5, 2); // v1.36: includes 0.5" clearance
       expect(result.outputs?.frame_height_breakdown).toBeDefined();
-      expect(result.outputs?.frame_height_breakdown?.total_in).toBeCloseTo(6, 2);
+      expect(result.outputs?.frame_height_breakdown?.total_in).toBeCloseTo(6.5, 2); // v1.36: includes clearance
     });
 
-    // Test 2: Cleats 1" - frame_height = 4 + (2*1) + 2 = 8
-    it('should compute frame height with 1" cleats: drive=4, tail=4, cleat=1, returnRoller=2 -> 8"', () => {
+    // Test 2: Cleats 1" - frame_height = 4 + (2*1) + 2 + 0.5 = 8.5 (v1.36)
+    it('should compute frame height with 1" cleats: drive=4, tail=4, cleat=1, returnRoller=2 -> 8.5"', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 4,
@@ -3293,12 +3334,12 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(result.success).toBe(true);
       expect(result.outputs?.largest_pulley_diameter_in).toBe(4);
       expect(result.outputs?.effective_cleat_height_in).toBe(1);
-      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(8, 2);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(8.5, 2); // v1.36: includes 0.5" clearance
       expect(result.outputs?.frame_height_breakdown?.cleat_adder_in).toBe(2);
     });
 
-    // Test 3: Largest pulley wins - frame_height = 6 + (2*1) + 2 = 10
-    it('should use largest pulley: drive=6, tail=4, cleat=1, returnRoller=2 -> 10"', () => {
+    // Test 3: Largest pulley wins - frame_height = 6 + (2*1) + 2 + 0.5 = 10.5 (v1.36)
+    it('should use largest pulley: drive=6, tail=4, cleat=1, returnRoller=2 -> 10.5"', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 6,
@@ -3313,11 +3354,11 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(result.success).toBe(true);
       expect(result.outputs?.largest_pulley_diameter_in).toBe(6);
       expect(result.outputs?.effective_cleat_height_in).toBe(1);
-      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(10, 2);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(10.5, 2); // v1.36: includes 0.5" clearance
     });
 
-    // Test 4: Override return roller diameter via parameters (requires custom parameters)
-    it('should respect return roller diameter parameter: drive=6, tail=4, cleat=1, returnRoller=1.9 -> 9.9"', () => {
+    // Test 4: Override return roller diameter via parameters - frame_height = 6 + (2*1) + 1.9 + 0.5 = 10.4 (v1.36)
+    it('should respect return roller diameter parameter: drive=6, tail=4, cleat=1, returnRoller=1.9 -> 10.4"', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 6,
@@ -3336,7 +3377,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
       expect(result.success).toBe(true);
       expect(result.outputs?.largest_pulley_diameter_in).toBe(6);
-      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(9.9, 2);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(10.4, 2); // v1.36: includes 0.5" clearance
       expect(result.outputs?.frame_height_breakdown?.return_roller_in).toBe(1.9);
     });
 
@@ -3446,47 +3487,50 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     });
 
     // Fixture C: Reference height adds Standard clearance
-    it('v1.34 Fixture C: Standard mode adds 2.5" clearance to reference', () => {
+    // v1.36: Standard mode uses explicit clearance (default 0.5")
+    it('v1.34/v1.36 Fixture C: Standard mode adds explicit clearance (0.5" default) to reference', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 4.0,
         tail_pulley_diameter_in: 4.0,
         cleats_enabled: false,
         frame_height_mode: FrameHeightMode.Standard,
+        // frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
       // required = 4.0 + 0 + 2.0 = 6.0
       expect(result.outputs?.required_frame_height_in).toBeCloseTo(6.0, 2);
-      // reference = required + 2.5 = 8.5
-      expect(result.outputs?.reference_frame_height_in).toBeCloseTo(8.5, 2);
-      expect(result.outputs?.clearance_for_selected_standard_in).toBeCloseTo(2.5, 2);
+      // v1.36: reference = required + 0.5 (default clearance) = 6.5
+      expect(result.outputs?.reference_frame_height_in).toBeCloseTo(6.5, 2);
+      expect(result.outputs?.clearance_for_selected_standard_in).toBeCloseTo(0.5, 2);
     });
 
-    // Fixture: v1.35 - Low Profile uses different formula (snubs, no return roller)
-    it('v1.35: Low Profile mode = largestPulley + 0.5" (no return roller)', () => {
+    // v1.35/v1.36: Low Profile uses different formula (snubs, no return roller)
+    it('v1.35/v1.36: Low Profile mode = largestPulley only (no return roller)', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 4.0,
         tail_pulley_diameter_in: 4.0,
         cleats_enabled: false,
         frame_height_mode: FrameHeightMode.LowProfile,
+        // frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      // v1.35: Low Profile = largestPulley + 0.5 (snubs handle return, no return roller)
-      // required = 4.0 + 0.5 = 4.5
-      expect(result.outputs?.required_frame_height_in).toBeCloseTo(4.5, 2);
-      // reference = required (no additional clearance for Low Profile)
+      // v1.36: Low Profile = largestPulley only (snubs handle return)
+      // required = 4.0 (physical envelope only)
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(4.0, 2);
+      // v1.36: reference = required + clearance = 4.0 + 0.5 = 4.5
       expect(result.outputs?.reference_frame_height_in).toBeCloseTo(4.5, 2);
       expect(result.outputs?.clearance_for_selected_standard_in).toBeCloseTo(0.5, 2);
     });
 
-    // Fixture D: v1.35 - Low Profile + cleats is now ERROR (not warning)
+    // v1.35/v1.36 Fixture D: Low Profile + cleats is ERROR (not allowed)
     // Low Profile requires snubs, and cleated belts cannot run on snubs
-    it('v1.35 Fixture D: Low Profile + cleats = ERROR (not allowed)', () => {
+    it('v1.35/v1.36 Fixture D: Low Profile + cleats = ERROR (not allowed)', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 6.0,
@@ -3499,16 +3543,16 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       };
       const result = runCalculation({ inputs });
 
-      // Should have an ERROR about Low Profile + cleats incompatibility
-      const lowProfileError = result.warnings?.find(
-        (w) => w.message.includes('Low Profile not compatible with cleats') && w.severity === 'error'
+      // v1.36: Error is now in errors array
+      const lowProfileError = result.errors?.find(
+        (e) => e.message.includes('Low Profile not compatible with cleats') && e.severity === 'error'
       );
       expect(lowProfileError).toBeDefined();
       expect(lowProfileError?.severity).toBe('error');
     });
 
-    // v1.34: Breakdown includes required + reference + clearance
-    it('v1.34: breakdown includes required_total_in, reference_total_in, clearance_in', () => {
+    // v1.34, v1.36: Breakdown includes required + reference + clearance
+    it('v1.34/v1.36: breakdown includes required_total_in, reference_total_in, clearance_in', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 5.0,
@@ -3518,6 +3562,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
         cleat_spacing_in: 12,
         cleat_edge_offset_in: 0.5,
         frame_height_mode: FrameHeightMode.Standard,
+        // v1.36: frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
@@ -3527,41 +3572,43 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
       // required = 5.0 + (2 * 1.0) + 2.0 = 9.0
       expect(breakdown?.required_total_in).toBeCloseTo(9.0, 2);
-      expect(breakdown?.clearance_in).toBeCloseTo(2.5, 2);
-      // reference = 9.0 + 2.5 = 11.5
-      expect(breakdown?.reference_total_in).toBeCloseTo(11.5, 2);
+      // v1.36: clearance is now 0.5" (single default for all modes)
+      expect(breakdown?.clearance_in).toBeCloseTo(0.5, 2);
+      // reference = 9.0 + 0.5 = 9.5
+      expect(breakdown?.reference_total_in).toBeCloseTo(9.5, 2);
     });
 
     // =========================================================================
-    // v1.35: Low Profile Semantics - Snubs Required, No Return Roller Allowance
+    // v1.35, v1.36: Low Profile Semantics - Snubs Required, No Return Roller Allowance
     // =========================================================================
 
-    // v1.35 Fixture A: Low Profile, no cleats - formula uses only pulley + clearance
-    it('v1.35 Fixture A: Low Profile (no cleats) required = largest_pulley + 0.5"', () => {
+    // v1.35/v1.36 Fixture A: Low Profile, no cleats - required is pulley only
+    it('v1.35/v1.36 Fixture A: Low Profile (no cleats) required = largest_pulley only', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 8.5,
         tail_pulley_diameter_in: 8.0,
         cleats_enabled: false,
         frame_height_mode: FrameHeightMode.LowProfile,
+        // v1.36: frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      // v1.35: Low Profile = largestPulley + 0.5 (no return roller, no cleats)
-      // required = 8.5 + 0.5 = 9.0
-      expect(result.outputs?.required_frame_height_in).toBeCloseTo(9.0, 2);
-      // reference = required for Low Profile (no additional clearance)
+      // v1.36: Low Profile = largestPulley (physical envelope only)
+      // required = 8.5 (pulley only, no clearance built in)
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(8.5, 2);
+      // v1.36: reference = required + clearance = 8.5 + 0.5 = 9.0
       expect(result.outputs?.reference_frame_height_in).toBeCloseTo(9.0, 2);
 
       // Breakdown should show snubs note
       const breakdown = result.outputs?.frame_height_breakdown;
-      expect(breakdown?.formula).toContain('Snubs handle return');
+      expect(breakdown?.formula).toContain('snubs');
       expect(breakdown?.return_roller_in).toBe(0); // Snubs, not gravity rollers
     });
 
-    // v1.35 Fixture B: Standard, with cleats - full formula
-    it('v1.35 Fixture B: Standard (with cleats) required = pulley + 2*cleat + return_roller', () => {
+    // v1.35/v1.36 Fixture B: Standard, with cleats - full formula
+    it('v1.35/v1.36 Fixture B: Standard (with cleats) required = pulley + 2*cleat + return_roller', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 8.5,
@@ -3571,24 +3618,25 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
         cleat_spacing_in: 12,
         cleat_edge_offset_in: 0.5,
         frame_height_mode: FrameHeightMode.Standard,
+        // v1.36: frame_clearance_in defaults to 0.5"
       };
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
       // required = 8.5 + (2 * 3.0) + 2.0 = 8.5 + 6.0 + 2.0 = 16.5
       expect(result.outputs?.required_frame_height_in).toBeCloseTo(16.5, 2);
-      // reference = 16.5 + 2.5 = 19.0
-      expect(result.outputs?.reference_frame_height_in).toBeCloseTo(19.0, 2);
+      // v1.36: reference = 16.5 + 0.5 = 17.0
+      expect(result.outputs?.reference_frame_height_in).toBeCloseTo(17.0, 2);
 
       // Should NOT have Low Profile error (Standard mode with cleats is valid)
-      const lowProfileError = result.warnings?.find(
-        (w) => w.message.includes('Low Profile not compatible') && w.severity === 'error'
+      const lowProfileError = result.errors?.find(
+        (e) => e.message.includes('Low Profile not compatible')
       );
       expect(lowProfileError).toBeUndefined();
     });
 
-    // v1.35 Fixture C: Low Profile + cleats = ERROR (comprehensive test)
-    it('v1.35 Fixture C: Low Profile + cleats = ERROR with correct message', () => {
+    // v1.35/v1.36 Fixture C: Low Profile + cleats = ERROR (comprehensive test)
+    it('v1.35/v1.36 Fixture C: Low Profile + cleats = ERROR with correct message', () => {
       const inputs: SliderbedInputs = {
         ...frameHeightBaseInputs,
         drive_pulley_diameter_in: 8.5,
@@ -3601,9 +3649,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       };
       const result = runCalculation({ inputs });
 
-      // Should have ERROR about Low Profile + cleats incompatibility
-      const lowProfileError = result.warnings?.find(
-        (w) => w.severity === 'error' && w.field === 'frame_height_mode'
+      // v1.36: Error is now in errors array, not warnings
+      const lowProfileError = result.errors?.find(
+        (e) => e.severity === 'error' && e.field === 'frame_height_mode'
       );
       expect(lowProfileError).toBeDefined();
       expect(lowProfileError?.message).toContain('Low Profile not compatible with cleats');

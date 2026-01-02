@@ -382,9 +382,8 @@ export default function TabConveyorPhysical({
   );
   const returnRollerDiameter = FRAME_HEIGHT_CONSTANTS.DEFAULT_RETURN_ROLLER_DIAMETER_IN;
 
-  // v1.34: Clearance parameters (default values)
-  const clearanceLowProfile = 0.5;
-  const clearanceStandard = 2.5;
+  // v1.36: Single explicit clearance (default 0.50")
+  const frameClearance = inputs.frame_clearance_in ?? 0.5;
 
   const frameHeightBreakdown = calculateFrameHeightWithBreakdown(
     actualDriveOd,
@@ -393,14 +392,12 @@ export default function TabConveyorPhysical({
     returnRollerDiameter,
     inputs.frame_height_mode,
     inputs.custom_frame_height_in,
-    clearanceLowProfile,
-    clearanceStandard
+    frameClearance
   );
 
   // v1.34: Extract both required and reference heights
   const requiredFrameHeight = frameHeightBreakdown.required_total_in;
   const referenceFrameHeight = frameHeightBreakdown.reference_total_in;
-  const effectiveFrameHeight = frameHeightBreakdown.total_in;
 
   // v1.35: Removed snub/gravity roller calculations from Frame section
   // ReturnSupportModal is the single owner of return path configuration
@@ -1863,7 +1860,7 @@ export default function TabConveyorPhysical({
             Frame Height
           </h4>
 
-          {/* Frame Standard (v1.34: renamed from Frame Height Mode, v1.35: Low Profile disabled with cleats) */}
+          {/* Frame Standard (v1.34, v1.36: simplified labels, explicit clearance input) */}
           <div>
             <label htmlFor="frame_height_mode" className="label">
               Frame Standard
@@ -1878,20 +1875,21 @@ export default function TabConveyorPhysical({
                 if (mode !== FrameHeightMode.Custom) {
                   updateInput('custom_frame_height_in', undefined);
                 }
+                // Note: Do NOT reset frame_clearance_in when switching modes (preserve user value)
               }}
             >
-              <option value={FrameHeightMode.Standard}>Standard (+2.5&quot; clearance)</option>
+              <option value={FrameHeightMode.Standard}>Standard</option>
               <option
                 value={FrameHeightMode.LowProfile}
                 disabled={cleatsEnabledForFrame}
                 title={cleatsEnabledForFrame ? 'Unavailable with cleats (snubs required)' : undefined}
               >
-                Low Profile (+0.5&quot; clearance){cleatsEnabledForFrame ? ' — unavailable with cleats' : ''}
+                Low Profile{cleatsEnabledForFrame ? ' — unavailable with cleats' : ''}
               </option>
               <option value={FrameHeightMode.Custom}>Custom</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Frame Standard determines reference clearance above the required physical envelope. Low Profile and Custom are cost options.
+              Standard uses gravity return rollers. Low Profile uses snub rollers (cost option).
             </p>
             {cleatsEnabledForFrame && (
               <p className="text-xs text-amber-600 mt-1">
@@ -1899,6 +1897,30 @@ export default function TabConveyorPhysical({
               </p>
             )}
           </div>
+
+          {/* Frame Clearance (v1.36: explicit input, same for Standard and Low Profile) */}
+          {inputs.frame_height_mode !== FrameHeightMode.Custom && (
+            <div>
+              <label htmlFor="frame_clearance_in" className="label">
+                Frame Clearance (in)
+              </label>
+              <input
+                type="number"
+                id="frame_clearance_in"
+                className="input"
+                value={inputs.frame_clearance_in ?? 0.5}
+                onChange={(e) =>
+                  updateInput('frame_clearance_in', e.target.value ? parseFloat(e.target.value) : 0.5)
+                }
+                step="0.125"
+                min="0"
+                max="3.0"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Clearance added to required height. Default: 0.50&quot;. Range: 0.00&quot; – 3.00&quot;
+              </p>
+            </div>
+          )}
 
           {/* Custom Frame Height */}
           {inputs.frame_height_mode === FrameHeightMode.Custom && (
@@ -1930,8 +1952,7 @@ export default function TabConveyorPhysical({
           {inputs.frame_height_mode === FrameHeightMode.LowProfile && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
-                <strong>Low Profile:</strong> Frame is ~0.5&quot; above largest pulley OD.
-                Snub rollers are required for belt return path (gravity rollers would be crushed).
+                <strong>Low Profile:</strong> Snub rollers are required for belt return path.
                 Not compatible with cleated belts.
               </p>
             </div>
@@ -1985,7 +2006,7 @@ export default function TabConveyorPhysical({
                   <span className="font-medium text-gray-700">{frameHeightBreakdown.return_roller_in.toFixed(2)}"</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Clearance ({inputs.frame_height_mode ?? 'Standard'}):</span>
+                  <span className="text-gray-500">Clearance:</span>
                   <span className="font-medium text-gray-700">+{frameHeightBreakdown.clearance_in.toFixed(2)}"</span>
                 </div>
               </div>
