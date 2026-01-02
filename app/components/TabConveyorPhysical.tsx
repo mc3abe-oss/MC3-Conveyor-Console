@@ -74,6 +74,16 @@ import {
   DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../src/lib/cleat-catalog';
 import { useCleatCatalog } from '../../src/lib/hooks/useCleatCatalog';
+import {
+  SpecGrid,
+  InlineSpecRow,
+  CompactCardHeader,
+  FootnoteRow,
+  CompactInfoBanner,
+  CompactCard,
+  EditButton,
+  SectionDivider,
+} from './CompactCardLayouts';
 
 interface TabConveyorPhysicalProps {
   inputs: SliderbedInputs;
@@ -788,282 +798,184 @@ export default function TabConveyorPhysical({
         issueCounts={sectionCounts.beltPulleys}
         issues={getMergedIssuesForSection?.('beltPulleys')}
       >
-        <div className="grid grid-cols-1 gap-4">
+        <div className="space-y-3">
           {/* ===== BELT SUBSECTION ===== */}
-          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2">
-            Belt
-          </h4>
+          <SectionDivider title="Belt" className="mt-0" />
 
-          {/* Belt Selection */}
-          <div>
-            <label htmlFor="belt_catalog_key" className="label">
-              Belt
-            </label>
-            <BeltSelect
-              id="belt_catalog_key"
-              value={inputs.belt_catalog_key}
-              onChange={handleBeltChange}
-              showDetails={false}
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Select a belt to auto-populate PIW/PIL and minimum pulley diameter constraints.
-            </p>
+          {/* Belt Selection + PIW/PIL - Compact Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="belt_catalog_key" className="label text-xs">Belt</label>
+              <BeltSelect
+                id="belt_catalog_key"
+                value={inputs.belt_catalog_key}
+                onChange={handleBeltChange}
+                showDetails={false}
+              />
+            </div>
+
+            {/* Lacing - Same Row */}
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label htmlFor="lacing_style" className="label text-xs">Lacing</label>
+                <select
+                  id="lacing_style"
+                  className="input text-sm py-1.5"
+                  value={inputs.lacing_style}
+                  onChange={(e) => updateInput('lacing_style', e.target.value)}
+                >
+                  {Object.values(LacingStyle).map((option) => (
+                    <option key={option} value={option}>{option}</option>
+                  ))}
+                </select>
+              </div>
+              {inputs.lacing_style !== LacingStyle.Endless && (
+                <div>
+                  <label htmlFor="lacing_material" className="label text-xs">Material</label>
+                  <select
+                    id="lacing_material"
+                    className="input text-sm py-1.5"
+                    value={inputs.lacing_material || ''}
+                    onChange={(e) => updateInput('lacing_material', e.target.value)}
+                  >
+                    <option value="">Select...</option>
+                    {Object.values(LacingMaterial).map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* PIW/PIL Display - Single source of truth */}
+          {/* PIW/PIL Display - Compact Inline */}
           {inputs.belt_catalog_key && (
-            <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 space-y-2">
-              {/* PIW Row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 w-8">PIW:</span>
+            <div className="bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                {/* PIW */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500">PIW:</span>
                   {inputs.belt_piw_override !== undefined ? (
-                    /* Override active */
                     <>
                       <input
                         type="number"
                         id="belt_piw_override"
-                        className="w-20 px-2 py-1 text-sm border border-amber-300 bg-amber-50 rounded focus:ring-amber-500 focus:border-amber-500"
+                        className="w-16 px-1.5 py-0.5 text-xs border border-amber-300 bg-amber-50 rounded"
                         value={inputs.belt_piw_override}
-                        onChange={(e) =>
-                          updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                        }
+                        onChange={(e) => updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)}
                         step="0.001"
-                        min="0.01"
-                        max="0.50"
                       />
-                      <span className="text-xs text-gray-500">lb/in</span>
-                      <span className="text-xs text-gray-400">(belt: {inputs.belt_piw ?? '—'})</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">Overridden</span>
+                      <span className="text-xs text-gray-400">({inputs.belt_piw ?? '—'})</span>
+                      <button type="button" onClick={() => updateInput('belt_piw_override', undefined)} className="text-xs text-gray-500 hover:text-gray-700">×</button>
                     </>
                   ) : (
-                    /* Native value */
                     <>
-                      <span className="text-sm text-blue-600 font-medium">{inputs.belt_piw ?? '—'}</span>
-                      <span className="text-xs text-gray-500">lb/in</span>
+                      <span className="font-medium text-blue-600">{inputs.belt_piw ?? '—'}</span>
+                      <button type="button" onClick={() => updateInput('belt_piw_override', inputs.belt_piw ?? 0.109)} className="text-xs text-blue-500 hover:text-blue-700">✎</button>
                     </>
                   )}
                 </div>
-                {inputs.belt_piw_override !== undefined ? (
-                  <button
-                    type="button"
-                    onClick={() => updateInput('belt_piw_override', undefined)}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Reset
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => updateInput('belt_piw_override', inputs.belt_piw ?? 0.109)}
-                    className="text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    Override
-                  </button>
-                )}
-              </div>
-
-              {/* PIL Row */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-700 w-8">PIL:</span>
+                <span className="text-gray-300">|</span>
+                {/* PIL */}
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs text-gray-500">PIL:</span>
                   {inputs.belt_pil_override !== undefined ? (
-                    /* Override active */
                     <>
                       <input
                         type="number"
                         id="belt_pil_override"
-                        className="w-20 px-2 py-1 text-sm border border-amber-300 bg-amber-50 rounded focus:ring-amber-500 focus:border-amber-500"
+                        className="w-16 px-1.5 py-0.5 text-xs border border-amber-300 bg-amber-50 rounded"
                         value={inputs.belt_pil_override}
-                        onChange={(e) =>
-                          updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)
-                        }
+                        onChange={(e) => updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)}
                         step="0.001"
-                        min="0.01"
-                        max="0.50"
                       />
-                      <span className="text-xs text-gray-500">lb/in</span>
-                      <span className="text-xs text-gray-400">(belt: {inputs.belt_pil ?? '—'})</span>
-                      <span className="text-xs px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded font-medium">Overridden</span>
+                      <span className="text-xs text-gray-400">({inputs.belt_pil ?? '—'})</span>
+                      <button type="button" onClick={() => updateInput('belt_pil_override', undefined)} className="text-xs text-gray-500 hover:text-gray-700">×</button>
                     </>
                   ) : (
-                    /* Native value */
                     <>
-                      <span className="text-sm text-blue-600 font-medium">{inputs.belt_pil ?? '—'}</span>
-                      <span className="text-xs text-gray-500">lb/in</span>
+                      <span className="font-medium text-blue-600">{inputs.belt_pil ?? '—'}</span>
+                      <button type="button" onClick={() => updateInput('belt_pil_override', inputs.belt_pil ?? 0.109)} className="text-xs text-blue-500 hover:text-blue-700">✎</button>
                     </>
                   )}
                 </div>
-                {inputs.belt_pil_override !== undefined ? (
-                  <button
-                    type="button"
-                    onClick={() => updateInput('belt_pil_override', undefined)}
-                    className="text-xs text-gray-500 hover:text-gray-700"
-                  >
-                    Reset
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => updateInput('belt_pil_override', inputs.belt_pil ?? 0.109)}
-                    className="text-xs text-blue-600 hover:text-blue-700"
-                  >
-                    Override
-                  </button>
-                )}
+                <span className="text-xs text-gray-400">lb/in</span>
               </div>
             </div>
           )}
 
-          {/* ===== BELT LACING SUBSECTION (moved from Build Options) ===== */}
-          <div className="space-y-3 mt-4 pt-4 border-t border-gray-100">
+          {/* ===== TRACKING SUBSECTION ===== */}
+          <SectionDivider title="Tracking" />
+
+          {/* Tracking Recommendation Banner - Compact */}
+          {trackingIssue?.trackingData && (
+            <CompactInfoBanner
+              title={`Recommended: ${TRACKING_MODE_LABELS[trackingIssue.trackingData.tracking_mode_recommended as TrackingMode] ?? trackingIssue.trackingData.tracking_mode_recommended}`}
+              subtitle={trackingIssue.trackingData.tracking_recommendation_rationale}
+              detail={trackingIssue.trackingData.tracking_recommendation_note}
+              variant="info"
+              collapsible
+              defaultExpanded={false}
+            />
+          )}
+
+          {/* Belt Tracking + V-Guide - Compact Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
-              <label htmlFor="lacing_style" className="label">
-                Lacing Style
-              </label>
+              <label htmlFor="belt_tracking_method" className="label text-xs">Tracking Method</label>
               <select
-                id="lacing_style"
-                className="input"
-                value={inputs.lacing_style}
-                onChange={(e) => updateInput('lacing_style', e.target.value)}
+                id="belt_tracking_method"
+                className="input text-sm py-1.5"
+                value={inputs.belt_tracking_method}
+                onChange={(e) => updateInput('belt_tracking_method', e.target.value)}
               >
-                {Object.values(LacingStyle).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
+                {Object.values(BeltTrackingMethod).map((option) => (
+                  <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </div>
 
-            {/* Lacing material - only show if not Endless */}
-            {inputs.lacing_style !== LacingStyle.Endless && (
+            {/* V-guide profile (conditional) */}
+            {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+              inputs.belt_tracking_method === 'V-guided') && (
               <div>
-                <label htmlFor="lacing_material" className="label">
-                  Lacing Material
-                </label>
-                <select
-                  id="lacing_material"
-                  className="input"
-                  value={inputs.lacing_material || ''}
-                  onChange={(e) => updateInput('lacing_material', e.target.value)}
+                <label htmlFor="v_guide_key" className="label text-xs">V-Guide</label>
+                <VGuideSelect
+                  id="v_guide_key"
+                  value={inputs.v_guide_key}
+                  onChange={(key: string | undefined, vguide: VGuideItem | undefined) => {
+                    updateInput('v_guide_key', key);
+                    if (vguide) {
+                      updateInput('vguide_min_pulley_dia_solid_in', vguide.min_pulley_dia_solid_in);
+                      updateInput('vguide_min_pulley_dia_notched_in', vguide.min_pulley_dia_notched_in);
+                      updateInput('vguide_min_pulley_dia_solid_pu_in', vguide.min_pulley_dia_solid_pu_in);
+                      updateInput('vguide_min_pulley_dia_notched_pu_in', vguide.min_pulley_dia_notched_pu_in);
+                    } else {
+                      updateInput('vguide_min_pulley_dia_solid_in', undefined);
+                      updateInput('vguide_min_pulley_dia_notched_in', undefined);
+                      updateInput('vguide_min_pulley_dia_solid_pu_in', undefined);
+                      updateInput('vguide_min_pulley_dia_notched_pu_in', undefined);
+                    }
+                  }}
                   required
-                >
-                  <option value="">Select material...</option>
-                  {Object.values(LacingMaterial).map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
             )}
           </div>
 
-          {/* ===== TRACKING SUBSECTION ===== */}
-          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
-            Tracking
-          </h4>
-
-          {/* Tracking Recommendation Banner (pre-calc from useConfigureIssues) */}
-          {trackingIssue?.trackingData && (
-            <div className="mb-4 p-3 rounded-lg bg-blue-50 border border-blue-200">
-              <div className="flex items-start">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3 flex-1">
-                  <h4 className="text-sm font-medium text-blue-900">
-                    Recommended: {TRACKING_MODE_LABELS[trackingIssue.trackingData.tracking_mode_recommended as TrackingMode] ?? trackingIssue.trackingData.tracking_mode_recommended}
-                  </h4>
-                  {trackingIssue.trackingData.tracking_recommendation_rationale && (
-                    <p className="mt-1 text-sm text-blue-800">
-                      {trackingIssue.trackingData.tracking_recommendation_rationale}
-                    </p>
-                  )}
-                  {trackingIssue.trackingData.tracking_recommendation_note && (
-                    <p className="mt-1 text-xs text-blue-700 italic">
-                      {trackingIssue.trackingData.tracking_recommendation_note}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Belt Tracking Method */}
-          <div>
-            <label htmlFor="belt_tracking_method" className="label">
-              Belt Tracking Method
-            </label>
-            <select
-              id="belt_tracking_method"
-              className="input"
-              value={inputs.belt_tracking_method}
-              onChange={(e) => updateInput('belt_tracking_method', e.target.value)}
-            >
-              {Object.values(BeltTrackingMethod).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              V-guided uses a V-profile on the belt underside. Crowned uses crowned pulleys for tracking.
-            </p>
-          </div>
-
-          {/* V-guide profile (v1.22: now using catalog-based selection) */}
-          {/* v1.26: Also populates V-guide min pulley values for PU/PVC calculation */}
-          {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
-            inputs.belt_tracking_method === 'V-guided') && (
-            <div>
-              <label htmlFor="v_guide_key" className="label">
-                V-Guide
-              </label>
-              <VGuideSelect
-                id="v_guide_key"
-                value={inputs.v_guide_key}
-                onChange={(key: string | undefined, vguide: VGuideItem | undefined) => {
-                  updateInput('v_guide_key', key);
-                  // v1.26: Populate V-guide min pulley values for calculation
-                  if (vguide) {
-                    updateInput('vguide_min_pulley_dia_solid_in', vguide.min_pulley_dia_solid_in);
-                    updateInput('vguide_min_pulley_dia_notched_in', vguide.min_pulley_dia_notched_in);
-                    updateInput('vguide_min_pulley_dia_solid_pu_in', vguide.min_pulley_dia_solid_pu_in);
-                    updateInput('vguide_min_pulley_dia_notched_pu_in', vguide.min_pulley_dia_notched_pu_in);
-                  } else {
-                    updateInput('vguide_min_pulley_dia_solid_in', undefined);
-                    updateInput('vguide_min_pulley_dia_notched_in', undefined);
-                    updateInput('vguide_min_pulley_dia_solid_pu_in', undefined);
-                    updateInput('vguide_min_pulley_dia_notched_pu_in', undefined);
-                  }
-                }}
-                required
-              />
-            </div>
-          )}
-
           {/* ===== v1.24: CLEATS SUBSECTION - Summary Card + Modal ===== */}
-          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
-            Cleats
-          </h4>
+          <SectionDivider title="Cleats" />
 
-          {/* Cleats Summary Card - Compact Horizontal Layout */}
-          <div className={`border rounded-lg p-4 ${inputs.cleats_mode === 'cleated' ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-            {/* Header row with title, badges, and edit button */}
-            <div className="flex items-center justify-between mb-3">
-              <h5 className="font-medium text-gray-900">Belt Cleats</h5>
-              <div className="flex items-center gap-2">
-                {inputs.cleats_mode === 'cleated' && inputs.cleats_notched && (
-                  <span className="text-xs text-amber-600 bg-amber-100 px-2 py-0.5 rounded">Notched</span>
-                )}
-                {inputs.cleats_mode === 'cleated' && (
-                  <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
-                )}
-                <button
-                  type="button"
+          {/* Cleats Summary Card - Compact */}
+          <CompactCard configured={inputs.cleats_mode === 'cleated'}>
+            <CompactCardHeader
+              title="Belt Cleats"
+              badges={[
+                ...(inputs.cleats_mode === 'cleated' && inputs.cleats_notched ? [{ label: 'Notched', variant: 'warning' as const }] : []),
+                ...(inputs.cleats_mode === 'cleated' ? [{ label: 'Configured', variant: 'success' as const }] : []),
+              ]}
+              actions={
+                <EditButton
                   onClick={() => {
                     if (inputs.cleats_mode !== 'cleated') {
                       updateInput('cleats_mode', 'cleated');
@@ -1075,65 +987,24 @@ export default function TabConveyorPhysical({
                     }
                     setIsCleatsModalOpen(true);
                   }}
-                  className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                >
-                  {inputs.cleats_mode === 'cleated' ? 'Edit' : 'Configure'}
-                </button>
-              </div>
-            </div>
-
+                  configured={inputs.cleats_mode === 'cleated'}
+                />
+              }
+            />
             {inputs.cleats_mode === 'cleated' ? (
-              <div className="text-sm space-y-1.5">
-                {/* Row 1: Profile, Size, Centers */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  {inputs.cleat_profile && (
-                    <span>
-                      <span className="text-gray-500">Profile:</span>{' '}
-                      <span className="font-medium">{inputs.cleat_profile}</span>
-                    </span>
-                  )}
-                  {inputs.cleat_size && (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      <span>
-                        <span className="text-gray-500">Size:</span>{' '}
-                        <span className="font-medium">{inputs.cleat_size}</span>
-                      </span>
-                    </>
-                  )}
-                  {inputs.cleat_spacing_in && (
-                    <>
-                      <span className="text-gray-300">|</span>
-                      <span>
-                        <span className="text-gray-500">Centers:</span>{' '}
-                        <span className="font-medium text-blue-600">{inputs.cleat_spacing_in}"</span>
-                      </span>
-                    </>
-                  )}
-                </div>
-                {/* Row 2: Pattern, Min Pulley */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-600">
-                  {inputs.cleat_pattern && (
-                    <span>
-                      <span className="text-gray-500">Pattern:</span>{' '}
-                      <span className="font-medium text-gray-900">{CLEAT_PATTERN_LABELS[inputs.cleat_pattern as keyof typeof CLEAT_PATTERN_LABELS] ?? inputs.cleat_pattern}</span>
-                    </span>
-                  )}
-                  {cleatsMinPulleyDiaIn !== null && (
-                    <>
-                      {inputs.cleat_pattern && <span className="text-gray-300">|</span>}
-                      <span>
-                        <span className="text-gray-500">Min Pulley:</span>{' '}
-                        <span className="font-medium text-amber-600">{cleatsMinPulleyDiaIn}"</span>
-                      </span>
-                    </>
-                  )}
-                </div>
-              </div>
+              <InlineSpecRow
+                items={[
+                  ...(inputs.cleat_profile ? [{ label: 'Profile', value: inputs.cleat_profile }] : []),
+                  ...(inputs.cleat_size ? [{ label: 'Size', value: inputs.cleat_size }] : []),
+                  ...(inputs.cleat_spacing_in ? [{ label: 'Centers', value: `${inputs.cleat_spacing_in}"`, highlight: true }] : []),
+                  ...(inputs.cleat_pattern ? [{ label: 'Pattern', value: CLEAT_PATTERN_LABELS[inputs.cleat_pattern as keyof typeof CLEAT_PATTERN_LABELS] ?? inputs.cleat_pattern }] : []),
+                  ...(cleatsMinPulleyDiaIn !== null ? [{ label: 'Min Pulley', value: `${cleatsMinPulleyDiaIn}"`, className: 'text-amber-600' }] : []),
+                ]}
+              />
             ) : (
-              <p className="text-sm text-gray-500">Not configured. Cleats help retain product on inclines.</p>
+              <p className="text-xs text-gray-500">Not configured</p>
             )}
-          </div>
+          </CompactCard>
 
           {/* Cleats Config Modal */}
           <CleatsConfigModal
@@ -1144,127 +1015,91 @@ export default function TabConveyorPhysical({
           />
 
           {/* ===== PULLEYS SUBSECTION ===== */}
-          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
-            Pulleys
-          </h4>
-
-          {/* Tracking Mode Display (read-only from belt) */}
-          <div className="bg-blue-50 border border-blue-200 rounded-md px-3 py-2 text-sm">
-            <span className="text-blue-700 font-medium">Tracking (from Belt): {trackingLabel}</span>
-            {trackingMode === 'V_GUIDED' && inputs.v_guide_key && (
-              <span className="ml-2 text-blue-600">({inputs.v_guide_key})</span>
-            )}
-          </div>
+          <SectionDivider title="Pulleys" />
 
           {/* Pulley Cards - Compact Side-by-Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
             {/* DRIVE PULLEY CARD */}
-            <div className={`border rounded-lg p-4 ${drivePulley ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-gray-900">Head/Drive Pulley</h5>
-                <div className="flex items-center gap-2">
-                  {drivePulley && (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
-                  )}
-                  {applicationLineId && (
-                    <button
-                      type="button"
-                      onClick={() => setIsPulleyModalOpen(true)}
-                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                    >
-                      {drivePulley ? 'Edit' : 'Configure'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
+            <CompactCard configured={!!drivePulley}>
+              <CompactCardHeader
+                title="Head/Drive"
+                badges={drivePulley ? [{ label: 'Configured', variant: 'success' }] : []}
+                actions={applicationLineId && (
+                  <EditButton onClick={() => setIsPulleyModalOpen(true)} configured={!!drivePulley} />
+                )}
+              />
               {pulleysLoading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
+                <p className="text-xs text-gray-500">Loading...</p>
               ) : drivePulley ? (
-                <div className="text-sm space-y-0.5">
-                  <div><span className="text-gray-500">Style:</span> <span className="font-medium">{drivePulley.style_key}</span></div>
-                  <div><span className="text-gray-500">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
-                  <div><span className="text-gray-500">Lagging:</span> <span className="font-medium">
-                    {drivePulley.lagging_type === 'NONE' ? 'None' : `${drivePulley.lagging_type} (${drivePulley.lagging_thickness_in || 0}")`}
-                  </span></div>
-                  {drivePulley.finished_od_in && (
-                    <div><span className="text-gray-500">OD:</span> <span className="font-medium text-blue-600">{drivePulley.finished_od_in}"</span></div>
-                  )}
-                </div>
+                <SpecGrid
+                  items={[
+                    { label: 'Style', value: drivePulley.style_key },
+                    { label: 'Track', value: trackingLabel },
+                    { label: 'Lagging', value: drivePulley.lagging_type === 'NONE' ? 'None' : `${drivePulley.lagging_type}` },
+                    ...(drivePulley.finished_od_in ? [{ label: 'OD', value: `${drivePulley.finished_od_in}"`, highlight: true }] : []),
+                  ]}
+                  columns={2}
+                />
               ) : !applicationLineId ? (
-                <p className="text-xs text-amber-600">Save application to configure pulleys</p>
+                <p className="text-xs text-amber-600">Save to configure</p>
               ) : (
-                <p className="text-sm text-gray-500">Not configured</p>
+                <p className="text-xs text-gray-500">Not configured</p>
               )}
-            </div>
+            </CompactCard>
 
             {/* TAIL PULLEY CARD */}
-            <div className={`border rounded-lg p-4 ${tailPulley ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-gray-50'}`}>
-              <div className="flex items-center justify-between mb-2">
-                <h5 className="font-medium text-gray-900">Tail Pulley</h5>
-                <div className="flex items-center gap-2">
-                  {tailPulley && (
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
-                  )}
-                  {applicationLineId && (
-                    <button
-                      type="button"
-                      onClick={() => setIsPulleyModalOpen(true)}
-                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                    >
-                      {tailPulley ? 'Edit' : 'Configure'}
-                    </button>
-                  )}
-                </div>
-              </div>
-
+            <CompactCard configured={!!tailPulley}>
+              <CompactCardHeader
+                title="Tail"
+                badges={tailPulley ? [{ label: 'Configured', variant: 'success' }] : []}
+                actions={applicationLineId && (
+                  <EditButton onClick={() => setIsPulleyModalOpen(true)} configured={!!tailPulley} />
+                )}
+              />
               {pulleysLoading ? (
-                <p className="text-sm text-gray-500">Loading...</p>
+                <p className="text-xs text-gray-500">Loading...</p>
               ) : tailPulley ? (
-                <div className="text-sm space-y-0.5">
-                  <div><span className="text-gray-500">Style:</span> <span className="font-medium">{tailPulley.style_key}</span></div>
-                  <div><span className="text-gray-500">Tracking:</span> <span className="font-medium">{trackingLabel}</span></div>
-                  <div><span className="text-gray-500">Lagging:</span> <span className="font-medium">
-                    {tailPulley.lagging_type === 'NONE' ? 'None' : `${tailPulley.lagging_type} (${tailPulley.lagging_thickness_in || 0}")`}
-                  </span></div>
-                  {tailPulley.finished_od_in && (
-                    <div><span className="text-gray-500">OD:</span> <span className="font-medium text-blue-600">{tailPulley.finished_od_in}"</span></div>
-                  )}
-                </div>
+                <SpecGrid
+                  items={[
+                    { label: 'Style', value: tailPulley.style_key },
+                    { label: 'Track', value: trackingLabel },
+                    { label: 'Lagging', value: tailPulley.lagging_type === 'NONE' ? 'None' : `${tailPulley.lagging_type}` },
+                    ...(tailPulley.finished_od_in ? [{ label: 'OD', value: `${tailPulley.finished_od_in}"`, highlight: true }] : []),
+                  ]}
+                  columns={2}
+                />
               ) : !applicationLineId ? (
-                <p className="text-xs text-amber-600">Save application to configure pulleys</p>
+                <p className="text-xs text-amber-600">Save to configure</p>
               ) : (
-                <p className="text-sm text-gray-500">Not configured</p>
+                <p className="text-xs text-gray-500">Not configured</p>
               )}
-            </div>
+            </CompactCard>
           </div>
 
-          {/* Min Pulley Requirements - Governing */}
+          {/* Min Pulley Requirements - Governing (Footnote style) */}
           {minPulleyRequired !== undefined && (
-            <div className="text-xs text-gray-600 bg-gray-100 rounded px-3 py-2">
-              <span className="font-medium">Min pulley diameter (Governing):</span>{' '}
+            <FootnoteRow>
+              <span className="font-medium">Min pulley (Governing):</span>{' '}
               <span className="text-blue-700 font-semibold">{minPulleyRequired.toFixed(1)}"</span>
               <span className="ml-1 text-gray-500">
                 ({governingSource === 'vguide' ? 'V-guide' : governingSource === 'cleats' ? 'Cleats' : 'Belt'})
               </span>
               {cleatSpacingMultiplier !== undefined && cleatSpacingMultiplier > 1 && governingSource === 'belt' && (
-                <span className="ml-2 text-amber-600">
-                  (includes {cleatSpacingMultiplier.toFixed(2)}x cleat factor)
-                </span>
+                <span className="ml-1 text-amber-600">({cleatSpacingMultiplier.toFixed(2)}x cleat)</span>
               )}
-            </div>
+            </FootnoteRow>
           )}
 
-          {/* v1.24: Warnings when configured pulley OD is below governing minimum */}
+          {/* Pulley warnings - compact */}
           {minPulleyRequired !== undefined && drivePulley?.finished_od_in && drivePulley.finished_od_in < minPulleyRequired && (
-            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-              <span className="font-medium">Warning:</span> Drive pulley diameter ({drivePulley.finished_od_in}") is below recommended minimum ({minPulleyRequired.toFixed(1)}"). This may cause belt damage or tracking issues.
-            </div>
+            <FootnoteRow variant="warning">
+              Drive pulley ({drivePulley.finished_od_in}") below min ({minPulleyRequired.toFixed(1)}")
+            </FootnoteRow>
           )}
           {minPulleyRequired !== undefined && tailPulley?.finished_od_in && tailPulley.finished_od_in < minPulleyRequired && (
-            <div className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
-              <span className="font-medium">Warning:</span> Tail pulley diameter ({tailPulley.finished_od_in}") is below recommended minimum ({minPulleyRequired.toFixed(1)}"). This may cause belt damage or tracking issues.
-            </div>
+            <FootnoteRow variant="warning">
+              Tail pulley ({tailPulley.finished_od_in}") below min ({minPulleyRequired.toFixed(1)}")
+            </FootnoteRow>
           )}
 
           {/* Legacy Manual Override Section - collapsed by default */}
@@ -1335,7 +1170,8 @@ export default function TabConveyorPhysical({
             </div>
           </details>
 
-          {/* v1.24: Removed Pulley Surface Type dropdown - now controlled per-pulley via PulleyConfigModal */}
+          {/* ===== SHAFTS SUBSECTION ===== */}
+          <SectionDivider title="Shafts" />
 
           {/* v1.37: Shafts Card UI with Step-Down Support */}
           {(() => {
@@ -1412,77 +1248,76 @@ export default function TabConveyorPhysical({
             }
 
             return (
-              <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+              <CompactCard configured>
                 {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <h5 className="font-medium text-gray-900">Shafts</h5>
-                  <div className="flex items-center gap-2">
-                    {hasOverrides && (
-                      <button
-                        type="button"
-                        onClick={handleRevert}
-                        className="text-xs text-gray-500 hover:text-gray-700"
-                      >
-                        Revert to Calculated
-                      </button>
-                    )}
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">
-                      {isManualMode ? 'Override' : 'Configured'}
-                    </span>
-                    {!isShaftEditing ? (
-                      <button
-                        type="button"
-                        onClick={handleEdit}
-                        className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                      >
-                        Edit
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={handleDone}
-                        className="px-3 py-1 text-sm font-medium text-green-600 hover:text-green-700 hover:bg-green-100 rounded transition-colors"
-                      >
-                        Done
-                      </button>
-                    )}
-                  </div>
-                </div>
+                <CompactCardHeader
+                  title="Shafts"
+                  badges={[{ label: isManualMode ? 'Override' : 'Configured', variant: 'success' }]}
+                  actions={
+                    <div className="flex items-center gap-2">
+                      {hasOverrides && (
+                        <button
+                          type="button"
+                          onClick={handleRevert}
+                          className="text-xs text-gray-500 hover:text-gray-700"
+                        >
+                          Revert
+                        </button>
+                      )}
+                      {!isShaftEditing ? (
+                        <EditButton onClick={handleEdit} configured label="Edit" />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={handleDone}
+                          className="px-2.5 py-1 text-xs font-medium text-green-600 hover:text-green-700 hover:bg-green-100 rounded transition-colors"
+                        >
+                          Done
+                        </button>
+                      )}
+                    </div>
+                  }
+                />
 
                 {/* Read-only summary (when not editing) */}
                 {!isShaftEditing && (
-                  <div className="text-sm space-y-1.5">
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <span>
-                        <span className="text-gray-500">Drive:</span>{' '}
-                        <span className="font-medium">
-                          {displayDriveShaft !== undefined ? `${displayDriveShaft.toFixed(3)}"` : '—'}
-                        </span>
-                        {isManualMode && inputs.drive_shaft_diameter_in !== undefined && (
-                          <span className="text-xs text-amber-600 ml-1">(override)</span>
-                        )}
-                        {driveHasStepdown && (
-                          <span className="text-xs text-blue-600 ml-1">
-                            (step-down to {inputs.drive_shaft_stepdown_to_dia_in ?? '?'}")
-                          </span>
-                        )}
-                      </span>
-                      <span className="text-gray-300">|</span>
-                      <span>
-                        <span className="text-gray-500">Tail:</span>{' '}
-                        <span className="font-medium">
-                          {displayTailShaft !== undefined ? `${displayTailShaft.toFixed(3)}"` : '—'}
-                        </span>
-                        {isManualMode && inputs.tail_shaft_diameter_in !== undefined && (
-                          <span className="text-xs text-amber-600 ml-1">(override)</span>
-                        )}
-                        {tailHasStepdown && (
-                          <span className="text-xs text-blue-600 ml-1">
-                            (step-down to {inputs.tail_shaft_stepdown_to_dia_in ?? '?'}")
-                          </span>
-                        )}
-                      </span>
-                    </div>
+                  <div className="space-y-1">
+                    <InlineSpecRow
+                      items={[
+                        {
+                          label: 'Drive',
+                          value: (
+                            <>
+                              {displayDriveShaft !== undefined ? `${displayDriveShaft.toFixed(3)}"` : '—'}
+                              {isManualMode && inputs.drive_shaft_diameter_in !== undefined && (
+                                <span className="text-xs text-amber-600 ml-1">(override)</span>
+                              )}
+                              {driveHasStepdown && (
+                                <span className="text-xs text-blue-600 ml-1">
+                                  → {inputs.drive_shaft_stepdown_to_dia_in ?? '?'}"
+                                </span>
+                              )}
+                            </>
+                          ),
+                        },
+                        {
+                          label: 'Tail',
+                          value: (
+                            <>
+                              {displayTailShaft !== undefined ? `${displayTailShaft.toFixed(3)}"` : '—'}
+                              {isManualMode && inputs.tail_shaft_diameter_in !== undefined && (
+                                <span className="text-xs text-amber-600 ml-1">(override)</span>
+                              )}
+                              {tailHasStepdown && (
+                                <span className="text-xs text-blue-600 ml-1">
+                                  → {inputs.tail_shaft_stepdown_to_dia_in ?? '?'}"
+                                </span>
+                              )}
+                            </>
+                          ),
+                        },
+                      ]}
+                    />
                     {!outputs && (
                       <p className="text-xs text-gray-500 italic">Calculate to see computed values</p>
                     )}
@@ -1641,14 +1476,12 @@ export default function TabConveyorPhysical({
                     </div>
                   </div>
                 )}
-              </div>
+              </CompactCard>
             );
           })()}
 
           {/* ===== v1.29: RETURN SUPPORT SUBSECTION ===== */}
-          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-6">
-            Return Support
-          </h4>
+          <SectionDivider title="Return Support" />
 
           {/* Return Support Summary Card - Compact Horizontal Layout */}
           {(() => {
@@ -1668,70 +1501,39 @@ export default function TabConveyorPhysical({
             const showCleatsSnubsWarning = cleatsEnabledForReturn && snubsEnabled;
 
             return (
-              <div className="border border-green-200 bg-green-50 rounded-lg p-4">
-                {/* Header row with title, badge, and edit button */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <h5 className="font-medium text-gray-900">Return Rollers</h5>
-                    {showCleatsSnubsWarning && (
-                      <span title="Snub rollers with cleats - verify clearance">
-                        <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                        </svg>
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
-                    <button
-                      type="button"
-                      onClick={() => setIsReturnSupportModalOpen(true)}
-                      className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
-                    >
-                      Edit
-                    </button>
-                  </div>
-                </div>
-
-                {/* Compact horizontal info rows */}
-                <div className="text-sm space-y-1.5">
-                  {/* Row 1: Frame, Snubs, Gravity count */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                    <span>
-                      <span className="text-gray-500">Frame:</span>{' '}
-                      <span className="font-medium">{frameStyleLabel}</span>
-                    </span>
-                    <span className="text-gray-300">|</span>
-                    <span>
-                      <span className="text-gray-500">Snubs:</span>{' '}
-                      <span className={`font-medium ${snubsEnabled ? 'text-blue-600' : ''}`}>
-                        {snubsEnabled ? 'Yes' : 'No'}
-                      </span>
-                    </span>
-                    <span className="text-gray-300">|</span>
-                    <span>
-                      <span className="text-gray-500">Gravity:</span>{' '}
-                      <span className="font-medium">{rollerCount} @ {gravityCenters?.toFixed(1) ?? '—'}"</span>
-                    </span>
-                  </div>
-                  {/* Row 2: Diameters */}
-                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-gray-600">
-                    <span>
-                      <span className="text-gray-500">Gravity Dia:</span>{' '}
-                      <span className="font-medium text-gray-900">{gravityDia}"</span>
-                    </span>
-                    {snubsEnabled && (
-                      <>
-                        <span className="text-gray-300">|</span>
-                        <span>
-                          <span className="text-gray-500">Snub Dia:</span>{' '}
-                          <span className="font-medium text-gray-900">{snubDia}"</span>
+              <CompactCard configured>
+                <CompactCardHeader
+                  title={
+                    <span className="flex items-center gap-2">
+                      Return Rollers
+                      {showCleatsSnubsWarning && (
+                        <span title="Snub rollers with cleats - verify clearance">
+                          <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                          </svg>
                         </span>
-                      </>
-                    )}
-                  </div>
+                      )}
+                    </span>
+                  }
+                  badges={[{ label: 'Configured', variant: 'success' }]}
+                  actions={<EditButton onClick={() => setIsReturnSupportModalOpen(true)} configured label="Edit" />}
+                />
+                <div className="space-y-1">
+                  <InlineSpecRow
+                    items={[
+                      { label: 'Frame', value: frameStyleLabel },
+                      { label: 'Snubs', value: snubsEnabled ? 'Yes' : 'No', highlight: snubsEnabled },
+                      { label: 'Gravity', value: `${rollerCount} @ ${gravityCenters?.toFixed(1) ?? '—'}"` },
+                    ]}
+                  />
+                  <InlineSpecRow
+                    items={[
+                      { label: 'Gravity Dia', value: `${gravityDia}"` },
+                      ...(snubsEnabled ? [{ label: 'Snub Dia', value: `${snubDia}"` }] : []),
+                    ]}
+                  />
                 </div>
-              </div>
+              </CompactCard>
             );
           })()}
 
