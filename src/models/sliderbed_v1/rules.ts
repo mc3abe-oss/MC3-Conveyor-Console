@@ -82,6 +82,8 @@ import {
   calculateGravityRollerCenters,
   calculateDefaultGravityRollerCount,
   DEFAULT_RETURN_END_OFFSET_IN,
+  // v1.33: Cleat height for frame calculation
+  getEffectiveCleatHeight,
 } from './formulas';
 
 /**
@@ -1453,6 +1455,21 @@ export function applyApplicationRules(
     warnings.push({
       field: 'frame_height_mode',
       message: 'Custom frame height selected. This is a cost option.',
+      severity: 'info',
+    });
+  }
+
+  // v1.33: Cleat height contribution to frame height
+  const cleatsEnabledForFrame = inputs.cleats_enabled === true;
+  const effectiveCleatHeightForWarning = getEffectiveCleatHeight(
+    cleatsEnabledForFrame,
+    inputs.cleat_height_in,
+    inputs.cleat_size
+  );
+  if (effectiveCleatHeightForWarning > 0) {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: `Frame height includes 2 × cleat height (carry + return): 2 × ${effectiveCleatHeightForWarning.toFixed(2)}" = ${(2 * effectiveCleatHeightForWarning).toFixed(2)}"`,
       severity: 'info',
     });
   }

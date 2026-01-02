@@ -3061,10 +3061,10 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      // Standard mode: 4" pulley + 2.5" = 6.5" frame (matches snub threshold exactly)
-      expect(result.outputs?.effective_frame_height_in).toBe(6.5);
-      // Standard mode should NOT require snub rollers (frame height >= threshold)
-      expect(result.outputs?.requires_snub_rollers).toBe(false);
+      // v1.33: New formula: largest_pulley (4") + 2*cleat_height (0) + return_roller (2") = 6"
+      expect(result.outputs?.effective_frame_height_in).toBe(6);
+      // 6" frame < 6.5" threshold → snubs required
+      expect(result.outputs?.requires_snub_rollers).toBe(true);
       expect(result.outputs?.cost_flag_low_profile).toBe(false);
       expect(result.outputs?.cost_flag_custom_frame).toBe(false);
       expect(result.outputs?.cost_flag_design_review).toBe(false);
@@ -3078,8 +3078,10 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       const result = runCalculation({ inputs });
 
       expect(result.success).toBe(true);
-      expect(result.outputs?.effective_frame_height_in).toBe(4.5); // 4" pulley + 0.5"
-      // NEW LOGIC: 4.5" frame < (4" pulley + 2.5") = 6.5" threshold → snubs REQUIRED
+      // v1.33: New formula: largest_pulley (4") + 2*cleat_height (0) + return_roller (2") = 6"
+      // Low Profile mode now uses same formula as Standard
+      expect(result.outputs?.effective_frame_height_in).toBe(6);
+      // 6" frame < 6.5" threshold → snubs required
       expect(result.outputs?.requires_snub_rollers).toBe(true);
       expect(result.outputs?.cost_flag_low_profile).toBe(true);
     });
@@ -3192,6 +3194,214 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
       const errors = validateInputs(inputs);
       expect(errors.filter((e: { field: string }) => e.field === 'custom_frame_height_in').length).toBe(0);
+    });
+  });
+
+  // =========================================================================
+  // v1.33: Frame Height with Cleats & Pulleys Integration Tests
+  // =========================================================================
+  describe('Frame Height with Cleats & Pulleys (v1.33)', () => {
+    // Application field defaults (same as other integration tests)
+    const FRAME_TEST_DEFAULTS = {
+      material_type: MaterialType.Steel,
+      process_type: ProcessType.Assembly,
+      parts_sharp: PartsSharp.No,
+      environment_factors: [EnvironmentFactors.Indoor],
+      ambient_temperature: AmbientTemperature.Normal,
+      power_feed: PowerFeed.V480_3Ph,
+      controls_package: ControlsPackage.StartStop,
+      spec_source: SpecSource.Standard,
+      support_option: SupportOption.FloorMounted,
+      field_wiring_required: FieldWiringRequired.No,
+      bearing_grade: BearingGrade.Standard,
+      documentation_package: DocumentationPackage.Basic,
+      finish_paint_system: FinishPaintSystem.PowderCoat,
+      labels_required: LabelsRequired.Yes,
+      send_to_estimating: SendToEstimating.No,
+      motor_brand: MotorBrand.Standard,
+      bottom_covers: false,
+      side_rails: SideRails.None,
+      end_guards: EndGuards.None,
+      finger_safe: false,
+      lacing_style: LacingStyle.Endless,
+      side_skirts: false,
+      sensor_options: [],
+      pulley_surface_type: PulleySurfaceType.Plain,
+      start_stop_application: false,
+      direction_mode: DirectionMode.OneDirection,
+      side_loading_direction: SideLoadingDirection.None,
+      drive_location: DriveLocation.Head,
+      brake_motor: false,
+      gearmotor_orientation: GearmotorOrientation.SideMount,
+      drive_hand: DriveHand.RightHand,
+      belt_tracking_method: BeltTrackingMethod.Crowned,
+      shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    };
+
+    const frameHeightBaseInputs: SliderbedInputs = {
+      conveyor_length_cc_in: 120,
+      belt_width_in: 24,
+      belt_speed_fpm: 100,
+      drive_rpm: 100,
+      part_weight_lbs: 5,
+      part_length_in: 12,
+      part_width_in: 6,
+      drop_height_in: 0,
+      part_temperature_class: PartTemperatureClass.Ambient,
+      fluid_type: FluidType.None,
+      orientation: Orientation.Lengthwise,
+      part_spacing_in: 6,
+      frame_height_mode: FrameHeightMode.Standard,
+      // v1.33: Use explicit pulley diameters
+      drive_pulley_diameter_in: 4,
+      tail_pulley_diameter_in: 4,
+      cleats_enabled: false,
+      ...FRAME_TEST_DEFAULTS,
+    } as SliderbedInputs;
+
+    // Test 1: No cleats - frame_height = largest_pulley + 0 + return_roller = 4 + 0 + 2 = 6
+    it('should compute frame height without cleats: drive=4, tail=4, cleat=0, returnRoller=2 -> 6"', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 4,
+        cleats_enabled: false,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.largest_pulley_diameter_in).toBe(4);
+      expect(result.outputs?.effective_cleat_height_in).toBe(0);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(6, 2);
+      expect(result.outputs?.frame_height_breakdown).toBeDefined();
+      expect(result.outputs?.frame_height_breakdown?.total_in).toBeCloseTo(6, 2);
+    });
+
+    // Test 2: Cleats 1" - frame_height = 4 + (2*1) + 2 = 8
+    it('should compute frame height with 1" cleats: drive=4, tail=4, cleat=1, returnRoller=2 -> 8"', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 4,
+        cleats_enabled: true,
+        cleat_size: '1"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.largest_pulley_diameter_in).toBe(4);
+      expect(result.outputs?.effective_cleat_height_in).toBe(1);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(8, 2);
+      expect(result.outputs?.frame_height_breakdown?.cleat_adder_in).toBe(2);
+    });
+
+    // Test 3: Largest pulley wins - frame_height = 6 + (2*1) + 2 = 10
+    it('should use largest pulley: drive=6, tail=4, cleat=1, returnRoller=2 -> 10"', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 6,
+        tail_pulley_diameter_in: 4,
+        cleats_enabled: true,
+        cleat_size: '1"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.largest_pulley_diameter_in).toBe(6);
+      expect(result.outputs?.effective_cleat_height_in).toBe(1);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(10, 2);
+    });
+
+    // Test 4: Override return roller diameter via parameters (requires custom parameters)
+    it('should respect return roller diameter parameter: drive=6, tail=4, cleat=1, returnRoller=1.9 -> 9.9"', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 6,
+        tail_pulley_diameter_in: 4,
+        cleats_enabled: true,
+        cleat_size: '1"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      // Override return_roller_diameter_in in parameters
+      const customParams = {
+        ...DEFAULT_PARAMETERS,
+        return_roller_diameter_in: 1.9,
+      };
+      const result = runCalculation({ inputs, parameters: customParams });
+
+      expect(result.success).toBe(true);
+      expect(result.outputs?.largest_pulley_diameter_in).toBe(6);
+      expect(result.outputs?.effective_frame_height_in).toBeCloseTo(9.9, 2);
+      expect(result.outputs?.frame_height_breakdown?.return_roller_in).toBe(1.9);
+    });
+
+    // Test: Breakdown formula is human-readable
+    it('should provide human-readable breakdown formula', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 6,
+        tail_pulley_diameter_in: 4,
+        cleats_enabled: true,
+        cleat_size: '1"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      const formula = result.outputs?.frame_height_breakdown?.formula;
+      expect(formula).toBeDefined();
+      expect(formula).toContain('Largest pulley');
+      expect(formula).toContain('Cleats');
+      expect(formula).toContain('Return roller');
+      expect(formula).toContain('Total');
+    });
+
+    // Test: Custom mode still respects user value
+    it('should use custom frame height when mode is Custom', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        frame_height_mode: FrameHeightMode.Custom,
+        custom_frame_height_in: 12,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 4,
+        cleats_enabled: true,
+        cleat_size: '1"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Custom mode should use user-specified value
+      expect(result.outputs?.effective_frame_height_in).toBe(12);
+      // But breakdown still shows components for reference
+      expect(result.outputs?.frame_height_breakdown?.largest_pulley_in).toBe(4);
+      expect(result.outputs?.frame_height_breakdown?.cleat_height_in).toBe(1);
+    });
+
+    // Test: Info message when cleats add to frame height
+    it('should show info message when cleats contribute to frame height', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        cleats_enabled: true,
+        cleat_size: '1.5"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(
+        result.warnings?.some(
+          (w) => w.severity === 'info' && w.message.includes('cleat height')
+        )
+      ).toBe(true);
     });
   });
 

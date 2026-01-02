@@ -37,11 +37,13 @@ import {
   LacingMaterial,
 } from '../../src/models/sliderbed_v1/schema';
 import {
-  calculateEffectiveFrameHeight,
   calculateRequiresSnubRollers,
   calculateGravityRollerQuantity,
   calculateSnubRollerQuantity,
   GRAVITY_ROLLER_SPACING_IN,
+  calculateFrameHeightWithBreakdown,
+  getEffectiveCleatHeight,
+  FRAME_HEIGHT_CONSTANTS,
 } from '../../src/models/sliderbed_v1/formulas';
 import {
   normalizeGeometry,
@@ -346,11 +348,23 @@ export default function TabConveyorPhysical({
   };
 
   // Compute derived frame height and roller values (using safe diameters for UI display)
-  const effectiveFrameHeight = calculateEffectiveFrameHeight(
-    inputs.frame_height_mode ?? FrameHeightMode.Standard,
+  // v1.33: Use new breakdown calculation that includes cleats, largest pulley, and return roller
+  const cleatsEnabledForFrame = inputs.cleats_enabled === true;
+  const effectiveCleatHeightForFrame = getEffectiveCleatHeight(
+    cleatsEnabledForFrame,
+    inputs.cleat_height_in,
+    inputs.cleat_size
+  );
+  const returnRollerDiameter = FRAME_HEIGHT_CONSTANTS.DEFAULT_RETURN_ROLLER_DIAMETER_IN;
+  const frameHeightBreakdown = calculateFrameHeightWithBreakdown(
     safeDrivePulleyDia,
+    safeTailPulleyDia,
+    effectiveCleatHeightForFrame,
+    returnRollerDiameter,
+    inputs.frame_height_mode,
     inputs.custom_frame_height_in
   );
+  const effectiveFrameHeight = frameHeightBreakdown.total_in;
   const requiresSnubRollers = calculateRequiresSnubRollers(
     effectiveFrameHeight,
     safeDrivePulleyDia,
@@ -1647,36 +1661,71 @@ export default function TabConveyorPhysical({
           {/* Derived Values Panel */}
           <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-              Derived Values
+              Frame Height Breakdown
             </h4>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-600">Frame Height:</span>
-                <span className="font-medium text-gray-900">{effectiveFrameHeight.toFixed(1)}"</span>
+            {/* Frame Height Formula Display */}
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between items-center border-b border-gray-200 pb-2">
+                <span className="font-medium text-gray-900">Frame Height:</span>
+                <span className="font-bold text-blue-600 text-lg">{effectiveFrameHeight.toFixed(2)}"</span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Mode:</span>
-                <span className="font-medium text-gray-700">
-                  {inputs.frame_height_mode ?? 'Standard'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Snub Rollers:</span>
-                <span className={`font-medium ${requiresSnubRollers ? 'text-amber-600' : 'text-green-600'}`}>
-                  {requiresSnubRollers ? `Required (${snubRollerQty})` : 'Not required'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600">Gravity Rollers:</span>
-                <span className="font-medium text-gray-900">
-                  {gravityRollerQty} <span className="text-gray-500 text-xs">@ {GRAVITY_ROLLER_SPACING_IN}"</span>
-                </span>
-              </div>
+              {inputs.frame_height_mode !== FrameHeightMode.Custom && (
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Largest Pulley:</span>
+                    <span className="font-medium text-gray-700">{frameHeightBreakdown.largest_pulley_in.toFixed(2)}"</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Cleats (2×):</span>
+                    <span className="font-medium text-gray-700">
+                      {frameHeightBreakdown.cleat_adder_in > 0
+                        ? `${frameHeightBreakdown.cleat_adder_in.toFixed(2)}" (${frameHeightBreakdown.cleat_height_in.toFixed(2)}"×2)`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Return Roller:</span>
+                    <span className="font-medium text-gray-700">{frameHeightBreakdown.return_roller_in.toFixed(2)}"</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-500">Mode:</span>
+                    <span className="font-medium text-gray-700 capitalize">{inputs.frame_height_mode ?? 'Standard'}</span>
+                  </div>
+                </div>
+              )}
+              {inputs.frame_height_mode === FrameHeightMode.Custom && (
+                <p className="text-xs text-gray-500">Using custom frame height override.</p>
+              )}
+              <p className="text-xs text-gray-400 font-mono pt-1 border-t border-gray-200 mt-2">
+                {frameHeightBreakdown.formula}
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              Frame height and roller configuration based on current pulley size and frame mode.
-              {requiresSnubRollers && ' Low frame height requires snub rollers at pulley ends.'}
-            </p>
+
+            {/* Roller Summary */}
+            <div className="mt-3 pt-3 border-t border-gray-200">
+              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+                Rollers
+              </h4>
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Snub Rollers:</span>
+                  <span className={`font-medium ${requiresSnubRollers ? 'text-amber-600' : 'text-green-600'}`}>
+                    {requiresSnubRollers ? `Required (${snubRollerQty})` : 'Not required'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Gravity Rollers:</span>
+                  <span className="font-medium text-gray-900">
+                    {gravityRollerQty} <span className="text-gray-500 text-xs">@ {GRAVITY_ROLLER_SPACING_IN}"</span>
+                  </span>
+                </div>
+              </div>
+              {requiresSnubRollers && (
+                <p className="text-xs text-gray-500 mt-2">
+                  Low frame height requires snub rollers at pulley ends.
+                </p>
+              )}
+            </div>
           </div>
 
           {/* Tail End Support */}

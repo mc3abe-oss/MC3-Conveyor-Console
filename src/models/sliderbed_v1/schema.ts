@@ -1650,6 +1650,12 @@ export interface SliderbedParameters {
 
   /** Extra pulley face allowance for crowned pulleys in inches */
   pulley_face_extra_crowned_in: number;
+
+  /**
+   * Return (gravity) roller diameter allowance for frame height calculation (inches).
+   * Default: 2.0". Used in: frame_height = largest_pulley + 2*cleat_height + return_roller.
+   */
+  return_roller_diameter_in: number;
 }
 
 // ============================================================================
@@ -2002,11 +2008,36 @@ export interface SliderbedOutputs {
   required_min_pulley_diameter_in?: number;
 
   // =========================================================================
-  // v1.5: FRAME HEIGHT & SNUB ROLLER OUTPUTS
+  // v1.5: FRAME HEIGHT & SNUB ROLLER OUTPUTS (v1.33: Updated with cleat/pulley awareness)
   // =========================================================================
+
+  /**
+   * Largest pulley diameter (inches).
+   * max(drive_pulley_diameter_in, tail_pulley_diameter_in)
+   */
+  largest_pulley_diameter_in?: number;
+
+  /**
+   * Effective cleat height used in frame height calc (inches).
+   * 0 if cleats disabled, otherwise parsed from cleat_size.
+   */
+  effective_cleat_height_in?: number;
 
   /** Effective frame height in inches (calculated from mode or custom value) */
   effective_frame_height_in?: number;
+
+  /**
+   * Frame height calculation breakdown (v1.33).
+   * Shows: largest_pulley + 2*cleat_height + return_roller = total
+   */
+  frame_height_breakdown?: {
+    largest_pulley_in: number;
+    cleat_height_in: number;
+    cleat_adder_in: number; // 2 * cleat_height_in
+    return_roller_in: number;
+    total_in: number;
+    formula: string; // Human-readable formula string
+  };
 
   /** Whether snub rollers are required (frame height < drive pulley diameter) */
   requires_snub_rollers?: boolean;
@@ -2270,6 +2301,7 @@ export const DEFAULT_PARAMETERS: SliderbedParameters = {
   pil_other: 0.109,
   pulley_face_extra_v_guided_in: 0.5,
   pulley_face_extra_crowned_in: 2.0,
+  return_roller_diameter_in: 2.0,
 };
 
 export const DEFAULT_INPUT_VALUES = {
