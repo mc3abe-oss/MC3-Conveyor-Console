@@ -29,10 +29,7 @@ import {
   FRAME_CONSTRUCTION_TYPE_LABELS,
   SHEET_METAL_GAUGE_LABELS,
   STRUCTURAL_CHANNEL_SERIES_LABELS,
-  // v1.29: Return Support
-  ReturnFrameStyle,
-  ReturnSnubMode,
-  RETURN_FRAME_STYLE_LABELS,
+  // v1.29: Return Support types moved to ReturnSupportCard
   // UI Cleanup: Lacing moved from Build Options
   LacingStyle,
   LacingMaterial,
@@ -63,7 +60,8 @@ import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssue
 import { useState, useEffect, useMemo } from 'react';
 import PulleyConfigModal from './PulleyConfigModal';
 import CleatsConfigModal from './CleatsConfigModal';
-import ReturnSupportModal, { computeSnubsEnabled, computeReturnSpan, computeGravityRollerCenters } from './ReturnSupportModal';
+import ReturnSupportModal from './ReturnSupportModal';
+import ReturnSupportCard from './conveyorPhysical/cards/ReturnSupportCard';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
@@ -1483,59 +1481,11 @@ export default function TabConveyorPhysical({
           {/* ===== v1.29: RETURN SUPPORT SUBSECTION ===== */}
           <SectionDivider title="Return Support" />
 
-          {/* Return Support Summary Card - Compact Horizontal Layout */}
-          {(() => {
-            const frameStyle = inputs.return_frame_style ?? ReturnFrameStyle.Standard;
-            const snubMode = inputs.return_snub_mode ?? ReturnSnubMode.Auto;
-            const endOffsetIn = inputs.return_end_offset_in ?? 24;
-            const snubsEnabled = computeSnubsEnabled(frameStyle, snubMode);
-            const conveyorLength = inputs.conveyor_length_cc_in ?? 120;
-            const returnSpan = computeReturnSpan(conveyorLength, snubsEnabled, endOffsetIn);
-            const rollerCount = inputs.return_gravity_roller_count ?? Math.max(Math.floor(returnSpan / 60) + 1, 2);
-            const gravityCenters = computeGravityRollerCenters(returnSpan, rollerCount);
-            const gravityDia = inputs.return_gravity_roller_diameter_in ?? 1.9;
-            const snubDia = inputs.return_snub_roller_diameter_in ?? 2.5;
-            const frameStyleLabel = RETURN_FRAME_STYLE_LABELS[frameStyle as ReturnFrameStyle] ?? frameStyle;
-            // v1.37: Cleats + snubs warning indicator
-            const cleatsEnabledForReturn = inputs.cleats_enabled === true || inputs.cleats_mode === 'cleated';
-            const showCleatsSnubsWarning = cleatsEnabledForReturn && snubsEnabled;
-
-            return (
-              <CompactCard configured>
-                <CompactCardHeader
-                  title={
-                    <span className="flex items-center gap-2">
-                      Return Rollers
-                      {showCleatsSnubsWarning && (
-                        <span title="Snub rollers with cleats - verify clearance">
-                          <svg className="w-4 h-4 text-amber-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                          </svg>
-                        </span>
-                      )}
-                    </span>
-                  }
-                  badges={[{ label: 'Configured', variant: 'success' }]}
-                  actions={<EditButton onClick={() => setIsReturnSupportModalOpen(true)} configured label="Edit" />}
-                />
-                <div className="space-y-1">
-                  <InlineSpecRow
-                    items={[
-                      { label: 'Frame', value: frameStyleLabel },
-                      { label: 'Snubs', value: snubsEnabled ? 'Yes' : 'No', highlight: snubsEnabled },
-                      { label: 'Gravity', value: `${rollerCount} @ ${gravityCenters?.toFixed(1) ?? '—'}"` },
-                    ]}
-                  />
-                  <InlineSpecRow
-                    items={[
-                      { label: 'Gravity Dia', value: `${gravityDia}"` },
-                      ...(snubsEnabled ? [{ label: 'Snub Dia', value: `${snubDia}"` }] : []),
-                    ]}
-                  />
-                </div>
-              </CompactCard>
-            );
-          })()}
+          {/* Return Support Summary Card - Extracted to separate component (v1.41) */}
+          <ReturnSupportCard
+            inputs={inputs}
+            onEditClick={() => setIsReturnSupportModalOpen(true)}
+          />
 
         </div>
       </AccordionSection>
