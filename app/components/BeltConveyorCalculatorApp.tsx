@@ -43,7 +43,7 @@ export default function BeltConveyorCalculatorApp() {
 
   // Calculate tracking
   const [lastCalculatedPayload, setLastCalculatedPayload] = useState<any>(null);
-  const [calcStatus, setCalcStatus] = useState<'idle' | 'ok' | 'error'>('idle');
+  const [_calcStatus, setCalcStatus] = useState<'idle' | 'ok' | 'error'>('idle');
   const [triggerCalculate, setTriggerCalculate] = useState<number>(0);
 
   // Calculation status tracking (v1.21)
