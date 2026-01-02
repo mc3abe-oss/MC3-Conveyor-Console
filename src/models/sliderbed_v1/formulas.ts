@@ -898,13 +898,20 @@ export interface FrameHeightBreakdown {
 }
 
 /**
- * Calculate frame height with full breakdown (v1.33, v1.34: required vs reference)
+ * Calculate frame height with full breakdown (v1.33, v1.34, v1.35)
  *
- * v1.34: Two distinct concepts:
- *   Required Frame Height = largest_pulley + (2 * cleat_height) + return_roller
- *     - Physical envelope, always calculated from components
- *   Reference Frame Height = required + clearance_for_selected_standard
- *     - For quoting/reference, based on selected Frame Standard
+ * v1.35: Frame height formula depends on return support type:
+ *
+ *   LOW PROFILE (snubs required):
+ *     Required = largest_pulley + low_profile_over_pulley_clearance_in
+ *     - Snub rollers handle belt return at pulley ends, so return roller clearance not needed
+ *     - Cleats are NOT ALLOWED with Low Profile (validated separately as ERROR)
+ *     - Reference = required (clearance already built into formula)
+ *
+ *   STANDARD / CUSTOM (gravity rollers):
+ *     Required = largest_pulley + (2 * cleat_height) + return_roller_diameter
+ *     - Must clear gravity return rollers
+ *     - Reference = required + additional clearance
  *
  * @param drivePulleyOdIn - Drive pulley finished OD in inches
  * @param tailPulleyOdIn - Tail pulley finished OD in inches
@@ -912,8 +919,8 @@ export interface FrameHeightBreakdown {
  * @param returnRollerDiameterIn - Return roller diameter (default 2.0")
  * @param frameHeightMode - Frame height mode/standard (Standard, Low Profile, Custom)
  * @param customFrameHeightIn - Custom frame height (only used if mode is Custom)
- * @param clearanceLowProfileIn - Clearance for Low Profile standard (default 0.5")
- * @param clearanceStandardIn - Clearance for Standard (default 2.5")
+ * @param clearanceLowProfileIn - Low Profile over-pulley clearance (default 0.5")
+ * @param clearanceStandardIn - Standard additional clearance (default 2.5")
  * @returns Frame height breakdown with required and reference heights
  */
 export function calculateFrameHeightWithBreakdown(
@@ -927,36 +934,58 @@ export function calculateFrameHeightWithBreakdown(
   clearanceStandardIn: number = 2.5
 ): FrameHeightBreakdown {
   const largestPulley = Math.max(drivePulleyOdIn, tailPulleyOdIn);
-  const cleatAdder = 2 * cleatHeightIn;
   const mode = frameHeightMode ?? FrameHeightMode.Standard;
+  const isLowProfile = mode === FrameHeightMode.LowProfile || mode === 'Low Profile';
 
-  // Required frame height = physical envelope (always calculated)
+  // v1.35: Low Profile uses different formula (snubs, no return roller allowance)
+  if (isLowProfile) {
+    // Low Profile: required = largestPulley + clearance (snubs handle return)
+    // Note: cleats are disallowed with Low Profile (enforced via validation ERROR)
+    const requiredTotal = largestPulley + clearanceLowProfileIn;
+    const referenceTotal = requiredTotal; // No additional clearance for Low Profile
+
+    const parts: string[] = [];
+    parts.push(`Largest pulley: ${largestPulley.toFixed(2)}"`);
+    parts.push(`Over-pulley clearance: +${clearanceLowProfileIn.toFixed(2)}"`);
+    parts.push(`Required (Low Profile): ${requiredTotal.toFixed(2)}"`);
+    parts.push(`(Snubs handle return - no gravity roller clearance needed)`);
+
+    return {
+      largest_pulley_in: largestPulley,
+      cleat_height_in: 0, // Cleats not allowed with Low Profile
+      cleat_adder_in: 0,
+      return_roller_in: 0, // Snubs, not gravity rollers
+      total_in: requiredTotal,
+      required_total_in: requiredTotal,
+      clearance_in: clearanceLowProfileIn,
+      reference_total_in: referenceTotal,
+      formula: parts.join('; '),
+    };
+  }
+
+  // Standard / Custom: gravity rollers, include cleat and return roller
+  const cleatAdder = 2 * cleatHeightIn;
   const requiredTotal = largestPulley + cleatAdder + returnRollerDiameterIn;
 
-  // Determine clearance based on selected frame standard
-  let clearance: number;
+  // Custom mode: user specifies exact reference height
   if (mode === FrameHeightMode.Custom || mode === 'Custom') {
-    // Custom mode: user specifies exact reference height, clearance is derived
     const customTotal = customFrameHeightIn ?? requiredTotal;
-    clearance = Math.max(0, customTotal - requiredTotal);
+    const clearance = Math.max(0, customTotal - requiredTotal);
     return {
       largest_pulley_in: largestPulley,
       cleat_height_in: cleatHeightIn,
       cleat_adder_in: cleatAdder,
       return_roller_in: returnRollerDiameterIn,
-      total_in: customTotal, // Legacy: use custom value
+      total_in: customTotal,
       required_total_in: requiredTotal,
       clearance_in: clearance,
       reference_total_in: customTotal,
       formula: `Custom: ${customTotal.toFixed(2)}" (required: ${requiredTotal.toFixed(2)}")`,
     };
-  } else if (mode === FrameHeightMode.LowProfile || mode === 'Low Profile') {
-    clearance = clearanceLowProfileIn;
-  } else {
-    // Standard (default)
-    clearance = clearanceStandardIn;
   }
 
+  // Standard mode
+  const clearance = clearanceStandardIn;
   const referenceTotal = requiredTotal + clearance;
 
   // Build human-readable formula
@@ -975,7 +1004,7 @@ export function calculateFrameHeightWithBreakdown(
     cleat_height_in: cleatHeightIn,
     cleat_adder_in: cleatAdder,
     return_roller_in: returnRollerDiameterIn,
-    total_in: requiredTotal, // Legacy: use required for backward compatibility
+    total_in: requiredTotal,
     required_total_in: requiredTotal,
     clearance_in: clearance,
     reference_total_in: referenceTotal,

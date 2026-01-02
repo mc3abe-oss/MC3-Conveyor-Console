@@ -38,10 +38,6 @@ import {
   LacingMaterial,
 } from '../../src/models/sliderbed_v1/schema';
 import {
-  calculateRequiresSnubRollers,
-  calculateGravityRollerQuantity,
-  calculateSnubRollerQuantity,
-  GRAVITY_ROLLER_SPACING_IN,
   calculateFrameHeightWithBreakdown,
   getEffectiveCleatHeight,
   FRAME_HEIGHT_CONSTANTS,
@@ -93,6 +89,8 @@ interface TabConveyorPhysicalProps {
   getMergedIssuesForSection?: (sectionKey: SectionKey) => Issue[];
   /** Calculation outputs for displaying calculated shaft values (v1.37) */
   outputs?: SliderbedOutputs | null;
+  /** v1.35: Toast notification callback */
+  showToast?: (message: string) => void;
 }
 
 /**
@@ -136,6 +134,7 @@ export default function TabConveyorPhysical({
   applicationLineId,
   getMergedIssuesForSection,
   outputs,
+  showToast,
 }: TabConveyorPhysicalProps) {
   // Handle belt selection - updates multiple fields at once
   // v1.11: Uses getEffectiveMinPulleyDiameters for material_profile precedence
@@ -354,6 +353,20 @@ export default function TabConveyorPhysical({
     }
   };
 
+  // v1.35: Auto-switch away from Low Profile when cleats become enabled
+  // Low Profile requires snub rollers, and cleated belts cannot run on snubs
+  useEffect(() => {
+    const isLowProfile = inputs.frame_height_mode === FrameHeightMode.LowProfile ||
+                         inputs.frame_height_mode === 'Low Profile';
+    const hasCleats = inputs.cleats_enabled === true;
+
+    if (isLowProfile && hasCleats) {
+      // Auto-switch to Standard
+      updateInput('frame_height_mode', FrameHeightMode.Standard);
+      showToast?.('Switched to Standard: Low Profile not allowed with cleats.');
+    }
+  }, [inputs.cleats_enabled, inputs.frame_height_mode]);
+
   // Compute derived frame height and roller values
   // v1.34: Use actual pulley OD from applicationPulleys (same source as pulley cards)
   // Priority: applicationPulleys.finished_od_in > inputs synced values > legacy catalog > 4" fallback
@@ -388,16 +401,9 @@ export default function TabConveyorPhysical({
   const requiredFrameHeight = frameHeightBreakdown.required_total_in;
   const referenceFrameHeight = frameHeightBreakdown.reference_total_in;
   const effectiveFrameHeight = frameHeightBreakdown.total_in;
-  const requiresSnubRollers = calculateRequiresSnubRollers(
-    effectiveFrameHeight,
-    safeDrivePulleyDia,
-    safeTailPulleyDia
-  );
-  const snubRollerQty = calculateSnubRollerQuantity(requiresSnubRollers);
-  const gravityRollerQty = calculateGravityRollerQuantity(
-    inputs.conveyor_length_cc_in,
-    requiresSnubRollers
-  );
+
+  // v1.35: Removed snub/gravity roller calculations from Frame section
+  // ReturnSupportModal is the single owner of return path configuration
 
   // v1.10: Compute derived geometry values
   const { derived: derivedGeometry } = normalizeGeometry(inputs);
@@ -1857,7 +1863,7 @@ export default function TabConveyorPhysical({
             Frame Height
           </h4>
 
-          {/* Frame Standard (v1.34: renamed from Frame Height Mode) */}
+          {/* Frame Standard (v1.34: renamed from Frame Height Mode, v1.35: Low Profile disabled with cleats) */}
           <div>
             <label htmlFor="frame_height_mode" className="label">
               Frame Standard
@@ -1875,12 +1881,23 @@ export default function TabConveyorPhysical({
               }}
             >
               <option value={FrameHeightMode.Standard}>Standard (+2.5&quot; clearance)</option>
-              <option value={FrameHeightMode.LowProfile}>Low Profile (+0.5&quot; clearance)</option>
+              <option
+                value={FrameHeightMode.LowProfile}
+                disabled={cleatsEnabledForFrame}
+                title={cleatsEnabledForFrame ? 'Unavailable with cleats (snubs required)' : undefined}
+              >
+                Low Profile (+0.5&quot; clearance){cleatsEnabledForFrame ? ' — unavailable with cleats' : ''}
+              </option>
               <option value={FrameHeightMode.Custom}>Custom</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
               Frame Standard determines reference clearance above the required physical envelope. Low Profile and Custom are cost options.
             </p>
+            {cleatsEnabledForFrame && (
+              <p className="text-xs text-amber-600 mt-1">
+                Low Profile unavailable: requires snub rollers, which are incompatible with cleated belts.
+              </p>
+            )}
           </div>
 
           {/* Custom Frame Height */}
@@ -1913,8 +1930,9 @@ export default function TabConveyorPhysical({
           {inputs.frame_height_mode === FrameHeightMode.LowProfile && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
-                <strong>Low Profile:</strong> Adds 0.5&quot; clearance to required frame height.
-                This is a cost option and may require snub rollers for belt return path.
+                <strong>Low Profile:</strong> Frame is ~0.5&quot; above largest pulley OD.
+                Snub rollers are required for belt return path (gravity rollers would be crushed).
+                Not compatible with cleated belts.
               </p>
             </div>
           )}
@@ -1987,31 +2005,6 @@ export default function TabConveyorPhysical({
               </p>
             </div>
 
-            {/* Roller Summary */}
-            <div className="mt-3 pt-3 border-t border-gray-200">
-              <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
-                Rollers
-              </h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Snub Rollers:</span>
-                  <span className={`font-medium ${requiresSnubRollers ? 'text-amber-600' : 'text-green-600'}`}>
-                    {requiresSnubRollers ? `Required (${snubRollerQty})` : 'Not required'}
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Gravity Rollers:</span>
-                  <span className="font-medium text-gray-900">
-                    {gravityRollerQty} <span className="text-gray-500 text-xs">@ {GRAVITY_ROLLER_SPACING_IN}"</span>
-                  </span>
-                </div>
-              </div>
-              {requiresSnubRollers && (
-                <p className="text-xs text-gray-500 mt-2">
-                  Low frame height requires snub rollers at pulley ends.
-                </p>
-              )}
-            </div>
           </div>
 
           {/* Tail End Support */}

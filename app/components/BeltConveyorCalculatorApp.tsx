@@ -1221,6 +1221,7 @@ export default function BeltConveyorCalculatorApp() {
             applicationLineId={loadedConfigurationId}
             postCalcErrors={result?.errors}
             outputs={result?.outputs}
+            showToast={showToast}
           />
 
           {/* View Results CTA */}

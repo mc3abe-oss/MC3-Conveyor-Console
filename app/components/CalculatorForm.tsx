@@ -45,6 +45,8 @@ interface Props {
   postCalcErrors?: ValidationError[];
   /** Calculated outputs for display in sub-tabs (e.g., shaft diameters) */
   outputs?: SliderbedOutputs | null;
+  /** v1.35: Toast notification callback */
+  showToast?: (message: string) => void;
 }
 
 export default function CalculatorForm({
@@ -58,6 +60,7 @@ export default function CalculatorForm({
   applicationLineId,
   postCalcErrors,
   outputs,
+  showToast,
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -249,6 +252,7 @@ export default function CalculatorForm({
               applicationLineId={applicationLineId}
               getMergedIssuesForSection={getMergedIssuesForSection}
               outputs={outputs}
+              showToast={showToast}
             />
           )}
 
