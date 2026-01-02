@@ -12,6 +12,8 @@ import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
 import MobileBottomActionBar from './MobileBottomActionBar';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs } from '../../src/models/sliderbed_v1/schema';
+import { buildOutputsV2, OutputsV2 } from '../../src/models/sliderbed_v1/outputs_v2';
+import { OutputsV2Tabs } from './outputs_v2';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
@@ -473,6 +475,19 @@ export default function BeltConveyorCalculatorApp() {
     console.log('[needsRecalc] true - have result but no lastCalculatedPayload');
     return true;
   }, [lastCalculatedPayload, buildCurrentPayload, inputs, result]);
+
+  // Build outputs_v2 when we have inputs and successful result
+  const outputsV2: OutputsV2 | null = useMemo(() => {
+    if (!inputs || !result?.success || !result.outputs) {
+      return null;
+    }
+    try {
+      return buildOutputsV2({ inputs, outputs_v1: result.outputs });
+    } catch (e) {
+      console.error('[outputsV2] Build failed:', e);
+      return null;
+    }
+  }, [inputs, result]);
 
   // Can save if:
   // 1) If linked context: must have changes (dirty) - draft saves allowed (v1.21)
@@ -1265,16 +1280,23 @@ export default function BeltConveyorCalculatorApp() {
 
             if (hasResults) {
               return (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Main Results - Takes 2 columns */}
-                  <div className="lg:col-span-2">
-                    <CalculationResults result={result} inputs={inputs ?? undefined} />
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Main Results - Takes 2 columns */}
+                    <div className="lg:col-span-2">
+                      <CalculationResults result={result} inputs={inputs ?? undefined} />
+                    </div>
+
+                    {/* Input Echo - Summary of key inputs */}
+                    <div className="lg:col-span-1">
+                      <InputEcho inputs={inputs} />
+                    </div>
                   </div>
 
-                  {/* Input Echo - Summary of key inputs */}
-                  <div className="lg:col-span-1">
-                    <InputEcho inputs={inputs} />
-                  </div>
+                  {/* Outputs V2 - Vendor Packets & Exports */}
+                  {outputsV2 && (
+                    <OutputsV2Tabs outputs={outputsV2} />
+                  )}
                 </div>
               );
             }
