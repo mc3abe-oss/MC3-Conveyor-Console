@@ -3,21 +3,20 @@
 import { useState } from 'react';
 import clsx from 'clsx';
 import { OutputsV2 } from '../../../src/models/sliderbed_v1/outputs_v2';
-import OverviewTab from './OverviewTab';
-import BeltTab from './BeltTab';
-import PulleysRollersTab from './PulleysRollersTab';
-import DriveTab from './DriveTab';
-import SupportsTab from './SupportsTab';
-import ValidationTab from './ValidationTab';
+import SummaryTab from './SummaryTab';
+import IssuesTab from './IssuesTab';
+import VendorSpecsTab from './VendorSpecsTab';
 import ExportsTab from './ExportsTab';
+import DetailsTab from './DetailsTab';
 
-type TabId = 'overview' | 'belt' | 'pulleys_rollers' | 'drive' | 'supports' | 'validation' | 'exports';
+type TabId = 'summary' | 'issues' | 'vendor_specs' | 'exports' | 'details';
 
 interface Tab {
   id: TabId;
   label: string;
+  description: string;
   badge?: number | string;
-  badgeType?: 'error' | 'warning' | 'info';
+  badgeType?: 'error' | 'warning' | 'success';
 }
 
 interface OutputsV2TabsProps {
@@ -27,46 +26,70 @@ interface OutputsV2TabsProps {
 }
 
 /**
- * OutputsV2Tabs - Main wrapper component with 7 tabs for displaying outputs_v2
+ * OutputsV2Tabs - Intent-driven tab structure
+ *
+ * Tabs answer key questions:
+ * - Summary: "Is it ready?"
+ * - Issues: "What needs fixing?"
+ * - Vendor Specs: "What do I send?"
+ * - Exports: "How do I save/share?"
+ * - Details: "What are the internals?"
  */
-export default function OutputsV2Tabs({ outputs, className, defaultTab = 'overview' }: OutputsV2TabsProps) {
+export default function OutputsV2Tabs({ outputs, className, defaultTab = 'summary' }: OutputsV2TabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>(defaultTab);
 
   // Calculate badges
   const errorCount = outputs.warnings_and_notes.filter((w) => w.severity === 'error').length;
   const warningCount = outputs.warnings_and_notes.filter((w) => w.severity === 'warning').length;
+  const totalIssues = errorCount + warningCount;
+
+  // Determine readiness for summary badge
+  const isReady = errorCount === 0;
 
   const tabs: Tab[] = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'belt', label: 'Belt' },
-    { id: 'pulleys_rollers', label: 'Pulleys & Rollers' },
-    { id: 'drive', label: 'Drive' },
-    { id: 'supports', label: 'Supports' },
     {
-      id: 'validation',
-      label: 'Validation',
-      badge: errorCount > 0 ? errorCount : warningCount > 0 ? warningCount : undefined,
+      id: 'summary',
+      label: 'Summary',
+      description: 'Is it ready?',
+      badge: isReady ? (warningCount > 0 ? 'Warnings' : 'Ready') : 'Issues',
+      badgeType: isReady ? (warningCount > 0 ? 'warning' : 'success') : 'error',
+    },
+    {
+      id: 'issues',
+      label: 'Issues',
+      description: 'What needs fixing?',
+      badge: totalIssues > 0 ? totalIssues : undefined,
       badgeType: errorCount > 0 ? 'error' : warningCount > 0 ? 'warning' : undefined,
     },
-    { id: 'exports', label: 'Exports' },
+    {
+      id: 'vendor_specs',
+      label: 'Vendor Specs',
+      description: 'What do I send?',
+    },
+    {
+      id: 'exports',
+      label: 'Exports',
+      description: 'Save & share',
+    },
+    {
+      id: 'details',
+      label: 'Details',
+      description: 'Advanced',
+    },
   ];
 
   const renderTabContent = () => {
     switch (activeTab) {
-      case 'overview':
-        return <OverviewTab outputs={outputs} />;
-      case 'belt':
-        return <BeltTab outputs={outputs} />;
-      case 'pulleys_rollers':
-        return <PulleysRollersTab outputs={outputs} />;
-      case 'drive':
-        return <DriveTab outputs={outputs} />;
-      case 'supports':
-        return <SupportsTab outputs={outputs} />;
-      case 'validation':
-        return <ValidationTab outputs={outputs} />;
+      case 'summary':
+        return <SummaryTab outputs={outputs} />;
+      case 'issues':
+        return <IssuesTab outputs={outputs} />;
+      case 'vendor_specs':
+        return <VendorSpecsTab outputs={outputs} />;
       case 'exports':
         return <ExportsTab outputs={outputs} />;
+      case 'details':
+        return <DetailsTab outputs={outputs} />;
       default:
         return null;
     }
@@ -82,7 +105,7 @@ export default function OutputsV2Tabs({ outputs, className, defaultTab = 'overvi
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={clsx(
-                'px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors',
+                'px-4 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors flex-shrink-0',
                 activeTab === tab.id
                   ? 'border-primary-500 text-primary-700 bg-white'
                   : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-100'
@@ -96,7 +119,7 @@ export default function OutputsV2Tabs({ outputs, className, defaultTab = 'overvi
                       'px-1.5 py-0.5 text-xs rounded-full',
                       tab.badgeType === 'error' && 'bg-red-100 text-red-700',
                       tab.badgeType === 'warning' && 'bg-yellow-100 text-yellow-700',
-                      tab.badgeType === 'info' && 'bg-blue-100 text-blue-700',
+                      tab.badgeType === 'success' && 'bg-green-100 text-green-700',
                       !tab.badgeType && 'bg-gray-100 text-gray-700'
                     )}
                   >

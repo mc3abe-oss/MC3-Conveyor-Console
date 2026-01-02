@@ -18,7 +18,7 @@ import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
 
-type ViewMode = 'configure' | 'results' | 'vault';
+type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
 
 const LAST_APP_KEY = 'belt_lastApplicationId';
@@ -1224,6 +1224,30 @@ export default function BeltConveyorCalculatorApp() {
             </button>
             <button
               type="button"
+              onClick={() => setViewMode('outputs_v2')}
+              className={`
+                whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
+                ${
+                  viewMode === 'outputs_v2'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }
+              `}
+            >
+              <span className="flex items-center gap-2">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Outputs v2
+                {outputsV2 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    Ready
+                  </span>
+                )}
+              </span>
+            </button>
+            <button
+              type="button"
               onClick={() => setViewMode('vault')}
               className={`
                 whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
@@ -1280,23 +1304,16 @@ export default function BeltConveyorCalculatorApp() {
 
             if (hasResults) {
               return (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Main Results - Takes 2 columns */}
-                    <div className="lg:col-span-2">
-                      <CalculationResults result={result} inputs={inputs ?? undefined} />
-                    </div>
-
-                    {/* Input Echo - Summary of key inputs */}
-                    <div className="lg:col-span-1">
-                      <InputEcho inputs={inputs} />
-                    </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Main Results - Takes 2 columns */}
+                  <div className="lg:col-span-2">
+                    <CalculationResults result={result} inputs={inputs ?? undefined} />
                   </div>
 
-                  {/* Outputs V2 - Vendor Packets & Exports */}
-                  {outputsV2 && (
-                    <OutputsV2Tabs outputs={outputsV2} />
-                  )}
+                  {/* Input Echo - Summary of key inputs */}
+                  <div className="lg:col-span-1">
+                    <InputEcho inputs={inputs} />
+                  </div>
                 </div>
               );
             }
@@ -1355,6 +1372,28 @@ export default function BeltConveyorCalculatorApp() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
                 Edit Configuration
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Outputs V2 Mode */}
+        <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
+          {outputsV2 ? (
+            <OutputsV2Tabs outputs={outputsV2} />
+          ) : (
+            <div className="bg-white rounded-lg shadow p-8 text-center">
+              <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+              </svg>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">No Outputs Available</h3>
+              <p className="text-gray-500 mb-4">Calculate your conveyor configuration to generate Outputs V2</p>
+              <button
+                type="button"
+                onClick={() => setViewMode('configure')}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Go to Configure
               </button>
             </div>
           )}

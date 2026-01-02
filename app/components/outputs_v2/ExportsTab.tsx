@@ -69,17 +69,38 @@ export default function ExportsTab({ outputs }: ExportsTabProps) {
         </button>
       </div>
 
+      {/* Export Description */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+        {activeFormat === 'json' ? (
+          <div>
+            <h4 className="font-semibold text-blue-900">Full Outputs V2 JSON</h4>
+            <p className="text-sm text-blue-800 mt-1">
+              Complete structured output with all component data, vendor packets, and validation results.
+              Use this for archiving, API integrations, or reimporting configurations.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <h4 className="font-semibold text-blue-900">Component CSV for Quoting</h4>
+            <p className="text-sm text-blue-800 mt-1">
+              Flat table with {outputs.exports.csv_rows.rows.length} components and {outputs.exports.csv_rows.columns.length} columns.
+              Use this for spreadsheet analysis, quoting systems, or BOM exports.
+            </p>
+          </div>
+        )}
+      </div>
+
       {/* Export Info */}
       <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-sm font-medium text-gray-700">
-              {activeFormat === 'json' ? 'Full Outputs V2 JSON' : 'Component CSV for Quoting'}
+              {activeFormat === 'json' ? 'Download Full Export' : 'Download CSV Export'}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
               {activeFormat === 'json'
-                ? 'Complete structured output with all component data and vendor packets'
-                : `${outputs.exports.csv_rows.rows.length} components, ${outputs.exports.csv_rows.columns.length} columns`}
+                ? `Schema v${outputs.meta.schema_version} | ${outputs.meta.source_model_version}`
+                : `${outputs.exports.csv_rows.rows.length} rows ready for export`}
             </p>
           </div>
           <button
