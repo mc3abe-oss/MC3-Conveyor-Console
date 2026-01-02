@@ -760,7 +760,7 @@ export default function TabConveyorPhysical({
               id="belt_catalog_key"
               value={inputs.belt_catalog_key}
               onChange={handleBeltChange}
-              showDetails={true}
+              showDetails={false}
             />
             <p className="text-xs text-gray-500 mt-1">
               Select a belt to auto-populate PIW/PIL and minimum pulley diameter constraints.

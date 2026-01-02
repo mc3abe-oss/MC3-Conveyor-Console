@@ -528,16 +528,16 @@ export default function CalculationResults({ result, inputs }: Props) {
                 value={outputs.pil_used}
                 decimals={3}
               />
-              {outputs.belt_piw_effective !== undefined && (
+              {outputs.belt_piw_effective !== undefined && outputs.belt_piw_effective !== outputs.piw_used && (
                 <ResultRow
-                  label="Belt PIW (effective)"
+                  label="Belt PIW (native)"
                   value={outputs.belt_piw_effective}
                   decimals={3}
                 />
               )}
-              {outputs.belt_pil_effective !== undefined && (
+              {outputs.belt_pil_effective !== undefined && outputs.belt_pil_effective !== outputs.pil_used && (
                 <ResultRow
-                  label="Belt PIL (effective)"
+                  label="Belt PIL (native)"
                   value={outputs.belt_pil_effective}
                   decimals={3}
                 />
