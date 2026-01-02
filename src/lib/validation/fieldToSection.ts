@@ -163,10 +163,16 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
   target_pph: { tabKey: 'application', sectionKey: 'product' },
 
   // ===========================================================================
-  // Build Tab - Belt & Pulley Section
+  // Physical Tab - Belt & Pulleys Section (Lacing moved from Build Options)
   // ===========================================================================
-  lacing_style: { tabKey: 'build', sectionKey: 'beltpulley' },
-  lacing_material: { tabKey: 'build', sectionKey: 'beltpulley' },
+  lacing_style: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+  lacing_material: { tabKey: 'physical', sectionKey: 'beltPulleys' },
+
+  // ===========================================================================
+  // Drive Tab - Electrical Section (Sensors moved from Build Options)
+  // ===========================================================================
+  sensor_options: { tabKey: 'drive', sectionKey: 'electrical' },
+  field_wiring_required: { tabKey: 'drive', sectionKey: 'electrical' },
 
   // ===========================================================================
   // Build Tab - Documentation Section

@@ -10,6 +10,7 @@
 
 'use client';
 
+import { useState, useRef, useEffect } from 'react';
 import {
   SliderbedInputs,
   DriveLocation,
@@ -18,6 +19,7 @@ import {
   DriveHand,
   SpeedMode,
   DirectionMode,
+  SensorOption,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateDriveShaftRpm,
@@ -37,6 +39,41 @@ interface TabDriveControlsProps {
 
 export default function TabDriveControls({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabDriveControlsProps) {
   const { handleToggle, isExpanded } = useAccordionState();
+
+  // Sensor dropdown state (moved from Build Options)
+  const [sensorDropdownOpen, setSensorDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setSensorDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const handleSensorToggle = (option: string) => {
+    const current = inputs.sensor_options || [];
+    if (current.includes(option)) {
+      updateInput(
+        'sensor_options',
+        current.filter((o) => o !== option)
+      );
+    } else {
+      updateInput('sensor_options', [...current, option]);
+    }
+  };
+
+  const removeSensor = (option: string) => {
+    const current = inputs.sensor_options || [];
+    updateInput(
+      'sensor_options',
+      current.filter((o) => o !== option)
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -260,6 +297,100 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   name="brake_motor"
                   checked={inputs.brake_motor === true}
                   onChange={() => updateInput('brake_motor', true)}
+                  className="mr-2"
+                />
+                Yes
+              </label>
+            </div>
+          </div>
+
+          {/* ===== SENSORS / CONTROLS SUBSECTION (moved from Build Options) ===== */}
+          <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
+            Sensors / Controls
+          </h4>
+
+          {/* Sensor Options */}
+          <div ref={dropdownRef} className="relative">
+            <label className="label">Sensor Options</label>
+
+            {/* Selected chips */}
+            <div
+              className="input min-h-[42px] flex flex-wrap gap-1 items-center cursor-pointer"
+              onClick={() => setSensorDropdownOpen(!sensorDropdownOpen)}
+            >
+              {(inputs.sensor_options || []).length === 0 ? (
+                <span className="text-gray-400">Select sensors...</span>
+              ) : (
+                (inputs.sensor_options || []).map((option) => (
+                  <span
+                    key={option}
+                    className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
+                  >
+                    {option}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeSensor(option);
+                      }}
+                      className="ml-1 hover:text-blue-600"
+                    >
+                      &times;
+                    </button>
+                  </span>
+                ))
+              )}
+            </div>
+
+            {/* Dropdown */}
+            {sensorDropdownOpen && (
+              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                {Object.values(SensorOption).map((option) => {
+                  const isSelected = (inputs.sensor_options || []).includes(option);
+                  return (
+                    <div
+                      key={option}
+                      className={`px-3 py-2 cursor-pointer hover:bg-gray-100 flex items-center ${
+                        isSelected ? 'bg-blue-50' : ''
+                      }`}
+                      onClick={() => handleSensorToggle(option)}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="mr-2 h-4 w-4"
+                      />
+                      {option}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            <p className="text-xs text-gray-500 mt-1">Preference only. No logic applied yet.</p>
+          </div>
+
+          {/* Field Wiring Required */}
+          <div>
+            <label className="label">Field Wiring Required</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'No'}
+                  onChange={() => updateInput('field_wiring_required', 'No')}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="field_wiring_required"
+                  checked={inputs.field_wiring_required === 'Yes'}
+                  onChange={() => updateInput('field_wiring_required', 'Yes')}
                   className="mr-2"
                 />
                 Yes
