@@ -70,7 +70,14 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                   type="radio"
                   name="material_form"
                   checked={isBulkMode}
-                  onChange={() => updateInput('material_form', MaterialForm.Bulk)}
+                  onChange={() => {
+                    updateInput('material_form', MaterialForm.Bulk);
+                    // Auto-set bulk_input_method to WEIGHT_FLOW when switching to BULK
+                    // This prevents "visually selected but actually undefined" bug
+                    if (!inputs.bulk_input_method) {
+                      updateInput('bulk_input_method', BulkInputMethod.WeightFlow);
+                    }
+                  }}
                   className="mr-2"
                 />
                 Bulk Material
