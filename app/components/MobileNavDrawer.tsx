@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useCallback } from 'react';
-import Link from 'next/link';
 import { ProductDef, PRODUCTS } from '../../src/lib/products';
 import MC3Logo from './MC3Logo';
 
