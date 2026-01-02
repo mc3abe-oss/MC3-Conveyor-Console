@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
 import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
@@ -49,6 +49,11 @@ export default function BeltConveyorCalculatorApp() {
   // Calculation status tracking (v1.21)
   const [calculationStatus, setCalculationStatus] = useState<'draft' | 'calculated'>('draft');
   const [outputsStale, setOutputsStale] = useState(false);
+
+  // Auto-calc state: tracks if debounce is pending
+  const [isAutoCalcPending, setIsAutoCalcPending] = useState(false);
+  const autoCalcTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const AUTO_CALC_DEBOUNCE_MS = 300;
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -493,22 +498,48 @@ export default function BeltConveyorCalculatorApp() {
     }
   }, [loadedRevisionId, inputs, initialLoadedPayload, buildCurrentPayload]);
 
-  // Effect: Invalidate calculation when inputs change
+  // Effect: Auto-recalculate when inputs change (with debounce)
+  // This replaces the old "invalidate and mark stale" approach
   useEffect(() => {
-    if (!inputs || !lastCalculatedPayload) return;
+    // Don't auto-calc if no inputs yet
+    if (!inputs) return;
 
     const currentPayload = buildCurrentPayload();
     if (!currentPayload) return;
 
     // Check if payload has changed since last calculation
-    const hasChanged = !payloadsEqual(currentPayload, lastCalculatedPayload);
+    const hasChanged = lastCalculatedPayload
+      ? !payloadsEqual(currentPayload, lastCalculatedPayload)
+      : true; // First calc needed
 
-    if (hasChanged && calcStatus === 'ok') {
-      console.log('[Effect] Inputs changed - calculation invalidated');
-      setCalcStatus('idle');
-      setOutputsStale(true); // Mark outputs as stale when inputs change
+    if (!hasChanged) {
+      // Payload matches last calc - nothing to do
+      return;
     }
-  }, [inputs, lastCalculatedPayload, buildCurrentPayload, calcStatus]);
+
+    // Clear any existing debounce timer
+    if (autoCalcTimerRef.current) {
+      clearTimeout(autoCalcTimerRef.current);
+    }
+
+    // Mark as pending (for UI status indicator)
+    setIsAutoCalcPending(true);
+    console.log('[AutoCalc] Inputs changed - scheduling recalc in', AUTO_CALC_DEBOUNCE_MS, 'ms');
+
+    // Schedule auto-calc with debounce
+    autoCalcTimerRef.current = setTimeout(() => {
+      console.log('[AutoCalc] Debounce complete - triggering calculation');
+      setIsAutoCalcPending(false);
+      setTriggerCalculate(prev => prev + 1);
+    }, AUTO_CALC_DEBOUNCE_MS);
+
+    // Cleanup on unmount or re-run
+    return () => {
+      if (autoCalcTimerRef.current) {
+        clearTimeout(autoCalcTimerRef.current);
+      }
+    };
+  }, [inputs, lastCalculatedPayload, buildCurrentPayload]);
 
   const handleCalculate = async (calculationResult: CalculationResult) => {
     setIsCalculating(true);
@@ -527,9 +558,7 @@ export default function BeltConveyorCalculatorApp() {
 
     console.log('[Calculate] Success - payload snapshot saved', calculatedPayload);
     setIsCalculating(false);
-
-    // Show feedback without forcing navigation
-    showToast('Results updated');
+    // Note: No toast - auto-calc is silent. User sees status indicator instead.
   };
 
   const handleInputsChange = useCallback((newInputs: SliderbedInputs) => {
@@ -1128,6 +1157,7 @@ export default function BeltConveyorCalculatorApp() {
           needsRecalc={needsRecalc}
           calculationStatus={calculationStatus}
           outputsStale={outputsStale}
+          hasCalcError={result ? !result.success : false}
         />
 
         {/* Page-level Mode Tabs */}
@@ -1169,10 +1199,10 @@ export default function BeltConveyorCalculatorApp() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                 </svg>
                 Results
-                {/* Stale indicator badge */}
-                {result && needsRecalc && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
-                    Stale
+                {/* Status indicator: show "Updating" during auto-calc, hide stale */}
+                {(isAutoCalcPending || isCalculating) && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded animate-pulse">
+                    Updating
                   </span>
                 )}
               </span>
@@ -1223,61 +1253,17 @@ export default function BeltConveyorCalculatorApp() {
             outputs={result?.outputs}
             showToast={showToast}
           />
-
-          {/* View Results CTA */}
-          <div className="mt-6 flex justify-center gap-4">
-            <button
-              type="button"
-              onClick={handleCalculateClick}
-              disabled={isCalculating}
-              className="px-6 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
-            >
-              {isCalculating ? (
-                <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Calculating...
-                </>
-              ) : (
-                <>
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                  Calculate & View Results
-                </>
-              )}
-            </button>
-            {result && (
-              <button
-                type="button"
-                onClick={() => setViewMode('results')}
-                className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                View Last Results
-                {needsRecalc && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded">
-                    Stale
-                  </span>
-                )}
-              </button>
-            )}
-          </div>
         </div>
 
         {/* Results Mode - Full width results */}
         <div className={viewMode === 'results' ? '' : 'hidden'}>
-          {/* Determine if we should show valid results or placeholder (v1.21) */}
+          {/* With auto-calc, show results even if stale (they'll auto-update).
+              Placeholder only shows for true draft state (never calculated). */}
           {(() => {
-            // Show valid results only if: result exists AND calculation_status is calculated AND not stale
-            // Note: outputsStale is now reliably set when inputs change after calculation
-            const hasValidResults = result && calculationStatus === 'calculated' && !outputsStale;
+            // Show results if we have any result (even if stale - auto-calc will update)
+            const hasResults = result && calculationStatus === 'calculated';
 
-            if (hasValidResults) {
+            if (hasResults) {
               return (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Main Results - Takes 2 columns */}
@@ -1293,12 +1279,12 @@ export default function BeltConveyorCalculatorApp() {
               );
             }
 
-            // Draft or stale state - show placeholder (v1.21)
+            // Draft state - never calculated (no Calculate button - auto-calc handles it)
             return (
               <div className="card">
                 <div className="text-center py-12 text-gray-500">
                   <svg
-                    className="mx-auto h-12 w-12 text-amber-400"
+                    className="mx-auto h-12 w-12 text-gray-300"
                     fill="none"
                     viewBox="0 0 24 24"
                     stroke="currentColor"
@@ -1307,32 +1293,22 @@ export default function BeltConveyorCalculatorApp() {
                       strokeLinecap="round"
                       strokeLinejoin="round"
                       strokeWidth={2}
-                      d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
                     />
                   </svg>
                   <h3 className="mt-2 text-sm font-medium text-gray-900">
-                    {outputsStale ? 'Results are stale' : 'Draft Application'}
+                    No Results Yet
                   </h3>
                   <p className="mt-1 text-sm text-gray-500">
-                    {outputsStale
-                      ? 'Inputs have changed since the last calculation. Recalculate to get valid results.'
-                      : 'This application has not been calculated yet. Configure inputs and run Calculate.'}
+                    Configure your inputs - results will calculate automatically.
                   </p>
-                  <div className="mt-4 flex justify-center gap-3">
+                  <div className="mt-4">
                     <button
                       type="button"
                       onClick={() => setViewMode('configure')}
-                      className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
                     >
                       Go to Configure
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleCalculateClick}
-                      disabled={isCalculating}
-                      className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-400"
-                    >
-                      {isCalculating ? 'Calculating...' : 'Calculate Now'}
                     </button>
                   </div>
                 </div>
@@ -1345,8 +1321,8 @@ export default function BeltConveyorCalculatorApp() {
             );
           })()}
 
-          {/* Edit Inputs CTA - Only show when we have valid calculated results */}
-          {result && calculationStatus === 'calculated' && !outputsStale && (
+          {/* Edit Inputs CTA - Show when we have calculated results */}
+          {result && calculationStatus === 'calculated' && (
             <div className="mt-6 flex justify-center">
               <button
                 type="button"
@@ -1385,7 +1361,7 @@ export default function BeltConveyorCalculatorApp() {
           isSaving={isSaving}
           canSave={canSave}
           isDirty={isDirty}
-          outputsStale={outputsStale}
+          hasCalcError={result ? !result.success : false}
         />
       </div>
     </div>

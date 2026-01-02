@@ -1481,7 +1481,7 @@ export function applyApplicationRules(
     (frameHeightMode === FrameHeightMode.LowProfile || frameHeightMode === 'Low Profile') &&
     effectiveCleatHeightForWarning > 0
   ) {
-    warnings.push({
+    errors.push({
       field: 'frame_height_mode',
       message: 'Low Profile not compatible with cleats. Low Profile requires snub rollers, and cleated belts cannot run on snubs. Choose Standard or Custom frame standard.',
       severity: 'error',

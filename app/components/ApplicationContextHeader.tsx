@@ -20,6 +20,8 @@ interface ApplicationContextHeaderProps {
   // Calculation status (v1.21)
   calculationStatus?: 'draft' | 'calculated';
   outputsStale?: boolean;
+  // Auto-calc: only show calc button on error (manual retry)
+  hasCalcError?: boolean;
 }
 
 export default function ApplicationContextHeader({
@@ -37,6 +39,7 @@ export default function ApplicationContextHeader({
   needsRecalc = false,
   calculationStatus = 'draft',
   outputsStale = false,
+  hasCalcError = false,
 }: ApplicationContextHeaderProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -201,11 +204,11 @@ export default function ApplicationContextHeader({
 
           {/* Right: Action Buttons */}
           <div className="flex items-center gap-3">
-            {/* Calculate - hidden on mobile (shown in bottom bar) */}
-            {onCalculate && (
+            {/* Recalculate - only shown on error (manual retry) */}
+            {onCalculate && hasCalcError && (
               <button
                 type="button"
-                className="btn btn-primary hidden md:inline-flex"
+                className="btn bg-red-600 hover:bg-red-700 text-white hidden md:inline-flex"
                 onClick={onCalculate}
                 disabled={isCalculating}
               >
@@ -215,10 +218,10 @@ export default function ApplicationContextHeader({
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                     </svg>
-                    Calculating
+                    Retrying
                   </span>
                 ) : (
-                  'Calculate'
+                  'Recalculate now'
                 )}
               </button>
             )}
@@ -338,11 +341,11 @@ export default function ApplicationContextHeader({
 
         {/* Right: Action Buttons */}
         <div className="flex items-center gap-3 pt-1">
-          {/* Calculate - hidden on mobile (shown in bottom bar) */}
-          {onCalculate && (
+          {/* Recalculate - only shown on error (manual retry) */}
+          {onCalculate && hasCalcError && (
             <button
               type="button"
-              className="btn btn-primary hidden md:inline-flex"
+              className="btn bg-red-600 hover:bg-red-700 text-white hidden md:inline-flex"
               onClick={onCalculate}
               disabled={isCalculating}
             >
@@ -352,10 +355,10 @@ export default function ApplicationContextHeader({
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
-                  Calculating
+                  Retrying
                 </span>
               ) : (
-                'Calculate'
+                'Recalculate now'
               )}
             </button>
           )}
