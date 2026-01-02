@@ -1,10 +1,15 @@
 /**
- * SLIDERBED CONVEYOR v1.32 - VALIDATION RULES
+ * SLIDERBED CONVEYOR v1.40 - VALIDATION RULES
  *
  * This file implements all validation rules, hard errors, warnings, and info messages
  * as defined in the Model v1 specification.
  *
  * CHANGELOG:
+ * v1.40 (2026-01-02): Floor Support Logic - Decouple TOB from Legs/Casters
+ *                     TOB required when floor_supported (independent of hardware)
+ *                     Leg model required when include_legs=true
+ *                     Caster config required when include_casters=true
+ *                     Legs and Casters can both be enabled simultaneously
  * v1.32 (2026-01-01): Feed behavior validation (surge_multiplier >= 1.0)
  *                     Warning for missing density in Weight Flow mode (optional but encouraged)
  * v1.31 (2026-01-01): Lump size validation (smallest_lump_size_in <= largest_lump_size_in)
@@ -64,6 +69,9 @@ import {
   // v1.29: Return Support enums
   ReturnFrameStyle,
   ReturnSnubMode,
+  // v1.40: Unified Support Method
+  SupportMethod,
+  isFloorSupported,
 } from './schema';
 import { hasAngleMismatch } from './migrate';
 import {
@@ -754,18 +762,21 @@ export function validateInputs(
   }
 
   // =========================================================================
-  // v1.4: TOB FIELD EXISTENCE VALIDATION
+  // v1.4/v1.40: TOB FIELD EXISTENCE VALIDATION
+  // v1.40: Also check new support_method field for floor support
   // =========================================================================
 
   const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
+  const floorSupportedCheck = isFloorSupported(inputs.support_method);
 
-  if (!legsRequired) {
-    // When legs_required=false, TOB fields must NOT exist
+  // TOB fields allowed if EITHER legacy support types OR new support_method indicates floor support
+  if (!legsRequired && !floorSupportedCheck) {
+    // When NOT floor supported, TOB fields must NOT exist
     for (const field of TOB_FIELDS) {
       if (field in inputs && (inputs as unknown as Record<string, unknown>)[field] !== undefined) {
         errors.push({
           field,
-          message: `Field '${field}' must not exist when legs are not required (both ends are External)`,
+          message: `Field '${field}' must not exist when conveyor is not floor supported`,
           severity: 'error',
         });
       }
@@ -798,6 +809,120 @@ export function validateInputs(
       message: 'Adjustment range must be >= 0"',
       severity: 'error',
     });
+  }
+
+  // =========================================================================
+  // v1.40: UNIFIED SUPPORT METHOD & MODEL SELECTION VALIDATION
+  // =========================================================================
+
+  const floorSupported = isFloorSupported(inputs.support_method);
+  const includeLegs = inputs.include_legs === true;
+  const includeCasters = inputs.include_casters === true;
+
+  // v1.40: TOB required when floor supported (regardless of legs/casters)
+  if (floorSupported) {
+    // Check for reference TOB based on reference_end
+    const referenceEnd = inputs.reference_end ?? 'tail';
+    const referenceTob = referenceEnd === 'tail' ? inputs.tail_tob_in : inputs.drive_tob_in;
+
+    if (referenceTob === undefined) {
+      errors.push({
+        field: referenceEnd === 'tail' ? 'tail_tob_in' : 'drive_tob_in',
+        message: 'Top of Belt (TOB) is required when conveyor is floor supported',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Leg model required when include_legs=true
+  if (floorSupported && includeLegs) {
+    if (!inputs.leg_model_key) {
+      errors.push({
+        field: 'leg_model_key',
+        message: 'Leg model selection is required when legs are included',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Caster configuration validation when include_casters=true
+  if (floorSupported && includeCasters) {
+    const rigidQty = inputs.caster_rigid_qty ?? 0;
+    const swivelQty = inputs.caster_swivel_qty ?? 0;
+    const totalCasters = rigidQty + swivelQty;
+
+    // At least one caster required
+    if (totalCasters === 0) {
+      errors.push({
+        field: 'caster_rigid_qty',
+        message: 'At least one caster (rigid or swivel) is required when casters are included',
+        severity: 'error',
+      });
+    }
+
+    // Model required when qty > 0
+    if (rigidQty > 0 && !inputs.caster_rigid_model_key) {
+      errors.push({
+        field: 'caster_rigid_model_key',
+        message: 'Rigid caster model is required when rigid quantity is greater than 0',
+        severity: 'error',
+      });
+    }
+
+    if (swivelQty > 0 && !inputs.caster_swivel_model_key) {
+      errors.push({
+        field: 'caster_swivel_model_key',
+        message: 'Swivel caster model is required when swivel quantity is greater than 0',
+        severity: 'error',
+      });
+    }
+  }
+
+  // Legacy support: also validate if using old support_method values ('legs' or 'casters')
+  const supportMethodValue = inputs.support_method;
+  const isLegacyLegs = supportMethodValue === 'legs' || supportMethodValue === SupportMethod.Legs;
+  const isLegacyCasters = supportMethodValue === 'casters' || supportMethodValue === SupportMethod.Casters;
+
+  if (isLegacyLegs && !inputs.leg_model_key) {
+    // Only add error if not already added above
+    if (!includeLegs) {
+      errors.push({
+        field: 'leg_model_key',
+        message: 'Leg model selection is required when using floor-standing legs',
+        severity: 'error',
+      });
+    }
+  }
+
+  if (isLegacyCasters && !includeCasters) {
+    const rigidQty = inputs.caster_rigid_qty ?? 0;
+    const swivelQty = inputs.caster_swivel_qty ?? 0;
+    const totalCasters = rigidQty + swivelQty;
+
+    if (totalCasters === 0) {
+      errors.push({
+        field: 'caster_rigid_qty',
+        message: 'At least one caster (rigid or swivel) is required when using casters',
+        severity: 'error',
+      });
+    }
+
+    // Model required when qty > 0 (legacy validation)
+    if (rigidQty > 0 && !inputs.caster_rigid_model_key) {
+      errors.push({
+        field: 'caster_rigid_model_key',
+        message: 'Rigid caster model is required when rigid quantity is greater than 0',
+        severity: 'error',
+      });
+    }
+
+    if (swivelQty > 0 && !inputs.caster_swivel_model_key) {
+      errors.push({
+        field: 'caster_swivel_model_key',
+        message: 'Swivel caster model is required when swivel quantity is greater than 0',
+        severity: 'error',
+      });
+    }
   }
 
   // =========================================================================

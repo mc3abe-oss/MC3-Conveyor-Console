@@ -68,6 +68,26 @@ export default function ConsoleAdminPage() {
             Manage cleat catalog entries and center spacing factors
           </p>
         </Link>
+
+        <Link
+          href="/console/admin/leg-models"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Leg Models</h2>
+          <p className="text-sm text-gray-600">
+            Manage floor-mounted leg models for conveyor supports
+          </p>
+        </Link>
+
+        <Link
+          href="/console/admin/caster-models"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-gray-200"
+        >
+          <h2 className="text-lg font-semibold text-gray-900 mb-2">Caster Models</h2>
+          <p className="text-sm text-gray-600">
+            Manage caster models for rolling conveyor supports
+          </p>
+        </Link>
       </div>
     </main>
   );
