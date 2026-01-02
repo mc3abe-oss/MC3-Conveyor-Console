@@ -201,10 +201,11 @@ export default function ApplicationContextHeader({
 
           {/* Right: Action Buttons */}
           <div className="flex items-center gap-3">
+            {/* Calculate - hidden on mobile (shown in bottom bar) */}
             {onCalculate && (
               <button
                 type="button"
-                className="btn btn-primary"
+                className="btn btn-primary hidden md:inline-flex"
                 onClick={onCalculate}
                 disabled={isCalculating}
               >
@@ -221,10 +222,11 @@ export default function ApplicationContextHeader({
                 )}
               </button>
             )}
+            {/* Save - hidden on mobile (shown in bottom bar) */}
             {onSave && (
               <button
                 type="button"
-                className="btn btn-outline"
+                className="btn btn-outline hidden md:inline-flex"
                 onClick={onSave}
                 disabled={isSaving}
               >
@@ -336,10 +338,11 @@ export default function ApplicationContextHeader({
 
         {/* Right: Action Buttons */}
         <div className="flex items-center gap-3 pt-1">
+          {/* Calculate - hidden on mobile (shown in bottom bar) */}
           {onCalculate && (
             <button
               type="button"
-              className="btn btn-primary"
+              className="btn btn-primary hidden md:inline-flex"
               onClick={onCalculate}
               disabled={isCalculating}
             >
@@ -356,10 +359,11 @@ export default function ApplicationContextHeader({
               )}
             </button>
           )}
+          {/* Save - hidden on mobile (shown in bottom bar) */}
           {onSave && (
             <button
               type="button"
-              className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'}`}
+              className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} hidden md:inline-flex`}
               onClick={onSave}
               disabled={!canSave || isSaving}
               title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft (results are stale)' : ''}

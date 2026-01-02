@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { PRODUCTS } from '../../src/lib/products';
 import { createClient } from '../../src/lib/supabase/browser';
 import MC3Logo from '../components/MC3Logo';
+import MobileNavDrawer from '../components/MobileNavDrawer';
 
 interface ConsoleLayoutProps {
   children: React.ReactNode;
@@ -13,6 +15,7 @@ interface ConsoleLayoutProps {
 export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   // Determine current product from pathname
   const currentProduct = PRODUCTS.find((p) => pathname.startsWith(p.href));
@@ -31,11 +34,21 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
     }
   };
 
+  const handleMobileNavigate = (href: string) => {
+    router.push(href);
+  };
+
+  const handleMobileProductChange = () => {
+    // For now, just close the drawer - product selection could be enhanced later
+    setIsMobileMenuOpen(false);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Console Header */}
       <header className="bg-mc3-navy text-white shadow-md">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Desktop Header */}
+        <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Left: Logo + Product Selector */}
             <div className="flex items-center gap-6">
@@ -123,11 +136,44 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
             </nav>
           </div>
         </div>
+
+        {/* Mobile Header */}
+        <div className="md:hidden flex items-center justify-between h-14 px-4">
+          {/* Hamburger Menu Button */}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 -ml-2 text-white/80 hover:text-white rounded-md min-w-[44px] min-h-[44px] flex items-center justify-center"
+            aria-label="Open menu"
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+          </button>
+
+          {/* Center: Product Name */}
+          <span className="font-semibold text-white truncate max-w-[200px]">
+            {currentProduct?.name || 'MC3'}
+          </span>
+
+          {/* Right: Spacer for balance */}
+          <div className="w-10" />
+        </div>
       </header>
 
-      {/* Product Context Bar */}
+      {/* Mobile Navigation Drawer */}
+      <MobileNavDrawer
+        isOpen={isMobileMenuOpen}
+        onClose={() => setIsMobileMenuOpen(false)}
+        currentProduct={currentProduct}
+        pathname={pathname}
+        onNavigate={handleMobileNavigate}
+        onProductChange={handleMobileProductChange}
+        onSignOut={handleLogout}
+      />
+
+      {/* Product Context Bar - hidden on mobile */}
       {currentProduct && (
-        <div className="bg-white border-b border-mc3-line">
+        <div className="hidden md:block bg-white border-b border-mc3-line">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center h-10">
               <h2 className="text-sm font-semibold text-mc3-navy">

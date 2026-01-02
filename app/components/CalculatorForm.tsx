@@ -269,7 +269,7 @@ export default function CalculatorForm({
       <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
         {/* Sub-tab navigation */}
         <div className="border-b border-gray-200 bg-gray-50">
-          <nav className="flex -mb-px" aria-label="Configure tabs">
+          <nav className="flex -mb-px overflow-x-auto scrollbar-hide" aria-label="Configure tabs">
             {CONFIGURE_TABS.map((tab) => {
               const counts = tabCounts[tab.id];
 
@@ -279,7 +279,9 @@ export default function CalculatorForm({
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex-1 py-3 px-4 text-center font-medium text-sm transition-colors
+                    flex-1 md:flex-1 flex-shrink-0 whitespace-nowrap
+                    py-3 px-4 text-center font-medium text-sm transition-colors
+                    min-h-[44px] min-w-[100px]
                     border-b-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500
                     ${
                       activeTab === tab.id

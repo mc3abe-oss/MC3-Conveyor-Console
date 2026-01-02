@@ -10,6 +10,7 @@ import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
+import MobileBottomActionBar from './MobileBottomActionBar';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
@@ -1366,6 +1367,22 @@ export default function BeltConveyorCalculatorApp() {
             onDraftVaultChange={setDraftVault}
           />
         </div>
+
+        {/* Spacer for mobile bottom action bar */}
+        <div className="h-24 md:hidden" aria-hidden="true" />
+      </div>
+
+      {/* Mobile Bottom Action Bar */}
+      <div className="md:hidden">
+        <MobileBottomActionBar
+          onCalculate={handleCalculateClick}
+          onSave={handleSave}
+          isCalculating={isCalculating}
+          isSaving={isSaving}
+          canSave={canSave}
+          isDirty={isDirty}
+          outputsStale={outputsStale}
+        />
       </div>
     </div>
   );
