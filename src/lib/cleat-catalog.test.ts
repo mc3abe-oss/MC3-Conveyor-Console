@@ -52,10 +52,10 @@ const createCatalogItem = (
 
 const testCatalog: CleatCatalogItem[] = [
   createCatalogItem('T-Cleat', '1"', 'STRAIGHT_CROSS', 6, 8),
-  createCatalogItem('T-Cleat', '1"', 'CURVED_90', 8, 10),
+  createCatalogItem('T-Cleat', '1"', 'STAGGERED', 8, 10),
   createCatalogItem('T-Cleat', '1.5"', 'STRAIGHT_CROSS', 8, 10),
-  createCatalogItem('T-Cleat', '1.5"', 'CURVED_90', 10, null), // No drill & siped
-  createCatalogItem('Chevron', '0.75"', 'CURVED_120', 5, 6),
+  createCatalogItem('T-Cleat', '1.5"', 'STAGGERED', 10, null), // No drill & siped
+  createCatalogItem('Chevron', '0.75"', 'CHEVRON', 5, 6),
   createCatalogItem('Inactive', '1"', 'STRAIGHT_CROSS', 6, 8, false), // Inactive
 ];
 
@@ -108,7 +108,7 @@ describe('lookupCleatBaseMinDia12', () => {
       'PVC_HOT_WELDED',
       'T-Cleat',
       '1.5"',
-      'CURVED_90',
+      'STAGGERED',
       'DRILL_SIPED_1IN'
     );
 
@@ -325,7 +325,7 @@ describe('lookupCleatsMinPulleyDia', () => {
       'PVC_HOT_WELDED',
       'T-Cleat',
       '1.5"',
-      'CURVED_90',
+      'STAGGERED',
       'DRILL_SIPED_1IN',
       12
     );
@@ -406,15 +406,15 @@ describe('getCleatPatternsForProfileSize', () => {
     const patterns = getCleatPatternsForProfileSize(testCatalog, 'T-Cleat', '1"');
 
     expect(patterns).toContain('STRAIGHT_CROSS');
-    expect(patterns).toContain('CURVED_90');
+    expect(patterns).toContain('STAGGERED');
     expect(patterns.length).toBe(2);
   });
 
   it('should return patterns in standard order', () => {
     const patterns = getCleatPatternsForProfileSize(testCatalog, 'T-Cleat', '1"');
 
-    // STRAIGHT_CROSS should come before CURVED_90 in standard order
-    expect(patterns.indexOf('STRAIGHT_CROSS')).toBeLessThan(patterns.indexOf('CURVED_90'));
+    // STRAIGHT_CROSS should come before STAGGERED in standard order
+    expect(patterns.indexOf('STRAIGHT_CROSS')).toBeLessThan(patterns.indexOf('STAGGERED'));
   });
 
   it('should return empty array for unknown combination', () => {
