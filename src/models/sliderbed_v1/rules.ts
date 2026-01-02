@@ -1474,6 +1474,38 @@ export function applyApplicationRules(
     });
   }
 
+  // v1.34: Low Profile with cleats warning
+  // When Low Profile is selected with cleats enabled, warn about additional clearance requirements
+  if (
+    (frameHeightMode === FrameHeightMode.LowProfile || frameHeightMode === 'Low Profile') &&
+    effectiveCleatHeightForWarning > 0
+  ) {
+    warnings.push({
+      field: 'frame_height_mode',
+      message: 'Low Profile with cleats requires additional clearance and may not meet Low Profile standards.',
+      severity: 'warning',
+    });
+  }
+
+  // v1.34: Low Profile exceeds standard threshold warning
+  // Calculate required frame height to check against Low Profile max threshold
+  // Note: Using defaults since validateInputs doesn't receive parameters
+  const returnRollerDiameterInForWarning = FRAME_HEIGHT_CONSTANTS.DEFAULT_RETURN_ROLLER_DIAMETER_IN;
+  const requiredFrameHeightForWarning = largestPulley + (2 * effectiveCleatHeightForWarning) + returnRollerDiameterInForWarning;
+  const lowProfileMaxHeight = 10.0; // Default from DEFAULT_PARAMETERS.low_profile_max_frame_height_in
+
+  if (
+    (frameHeightMode === FrameHeightMode.LowProfile || frameHeightMode === 'Low Profile') &&
+    requiredFrameHeightForWarning > lowProfileMaxHeight
+  ) {
+    const overage = requiredFrameHeightForWarning - lowProfileMaxHeight;
+    warnings.push({
+      field: 'frame_height_mode',
+      message: `Low Profile selected, but required frame height (${requiredFrameHeightForWarning.toFixed(1)}") exceeds MC3 Low Profile standard (${lowProfileMaxHeight.toFixed(1)}") by ${overage.toFixed(1)}". Consider Standard/Custom or reduce cleat height.`,
+      severity: 'warning',
+    });
+  }
+
   // =========================================================================
   // v1.7: SPROCKET WARNINGS
   // =========================================================================

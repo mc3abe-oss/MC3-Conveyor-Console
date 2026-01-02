@@ -882,61 +882,82 @@ export const FRAME_HEIGHT_CONSTANTS = {
 } as const;
 
 /**
- * Frame height breakdown result (v1.33)
+ * Frame height breakdown result (v1.33, v1.34: required vs reference separation)
  */
 export interface FrameHeightBreakdown {
   largest_pulley_in: number;
   cleat_height_in: number;
   cleat_adder_in: number;
   return_roller_in: number;
-  total_in: number;
+  total_in: number; // Legacy: same as required_total_in for backward compatibility
+  // v1.34: Required vs Reference separation
+  required_total_in: number; // Physical envelope (always calculated)
+  clearance_in: number; // Clearance for selected frame standard
+  reference_total_in: number; // required + clearance (for quoting/reference)
   formula: string;
 }
 
 /**
- * Calculate frame height with full breakdown (v1.33)
+ * Calculate frame height with full breakdown (v1.33, v1.34: required vs reference)
  *
- * New formula:
- *   frame_height = largest_pulley + (2 * cleat_height) + return_roller
+ * v1.34: Two distinct concepts:
+ *   Required Frame Height = largest_pulley + (2 * cleat_height) + return_roller
+ *     - Physical envelope, always calculated from components
+ *   Reference Frame Height = required + clearance_for_selected_standard
+ *     - For quoting/reference, based on selected Frame Standard
  *
- * This replaces the old mode-based calculation for computed heights.
- * Custom mode still uses user-specified value but gets breakdown for display.
- *
- * @param drivePulleyDiameterIn - Drive pulley diameter in inches
- * @param tailPulleyDiameterIn - Tail pulley diameter in inches
+ * @param drivePulleyOdIn - Drive pulley finished OD in inches
+ * @param tailPulleyOdIn - Tail pulley finished OD in inches
  * @param cleatHeightIn - Cleat height in inches (0 if cleats disabled)
  * @param returnRollerDiameterIn - Return roller diameter (default 2.0")
- * @param frameHeightMode - Frame height mode (Standard, Low Profile, Custom)
+ * @param frameHeightMode - Frame height mode/standard (Standard, Low Profile, Custom)
  * @param customFrameHeightIn - Custom frame height (only used if mode is Custom)
- * @returns Frame height breakdown with all components
+ * @param clearanceLowProfileIn - Clearance for Low Profile standard (default 0.5")
+ * @param clearanceStandardIn - Clearance for Standard (default 2.5")
+ * @returns Frame height breakdown with required and reference heights
  */
 export function calculateFrameHeightWithBreakdown(
-  drivePulleyDiameterIn: number,
-  tailPulleyDiameterIn: number,
+  drivePulleyOdIn: number,
+  tailPulleyOdIn: number,
   cleatHeightIn: number,
   returnRollerDiameterIn: number,
   frameHeightMode?: FrameHeightMode | string,
-  customFrameHeightIn?: number
+  customFrameHeightIn?: number,
+  clearanceLowProfileIn: number = 0.5,
+  clearanceStandardIn: number = 2.5
 ): FrameHeightBreakdown {
-  const largestPulley = Math.max(drivePulleyDiameterIn, tailPulleyDiameterIn);
+  const largestPulley = Math.max(drivePulleyOdIn, tailPulleyOdIn);
   const cleatAdder = 2 * cleatHeightIn;
   const mode = frameHeightMode ?? FrameHeightMode.Standard;
 
-  // For Custom mode, use user-specified value
+  // Required frame height = physical envelope (always calculated)
+  const requiredTotal = largestPulley + cleatAdder + returnRollerDiameterIn;
+
+  // Determine clearance based on selected frame standard
+  let clearance: number;
   if (mode === FrameHeightMode.Custom || mode === 'Custom') {
-    const customTotal = customFrameHeightIn ?? (largestPulley + cleatAdder + returnRollerDiameterIn);
+    // Custom mode: user specifies exact reference height, clearance is derived
+    const customTotal = customFrameHeightIn ?? requiredTotal;
+    clearance = Math.max(0, customTotal - requiredTotal);
     return {
       largest_pulley_in: largestPulley,
       cleat_height_in: cleatHeightIn,
       cleat_adder_in: cleatAdder,
       return_roller_in: returnRollerDiameterIn,
-      total_in: customTotal,
-      formula: `Custom: ${customTotal.toFixed(2)}"`,
+      total_in: customTotal, // Legacy: use custom value
+      required_total_in: requiredTotal,
+      clearance_in: clearance,
+      reference_total_in: customTotal,
+      formula: `Custom: ${customTotal.toFixed(2)}" (required: ${requiredTotal.toFixed(2)}")`,
     };
+  } else if (mode === FrameHeightMode.LowProfile || mode === 'Low Profile') {
+    clearance = clearanceLowProfileIn;
+  } else {
+    // Standard (default)
+    clearance = clearanceStandardIn;
   }
 
-  // Standard and Low Profile: compute from components
-  const total = largestPulley + cleatAdder + returnRollerDiameterIn;
+  const referenceTotal = requiredTotal + clearance;
 
   // Build human-readable formula
   const parts: string[] = [];
@@ -945,14 +966,19 @@ export function calculateFrameHeightWithBreakdown(
     parts.push(`Cleats: 2 × ${cleatHeightIn.toFixed(2)}" = ${cleatAdder.toFixed(2)}"`);
   }
   parts.push(`Return roller: ${returnRollerDiameterIn.toFixed(2)}"`);
-  parts.push(`Total: ${total.toFixed(2)}"`);
+  parts.push(`Required: ${requiredTotal.toFixed(2)}"`);
+  parts.push(`Clearance (${mode}): +${clearance.toFixed(2)}"`);
+  parts.push(`Reference: ${referenceTotal.toFixed(2)}"`);
 
   return {
     largest_pulley_in: largestPulley,
     cleat_height_in: cleatHeightIn,
     cleat_adder_in: cleatAdder,
     return_roller_in: returnRollerDiameterIn,
-    total_in: total,
+    total_in: requiredTotal, // Legacy: use required for backward compatibility
+    required_total_in: requiredTotal,
+    clearance_in: clearance,
+    reference_total_in: referenceTotal,
     formula: parts.join('; '),
   };
 }
@@ -1627,7 +1653,7 @@ export function calculate(
     }
   }
 
-  // Step 19: Frame height calculations (v1.5, v1.33: cleat/pulley awareness)
+  // Step 19: Frame height calculations (v1.5, v1.33: cleat/pulley awareness, v1.34: required vs reference)
   const cleatsEnabledForFrame = inputs.cleats_enabled === true;
   const effectiveCleatHeightIn = getEffectiveCleatHeight(
     cleatsEnabledForFrame,
@@ -1636,15 +1662,34 @@ export function calculate(
   );
   const returnRollerDiameterIn = parameters.return_roller_diameter_in ?? FRAME_HEIGHT_CONSTANTS.DEFAULT_RETURN_ROLLER_DIAMETER_IN;
 
-  // v1.33: Calculate frame height with full breakdown
+  // v1.34: Use finished OD from pulley configurator (same source as pulley cards)
+  // Priority: driveFinishedOdIn (from variant) > drivePulleyDiameterIn (from inputs sync)
+  const driveOdForFrame = driveFinishedOdIn ?? drivePulleyDiameterIn;
+  const tailOdForFrame = tailFinishedOdIn ?? tailPulleyDiameterIn;
+
+  // v1.34: Get clearance parameters
+  const clearanceLowProfile = parameters.frame_clearance_low_profile_in ?? 0.5;
+  const clearanceStandard = parameters.frame_clearance_standard_in ?? 2.5;
+
+  // v1.33, v1.34: Calculate frame height with full breakdown (required + reference)
   const frameHeightBreakdown = calculateFrameHeightWithBreakdown(
-    drivePulleyDiameterIn,
-    tailPulleyDiameterIn,
+    driveOdForFrame,
+    tailOdForFrame,
     effectiveCleatHeightIn,
     returnRollerDiameterIn,
     inputs.frame_height_mode,
-    inputs.custom_frame_height_in
+    inputs.custom_frame_height_in,
+    clearanceLowProfile,
+    clearanceStandard
   );
+
+  // v1.34: Extract both required and reference heights
+  const requiredFrameHeightIn = frameHeightBreakdown.required_total_in;
+  const referenceFrameHeightIn = frameHeightBreakdown.reference_total_in;
+  const clearanceForStandardIn = frameHeightBreakdown.clearance_in;
+  const largestPulleyOdIn = frameHeightBreakdown.largest_pulley_in;
+
+  // Legacy outputs for backward compatibility
   const effectiveFrameHeightIn = frameHeightBreakdown.total_in;
   const largestPulleyDiameterIn = frameHeightBreakdown.largest_pulley_in;
 
@@ -1935,10 +1980,14 @@ export function calculate(
     // Aggregate required min pulley diameter
     required_min_pulley_diameter_in: requiredMinPulleyDiaIn,
 
-    // v1.5, v1.33: Frame height & snub roller outputs (with breakdown)
-    largest_pulley_diameter_in: largestPulleyDiameterIn,
+    // v1.5, v1.33, v1.34: Frame height & snub roller outputs (with breakdown + required/reference)
+    largest_pulley_diameter_in: largestPulleyDiameterIn, // Legacy, kept for backward compatibility
+    largest_pulley_od_in: largestPulleyOdIn, // v1.34: Uses actual configured pulley OD
     effective_cleat_height_in: effectiveCleatHeightIn,
-    effective_frame_height_in: effectiveFrameHeightIn,
+    required_frame_height_in: requiredFrameHeightIn, // v1.34: Physical envelope
+    reference_frame_height_in: referenceFrameHeightIn, // v1.34: With clearance for selected standard
+    clearance_for_selected_standard_in: clearanceForStandardIn, // v1.34: Clearance based on frame standard
+    effective_frame_height_in: effectiveFrameHeightIn, // Legacy, kept for backward compatibility
     frame_height_breakdown: frameHeightBreakdown,
     requires_snub_rollers: requiresSnubRollers,
     ...costFlags,

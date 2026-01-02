@@ -3359,7 +3359,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       expect(formula).toContain('Largest pulley');
       expect(formula).toContain('Cleats');
       expect(formula).toContain('Return roller');
-      expect(formula).toContain('Total');
+      // v1.34: Formula now shows Required + Reference instead of Total
+      expect(formula).toContain('Required');
+      expect(formula).toContain('Reference');
     });
 
     // Test: Custom mode still respects user value
@@ -3402,6 +3404,134 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           (w) => w.severity === 'info' && w.message.includes('cleat height')
         )
       ).toBe(true);
+    });
+
+    // =========================================================================
+    // v1.34: Required vs Reference Frame Height Tests
+    // =========================================================================
+
+    // Fixture A: Pulley OD source of truth (large pulleys with cleats)
+    it('v1.34 Fixture A: should use configured pulley OD for required frame height', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 8.5, // Simulating application_pulleys.finished_od_in
+        tail_pulley_diameter_in: 8.0,
+        cleats_enabled: true,
+        cleat_height_in: 3.0, // Explicit numeric cleat height
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // largest_pulley_od_in = max(8.5, 8.0) = 8.5
+      expect(result.outputs?.largest_pulley_od_in).toBeCloseTo(8.5, 2);
+      // required = 8.5 + (2 * 3.0) + 2.0 = 16.5
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(16.5, 2);
+    });
+
+    // Fixture B: No cleats, equal pulleys
+    it('v1.34 Fixture B: no cleats, equal pulleys -> required = 6.0"', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 4.0,
+        tail_pulley_diameter_in: 4.0,
+        cleats_enabled: false,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // required = 4.0 + 0 + 2.0 = 6.0
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(6.0, 2);
+    });
+
+    // Fixture C: Reference height adds Standard clearance
+    it('v1.34 Fixture C: Standard mode adds 2.5" clearance to reference', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 4.0,
+        tail_pulley_diameter_in: 4.0,
+        cleats_enabled: false,
+        frame_height_mode: FrameHeightMode.Standard,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // required = 4.0 + 0 + 2.0 = 6.0
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(6.0, 2);
+      // reference = required + 2.5 = 8.5
+      expect(result.outputs?.reference_frame_height_in).toBeCloseTo(8.5, 2);
+      expect(result.outputs?.clearance_for_selected_standard_in).toBeCloseTo(2.5, 2);
+    });
+
+    // Fixture: Low Profile adds 0.5" clearance
+    it('v1.34: Low Profile mode adds 0.5" clearance to reference', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 4.0,
+        tail_pulley_diameter_in: 4.0,
+        cleats_enabled: false,
+        frame_height_mode: FrameHeightMode.LowProfile,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // required = 4.0 + 0 + 2.0 = 6.0
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(6.0, 2);
+      // reference = required + 0.5 = 6.5
+      expect(result.outputs?.reference_frame_height_in).toBeCloseTo(6.5, 2);
+      expect(result.outputs?.clearance_for_selected_standard_in).toBeCloseTo(0.5, 2);
+    });
+
+    // Fixture D: Low profile warning triggers when required > max threshold
+    it('v1.34 Fixture D: Low Profile warning triggers when required > max threshold', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 6.0,
+        tail_pulley_diameter_in: 6.0,
+        cleats_enabled: true,
+        cleat_height_in: 2.5, // Large cleats
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        frame_height_mode: FrameHeightMode.LowProfile,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // required = 6.0 + (2 * 2.5) + 2.0 = 13.0 (exceeds default 10.0 Low Profile max)
+      expect(result.outputs?.required_frame_height_in).toBeCloseTo(13.0, 2);
+
+      // Should have warning about exceeding Low Profile standard
+      const lowProfileWarning = result.warnings?.find(
+        (w) => w.message.includes('Low Profile selected') && w.message.includes('exceeds MC3 Low Profile standard')
+      );
+      expect(lowProfileWarning).toBeDefined();
+      expect(lowProfileWarning?.severity).toBe('warning');
+    });
+
+    // v1.34: Breakdown includes required + reference + clearance
+    it('v1.34: breakdown includes required_total_in, reference_total_in, clearance_in', () => {
+      const inputs: SliderbedInputs = {
+        ...frameHeightBaseInputs,
+        drive_pulley_diameter_in: 5.0,
+        tail_pulley_diameter_in: 4.0,
+        cleats_enabled: true,
+        cleat_size: '1"',
+        cleat_spacing_in: 12,
+        cleat_edge_offset_in: 0.5,
+        frame_height_mode: FrameHeightMode.Standard,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      const breakdown = result.outputs?.frame_height_breakdown;
+      expect(breakdown).toBeDefined();
+
+      // required = 5.0 + (2 * 1.0) + 2.0 = 9.0
+      expect(breakdown?.required_total_in).toBeCloseTo(9.0, 2);
+      expect(breakdown?.clearance_in).toBeCloseTo(2.5, 2);
+      // reference = 9.0 + 2.5 = 11.5
+      expect(breakdown?.reference_total_in).toBeCloseTo(11.5, 2);
     });
   });
 

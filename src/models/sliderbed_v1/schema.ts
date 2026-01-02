@@ -1682,6 +1682,25 @@ export interface SliderbedParameters {
    * Default: 2.0". Used in: frame_height = largest_pulley + 2*cleat_height + return_roller.
    */
   return_roller_diameter_in: number;
+
+  // v1.34: Frame Standard clearance parameters
+  /**
+   * Frame clearance for Low Profile standard (inches).
+   * Default: 0.5". Added to required frame height for reference frame height.
+   */
+  frame_clearance_low_profile_in: number;
+
+  /**
+   * Frame clearance for Standard frame (inches).
+   * Default: 2.5". Added to required frame height for reference frame height.
+   */
+  frame_clearance_standard_in: number;
+
+  /**
+   * Maximum frame height for Low Profile classification (inches).
+   * Default: 10.0". Used for warning when required height exceeds Low Profile standard.
+   */
+  low_profile_max_frame_height_in: number;
 }
 
 // ============================================================================
@@ -2056,14 +2075,22 @@ export interface SliderbedOutputs {
   required_min_pulley_diameter_in?: number;
 
   // =========================================================================
-  // v1.5: FRAME HEIGHT & SNUB ROLLER OUTPUTS (v1.33: Updated with cleat/pulley awareness)
+  // v1.5: FRAME HEIGHT & SNUB ROLLER OUTPUTS (v1.33: cleat/pulley awareness, v1.34: required vs reference)
   // =========================================================================
 
   /**
    * Largest pulley diameter (inches).
    * max(drive_pulley_diameter_in, tail_pulley_diameter_in)
+   * @deprecated Use largest_pulley_od_in for new code
    */
   largest_pulley_diameter_in?: number;
+
+  /**
+   * Largest pulley OD (inches) - v1.34.
+   * max(drive_pulley_finished_od_in, tail_pulley_finished_od_in)
+   * Uses actual configured pulley OD from application_pulleys.
+   */
+  largest_pulley_od_in?: number;
 
   /**
    * Effective cleat height used in frame height calc (inches).
@@ -2071,19 +2098,42 @@ export interface SliderbedOutputs {
    */
   effective_cleat_height_in?: number;
 
+  /**
+   * Required frame height (inches) - v1.34.
+   * Physical envelope: largest_pulley_od + (2 * cleat_height) + return_roller_allowance.
+   * Always calculated, regardless of frame standard selection.
+   */
+  required_frame_height_in?: number;
+
+  /**
+   * Reference frame height (inches) - v1.34.
+   * For quoting/reference: required_frame_height + clearance_for_selected_standard.
+   * Based on selected Frame Standard (Low Profile, Standard, Custom).
+   */
+  reference_frame_height_in?: number;
+
+  /**
+   * Clearance added to required height for selected frame standard (inches) - v1.34.
+   * Low Profile: 0.5", Standard: 2.5", Custom: user-specified.
+   */
+  clearance_for_selected_standard_in?: number;
+
   /** Effective frame height in inches (calculated from mode or custom value) */
   effective_frame_height_in?: number;
 
   /**
-   * Frame height calculation breakdown (v1.33).
-   * Shows: largest_pulley + 2*cleat_height + return_roller = total
+   * Frame height calculation breakdown (v1.33, v1.34: updated with required/reference).
+   * Shows: largest_pulley + 2*cleat_height + return_roller = required; required + clearance = reference
    */
   frame_height_breakdown?: {
     largest_pulley_in: number;
     cleat_height_in: number;
     cleat_adder_in: number; // 2 * cleat_height_in
     return_roller_in: number;
-    total_in: number;
+    total_in: number; // Legacy: same as required_total_in
+    required_total_in: number; // v1.34: Required frame height
+    clearance_in: number; // v1.34: Clearance for selected standard
+    reference_total_in: number; // v1.34: Reference frame height
     formula: string; // Human-readable formula string
   };
 
@@ -2350,6 +2400,10 @@ export const DEFAULT_PARAMETERS: SliderbedParameters = {
   pulley_face_extra_v_guided_in: 0.5,
   pulley_face_extra_crowned_in: 2.0,
   return_roller_diameter_in: 2.0,
+  // v1.34: Frame Standard clearance parameters
+  frame_clearance_low_profile_in: 0.5,
+  frame_clearance_standard_in: 2.5,
+  low_profile_max_frame_height_in: 10.0,
 };
 
 export const DEFAULT_INPUT_VALUES = {

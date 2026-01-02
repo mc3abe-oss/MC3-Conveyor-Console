@@ -354,7 +354,12 @@ export default function TabConveyorPhysical({
     }
   };
 
-  // Compute derived frame height and roller values (using safe diameters for UI display)
+  // Compute derived frame height and roller values
+  // v1.34: Use actual pulley OD from applicationPulleys (same source as pulley cards)
+  // Priority: applicationPulleys.finished_od_in > inputs synced values > legacy catalog > 4" fallback
+  const actualDriveOd = drivePulley?.finished_od_in ?? inputs.drive_pulley_diameter_in ?? safeDrivePulleyDia;
+  const actualTailOd = tailPulley?.finished_od_in ?? inputs.tail_pulley_diameter_in ?? safeTailPulleyDia;
+
   // v1.33: Use new breakdown calculation that includes cleats, largest pulley, and return roller
   const cleatsEnabledForFrame = inputs.cleats_enabled === true;
   const effectiveCleatHeightForFrame = getEffectiveCleatHeight(
@@ -363,14 +368,25 @@ export default function TabConveyorPhysical({
     inputs.cleat_size
   );
   const returnRollerDiameter = FRAME_HEIGHT_CONSTANTS.DEFAULT_RETURN_ROLLER_DIAMETER_IN;
+
+  // v1.34: Clearance parameters (default values)
+  const clearanceLowProfile = 0.5;
+  const clearanceStandard = 2.5;
+
   const frameHeightBreakdown = calculateFrameHeightWithBreakdown(
-    safeDrivePulleyDia,
-    safeTailPulleyDia,
+    actualDriveOd,
+    actualTailOd,
     effectiveCleatHeightForFrame,
     returnRollerDiameter,
     inputs.frame_height_mode,
-    inputs.custom_frame_height_in
+    inputs.custom_frame_height_in,
+    clearanceLowProfile,
+    clearanceStandard
   );
+
+  // v1.34: Extract both required and reference heights
+  const requiredFrameHeight = frameHeightBreakdown.required_total_in;
+  const referenceFrameHeight = frameHeightBreakdown.reference_total_in;
   const effectiveFrameHeight = frameHeightBreakdown.total_in;
   const requiresSnubRollers = calculateRequiresSnubRollers(
     effectiveFrameHeight,
@@ -1841,10 +1857,10 @@ export default function TabConveyorPhysical({
             Frame Height
           </h4>
 
-          {/* Frame Height Mode */}
+          {/* Frame Standard (v1.34: renamed from Frame Height Mode) */}
           <div>
             <label htmlFor="frame_height_mode" className="label">
-              Frame Height Mode
+              Frame Standard
             </label>
             <select
               id="frame_height_mode"
@@ -1858,12 +1874,12 @@ export default function TabConveyorPhysical({
                 }
               }}
             >
-              <option value={FrameHeightMode.Standard}>Standard (Pulley + 2.5&quot;)</option>
-              <option value={FrameHeightMode.LowProfile}>Low Profile (Pulley + 0.5&quot;)</option>
+              <option value={FrameHeightMode.Standard}>Standard (+2.5&quot; clearance)</option>
+              <option value={FrameHeightMode.LowProfile}>Low Profile (+0.5&quot; clearance)</option>
               <option value={FrameHeightMode.Custom}>Custom</option>
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Standard frame clears the drive pulley with 2.5&quot; margin. Low Profile and Custom are cost options.
+              Frame Standard determines reference clearance above the required physical envelope. Low Profile and Custom are cost options.
             </p>
           </div>
 
@@ -1893,12 +1909,12 @@ export default function TabConveyorPhysical({
             </div>
           )}
 
-          {/* Info messages based on frame height mode */}
+          {/* Info messages based on frame standard */}
           {inputs.frame_height_mode === FrameHeightMode.LowProfile && (
             <div className="p-3 bg-blue-50 border border-blue-200 rounded-md">
               <p className="text-sm text-blue-800">
-                <strong>Low Profile:</strong> Frame height will be pulley diameter + 0.5&quot;.
-                This may require snub rollers for belt return path.
+                <strong>Low Profile:</strong> Adds 0.5&quot; clearance to required frame height.
+                This is a cost option and may require snub rollers for belt return path.
               </p>
             </div>
           )}
@@ -1911,46 +1927,63 @@ export default function TabConveyorPhysical({
             </div>
           )}
 
-          {/* Derived Values Panel */}
+          {/* Derived Values Panel - v1.34: Show Required + Reference heights */}
           <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded-lg">
             <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
               Frame Height Breakdown
             </h4>
-            {/* Frame Height Formula Display */}
+            {/* Frame Height Display - v1.34: Two heights */}
             <div className="space-y-2 text-sm">
-              <div className="flex justify-between items-center border-b border-gray-200 pb-2">
-                <span className="font-medium text-gray-900">Frame Height:</span>
-                <span className="font-bold text-blue-600 text-lg">{effectiveFrameHeight.toFixed(2)}"</span>
-              </div>
-              {inputs.frame_height_mode !== FrameHeightMode.Custom && (
-                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Largest Pulley:</span>
-                    <span className="font-medium text-gray-700">{frameHeightBreakdown.largest_pulley_in.toFixed(2)}"</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Cleats (2×):</span>
-                    <span className="font-medium text-gray-700">
-                      {frameHeightBreakdown.cleat_adder_in > 0
-                        ? `${frameHeightBreakdown.cleat_adder_in.toFixed(2)}" (${frameHeightBreakdown.cleat_height_in.toFixed(2)}"×2)`
-                        : '—'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Return Roller:</span>
-                    <span className="font-medium text-gray-700">{frameHeightBreakdown.return_roller_in.toFixed(2)}"</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-gray-500">Mode:</span>
-                    <span className="font-medium text-gray-700 capitalize">{inputs.frame_height_mode ?? 'Standard'}</span>
-                  </div>
+              {/* Required vs Reference Heights */}
+              <div className="grid grid-cols-2 gap-4 border-b border-gray-200 pb-2">
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase">Required</div>
+                  <div className="font-bold text-gray-900 text-lg">{requiredFrameHeight.toFixed(2)}"</div>
+                  <div className="text-xs text-gray-400">(Physical envelope)</div>
                 </div>
-              )}
+                <div className="text-center">
+                  <div className="text-xs text-gray-500 uppercase">Reference</div>
+                  <div className="font-bold text-blue-600 text-lg">{referenceFrameHeight.toFixed(2)}"</div>
+                  <div className="text-xs text-gray-400">({inputs.frame_height_mode ?? 'Standard'})</div>
+                </div>
+              </div>
+
+              {/* Breakdown components */}
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Largest Pulley OD:</span>
+                  <span className="font-medium text-gray-700">{frameHeightBreakdown.largest_pulley_in.toFixed(2)}"</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Cleats (2×):</span>
+                  <span className="font-medium text-gray-700">
+                    {frameHeightBreakdown.cleat_adder_in > 0
+                      ? `${frameHeightBreakdown.cleat_adder_in.toFixed(2)}" (${frameHeightBreakdown.cleat_height_in.toFixed(2)}"×2)`
+                      : '—'}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Return Roller:</span>
+                  <span className="font-medium text-gray-700">{frameHeightBreakdown.return_roller_in.toFixed(2)}"</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Clearance ({inputs.frame_height_mode ?? 'Standard'}):</span>
+                  <span className="font-medium text-gray-700">+{frameHeightBreakdown.clearance_in.toFixed(2)}"</span>
+                </div>
+              </div>
+
               {inputs.frame_height_mode === FrameHeightMode.Custom && (
                 <p className="text-xs text-gray-500">Using custom frame height override.</p>
               )}
+
+              {/* Formula display */}
               <p className="text-xs text-gray-400 font-mono pt-1 border-t border-gray-200 mt-2">
                 {frameHeightBreakdown.formula}
+              </p>
+
+              {/* v1.34: Disclaimer */}
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-2 py-1 mt-2">
+                <strong>Note:</strong> Frame height shown is reference only. Final design must follow MC3 Mechanical Design Standards.
               </p>
             </div>
 
