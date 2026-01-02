@@ -29,7 +29,7 @@ export type ConfigureTabKey = 'application' | 'physical' | 'drive' | 'build';
 export const APPLICATION_SECTIONS = ['product', 'throughput', 'environment'] as const;
 export const PHYSICAL_SECTIONS = ['geometry', 'beltPulleys', 'frame'] as const;
 export const DRIVE_SECTIONS = ['speed', 'electrical', 'drive', 'advanced'] as const;
-export const BUILD_SECTIONS = ['guards', 'guides', 'beltpulley', 'sensors', 'documentation'] as const;
+export const BUILD_SECTIONS = ['support', 'guards', 'guides', 'beltpulley', 'sensors', 'documentation'] as const;
 
 export type ApplicationSectionKey = typeof APPLICATION_SECTIONS[number];
 export type PhysicalSectionKey = typeof PHYSICAL_SECTIONS[number];

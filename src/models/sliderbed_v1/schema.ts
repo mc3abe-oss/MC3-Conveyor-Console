@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.37 - TYPE DEFINITIONS
+ * SLIDERBED CONVEYOR v1.40 - TYPE DEFINITIONS
  *
  * Source of Truth: Model v1 Specification (Authoritative)
  * Model Key: sliderbed_conveyor_v1
@@ -9,6 +9,11 @@
  * All units are explicit. No hidden conversions.
  *
  * CHANGELOG:
+ * v1.40 (2026-01-02): Floor Support Logic - Decouple TOB from Legs/Casters
+ *                     SupportMethod now External | FloorSupported (binary)
+ *                     New fields: include_legs, include_casters (additive checkboxes)
+ *                     TOB shown/required when FloorSupported (independent of hardware)
+ *                     Legs and Casters can both be enabled simultaneously
  * v1.37 (2026-01-02): Shaft Step-Down Specification
  *                     New inputs: drive_shaft_stepdown_to_dia_in, drive_shaft_stepdown_left_len_in,
  *                                 drive_shaft_stepdown_right_len_in, tail_shaft_stepdown_*
@@ -529,6 +534,54 @@ export enum EndSupportType {
   Legs = 'Legs',
   /** Floor-rolling casters */
   Casters = 'Casters',
+}
+
+/**
+ * Unified support method (v1.40)
+ * Single selector for conveyor support configuration.
+ * Answers ONLY: "Does this conveyor sit on the floor?"
+ */
+export enum SupportMethod {
+  /** Suspended, wall-mounted, or framework-supported (no floor contact) */
+  External = 'external',
+  /** Floor supported - conveyor sits on the floor (requires TOB) */
+  FloorSupported = 'floor_supported',
+  /** @deprecated Use FloorSupported + include_legs instead */
+  Legs = 'legs',
+  /** @deprecated Use FloorSupported + include_casters instead */
+  Casters = 'casters',
+}
+
+/**
+ * Check if conveyor is floor supported (v1.40)
+ * Used for TOB visibility and validation.
+ */
+export function isFloorSupported(supportMethod?: SupportMethod | string): boolean {
+  return (
+    supportMethod === SupportMethod.FloorSupported ||
+    supportMethod === 'floor_supported' ||
+    // Legacy support
+    supportMethod === SupportMethod.Legs ||
+    supportMethod === 'legs' ||
+    supportMethod === SupportMethod.Casters ||
+    supportMethod === 'casters'
+  );
+}
+
+/**
+ * @deprecated Use isFloorSupported() instead
+ * Check if legs are required based on support method (v1.39)
+ */
+export function isLegsRequired(supportMethod?: SupportMethod | string): boolean {
+  return supportMethod === SupportMethod.Legs || supportMethod === 'legs';
+}
+
+/**
+ * @deprecated Use isFloorSupported() instead
+ * Check if casters are being used based on support method (v1.39)
+ */
+export function isCastersSelected(supportMethod?: SupportMethod | string): boolean {
+  return supportMethod === SupportMethod.Casters || supportMethod === 'casters';
 }
 
 /**
@@ -1079,11 +1132,72 @@ export interface SliderbedInputs {
   // v1.4: PER-END SUPPORT TYPES
   // =========================================================================
 
-  /** Tail end support type (v1.4) */
+  /** Tail end support type (v1.4) - DEPRECATED: use support_method instead */
   tail_support_type?: EndSupportType | string;
 
-  /** Drive end support type (v1.4) */
+  /** Drive end support type (v1.4) - DEPRECATED: use support_method instead */
   drive_support_type?: EndSupportType | string;
+
+  // =========================================================================
+  // v1.39: UNIFIED SUPPORT METHOD & MODEL SELECTION
+  // =========================================================================
+
+  /**
+   * Unified support method (v1.40)
+   * Single selector: 'external' | 'floor_supported'
+   * Answers ONLY: "Does this conveyor sit on the floor?"
+   * Default: 'external'
+   */
+  support_method?: SupportMethod | string;
+
+  /**
+   * Include legs in floor support configuration (v1.40)
+   * Only applicable when support_method='floor_supported'
+   * Can be combined with include_casters (both true simultaneously)
+   */
+  include_legs?: boolean;
+
+  /**
+   * Include casters in floor support configuration (v1.40)
+   * Only applicable when support_method='floor_supported'
+   * Can be combined with include_legs (both true simultaneously)
+   */
+  include_casters?: boolean;
+
+  /**
+   * Leg model key (v1.39)
+   * Reference to catalog_items.item_key where catalog_key='leg_model'
+   * Required when include_legs=true
+   */
+  leg_model_key?: string;
+
+  /**
+   * Caster rigid model key (v1.39)
+   * Reference to catalog_items.item_key where catalog_key='caster_model'
+   * Required when caster_rigid_qty > 0
+   */
+  caster_rigid_model_key?: string;
+
+  /**
+   * Caster rigid quantity (v1.39)
+   * Number of rigid (non-swivel) casters
+   * Used when support_method='casters'
+   */
+  caster_rigid_qty?: number;
+
+  /**
+   * Caster swivel model key (v1.39)
+   * Reference to catalog_items.item_key where catalog_key='caster_model'
+   * Required when caster_swivel_qty > 0
+   */
+  caster_swivel_model_key?: string;
+
+  /**
+   * Caster swivel quantity (v1.39)
+   * Number of swivel casters
+   * Used when support_method='casters'
+   */
+  caster_swivel_qty?: number;
 
   // =========================================================================
   // v1.4: HEIGHT MODEL (TOP OF BELT)
@@ -2621,9 +2735,17 @@ export function buildDefaultInputs(): SliderbedInputs {
     frame_height_mode: FrameHeightMode.Standard,
     frame_clearance_in: 0.5, // v1.36: explicit clearance
 
-    // Per-end support types (v1.4)
+    // Per-end support types (v1.4) - DEPRECATED
     tail_support_type: EndSupportType.External,
     drive_support_type: EndSupportType.External,
+
+    // Unified support method (v1.39)
+    support_method: SupportMethod.External,
+    // leg_model_key: undefined (only set when support_method='legs')
+    // caster_rigid_model_key: undefined (only set when support_method='casters')
+    // caster_rigid_qty: undefined
+    // caster_swivel_model_key: undefined
+    // caster_swivel_qty: undefined
 
     // Return support (v1.29)
     return_frame_style: ReturnFrameStyle.Standard,

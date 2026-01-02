@@ -22,6 +22,10 @@ export const CATALOG_KEYS = {
   finish_paint_system: 'finish_paint_system',
   motor_brand: 'motor_brand',
 
+  // Support model catalogs (v1.39)
+  leg_model: 'leg_model',
+  caster_model: 'caster_model',
+
   // Note: These are NOT catalogs and are rendered as native inputs:
   // - parts_sharp: boolean checkbox
   // - field_wiring_required: boolean checkbox
