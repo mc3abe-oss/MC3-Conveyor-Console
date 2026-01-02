@@ -85,6 +85,10 @@ export {
   DISTURBANCE_SEVERITY_LABELS,
 } from '../../lib/tracking';
 
+// Note: BedType is defined in belt_conveyor_v1/schema.ts
+// We use the string literal 'slider_bed' directly in buildDefaultInputs()
+// to avoid circular dependency (belt_conveyor_v1 imports from this file)
+
 // ============================================================================
 // ENUMS
 // ============================================================================
@@ -2382,6 +2386,138 @@ export const DEFAULT_INPUT_VALUES = {
   disturbance_installation_risk: false,
   tracking_preference: 'auto',
 };
+
+/**
+ * Build factory-default inputs for a new application.
+ *
+ * This is the single source of truth for initial form state.
+ * Used by:
+ * - CalculatorForm initial state
+ * - handleClear to fully reset the application
+ *
+ * Includes all required fields with sensible defaults for a typical sliderbed conveyor.
+ */
+export function buildDefaultInputs(): SliderbedInputs {
+  return {
+    // Bed type - determines friction coefficient preset
+    // Using string literal to avoid circular import with belt_conveyor_v1/schema
+    bed_type: 'slider_bed' as any,
+
+    // Geometry (required numeric inputs)
+    conveyor_length_cc_in: 120,
+    belt_width_in: 24,
+    conveyor_incline_deg: 0,
+    geometry_mode: GeometryMode.LengthAngle,
+
+    // Pulley diameter (legacy field for backward compatibility)
+    pulley_diameter_in: 4,
+
+    // Speed & RPM
+    belt_speed_fpm: 104.72, // Calculated from drive_rpm=100 * (PI * 4/12)
+    drive_rpm: 100,
+    speed_mode: SpeedMode.BeltSpeed,
+    drive_rpm_input: 100,
+
+    // Product / Part definition (PARTS mode defaults)
+    material_form: MaterialForm.Parts,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: 'AMBIENT',
+    fluid_type: 'NONE',
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 6,
+    throughput_margin_pct: 0,
+
+    // Application fields - catalog item_keys
+    material_type: 'PARTS',
+    process_type: 'MOLDING',
+    parts_sharp: 'No',
+    environment_factors: ['Indoor'],
+    ambient_temperature: 'Normal (60-90°F)', // Deprecated - kept for backward compatibility
+    ambient_temperature_class: AmbientTemperatureClass.Normal,
+    power_feed: 'AC_480_3_60',
+    controls_package: 'NOT_SUPPLIED',
+    spec_source: 'MC3_STD',
+    support_option: 'FLOOR_MOUNTED',
+    field_wiring_required: 'No',
+    bearing_grade: 'STANDARD',
+    documentation_package: 'BASIC',
+    finish_paint_system: 'POWDER_COAT',
+    labels_required: 'Yes',
+    send_to_estimating: 'No',
+    motor_brand: 'STANDARD',
+
+    // Features & Options
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+
+    // Application / Demand (extended)
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+
+    // Drive specifications
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+
+    // Gearmotor mounting style & sprockets (v1.7)
+    gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
+    gm_sprocket_teeth: 18,
+    drive_shaft_sprocket_teeth: 24,
+
+    // Belt tracking & pulley
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+
+    // Frame height (v1.5)
+    frame_height_mode: FrameHeightMode.Standard,
+
+    // Per-end support types (v1.4)
+    tail_support_type: EndSupportType.External,
+    drive_support_type: EndSupportType.External,
+
+    // Return support (v1.29)
+    return_frame_style: ReturnFrameStyle.Standard,
+    return_snub_mode: ReturnSnubMode.Auto,
+    return_gravity_roller_diameter_in: 1.9,
+    return_snub_roller_diameter_in: 2.5,
+    return_end_offset_in: 24,
+
+    // Conveyor frame construction (v1.14)
+    frame_construction_type: 'sheet_metal' as FrameConstructionType,
+    frame_sheet_metal_gauge: '12_GA' as SheetMetalGauge,
+    pulley_end_to_frame_inside_in: 0.5,
+
+    // Tracking recommendation (v1.13)
+    application_class: 'unit_handling',
+    belt_construction: 'general',
+    reversing_operation: false,
+    disturbance_side_loading: false,
+    disturbance_load_variability: false,
+    disturbance_environment: false,
+    disturbance_installation_risk: false,
+    tracking_preference: 'auto',
+
+    // Cleat defaults (v1.3) - cleats disabled by default
+    cleats_enabled: false,
+
+    // Pulley presets (v1.3)
+    drive_pulley_preset: 4,
+    tail_pulley_preset: 4,
+    drive_pulley_manual_override: false,
+    tail_pulley_manual_override: false,
+  } as SliderbedInputs;
+}
 
 // ============================================================================
 // v1.4: DERIVED HELPERS

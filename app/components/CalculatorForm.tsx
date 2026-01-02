@@ -4,23 +4,9 @@ import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { runCalculation } from '../../src/lib/calculator';
 import {
   SliderbedInputs,
-  Orientation,
   CalculationResult,
-  SideRails,
-  EndGuards,
-  LacingStyle,
-  PulleySurfaceType,
-  DirectionMode,
-  SideLoadingDirection,
-  DriveLocation,
-  GearmotorOrientation,
-  DriveHand,
-  BeltTrackingMethod,
-  ShaftDiameterMode,
-  GearmotorMountingStyle,
-  AmbientTemperatureClass,
+  buildDefaultInputs,
 } from '../../src/models/sliderbed_v1/schema';
-import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorPhysical from './TabConveyorPhysical';
 import TabDriveControls from './TabDriveControls';
@@ -72,71 +58,8 @@ export default function CalculatorForm({
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
 
-  const [inputs, setInputs] = useState<SliderbedInputs>({
-    // Bed type - determines friction coefficient preset
-    bed_type: BedType.SliderBed,
-    conveyor_length_cc_in: 120,
-    belt_width_in: 24,
-    pulley_diameter_in: 4,
-    belt_speed_fpm: 104.72, // Calculated from drive_rpm=100 * (PI * 4/12) ≈ 104.72
-    drive_rpm: 100,
-    part_weight_lbs: 5,
-    part_length_in: 12,
-    part_width_in: 6,
-    drop_height_in: 0,
-    part_temperature_class: 'AMBIENT',
-    fluid_type: 'NONE',
-    orientation: Orientation.Lengthwise,
-    part_spacing_in: 6,
-    // Application fields - using catalog item_keys from database
-    material_type: 'PARTS', // Catalog: CHIPS, PARTS, SCRAP
-    process_type: 'MOLDING', // Catalog: MOLDING, WELDING, STAMPING, LASER_CUT, FOOD_PROC, PACKAGING
-    parts_sharp: 'No', // Boolean checkbox
-    environment_factors: ['Indoor'], // v1.9: Multi-select array, Catalog: Indoor, Outdoor, Washdown, Dusty, Other
-    ambient_temperature: 'Normal (60-90°F)', // Deprecated - kept for backward compatibility
-    ambient_temperature_class: AmbientTemperatureClass.Normal, // New classification-based dropdown
-    power_feed: 'AC_480_3_60', // Catalog: AC_480_3_60, AC_230_3_60, AC_120_1_60, DC_24
-    controls_package: 'NOT_SUPPLIED', // Catalog: NOT_SUPPLIED, VFD_ESTOP, VFD_ESTOP_DIR, CUSTOM
-    spec_source: 'MC3_STD', // Catalog: MC3_STD, CUSTOMER_SPEC
-    support_option: 'FLOOR_MOUNTED', // Catalog (to be seeded)
-    field_wiring_required: 'No', // Boolean checkbox
-    bearing_grade: 'STANDARD', // Catalog (to be seeded)
-    documentation_package: 'BASIC', // Catalog (to be seeded)
-    finish_paint_system: 'POWDER_COAT', // Catalog (to be seeded)
-    labels_required: 'Yes', // Boolean checkbox
-    send_to_estimating: 'No', // Boolean checkbox
-    motor_brand: 'STANDARD', // Catalog (to be seeded)
-
-    // Features & Options
-    bottom_covers: false,
-    side_rails: SideRails.None,
-    end_guards: EndGuards.None,
-    finger_safe: false,
-    lacing_style: LacingStyle.Endless,
-    side_skirts: false,
-    sensor_options: [],
-
-    // Application / Demand (extended)
-    pulley_surface_type: PulleySurfaceType.Plain,
-    start_stop_application: false,
-    direction_mode: DirectionMode.OneDirection,
-    side_loading_direction: SideLoadingDirection.None,
-
-    // Specifications
-    drive_location: DriveLocation.Head,
-    brake_motor: false,
-    gearmotor_orientation: GearmotorOrientation.SideMount,
-    drive_hand: DriveHand.RightHand,
-
-    // Gearmotor mounting style & sprockets (v1.7)
-    gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
-    gm_sprocket_teeth: 18,
-    drive_shaft_sprocket_teeth: 24,
-
-    // Belt tracking & pulley
-    belt_tracking_method: BeltTrackingMethod.Crowned,
-    shaft_diameter_mode: ShaftDiameterMode.Calculated,
-  });
+  // Use buildDefaultInputs() as single source of truth for initial form state
+  const [inputs, setInputs] = useState<SliderbedInputs>(buildDefaultInputs);
 
   // Track the last loaded revision ID to prevent infinite loops
   const lastLoadedRevisionIdRef = useRef<string | null>(null);

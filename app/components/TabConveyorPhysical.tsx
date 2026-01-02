@@ -32,6 +32,9 @@ import {
   ReturnFrameStyle,
   ReturnSnubMode,
   RETURN_FRAME_STYLE_LABELS,
+  // UI Cleanup: Lacing moved from Build Options
+  LacingStyle,
+  LacingMaterial,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateEffectiveFrameHeight,
@@ -871,6 +874,50 @@ export default function TabConveyorPhysical({
               </div>
             </div>
           )}
+
+          {/* ===== BELT LACING SUBSECTION (moved from Build Options) ===== */}
+          <div className="space-y-3 mt-4 pt-4 border-t border-gray-100">
+            <div>
+              <label htmlFor="lacing_style" className="label">
+                Lacing Style
+              </label>
+              <select
+                id="lacing_style"
+                className="input"
+                value={inputs.lacing_style}
+                onChange={(e) => updateInput('lacing_style', e.target.value)}
+              >
+                {Object.values(LacingStyle).map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* Lacing material - only show if not Endless */}
+            {inputs.lacing_style !== LacingStyle.Endless && (
+              <div>
+                <label htmlFor="lacing_material" className="label">
+                  Lacing Material
+                </label>
+                <select
+                  id="lacing_material"
+                  className="input"
+                  value={inputs.lacing_material || ''}
+                  onChange={(e) => updateInput('lacing_material', e.target.value)}
+                  required
+                >
+                  <option value="">Select material...</option>
+                  {Object.values(LacingMaterial).map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+          </div>
 
           {/* ===== TRACKING SUBSECTION ===== */}
           <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">

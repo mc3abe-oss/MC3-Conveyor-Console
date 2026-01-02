@@ -11,7 +11,7 @@ import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
 import MobileBottomActionBar from './MobileBottomActionBar';
-import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS } from '../../src/models/sliderbed_v1/schema';
+import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs } from '../../src/models/sliderbed_v1/schema';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
@@ -551,13 +551,14 @@ export default function BeltConveyorCalculatorApp() {
     setContext(null);
     setConveyorQty(1);
 
-    // Reset loaded state
+    // Reset loaded state - use a unique revision ID to trigger CalculatorForm reset
     setLoadedConfigurationId(null);
-    setLoadedRevisionId(null);
+    const clearRevisionId = `__clear__${Date.now()}`;
+    setLoadedRevisionId(clearRevisionId);
     setInitialLoadedPayload(null);
 
-    // Reset inputs to null (form will use its defaults)
-    setInputs(null);
+    // Reset inputs to factory defaults (using buildDefaultInputs for single source of truth)
+    setInputs(buildDefaultInputs());
 
     // Clear results and calculation status
     setResult(null);
