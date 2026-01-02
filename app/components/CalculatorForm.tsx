@@ -258,7 +258,7 @@ export default function CalculatorForm({
 
           {/* Drive & Controls Tab */}
           {activeTab === 'drive' && (
-            <TabDriveControls inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
+            <TabDriveControls inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} outputs={outputs} />
           )}
 
           {/* Build Options Tab */}

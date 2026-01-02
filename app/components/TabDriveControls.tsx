@@ -2,10 +2,14 @@
  * Lane 3: Conveyor Design – Drive & Controls
  *
  * Drive and controls definition:
- * - Speed Definition
+ * - Drive & Motion Configuration
+ *   - Speed Definition inputs (inline): Speed Mode, Belt Speed/Drive RPM
+ *   - Motor Brand selector (inline)
+ *   - Speed & Kinematics calculated display
+ *   - Power Snapshot calculated display
+ *   - Drive Arrangement summary card (edit via modal, includes Motor RPM)
+ *   - Advanced Parameters card (edit via modal)
  * - Electrical
- * - Drive Arrangement
- * - Advanced Parameters (collapsible)
  */
 
 'use client';
@@ -13,13 +17,11 @@
 import { useState, useRef, useEffect } from 'react';
 import {
   SliderbedInputs,
-  DriveLocation,
-  GearmotorOrientation,
+  SliderbedOutputs,
   GearmotorMountingStyle,
-  DriveHand,
   SpeedMode,
-  DirectionMode,
   SensorOption,
+  DirectionMode,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateDriveShaftRpm,
@@ -28,19 +30,25 @@ import {
 import CatalogSelect from './CatalogSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
+import DriveArrangementModal from './DriveArrangementModal';
+import AdvancedParametersModal from './AdvancedParametersModal';
 
 interface TabDriveControlsProps {
   inputs: SliderbedInputs;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
   sectionCounts: Record<SectionKey, SectionCounts>;
-  /** v1.28: Get issues for a specific section (for banner display) */
   getIssuesForSection: (sectionKey: SectionKey) => Issue[];
+  outputs?: SliderbedOutputs | null;
 }
 
-export default function TabDriveControls({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabDriveControlsProps) {
+export default function TabDriveControls({ inputs, updateInput, sectionCounts, getIssuesForSection, outputs }: TabDriveControlsProps) {
   const { handleToggle, isExpanded } = useAccordionState();
 
-  // Sensor dropdown state (moved from Build Options)
+  // Modal states
+  const [isDriveArrangementModalOpen, setIsDriveArrangementModalOpen] = useState(false);
+  const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
+
+  // Sensor dropdown state
   const [sensorDropdownOpen, setSensorDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -58,10 +66,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
   const handleSensorToggle = (option: string) => {
     const current = inputs.sensor_options || [];
     if (current.includes(option)) {
-      updateInput(
-        'sensor_options',
-        current.filter((o) => o !== option)
-      );
+      updateInput('sensor_options', current.filter((o) => o !== option));
     } else {
       updateInput('sensor_options', [...current, option]);
     }
@@ -69,57 +74,125 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
 
   const removeSensor = (option: string) => {
     const current = inputs.sensor_options || [];
-    updateInput(
-      'sensor_options',
-      current.filter((o) => o !== option)
-    );
+    updateInput('sensor_options', current.filter((o) => o !== option));
+  };
+
+  // Calculate display values
+  const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
+  const motorRpm = inputs.motor_rpm ?? 1750;
+
+  const displayDriveRpm = (() => {
+    if ((inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed) {
+      if (inputs.belt_speed_fpm > 0 && pulleyDia > 0) {
+        return calculateDriveShaftRpm(inputs.belt_speed_fpm, pulleyDia);
+      }
+    } else {
+      return inputs.drive_rpm_input ?? inputs.drive_rpm;
+    }
+    return 0;
+  })();
+
+  const displayBeltSpeed = (() => {
+    if ((inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed) {
+      return inputs.belt_speed_fpm;
+    } else {
+      if ((inputs.drive_rpm_input ?? inputs.drive_rpm) > 0 && pulleyDia > 0) {
+        return calculateBeltSpeed(inputs.drive_rpm_input ?? inputs.drive_rpm, pulleyDia);
+      }
+    }
+    return 0;
+  })();
+
+  const displayGearRatio = displayDriveRpm > 0 ? motorRpm / displayDriveRpm : 0;
+
+  const displayChainRatio = (() => {
+    if (inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount) {
+      const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+      const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+      if (gmTeeth > 0 && driveTeeth > 0) {
+        return driveTeeth / gmTeeth;
+      }
+    }
+    return 1;
+  })();
+
+  const hasOutputs = outputs !== null && outputs !== undefined;
+  const hasAdvancedOverrides = inputs.friction_coeff !== undefined || inputs.safety_factor !== undefined || inputs.starting_belt_pull_lb !== undefined;
+
+  // Helper to format direction mode for display
+  const formatDirection = (mode: DirectionMode | string | undefined) => {
+    if (mode === DirectionMode.OneDirection) return 'One direction';
+    if (mode === DirectionMode.Reversing) return 'Reversing';
+    return mode || '—';
+  };
+
+  // Helper to format drive hand for display
+  const formatHand = (hand: string | undefined) => {
+    if (hand === 'Right Hand') return 'RH';
+    if (hand === 'Left Hand') return 'LH';
+    return hand || '—';
   };
 
   return (
     <div className="space-y-4">
-      {/* SECTION: Speed Definition */}
+      {/* Modals */}
+      <DriveArrangementModal
+        isOpen={isDriveArrangementModalOpen}
+        onClose={() => setIsDriveArrangementModalOpen(false)}
+        inputs={inputs}
+        updateInput={updateInput}
+      />
+      <AdvancedParametersModal
+        isOpen={isAdvancedModalOpen}
+        onClose={() => setIsAdvancedModalOpen(false)}
+        inputs={inputs}
+        updateInput={updateInput}
+      />
+
+      {/* SECTION: Drive & Motion Configuration */}
       <AccordionSection
         id="speed"
-        title="Speed Definition"
+        title="Drive & Motion Configuration"
         isExpanded={isExpanded('speed')}
         onToggle={handleToggle}
         issueCounts={sectionCounts.speed}
         issues={getIssuesForSection('speed')}
       >
-        <div className="grid grid-cols-1 gap-4">
-          {/* Speed Mode Selector */}
-          <div>
-            <label className="label">Speed Mode</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="speed_mode"
-                  checked={(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed}
-                  onChange={() => updateInput('speed_mode', SpeedMode.BeltSpeed)}
-                  className="mr-2"
-                />
-                Specify Belt Speed
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="speed_mode"
-                  checked={inputs.speed_mode === SpeedMode.DriveRpm}
-                  onChange={() => updateInput('speed_mode', SpeedMode.DriveRpm)}
-                  className="mr-2"
-                />
-                Specify Drive RPM
-              </label>
+        <div className="space-y-4">
+          {/* Speed Definition Inputs - Inline */}
+          <div className="grid grid-cols-1 gap-4">
+            {/* Speed Mode Selector */}
+            <div>
+              <label className="label">Speed Mode</label>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="speed_mode"
+                    checked={(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed}
+                    onChange={() => updateInput('speed_mode', SpeedMode.BeltSpeed)}
+                    className="mr-2"
+                  />
+                  Specify Belt Speed
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="speed_mode"
+                    checked={inputs.speed_mode === SpeedMode.DriveRpm}
+                    onChange={() => updateInput('speed_mode', SpeedMode.DriveRpm)}
+                    className="mr-2"
+                  />
+                  Specify Drive RPM
+                </label>
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                Primary workflow: specify Belt Speed and Motor RPM to calculate Drive RPM and Gear Ratio
+              </p>
             </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Primary workflow: specify Belt Speed and Motor RPM to calculate Drive RPM and Gear Ratio
-            </p>
-          </div>
 
-          {/* Belt Speed Mode (default) */}
-          {(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed && (
-            <>
+            {/* Belt Speed Mode (default) */}
+            {(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed && (
               <div>
                 <label htmlFor="belt_speed_fpm" className="label">
                   Belt Speed (FPM) <span className="text-primary-600">*</span>
@@ -135,27 +208,10 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   required
                 />
               </div>
+            )}
 
-              {/* Calculated Drive RPM preview */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Calculated Drive RPM:</span>
-                  <span className="font-mono font-semibold text-gray-900">
-                    {inputs.belt_speed_fpm > 0 && (inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in) > 0
-                      ? calculateDriveShaftRpm(
-                          inputs.belt_speed_fpm,
-                          inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in
-                        ).toFixed(2)
-                      : '—'}
-                  </span>
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* Drive RPM Mode (legacy) */}
-          {inputs.speed_mode === SpeedMode.DriveRpm && (
-            <>
+            {/* Drive RPM Mode (legacy) */}
+            {inputs.speed_mode === SpeedMode.DriveRpm && (
               <div>
                 <label htmlFor="drive_rpm_input" className="label">
                   Drive RPM <span className="text-primary-600">*</span>
@@ -175,65 +231,206 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   required
                 />
               </div>
+            )}
 
-              {/* Calculated Belt Speed preview */}
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Calculated Belt Speed:</span>
+            {/* Motor Brand - Now in main section */}
+            <div>
+              <label htmlFor="motor_brand" className="label">
+                Motor Brand
+              </label>
+              <CatalogSelect
+                catalogKey="motor_brand"
+                value={inputs.motor_brand}
+                onChange={(value) => updateInput('motor_brand', value)}
+                id="motor_brand"
+              />
+            </div>
+          </div>
+
+          {/* Speed & Kinematics Panel - Read-only */}
+          <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+            <h4 className="text-sm font-semibold text-gray-700 mb-3">Speed & Kinematics</h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <span className="text-xs text-gray-500 block">Belt Speed</span>
+                <span className="font-mono font-semibold text-gray-900">
+                  {hasOutputs && outputs.belt_speed_fpm
+                    ? `${outputs.belt_speed_fpm.toFixed(1)} FPM`
+                    : displayBeltSpeed > 0
+                    ? `${displayBeltSpeed.toFixed(1)} FPM`
+                    : '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block">Drive RPM</span>
+                <span className="font-mono font-semibold text-gray-900">
+                  {hasOutputs && outputs.drive_shaft_rpm
+                    ? outputs.drive_shaft_rpm.toFixed(1)
+                    : displayDriveRpm > 0
+                    ? displayDriveRpm.toFixed(1)
+                    : '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block">Motor RPM</span>
+                <span className="font-mono font-semibold text-gray-900">
+                  {hasOutputs && outputs.motor_rpm_used ? outputs.motor_rpm_used : motorRpm}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-gray-500 block">Gear Ratio</span>
+                <span className="font-mono font-semibold text-gray-900">
+                  {hasOutputs && outputs.gear_ratio
+                    ? outputs.gear_ratio.toFixed(2)
+                    : displayGearRatio > 0
+                    ? displayGearRatio.toFixed(2)
+                    : '—'}
+                </span>
+              </div>
+            </div>
+            {displayChainRatio !== 1 && (
+              <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                  <span className="text-xs text-gray-500 block">Chain Ratio</span>
                   <span className="font-mono font-semibold text-gray-900">
-                    {(inputs.drive_rpm_input ?? inputs.drive_rpm) > 0 && (inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in) > 0
-                      ? calculateBeltSpeed(
-                          inputs.drive_rpm_input ?? inputs.drive_rpm,
-                          inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in
-                        ).toFixed(2) + ' FPM'
-                      : '—'}
+                    {hasOutputs && outputs.chain_ratio ? outputs.chain_ratio.toFixed(3) : displayChainRatio.toFixed(3)}
+                  </span>
+                </div>
+                {hasOutputs && outputs.gearmotor_output_rpm && (
+                  <div>
+                    <span className="text-xs text-gray-500 block">Gearmotor Output RPM</span>
+                    <span className="font-mono font-semibold text-gray-900">{outputs.gearmotor_output_rpm.toFixed(1)}</span>
+                  </div>
+                )}
+                {hasOutputs && outputs.total_drive_ratio && (
+                  <div>
+                    <span className="text-xs text-gray-500 block">Total Drive Ratio</span>
+                    <span className="font-mono font-semibold text-gray-900">{outputs.total_drive_ratio.toFixed(2)}</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Power Snapshot Panel - Read-only (only show if outputs available) */}
+          {hasOutputs && (
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">Power Snapshot</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div>
+                  <span className="text-xs text-gray-500 block">Total Belt Pull</span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {outputs.total_belt_pull_lb?.toFixed(1) ?? '—'} lb
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 block">Drive Torque</span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {outputs.torque_drive_shaft_inlbf?.toFixed(1) ?? '—'} in-lbf
+                  </span>
+                </div>
+                <div>
+                  <span className="text-xs text-gray-500 block">Friction Coeff Used</span>
+                  <span className="font-mono font-semibold text-gray-900">
+                    {outputs.friction_coeff_used?.toFixed(2) ?? '—'}
                   </span>
                 </div>
               </div>
-            </>
+            </div>
           )}
 
-          {/* Motor RPM */}
-          <div>
-            <label htmlFor="motor_rpm" className="label">
-              Motor RPM
-            </label>
-            <input
-              type="number"
-              id="motor_rpm"
-              className="input"
-              value={inputs.motor_rpm ?? 1750}
-              onChange={(e) => updateInput('motor_rpm', parseFloat(e.target.value) || 1750)}
-              step="1"
-              min="800"
-              max="3600"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Default: 1750 RPM. Range: 800–3600 RPM
-            </p>
+          {/* Drive Arrangement Summary Card - Green "Configured + Edit" pattern, compact grid */}
+          <div className="border border-green-200 bg-green-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h5 className="font-medium text-gray-900">Drive Arrangement</h5>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-green-600 bg-green-100 px-2 py-0.5 rounded">Configured</span>
+                <button
+                  type="button"
+                  onClick={() => setIsDriveArrangementModalOpen(true)}
+                  className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+                >
+                  Edit
+                </button>
+              </div>
+            </div>
+            {/* Compact 2-row grid layout */}
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-x-4 gap-y-2 text-sm">
+              <div>
+                <span className="text-gray-500 text-xs block">Location</span>
+                <span className="font-medium text-gray-900">{inputs.drive_location}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Direction</span>
+                <span className="font-medium text-gray-900">{formatDirection(inputs.direction_mode)}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Hand</span>
+                <span className="font-medium text-gray-900">{formatHand(inputs.drive_hand)}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Mounting</span>
+                <span className="font-medium text-gray-900">
+                  {inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount ? 'Bottom' : 'Shaft'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Orientation</span>
+                <span className="font-medium text-gray-900 truncate" title={inputs.gearmotor_orientation}>
+                  {inputs.gearmotor_orientation?.split(' ')[0] || '—'}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Motor RPM</span>
+                <span className="font-medium text-gray-900">{motorRpm}</span>
+              </div>
+            </div>
+            {inputs.start_stop_application && (
+              <div className="mt-2 pt-2 border-t border-green-200">
+                <span className="text-xs text-gray-500">Start/Stop:</span>
+                <span className="text-sm font-medium text-gray-900 ml-1">
+                  Cycle {inputs.cycle_time_seconds ?? '—'}s
+                </span>
+              </div>
+            )}
           </div>
 
-          {/* Gear Ratio preview */}
-          <div className="bg-primary-50 border border-primary-200 rounded-lg p-3">
-            <div className="flex justify-between items-center">
-              <span className="text-sm text-primary-700 font-medium">Calculated Gear Ratio:</span>
-              <span className="font-mono font-bold text-primary-900">
-                {(() => {
-                  const motorRpm = inputs.motor_rpm ?? 1750;
-                  const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
-                  let driveRpm: number;
-
-                  if ((inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed) {
-                    driveRpm = inputs.belt_speed_fpm > 0 && pulleyDia > 0
-                      ? calculateDriveShaftRpm(inputs.belt_speed_fpm, pulleyDia)
-                      : 0;
-                  } else {
-                    driveRpm = inputs.drive_rpm_input ?? inputs.drive_rpm;
-                  }
-
-                  return driveRpm > 0 ? (motorRpm / driveRpm).toFixed(2) : '—';
-                })()}
-              </span>
+          {/* Advanced Parameters Card - Always show fields + values */}
+          <div className="border border-gray-200 bg-gray-50 rounded-lg p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h5 className="text-sm font-medium text-gray-700">
+                Advanced Parameters
+                {!hasAdvancedOverrides && (
+                  <span className="text-xs text-gray-400 font-normal ml-2">(defaults)</span>
+                )}
+              </h5>
+              <button
+                type="button"
+                onClick={() => setIsAdvancedModalOpen(true)}
+                className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+              >
+                Edit
+              </button>
+            </div>
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <span className="text-gray-500 text-xs block">Friction Coeff</span>
+                <span className={`font-medium ${inputs.friction_coeff !== undefined ? 'text-gray-900' : 'text-gray-500'}`}>
+                  {inputs.friction_coeff ?? 0.25}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Safety Factor</span>
+                <span className={`font-medium ${inputs.safety_factor !== undefined ? 'text-gray-900' : 'text-gray-500'}`}>
+                  {inputs.safety_factor ?? 2.0}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 text-xs block">Starting Pull</span>
+                <span className={`font-medium ${inputs.starting_belt_pull_lb !== undefined ? 'text-gray-900' : 'text-gray-500'}`}>
+                  {inputs.starting_belt_pull_lb ?? 75} lb
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -304,7 +501,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             </div>
           </div>
 
-          {/* ===== SENSORS / CONTROLS SUBSECTION (moved from Build Options) ===== */}
+          {/* ===== SENSORS / CONTROLS SUBSECTION ===== */}
           <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
             Sensors / Controls
           </h4>
@@ -397,346 +594,6 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
               </label>
             </div>
           </div>
-        </div>
-      </AccordionSection>
-
-      {/* SECTION: Drive Arrangement */}
-      <AccordionSection
-        id="drive"
-        title="Drive Arrangement"
-        isExpanded={isExpanded('drive')}
-        onToggle={handleToggle}
-        issueCounts={sectionCounts.drive}
-        issues={getIssuesForSection('drive')}
-      >
-        <div className="grid grid-cols-1 gap-4">
-          {/* Direction Mode */}
-          <div>
-            <label className="label">Direction Mode</label>
-            <div className="flex gap-4">
-              {Object.values(DirectionMode).map((option) => (
-                <label key={option} className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="direction_mode"
-                    checked={inputs.direction_mode === option}
-                    onChange={() => updateInput('direction_mode', option)}
-                    className="mr-2"
-                  />
-                  {option}
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Reversing affects pulleys, V-guides, and controls.
-            </p>
-          </div>
-
-          {/* Start/Stop Application */}
-          <div>
-            <label className="label">Start/Stop Application</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="start_stop_application"
-                  checked={inputs.start_stop_application === false}
-                  onChange={() => updateInput('start_stop_application', false)}
-                  className="mr-2"
-                />
-                No
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="start_stop_application"
-                  checked={inputs.start_stop_application === true}
-                  onChange={() => updateInput('start_stop_application', true)}
-                  className="mr-2"
-                />
-                Yes
-              </label>
-            </div>
-          </div>
-
-          {/* Cycle time - only show if start/stop = true */}
-          {inputs.start_stop_application && (
-            <div>
-              <label htmlFor="cycle_time_seconds" className="label">
-                Cycle Time (seconds)
-              </label>
-              <input
-                type="number"
-                id="cycle_time_seconds"
-                className="input"
-                value={inputs.cycle_time_seconds || ''}
-                onChange={(e) =>
-                  updateInput('cycle_time_seconds', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="0.1"
-                min="0"
-                required
-              />
-            </div>
-          )}
-
-          {/* Drive Location */}
-          <div>
-            <label htmlFor="drive_location" className="label">
-              Drive Location
-            </label>
-            <select
-              id="drive_location"
-              className="input"
-              value={inputs.drive_location}
-              onChange={(e) => updateInput('drive_location', e.target.value)}
-            >
-              {Object.values(DriveLocation).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Gearmotor Mounting Style */}
-          <div>
-            <label className="label">Gearmotor Mounting Style</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="gearmotor_mounting_style"
-                  checked={(inputs.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted) === GearmotorMountingStyle.ShaftMounted}
-                  onChange={() => updateInput('gearmotor_mounting_style', GearmotorMountingStyle.ShaftMounted)}
-                  className="mr-2"
-                />
-                Shaft Mounted
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="gearmotor_mounting_style"
-                  checked={inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount}
-                  onChange={() => {
-                    updateInput('gearmotor_mounting_style', GearmotorMountingStyle.BottomMount);
-                    if (inputs.gm_sprocket_teeth === undefined) {
-                      updateInput('gm_sprocket_teeth', 18);
-                    }
-                    if (inputs.drive_shaft_sprocket_teeth === undefined) {
-                      updateInput('drive_shaft_sprocket_teeth', 24);
-                    }
-                  }}
-                  className="mr-2"
-                />
-                Bottom Mount (Chain Drive)
-              </label>
-            </div>
-            <p className="text-xs text-gray-500 mt-1">
-              Shaft mounted: direct coupling. Bottom mount: chain-coupled via sprockets.
-            </p>
-          </div>
-
-          {/* Sprocket Configuration - only shown for bottom mount */}
-          {inputs.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount && (
-            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
-              <h4 className="text-sm font-medium text-gray-700">Sprocket Configuration</h4>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="gm_sprocket_teeth" className="label">
-                    Gearmotor Sprocket (Driver)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      id="gm_sprocket_teeth"
-                      className="input"
-                      value={inputs.gm_sprocket_teeth ?? 18}
-                      onChange={(e) => updateInput('gm_sprocket_teeth', parseInt(e.target.value) || 18)}
-                      step="1"
-                      min="1"
-                      required
-                    />
-                    <span className="text-sm text-gray-500">teeth</span>
-                  </div>
-                </div>
-
-                <div>
-                  <label htmlFor="drive_shaft_sprocket_teeth" className="label">
-                    Drive Shaft Sprocket (Driven)
-                  </label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      id="drive_shaft_sprocket_teeth"
-                      className="input"
-                      value={inputs.drive_shaft_sprocket_teeth ?? 24}
-                      onChange={(e) => updateInput('drive_shaft_sprocket_teeth', parseInt(e.target.value) || 24)}
-                      step="1"
-                      min="1"
-                      required
-                    />
-                    <span className="text-sm text-gray-500">teeth</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Chain ratio preview */}
-              <div className="bg-white border border-gray-200 rounded p-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Chain Ratio:</span>
-                  <span className="font-mono font-semibold text-gray-900">
-                    {(() => {
-                      const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
-                      const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
-                      if (gmTeeth > 0 && driveTeeth > 0) {
-                        const ratio = driveTeeth / gmTeeth;
-                        return `${ratio.toFixed(3)} (${driveTeeth}T / ${gmTeeth}T)`;
-                      }
-                      return '—';
-                    })()}
-                  </span>
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  {(() => {
-                    const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
-                    const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
-                    if (gmTeeth > 0 && driveTeeth > 0) {
-                      const ratio = driveTeeth / gmTeeth;
-                      if (ratio > 1) {
-                        return 'Speed reduction at chain stage (gearmotor output RPM > drive shaft RPM)';
-                      } else if (ratio < 1) {
-                        return 'Speed increase at chain stage (drive shaft spins faster)';
-                      }
-                      return 'No speed change at chain stage';
-                    }
-                    return '';
-                  })()}
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Gearmotor Orientation */}
-          <div>
-            <label htmlFor="gearmotor_orientation" className="label">
-              Gearmotor Mounting Orientation
-            </label>
-            <select
-              id="gearmotor_orientation"
-              className="input"
-              value={inputs.gearmotor_orientation}
-              onChange={(e) => updateInput('gearmotor_orientation', e.target.value)}
-            >
-              {Object.values(GearmotorOrientation).map((option) => (
-                <option key={option} value={option}>
-                  {option}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Drive Hand */}
-          <div>
-            <label className="label">Drive Hand</label>
-            <div className="flex gap-4">
-              {Object.values(DriveHand).map((option) => (
-                <label key={option} className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="drive_hand"
-                    checked={inputs.drive_hand === option}
-                    onChange={() => updateInput('drive_hand', option)}
-                    className="mr-2"
-                  />
-                  {option}
-                </label>
-              ))}
-            </div>
-            <p className="text-xs text-gray-500 mt-1">Reference: when facing the discharge end.</p>
-          </div>
-
-          {/* Motor Brand */}
-          <div>
-            <label htmlFor="motor_brand" className="label">
-              Motor Brand
-            </label>
-            <CatalogSelect
-              catalogKey="motor_brand"
-              value={inputs.motor_brand}
-              onChange={(value) => updateInput('motor_brand', value)}
-              id="motor_brand"
-              required
-            />
-          </div>
-        </div>
-      </AccordionSection>
-
-      {/* SECTION: Advanced Parameters */}
-      <AccordionSection
-        id="advanced"
-        title="Advanced Parameters (Optional)"
-        isExpanded={isExpanded('advanced')}
-        onToggle={handleToggle}
-        issueCounts={sectionCounts.advanced}
-        issues={getIssuesForSection('advanced')}
-      >
-        <div className="grid grid-cols-1 gap-4">
-            <div>
-              <label htmlFor="friction_coeff" className="label">
-                Friction Coefficient <span className="text-gray-500">(0.05-0.6, default: 0.25)</span>
-              </label>
-              <input
-                type="number"
-                id="friction_coeff"
-                className="input"
-                value={inputs.friction_coeff || ''}
-                onChange={(e) =>
-                  updateInput('friction_coeff', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="0.01"
-                min="0.05"
-                max="0.6"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="safety_factor" className="label">
-                Safety Factor <span className="text-gray-500">(1.0-5.0, default: 2.0)</span>
-              </label>
-              <input
-                type="number"
-                id="safety_factor"
-                className="input"
-                value={inputs.safety_factor || ''}
-                onChange={(e) =>
-                  updateInput('safety_factor', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="0.1"
-                min="1.0"
-                max="5.0"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="starting_belt_pull_lb" className="label">
-                Starting Belt Pull (lb) <span className="text-gray-500">(0-2000, default: 75)</span>
-              </label>
-              <input
-                type="number"
-                id="starting_belt_pull_lb"
-                className="input"
-                value={inputs.starting_belt_pull_lb || ''}
-                onChange={(e) =>
-                  updateInput('starting_belt_pull_lb', e.target.value ? parseFloat(e.target.value) : undefined)
-                }
-                step="1"
-                min="0"
-                max="2000"
-              />
-            </div>
-
         </div>
       </AccordionSection>
     </div>
