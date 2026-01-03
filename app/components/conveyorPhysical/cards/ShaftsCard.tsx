@@ -28,6 +28,17 @@ interface ShaftsCardProps {
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
 }
 
+/**
+ * Safe formatter for inch values - prevents NaN display
+ * Returns "—" if value is not a finite number
+ */
+function safeIn(value: unknown, decimals = 3): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '—';
+  }
+  return `${value.toFixed(decimals)}"`;
+}
+
 export default function ShaftsCard({
   inputs,
   outputs,
@@ -79,6 +90,13 @@ export default function ShaftsCard({
   };
 
   const handleDone = () => {
+    // If mode is Manual but user didn't enter any values, revert to Calculated
+    // This prevents leaving the form in Manual mode with missing required values
+    if (isManualMode &&
+        inputs.drive_shaft_diameter_in === undefined &&
+        inputs.tail_shaft_diameter_in === undefined) {
+      updateInput('shaft_diameter_mode', ShaftDiameterMode.Calculated);
+    }
     setIsShaftEditing(false);
   };
 
@@ -112,7 +130,7 @@ export default function ShaftsCard({
       {/* Header */}
       <CompactCardHeader
         title="Shafts"
-        badges={[{ label: isManualMode ? 'Override' : 'Configured', variant: 'success' }]}
+        badges={[{ label: hasOverrides ? 'Override' : 'Calculated', variant: 'success' }]}
         actions={
           <div className="flex items-center gap-2">
             {hasOverrides && (
@@ -148,7 +166,7 @@ export default function ShaftsCard({
                 label: 'Drive',
                 value: (
                   <>
-                    {displayDriveShaft !== undefined ? `${displayDriveShaft.toFixed(3)}"` : '—'}
+                    {safeIn(displayDriveShaft)}
                     {isManualMode && inputs.drive_shaft_diameter_in !== undefined && (
                       <span className="text-xs text-amber-600 ml-1">(override)</span>
                     )}
@@ -164,7 +182,7 @@ export default function ShaftsCard({
                 label: 'Tail',
                 value: (
                   <>
-                    {displayTailShaft !== undefined ? `${displayTailShaft.toFixed(3)}"` : '—'}
+                    {safeIn(displayTailShaft)}
                     {isManualMode && inputs.tail_shaft_diameter_in !== undefined && (
                       <span className="text-xs text-amber-600 ml-1">(override)</span>
                     )}
@@ -200,7 +218,7 @@ export default function ShaftsCard({
                   onChange={(e) =>
                     updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
                   }
-                  placeholder={calcDriveShaft !== undefined ? `Calc: ${calcDriveShaft.toFixed(3)}` : '—'}
+                  placeholder={Number.isFinite(calcDriveShaft) ? `Calc: ${calcDriveShaft!.toFixed(3)}` : '—'}
                   step="0.125"
                   min="0.5"
                   max="4.0"
@@ -274,7 +292,7 @@ export default function ShaftsCard({
                   onChange={(e) =>
                     updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
                   }
-                  placeholder={calcTailShaft !== undefined ? `Calc: ${calcTailShaft.toFixed(3)}` : '—'}
+                  placeholder={Number.isFinite(calcTailShaft) ? `Calc: ${calcTailShaft!.toFixed(3)}` : '—'}
                   step="0.125"
                   min="0.5"
                   max="4.0"
