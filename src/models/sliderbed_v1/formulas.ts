@@ -891,6 +891,253 @@ export function getEffectiveCleatHeight(
 }
 
 // ============================================================================
+// v1.43: CLEAT WEIGHT & SPACING CALCULATIONS
+// ============================================================================
+
+/**
+ * T-Cleat geometry constants (hardcoded assumptions)
+ * These are NOT user-editable - displayed read-only in UI
+ */
+export const CLEAT_GEOMETRY = {
+  /** Material thickness (inches) */
+  THICKNESS_IN: 0.25,
+  /** Base length (inches) */
+  BASE_LENGTH_IN: 1.5,
+  /** Material: PVC */
+  MATERIAL: 'PVC',
+  /** PVC density (lb/in³) */
+  DENSITY_LB_PER_IN3: 0.045,
+} as const;
+
+/**
+ * Cleat spacing layout result
+ */
+export interface CleatLayoutResult {
+  /** Actual number of cleats */
+  cleat_count: number;
+  /** Actual pitch between cleats (inches) */
+  pitch_in: number;
+  /** Odd gap size if applicable (inches) */
+  odd_gap_in?: number;
+  /** Odd gap location if applicable */
+  odd_gap_location?: 'head' | 'tail' | 'center';
+  /** Human-readable layout summary */
+  summary: string;
+}
+
+/**
+ * Calculate cleat width from belt width and edge offset
+ * cleat_width = belt_width - (2 × edge_offset)
+ */
+export function calculateCleatWidth(
+  beltWidthIn: number,
+  edgeOffsetIn: number
+): number {
+  const width = beltWidthIn - (2 * edgeOffsetIn);
+  return Math.max(0, width);
+}
+
+/**
+ * Calculate T-cleat cross-section area
+ * A = thickness × (base_length + stem_height)
+ * where stem_height = cleat_height
+ */
+export function calculateCleatCrossSection(cleatHeightIn: number): number {
+  return CLEAT_GEOMETRY.THICKNESS_IN * (CLEAT_GEOMETRY.BASE_LENGTH_IN + cleatHeightIn);
+}
+
+/**
+ * Calculate weight per cleat
+ * W = cross_section × cleat_width × density
+ */
+export function calculateCleatWeightEach(
+  cleatHeightIn: number,
+  cleatWidthIn: number
+): number {
+  const crossSection = calculateCleatCrossSection(cleatHeightIn);
+  const volume = crossSection * cleatWidthIn;
+  return volume * CLEAT_GEOMETRY.DENSITY_LB_PER_IN3;
+}
+
+/**
+ * Calculate cleat layout based on spacing mode
+ */
+export function calculateCleatLayout(
+  conveyorLengthIn: number,
+  spacingMode: 'divide_evenly' | 'use_nominal',
+  cleatCount?: number,
+  desiredSpacingIn?: number,
+  remainderMode?: 'spread_evenly' | 'one_odd_gap',
+  oddGapSize?: 'smaller' | 'larger',
+  oddGapLocation?: 'head' | 'tail' | 'center'
+): CleatLayoutResult {
+  if (spacingMode === 'divide_evenly') {
+    // User specifies count, we calculate pitch
+    const count = cleatCount ?? 1;
+    if (count <= 0) {
+      return { cleat_count: 0, pitch_in: 0, summary: 'No cleats' };
+    }
+    const pitch = conveyorLengthIn / count;
+    return {
+      cleat_count: count,
+      pitch_in: pitch,
+      summary: `${count} cleats evenly spaced at ${pitch.toFixed(1)}" pitch`,
+    };
+  }
+
+  // use_nominal mode: user specifies desired spacing
+  const nominalSpacing = desiredSpacingIn ?? 12;
+  if (nominalSpacing <= 0) {
+    return { cleat_count: 0, pitch_in: 0, summary: 'Invalid spacing' };
+  }
+
+  // Calculate how many cleats fit at nominal spacing
+  const count = Math.floor(conveyorLengthIn / nominalSpacing);
+  if (count <= 0) {
+    return { cleat_count: 1, pitch_in: conveyorLengthIn, summary: '1 cleat (conveyor shorter than spacing)' };
+  }
+
+  const remainder = conveyorLengthIn - (count * nominalSpacing);
+
+  if (remainderMode === 'spread_evenly' || remainder < 0.1) {
+    // Spread remainder across all gaps
+    const adjustedPitch = conveyorLengthIn / count;
+    return {
+      cleat_count: count,
+      pitch_in: adjustedPitch,
+      summary: `${count} cleats evenly spaced at ${adjustedPitch.toFixed(1)}"`,
+    };
+  }
+
+  // one_odd_gap mode
+  const location = oddGapLocation ?? 'tail';
+  let oddGap: number;
+
+  if (oddGapSize === 'smaller') {
+    // Odd gap is smaller: use one more cleat than fits at nominal
+    oddGap = remainder;
+    return {
+      cleat_count: count + 1,
+      pitch_in: nominalSpacing,
+      odd_gap_in: oddGap,
+      odd_gap_location: location,
+      summary: `${count} cleats at ${nominalSpacing.toFixed(1)}", 1 odd gap = ${oddGap.toFixed(1)}" at ${location}`,
+    };
+  } else {
+    // Odd gap is larger: use count-1 at nominal, one larger gap
+    if (count <= 1) {
+      return {
+        cleat_count: 1,
+        pitch_in: conveyorLengthIn,
+        summary: '1 cleat (not enough length for odd gap)',
+      };
+    }
+    oddGap = nominalSpacing + remainder;
+    return {
+      cleat_count: count,
+      pitch_in: nominalSpacing,
+      odd_gap_in: oddGap,
+      odd_gap_location: location,
+      summary: `${count - 1} cleats at ${nominalSpacing.toFixed(1)}", 1 odd gap = ${oddGap.toFixed(1)}" at ${location}`,
+    };
+  }
+}
+
+/**
+ * Calculate cleat weight per foot of belt
+ * W_per_ft = W_each × (12 / pitch)
+ */
+export function calculateCleatWeightPerFoot(
+  cleatWeightEach: number,
+  pitchIn: number
+): number {
+  if (pitchIn <= 0) return 0;
+  return cleatWeightEach * (12 / pitchIn);
+}
+
+/**
+ * Calculate belt weight per foot (base, without cleats)
+ */
+export function calculateBeltWeightPerFoot(
+  beltWeightLbf: number,
+  totalBeltLengthIn: number
+): number {
+  if (totalBeltLengthIn <= 0) return 0;
+  return beltWeightLbf / (totalBeltLengthIn / 12);
+}
+
+/**
+ * Full cleat weight calculation result
+ */
+export interface CleatWeightResult {
+  cleat_width_in: number;
+  cleat_weight_lb_each: number;
+  cleat_pitch_in: number;
+  cleat_count_actual: number;
+  cleat_odd_gap_in?: number;
+  cleat_weight_lb_per_ft: number;
+  cleat_layout_summary: string;
+}
+
+/**
+ * Calculate complete cleat weight data
+ */
+export function calculateCleatWeight(
+  inputs: {
+    cleats_enabled?: boolean;
+    belt_width_in: number;
+    cleat_edge_offset_in?: number;
+    cleat_height_in?: number;
+    conveyor_length_cc_in: number;
+    cleat_spacing_mode?: 'divide_evenly' | 'use_nominal';
+    cleat_count?: number;
+    cleat_spacing_in?: number;
+    cleat_remainder_mode?: 'spread_evenly' | 'one_odd_gap';
+    cleat_odd_gap_size?: 'smaller' | 'larger';
+    cleat_odd_gap_location?: 'head' | 'tail' | 'center';
+  }
+): CleatWeightResult | null {
+  if (!inputs.cleats_enabled) return null;
+
+  const edgeOffset = inputs.cleat_edge_offset_in ?? 0;
+  const cleatHeight = inputs.cleat_height_in ?? 0;
+
+  if (cleatHeight <= 0) return null;
+
+  // Calculate cleat width
+  const cleatWidth = calculateCleatWidth(inputs.belt_width_in, edgeOffset);
+  if (cleatWidth <= 0) return null;
+
+  // Calculate weight per cleat
+  const weightEach = calculateCleatWeightEach(cleatHeight, cleatWidth);
+
+  // Calculate layout
+  const spacingMode = inputs.cleat_spacing_mode ?? 'use_nominal';
+  const layout = calculateCleatLayout(
+    inputs.conveyor_length_cc_in,
+    spacingMode,
+    inputs.cleat_count,
+    inputs.cleat_spacing_in,
+    inputs.cleat_remainder_mode,
+    inputs.cleat_odd_gap_size,
+    inputs.cleat_odd_gap_location
+  );
+
+  // Calculate weight per foot
+  const weightPerFt = calculateCleatWeightPerFoot(weightEach, layout.pitch_in);
+
+  return {
+    cleat_width_in: cleatWidth,
+    cleat_weight_lb_each: weightEach,
+    cleat_pitch_in: layout.pitch_in,
+    cleat_count_actual: layout.cleat_count,
+    cleat_odd_gap_in: layout.odd_gap_in,
+    cleat_weight_lb_per_ft: weightPerFt,
+    cleat_layout_summary: layout.summary,
+  };
+}
+
+// ============================================================================
 // v1.5: FRAME HEIGHT CALCULATIONS (v1.33: Updated with cleat/pulley awareness)
 // ============================================================================
 
@@ -1415,13 +1662,27 @@ export function calculate(
     tailPulleyDiameterIn
   );
 
-  // Step 3: Belt weight
-  const beltWeightLbf = calculateBeltWeight(
+  // Step 3: Belt weight (base, before cleats)
+  const beltWeightLbfBase = calculateBeltWeight(
     piw,
     pil,
     inputs.belt_width_in,
     totalBeltLengthIn
   );
+
+  // Step 3b: Cleat weight calculation (v1.43)
+  const cleatWeightData = calculateCleatWeight(inputs);
+  const cleatTotalWeightLbf = cleatWeightData
+    ? cleatWeightData.cleat_weight_lb_each * cleatWeightData.cleat_count_actual
+    : 0;
+
+  // Effective belt weight (base + cleats)
+  const beltWeightLbf = beltWeightLbfBase + cleatTotalWeightLbf;
+
+  // Belt weight per foot calculations
+  const beltWeightLbPerFtBase = calculateBeltWeightPerFoot(beltWeightLbfBase, totalBeltLengthIn);
+  const cleatWeightLbPerFt = cleatWeightData?.cleat_weight_lb_per_ft ?? 0;
+  const beltWeightLbPerFtEffective = beltWeightLbPerFtBase + cleatWeightLbPerFt;
 
   // =========================================================================
   // v1.29: MATERIAL FORM BRANCHING (PARTS vs BULK)
@@ -2036,6 +2297,17 @@ export function calculate(
     cleats_min_pulley_diameter_in: cleatsMinPulleyDiaIn,
     cleats_rule_source: cleatsRuleSource,
     cleats_drill_siped_caution: cleatsDrillSipedCaution,
+
+    // v1.43: Cleat weight & spacing outputs
+    cleat_width_in: cleatWeightData?.cleat_width_in,
+    cleat_weight_lb_each: cleatWeightData?.cleat_weight_lb_each,
+    cleat_pitch_in: cleatWeightData?.cleat_pitch_in,
+    cleat_count_actual: cleatWeightData?.cleat_count_actual,
+    cleat_odd_gap_in: cleatWeightData?.cleat_odd_gap_in,
+    cleat_weight_lb_per_ft: cleatWeightLbPerFt > 0 ? cleatWeightLbPerFt : undefined,
+    belt_weight_lb_per_ft_base: beltWeightLbPerFtBase,
+    belt_weight_lb_per_ft_effective: beltWeightLbPerFtEffective,
+    cleat_layout_summary: cleatWeightData?.cleat_layout_summary,
 
     // v1.26: V-guide min pulley outputs
     belt_family_used: beltFamily,

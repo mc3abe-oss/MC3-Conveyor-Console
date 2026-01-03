@@ -894,6 +894,46 @@ export interface SliderbedInputs {
    */
   cleats_notch_notes?: string;
 
+  // --- v1.43: CLEAT SPACING MODE ---
+
+  /**
+   * Cleat spacing mode (v1.43)
+   * - 'divide_evenly': User specifies cleat count, system calculates pitch
+   * - 'use_nominal': User specifies desired centers, system handles remainder
+   */
+  cleat_spacing_mode?: 'divide_evenly' | 'use_nominal';
+
+  /**
+   * Number of cleats (v1.43)
+   * Used when cleat_spacing_mode = 'divide_evenly'
+   */
+  cleat_count?: number;
+
+  /**
+   * Remainder handling mode (v1.43)
+   * Used when cleat_spacing_mode = 'use_nominal'
+   * - 'spread_evenly': Adjust all spacings slightly to eliminate remainder
+   * - 'one_odd_gap': Keep nominal spacing, put remainder in one gap
+   */
+  cleat_remainder_mode?: 'spread_evenly' | 'one_odd_gap';
+
+  /**
+   * Odd gap size preference (v1.43)
+   * Used when cleat_remainder_mode = 'one_odd_gap'
+   * - 'smaller': Odd gap is smaller than nominal
+   * - 'larger': Odd gap is larger than nominal
+   */
+  cleat_odd_gap_size?: 'smaller' | 'larger';
+
+  /**
+   * Odd gap location (v1.43)
+   * Used when cleat_remainder_mode = 'one_odd_gap'
+   * - 'head': Odd gap at head/drive end
+   * - 'tail': Odd gap at tail end (default)
+   * - 'center': Odd gap in center
+   */
+  cleat_odd_gap_location?: 'head' | 'tail' | 'center';
+
   // SPEED & THROUGHPUT
   /** Belt Speed in FPM (feet per minute) */
   belt_speed_fpm: number;
@@ -2147,6 +2187,65 @@ export interface SliderbedOutputs {
    * True if DRILL_SIPED_1IN style is selected (triggers durability caution)
    */
   cleats_drill_siped_caution?: boolean;
+
+  // =========================================================================
+  // v1.43: CLEAT WEIGHT & SPACING OUTPUTS
+  // =========================================================================
+
+  /**
+   * Derived cleat width (inches)
+   * Calculated as: belt_width_in - (2 × cleat_edge_offset_in)
+   */
+  cleat_width_in?: number;
+
+  /**
+   * Weight per cleat (lbs)
+   * Based on T-cleat geometry: A = 0.25 × (1.5 + cleat_height_in)
+   * Volume = A × cleat_width_in; Weight = Volume × 0.045 lb/in³
+   */
+  cleat_weight_lb_each?: number;
+
+  /**
+   * Actual cleat pitch (inches)
+   * May differ from desired spacing based on layout mode
+   */
+  cleat_pitch_in?: number;
+
+  /**
+   * Actual cleat count on belt
+   */
+  cleat_count_actual?: number;
+
+  /**
+   * Odd gap size (inches)
+   * Only populated when using 'one_odd_gap' remainder mode
+   */
+  cleat_odd_gap_in?: number;
+
+  /**
+   * Added belt weight from cleats (lb/ft)
+   * Calculated as: cleat_weight_lb_each × (12 / cleat_pitch_in)
+   */
+  cleat_weight_lb_per_ft?: number;
+
+  /**
+   * Base belt weight without cleats (lb/ft)
+   * Preserved for reference when cleats add weight
+   */
+  belt_weight_lb_per_ft_base?: number;
+
+  /**
+   * Effective belt weight with cleats (lb/ft)
+   * = belt_weight_lb_per_ft_base + cleat_weight_lb_per_ft
+   * When cleats disabled: equals base belt weight
+   */
+  belt_weight_lb_per_ft_effective?: number;
+
+  /**
+   * Human-readable cleat layout summary
+   * e.g., "10 cleats at 12.0 in, 1 odd gap = 5.0 in at tail"
+   */
+  cleat_layout_summary?: string;
 
   // =========================================================================
   // v1.26: V-GUIDE MIN PULLEY OUTPUTS

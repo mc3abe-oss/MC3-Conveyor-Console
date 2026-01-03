@@ -7,12 +7,24 @@
  * - All cleat fields moved into modal
  * - Added notched cleats capture (yes/no + notes)
  * - Summary card on main page
+ *
+ * v1.43: Cleat Weight & Spacing
+ * - Added cleat weight calculation section
+ * - Added spacing mode selector (divide evenly / use nominal)
+ * - Live results for weight, added belt weight, etc.
  */
 
 'use client';
 
 import { useMemo } from 'react';
-import { SliderbedInputs } from '../../src/models/sliderbed_v1/schema';
+import { SliderbedInputs, SliderbedOutputs } from '../../src/models/sliderbed_v1/schema';
+import {
+  CLEAT_GEOMETRY,
+  calculateCleatWidth,
+  calculateCleatWeightEach,
+  calculateCleatLayout,
+  calculateCleatWeightPerFoot,
+} from '../../src/models/sliderbed_v1/formulas';
 import {
   getCleatProfiles,
   getCleatSizesForProfile,
@@ -40,6 +52,7 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   inputs: SliderbedInputs;
+  outputs?: SliderbedOutputs | null;
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
 }
 
@@ -47,6 +60,7 @@ export default function CleatsConfigModal({
   isOpen,
   onClose,
   inputs,
+  outputs,
   updateInput,
 }: Props) {
   const { cleatCatalog, cleatCenterFactors, isLoading: cleatCatalogLoading } = useCleatCatalog();
@@ -183,6 +197,72 @@ export default function CleatsConfigModal({
       };
     });
   }, [cleatCenterFactors, baseMinDia12In, currentBucket]);
+
+  // v1.43: Cleat weight calculations
+  const cleatWeightCalcs = useMemo(() => {
+    const edgeOffset = inputs.cleat_edge_offset_in ?? 0;
+    const cleatHeight = inputs.cleat_height_in ?? 0;
+    const beltWidth = inputs.belt_width_in ?? 0;
+
+    if (cleatHeight <= 0 || beltWidth <= 0) {
+      return null;
+    }
+
+    // Derived cleat width
+    const cleatWidth = calculateCleatWidth(beltWidth, edgeOffset);
+    if (cleatWidth <= 0) {
+      return null;
+    }
+
+    // Weight per cleat
+    const weightEach = calculateCleatWeightEach(cleatHeight, cleatWidth);
+
+    // Layout calculation
+    const spacingMode = inputs.cleat_spacing_mode ?? 'use_nominal';
+    const layout = calculateCleatLayout(
+      inputs.conveyor_length_cc_in ?? 0,
+      spacingMode,
+      inputs.cleat_count,
+      inputs.cleat_spacing_in,
+      inputs.cleat_remainder_mode,
+      inputs.cleat_odd_gap_size,
+      inputs.cleat_odd_gap_location
+    );
+
+    // Weight per foot
+    const weightPerFt = calculateCleatWeightPerFoot(weightEach, layout.pitch_in);
+
+    // Base belt weight from outputs (if available)
+    const baseBeltWeightPerFt = outputs?.belt_weight_lb_per_ft_base ?? 0;
+    const effectiveBeltWeightPerFt = baseBeltWeightPerFt + weightPerFt;
+
+    return {
+      cleatWidth,
+      weightEach,
+      layout,
+      weightPerFt,
+      baseBeltWeightPerFt,
+      effectiveBeltWeightPerFt,
+    };
+  }, [
+    inputs.cleat_edge_offset_in,
+    inputs.cleat_height_in,
+    inputs.belt_width_in,
+    inputs.conveyor_length_cc_in,
+    inputs.cleat_spacing_mode,
+    inputs.cleat_count,
+    inputs.cleat_spacing_in,
+    inputs.cleat_remainder_mode,
+    inputs.cleat_odd_gap_size,
+    inputs.cleat_odd_gap_location,
+    outputs?.belt_weight_lb_per_ft_base,
+  ]);
+
+  // Warning for odd gap < 2"
+  const oddGapWarning = cleatWeightCalcs?.layout?.odd_gap_in !== undefined &&
+    cleatWeightCalcs.layout.odd_gap_in < 2
+    ? `Warning: Odd gap (${cleatWeightCalcs.layout.odd_gap_in.toFixed(1)}") is less than 2"`
+    : null;
 
   if (!isOpen) return null;
 
@@ -533,6 +613,199 @@ export default function CleatsConfigModal({
               )}
             </div>
           )}
+
+          {/* Divider */}
+          <hr className="border-gray-200" />
+
+          {/* v1.43: Cleat Weight & Spacing Section */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold text-gray-800">Cleat Weight & Spacing</h3>
+
+            {/* Spacing Mode Selector */}
+            <div>
+              <label htmlFor="modal_spacing_mode" className="block text-sm font-medium text-gray-700 mb-1">
+                Spacing Mode
+              </label>
+              <select
+                id="modal_spacing_mode"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                value={inputs.cleat_spacing_mode ?? 'use_nominal'}
+                onChange={(e) => updateInput('cleat_spacing_mode', e.target.value as 'divide_evenly' | 'use_nominal')}
+              >
+                <option value="use_nominal">Use Nominal Spacing</option>
+                <option value="divide_evenly">Divide Evenly</option>
+              </select>
+            </div>
+
+            {/* Divide Evenly Mode: Cleat Count */}
+            {inputs.cleat_spacing_mode === 'divide_evenly' && (
+              <div>
+                <label htmlFor="modal_cleat_count" className="block text-sm font-medium text-gray-700 mb-1">
+                  Number of Cleats
+                </label>
+                <input
+                  type="number"
+                  id="modal_cleat_count"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                  value={inputs.cleat_count ?? ''}
+                  onChange={(e) => updateInput('cleat_count', e.target.value ? parseInt(e.target.value) : undefined)}
+                  min="1"
+                  placeholder="e.g., 10"
+                />
+              </div>
+            )}
+
+            {/* Use Nominal Mode: Remainder Handling */}
+            {(inputs.cleat_spacing_mode ?? 'use_nominal') === 'use_nominal' && (
+              <>
+                <div>
+                  <label htmlFor="modal_remainder_mode" className="block text-sm font-medium text-gray-700 mb-1">
+                    Remainder Handling
+                  </label>
+                  <select
+                    id="modal_remainder_mode"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                    value={inputs.cleat_remainder_mode ?? 'spread_evenly'}
+                    onChange={(e) => updateInput('cleat_remainder_mode', e.target.value as 'spread_evenly' | 'one_odd_gap')}
+                  >
+                    <option value="spread_evenly">Spread Evenly (adjust all spacings)</option>
+                    <option value="one_odd_gap">One Odd Gap</option>
+                  </select>
+                </div>
+
+                {inputs.cleat_remainder_mode === 'one_odd_gap' && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="modal_odd_gap_size" className="block text-sm font-medium text-gray-700 mb-1">
+                        Odd Gap Size
+                      </label>
+                      <select
+                        id="modal_odd_gap_size"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        value={inputs.cleat_odd_gap_size ?? 'larger'}
+                        onChange={(e) => updateInput('cleat_odd_gap_size', e.target.value as 'smaller' | 'larger')}
+                      >
+                        <option value="smaller">Smaller than nominal</option>
+                        <option value="larger">Larger than nominal</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label htmlFor="modal_odd_gap_location" className="block text-sm font-medium text-gray-700 mb-1">
+                        Odd Gap Location
+                      </label>
+                      <select
+                        id="modal_odd_gap_location"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                        value={inputs.cleat_odd_gap_location ?? 'tail'}
+                        onChange={(e) => updateInput('cleat_odd_gap_location', e.target.value as 'head' | 'tail' | 'center')}
+                      >
+                        <option value="tail">Tail (default)</option>
+                        <option value="head">Head</option>
+                        <option value="center">Center</option>
+                      </select>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Odd Gap Warning */}
+            {oddGapWarning && (
+              <div className="p-2 bg-amber-50 border border-amber-200 rounded-md">
+                <p className="text-sm text-amber-700">{oddGapWarning}</p>
+              </div>
+            )}
+
+            {/* T-Cleat Geometry Assumptions (Read-Only) */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <h4 className="text-xs font-semibold text-blue-700 uppercase tracking-wide mb-2">
+                T-Cleat Geometry (Assumptions)
+              </h4>
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Thickness:</span>
+                  <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.THICKNESS_IN}" (fixed)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Base Length:</span>
+                  <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.BASE_LENGTH_IN}" (fixed)</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Material:</span>
+                  <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.MATERIAL}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-blue-600">Density:</span>
+                  <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.DENSITY_LB_PER_IN3} lb/in³</span>
+                </div>
+                <div className="col-span-2 flex justify-between border-t border-blue-200 pt-1 mt-1">
+                  <span className="text-blue-600">Cleat Width (derived):</span>
+                  <span className="font-medium text-blue-900">
+                    {cleatWeightCalcs ? `${cleatWeightCalcs.cleatWidth.toFixed(2)}"` : '--'}
+                    <span className="text-xs text-blue-600 ml-1">(belt - 2×offset)</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Live Results */}
+            {cleatWeightCalcs && (
+              <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                <h4 className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">
+                  Cleat Weight Results
+                </h4>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-green-600">Weight per Cleat:</span>
+                    <span className="font-medium text-green-900">{cleatWeightCalcs.weightEach.toFixed(3)} lb</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-600">Cleat Count:</span>
+                    <span className="font-medium text-green-900">{cleatWeightCalcs.layout.cleat_count}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-600">Actual Pitch:</span>
+                    <span className="font-medium text-green-900">{cleatWeightCalcs.layout.pitch_in.toFixed(2)}"</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-green-600">Cleats/ft:</span>
+                    <span className="font-medium text-green-900">
+                      {cleatWeightCalcs.layout.pitch_in > 0 ? (12 / cleatWeightCalcs.layout.pitch_in).toFixed(2) : '--'}
+                    </span>
+                  </div>
+                  <div className="col-span-2 border-t border-green-200 pt-1 mt-1">
+                    <div className="flex justify-between">
+                      <span className="text-green-600">Added Belt Weight:</span>
+                      <span className="font-bold text-green-800">{cleatWeightCalcs.weightPerFt.toFixed(3)} lb/ft</span>
+                    </div>
+                  </div>
+                  {cleatWeightCalcs.baseBeltWeightPerFt > 0 && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-green-600">Base Belt Weight:</span>
+                        <span className="font-medium text-green-900">{cleatWeightCalcs.baseBeltWeightPerFt.toFixed(3)} lb/ft</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-green-600">Effective Belt Weight:</span>
+                        <span className="font-bold text-green-800">{cleatWeightCalcs.effectiveBeltWeightPerFt.toFixed(3)} lb/ft</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+                {/* Layout Summary */}
+                <div className="mt-2 pt-2 border-t border-green-200">
+                  <p className="text-sm text-green-800 font-medium">{cleatWeightCalcs.layout.summary}</p>
+                </div>
+                {/* Belt pull indicator */}
+                <div className="mt-2 pt-2 border-t border-green-200 flex items-center gap-2">
+                  <svg className="h-4 w-4 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm text-green-700">Belt pull includes cleat weight</span>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Geometry Summary */}
           <div className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
