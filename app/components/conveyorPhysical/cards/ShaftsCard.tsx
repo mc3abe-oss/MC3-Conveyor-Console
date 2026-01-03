@@ -28,6 +28,17 @@ interface ShaftsCardProps {
   updateInput: (field: keyof SliderbedInputs, value: any) => void;
 }
 
+/**
+ * Safe formatter for inch values - prevents NaN display
+ * Returns "—" if value is not a finite number
+ */
+function safeIn(value: unknown, decimals = 3): string {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    return '—';
+  }
+  return `${value.toFixed(decimals)}"`;
+}
+
 export default function ShaftsCard({
   inputs,
   outputs,
@@ -36,11 +47,16 @@ export default function ShaftsCard({
   const [isShaftEditing, setIsShaftEditing] = useState(false);
 
   const isManualMode = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual || inputs.shaft_diameter_mode === 'Manual';
+  // Badge shows "Override" only when user has actually entered manual values
   const hasOverrides = isManualMode && (inputs.drive_shaft_diameter_in !== undefined || inputs.tail_shaft_diameter_in !== undefined);
 
-  // Get calculated values from outputs (if available)
-  const calcDriveShaft = outputs?.drive_shaft_diameter_in;
-  const calcTailShaft = outputs?.tail_shaft_diameter_in;
+  // Get calculated values from outputs (if available) - must be finite numbers
+  const calcDriveShaft = typeof outputs?.drive_shaft_diameter_in === 'number' && Number.isFinite(outputs.drive_shaft_diameter_in)
+    ? outputs.drive_shaft_diameter_in
+    : undefined;
+  const calcTailShaft = typeof outputs?.tail_shaft_diameter_in === 'number' && Number.isFinite(outputs.tail_shaft_diameter_in)
+    ? outputs.tail_shaft_diameter_in
+    : undefined;
 
   // Display values: use overrides if in manual mode, otherwise calculated
   const displayDriveShaft = isManualMode && inputs.drive_shaft_diameter_in !== undefined
@@ -59,9 +75,7 @@ export default function ShaftsCard({
   // Handlers
   const handleEdit = () => {
     setIsShaftEditing(true);
-    if (!isManualMode) {
-      updateInput('shaft_diameter_mode', ShaftDiameterMode.Manual);
-    }
+    // DON'T auto-switch to Manual mode here - wait until user enters a value
   };
 
   const handleRevert = () => {
@@ -79,7 +93,28 @@ export default function ShaftsCard({
   };
 
   const handleDone = () => {
+    // If user clicked Edit but didn't enter any manual values, revert to Calculated mode
+    if (isManualMode &&
+        inputs.drive_shaft_diameter_in === undefined &&
+        inputs.tail_shaft_diameter_in === undefined) {
+      updateInput('shaft_diameter_mode', ShaftDiameterMode.Calculated);
+    }
     setIsShaftEditing(false);
+  };
+
+  // Switch to Manual mode when user enters a value
+  const handleDriveShaftChange = (value: number | undefined) => {
+    if (!isManualMode && value !== undefined) {
+      updateInput('shaft_diameter_mode', ShaftDiameterMode.Manual);
+    }
+    updateInput('drive_shaft_diameter_in', value);
+  };
+
+  const handleTailShaftChange = (value: number | undefined) => {
+    if (!isManualMode && value !== undefined) {
+      updateInput('shaft_diameter_mode', ShaftDiameterMode.Manual);
+    }
+    updateInput('tail_shaft_diameter_in', value);
   };
 
   // Validation warnings
@@ -112,7 +147,7 @@ export default function ShaftsCard({
       {/* Header */}
       <CompactCardHeader
         title="Shafts"
-        badges={[{ label: isManualMode ? 'Override' : 'Configured', variant: 'success' }]}
+        badges={[{ label: hasOverrides ? 'Override' : 'Calculated', variant: 'success' }]}
         actions={
           <div className="flex items-center gap-2">
             {hasOverrides && (
@@ -148,8 +183,8 @@ export default function ShaftsCard({
                 label: 'Drive',
                 value: (
                   <>
-                    {displayDriveShaft !== undefined ? `${displayDriveShaft.toFixed(3)}"` : '—'}
-                    {isManualMode && inputs.drive_shaft_diameter_in !== undefined && (
+                    {safeIn(displayDriveShaft)}
+                    {hasOverrides && inputs.drive_shaft_diameter_in !== undefined && (
                       <span className="text-xs text-amber-600 ml-1">(override)</span>
                     )}
                     {driveHasStepdown && (
@@ -164,8 +199,8 @@ export default function ShaftsCard({
                 label: 'Tail',
                 value: (
                   <>
-                    {displayTailShaft !== undefined ? `${displayTailShaft.toFixed(3)}"` : '—'}
-                    {isManualMode && inputs.tail_shaft_diameter_in !== undefined && (
+                    {safeIn(displayTailShaft)}
+                    {hasOverrides && inputs.tail_shaft_diameter_in !== undefined && (
                       <span className="text-xs text-amber-600 ml-1">(override)</span>
                     )}
                     {tailHasStepdown && (
@@ -187,6 +222,16 @@ export default function ShaftsCard({
       {/* Edit mode (inline) */}
       {isShaftEditing && (
         <div className="space-y-4">
+          {/* Calculated values summary - always visible in edit mode */}
+          {(calcDriveShaft !== undefined || calcTailShaft !== undefined) && (
+            <div className="bg-gray-50 rounded px-2 py-1.5 text-xs">
+              <span className="text-gray-500">Calculated: </span>
+              <span className="font-medium">
+                Drive {safeIn(calcDriveShaft)} / Tail {safeIn(calcTailShaft)}
+              </span>
+            </div>
+          )}
+
           {/* Drive Shaft Section */}
           <div className="border-b border-green-200 pb-4">
             <h6 className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">Drive Shaft</h6>
@@ -198,9 +243,9 @@ export default function ShaftsCard({
                   className="input text-sm"
                   value={inputs.drive_shaft_diameter_in ?? ''}
                   onChange={(e) =>
-                    updateInput('drive_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                    handleDriveShaftChange(e.target.value ? parseFloat(e.target.value) : undefined)
                   }
-                  placeholder={calcDriveShaft !== undefined ? `Calc: ${calcDriveShaft.toFixed(3)}` : '—'}
+                  placeholder={calcDriveShaft !== undefined ? `Calc: ${calcDriveShaft.toFixed(3)}` : 'Run calc...'}
                   step="0.125"
                   min="0.5"
                   max="4.0"
@@ -272,9 +317,9 @@ export default function ShaftsCard({
                   className="input text-sm"
                   value={inputs.tail_shaft_diameter_in ?? ''}
                   onChange={(e) =>
-                    updateInput('tail_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : undefined)
+                    handleTailShaftChange(e.target.value ? parseFloat(e.target.value) : undefined)
                   }
-                  placeholder={calcTailShaft !== undefined ? `Calc: ${calcTailShaft.toFixed(3)}` : '—'}
+                  placeholder={calcTailShaft !== undefined ? `Calc: ${calcTailShaft.toFixed(3)}` : 'Run calc...'}
                   step="0.125"
                   min="0.5"
                   max="4.0"
