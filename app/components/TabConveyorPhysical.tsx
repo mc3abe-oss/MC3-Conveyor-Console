@@ -44,7 +44,6 @@ import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
 // PHASE 0: PulleySelect removed - pulley configuration moves to modal in Phase 2
-import VGuideSelect from './VGuideSelect';
 import { VGuideItem } from '../api/v-guides/route';
 // PHASE 0: Legacy pulley catalog removed - stub function for compatibility
 function getEffectiveDiameterByKey(_key: string | undefined): number | undefined {
@@ -65,6 +64,7 @@ import CleatsPreviewCard from './conveyorPhysical/cards/CleatsPreviewCard';
 import DerivedGeometryCard from './conveyorPhysical/cards/DerivedGeometryCard';
 import PulleyPreviewCards from './conveyorPhysical/cards/PulleyPreviewCards';
 import BeltPiwPilCard from './conveyorPhysical/cards/BeltPiwPilCard';
+import VGuideSelectCard from './conveyorPhysical/cards/VGuideSelectCard';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
@@ -137,6 +137,23 @@ export default function TabConveyorPhysical({
   };
 
   // PHASE 0: Legacy pulley handlers removed - Phase 2 will use application_pulleys modal
+
+  // Handle V-Guide selection - updates v_guide_key + 4 min pulley diameter fields
+  // NOTE: This handler stays in TabConveyorPhysical per refactor constraints (cross-field logic)
+  const handleVGuideChange = (key: string | undefined, vguide: VGuideItem | undefined) => {
+    updateInput('v_guide_key', key);
+    if (vguide) {
+      updateInput('vguide_min_pulley_dia_solid_in', vguide.min_pulley_dia_solid_in);
+      updateInput('vguide_min_pulley_dia_notched_in', vguide.min_pulley_dia_notched_in);
+      updateInput('vguide_min_pulley_dia_solid_pu_in', vguide.min_pulley_dia_solid_pu_in);
+      updateInput('vguide_min_pulley_dia_notched_pu_in', vguide.min_pulley_dia_notched_pu_in);
+    } else {
+      updateInput('vguide_min_pulley_dia_solid_in', undefined);
+      updateInput('vguide_min_pulley_dia_notched_in', undefined);
+      updateInput('vguide_min_pulley_dia_solid_pu_in', undefined);
+      updateInput('vguide_min_pulley_dia_notched_pu_in', undefined);
+    }
+  };
 
   // v1.17: Override-based diameter resolution
   const driveOverride = Boolean(inputs.drive_pulley_manual_override);
@@ -820,32 +837,13 @@ export default function TabConveyorPhysical({
               </select>
             </div>
 
-            {/* V-guide profile (conditional) */}
-            {(inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
-              inputs.belt_tracking_method === 'V-guided') && (
-              <div>
-                <label htmlFor="v_guide_key" className="label text-xs">V-Guide</label>
-                <VGuideSelect
-                  id="v_guide_key"
-                  value={inputs.v_guide_key}
-                  onChange={(key: string | undefined, vguide: VGuideItem | undefined) => {
-                    updateInput('v_guide_key', key);
-                    if (vguide) {
-                      updateInput('vguide_min_pulley_dia_solid_in', vguide.min_pulley_dia_solid_in);
-                      updateInput('vguide_min_pulley_dia_notched_in', vguide.min_pulley_dia_notched_in);
-                      updateInput('vguide_min_pulley_dia_solid_pu_in', vguide.min_pulley_dia_solid_pu_in);
-                      updateInput('vguide_min_pulley_dia_notched_pu_in', vguide.min_pulley_dia_notched_pu_in);
-                    } else {
-                      updateInput('vguide_min_pulley_dia_solid_in', undefined);
-                      updateInput('vguide_min_pulley_dia_notched_in', undefined);
-                      updateInput('vguide_min_pulley_dia_solid_pu_in', undefined);
-                      updateInput('vguide_min_pulley_dia_notched_pu_in', undefined);
-                    }
-                  }}
-                  required
-                />
-              </div>
-            )}
+            {/* V-guide profile - Extracted to separate component (v1.41 slice 4b) */}
+            {/* NOTE: handleVGuideChange contains the 4-field update logic and remains in this file */}
+            <VGuideSelectCard
+              isVGuided={isVGuided}
+              vGuideKey={inputs.v_guide_key}
+              onVGuideChange={handleVGuideChange}
+            />
           </div>
 
           {/* ===== v1.24: CLEATS SUBSECTION - Summary Card + Modal ===== */}
