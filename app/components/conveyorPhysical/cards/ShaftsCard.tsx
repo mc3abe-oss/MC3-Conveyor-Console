@@ -79,6 +79,13 @@ export default function ShaftsCard({
   };
 
   const handleDone = () => {
+    // If mode is Manual but user didn't enter any values, revert to Calculated
+    // This prevents leaving the form in Manual mode with missing required values
+    if (isManualMode &&
+        inputs.drive_shaft_diameter_in === undefined &&
+        inputs.tail_shaft_diameter_in === undefined) {
+      updateInput('shaft_diameter_mode', ShaftDiameterMode.Calculated);
+    }
     setIsShaftEditing(false);
   };
 
@@ -112,7 +119,7 @@ export default function ShaftsCard({
       {/* Header */}
       <CompactCardHeader
         title="Shafts"
-        badges={[{ label: isManualMode ? 'Override' : 'Configured', variant: 'success' }]}
+        badges={[{ label: hasOverrides ? 'Override' : 'Calculated', variant: 'success' }]}
         actions={
           <div className="flex items-center gap-2">
             {hasOverrides && (

@@ -71,6 +71,10 @@ export default function CatalogSelect({
       required={required}
       disabled={disabled}
     >
+      {/* Placeholder option - user must explicitly select */}
+      {!value && (
+        <option value="">Select...</option>
+      )}
       {items.map((item) => (
         <option key={item.item_key} value={item.item_key}>
           {item.label}

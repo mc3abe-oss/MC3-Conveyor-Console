@@ -1126,6 +1126,21 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.drive_shaft_diameter_in).toBeGreaterThan(0);
       expect(result.outputs?.tail_shaft_diameter_in).toBeGreaterThan(0);
     });
+
+    // Regression test: Calculated mode should NOT require manual diameters
+    it('should NOT produce shaft errors when mode is Calculated (no manual values)', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Calculated,
+        // Explicitly NOT setting drive_shaft_diameter_in or tail_shaft_diameter_in
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Should NOT have shaft validation errors
+      expect(result.errors?.some(e => e.field === 'drive_shaft_diameter_in')).toBeFalsy();
+      expect(result.errors?.some(e => e.field === 'tail_shaft_diameter_in')).toBeFalsy();
+    });
   });
 
   // ========================================================================
@@ -6319,6 +6334,27 @@ describe('Floor Support Logic - Decouple TOB from Legs/Casters (v1.40)', () => {
       const result = runCalculation({ inputs });
 
       expect(result.errors?.some(e => e.field === 'caster_rigid_model_key')).toBe(true);
+    });
+
+    // Regression test: casters with model keys set should NOT produce errors
+    it('No caster errors when model keys are properly set', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        support_method: SupportMethod.FloorSupported,
+        include_casters: true,
+        caster_rigid_qty: 2,
+        caster_rigid_model_key: 'RIGID_4IN',
+        caster_swivel_qty: 2,
+        caster_swivel_model_key: 'SWIVEL_4IN',
+        reference_end: 'tail',
+        tail_tob_in: 36,
+      };
+
+      const result = runCalculation({ inputs });
+
+      // Should NOT have caster validation errors (errors array may be undefined or empty)
+      expect(result.errors?.some(e => e.field === 'caster_rigid_model_key')).toBeFalsy();
+      expect(result.errors?.some(e => e.field === 'caster_swivel_model_key')).toBeFalsy();
     });
   });
 });
