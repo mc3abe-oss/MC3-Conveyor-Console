@@ -236,16 +236,42 @@ describe('Split Pulley Diameter (v1.3)', () => {
       expect(result.errors?.some((e) => e.field === 'tail_pulley_diameter_in')).toBe(true);
     });
 
-    it('should reject drive pulley diameter > 12"', () => {
+    // v1.45: Max OD constraint removed - pulleys can be larger than 12" (e.g., 12.75" drum pulleys)
+    it('should accept drive pulley diameter 12.75" (regression test)', () => {
       const inputs = {
         ...baseInputs,
-        drive_pulley_diameter_in: 14,
+        drive_pulley_diameter_in: 12.75,
         tail_pulley_diameter_in: 4,
       };
       const result = runCalculation({ inputs });
 
-      expect(result.success).toBe(false);
-      expect(result.errors?.some((e) => e.field === 'drive_pulley_diameter_in')).toBe(true);
+      expect(result.success).toBe(true);
+      expect(result.errors?.some((e) => e.field === 'drive_pulley_diameter_in')).toBeFalsy();
+    });
+
+    it('should accept tail pulley diameter 12.75" (regression test)', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 4,
+        tail_pulley_diameter_in: 12.75,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.errors?.some((e) => e.field === 'tail_pulley_diameter_in')).toBeFalsy();
+    });
+
+    it('should accept both pulleys at 12.75" (regression test)', () => {
+      const inputs = {
+        ...baseInputs,
+        drive_pulley_diameter_in: 12.75,
+        tail_pulley_diameter_in: 12.75,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      expect(result.errors?.some((e) => e.field === 'drive_pulley_diameter_in')).toBeFalsy();
+      expect(result.errors?.some((e) => e.field === 'tail_pulley_diameter_in')).toBeFalsy();
     });
 
     // v1.24: Removed "different diameters" warning - valid in our system

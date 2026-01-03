@@ -199,13 +199,7 @@ export function validateInputs(
         severity: 'error',
       });
     }
-    if (inputs.drive_pulley_diameter_in > 12) {
-      errors.push({
-        field: 'drive_pulley_diameter_in',
-        message: 'Drive pulley diameter must be <= 12"',
-        severity: 'error',
-      });
-    }
+    // Max OD constraint removed - pulleys can be larger than 12" (e.g., 12.75" drum pulleys)
   }
 
   // v1.3: Tail pulley diameter validation
@@ -224,13 +218,7 @@ export function validateInputs(
         severity: 'error',
       });
     }
-    if (inputs.tail_pulley_diameter_in > 12) {
-      errors.push({
-        field: 'tail_pulley_diameter_in',
-        message: 'Tail pulley diameter must be <= 12"',
-        severity: 'error',
-      });
-    }
+    // Max OD constraint removed - pulleys can be larger than 12" (e.g., 12.75" drum pulleys)
   }
 
   // =========================================================================
