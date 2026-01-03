@@ -105,25 +105,6 @@ export default function InputEcho({ inputs }: Props) {
             </div>
           </div>
 
-          {/* Support */}
-          {(inputs.tail_support_type || inputs.drive_support_type) && (
-            <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-2">
-                Support
-              </h4>
-              <div className="space-y-1.5 text-sm">
-                {inputs.tail_support_type && (
-                  <EchoRow label="Tail End" value={inputs.tail_support_type} />
-                )}
-                {inputs.drive_support_type && (
-                  <EchoRow label="Drive End" value={inputs.drive_support_type} />
-                )}
-                {inputs.height_input_mode && (
-                  <EchoRow label="Height Mode" value={inputs.height_input_mode} />
-                )}
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

@@ -17,6 +17,7 @@ import { OutputsV2Tabs } from './outputs_v2';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
+import { createClient } from '../../src/lib/supabase/browser';
 
 type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
@@ -74,6 +75,26 @@ export default function BeltConveyorCalculatorApp() {
 
   // View mode: 'configure' or 'results'
   const [viewMode, setViewMode] = useState<ViewMode>('configure');
+
+  // v1.42: User email for feature gating
+  const [userEmail, setUserEmail] = useState<string | null>(null);
+
+  // Fetch user email on mount for feature gating
+  useEffect(() => {
+    const fetchUserEmail = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        setUserEmail(user?.email ?? null);
+      } catch {
+        setUserEmail(null);
+      }
+    };
+    fetchUserEmail();
+  }, []);
+
+  // v1.42: Outputs v2 is only visible to abek@mc3mfg.com
+  const showOutputsV2 = userEmail === 'abek@mc3mfg.com';
 
   // URL-based loading state
   const searchParams = useSearchParams();
@@ -1222,30 +1243,33 @@ export default function BeltConveyorCalculatorApp() {
                 )}
               </span>
             </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('outputs_v2')}
-              className={`
-                whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
-                ${
-                  viewMode === 'outputs_v2'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }
-              `}
-            >
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                Outputs v2
-                {outputsV2 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                    Ready
-                  </span>
-                )}
-              </span>
-            </button>
+            {/* v1.42: Outputs v2 tab gated to abek@mc3mfg.com only */}
+            {showOutputsV2 && (
+              <button
+                type="button"
+                onClick={() => setViewMode('outputs_v2')}
+                className={`
+                  whitespace-nowrap py-3 px-1 border-b-2 font-medium text-sm transition-colors
+                  ${
+                    viewMode === 'outputs_v2'
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }
+                `}
+              >
+                <span className="flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Outputs v2
+                  {outputsV2 && (
+                    <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                      Ready
+                    </span>
+                  )}
+                </span>
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setViewMode('vault')}
@@ -1377,10 +1401,11 @@ export default function BeltConveyorCalculatorApp() {
           )}
         </div>
 
-        {/* Outputs V2 Mode */}
-        <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
-          {outputsV2 ? (
-            <OutputsV2Tabs outputs={outputsV2} />
+        {/* Outputs V2 Mode - v1.42: gated to abek@mc3mfg.com only */}
+        {showOutputsV2 && (
+          <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
+            {outputsV2 ? (
+              <OutputsV2Tabs outputs={outputsV2} />
           ) : (
             <div className="bg-white rounded-lg shadow p-8 text-center">
               <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1396,8 +1421,9 @@ export default function BeltConveyorCalculatorApp() {
                 Go to Configure
               </button>
             </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Vault Mode */}
         <div className={viewMode === 'vault' ? '' : 'hidden'}>

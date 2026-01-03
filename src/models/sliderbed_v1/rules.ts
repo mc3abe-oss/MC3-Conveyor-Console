@@ -55,9 +55,6 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
   ValidationMode,
-  HeightInputMode,
-  derivedLegsRequired,
-  TOB_FIELDS,
   FrameHeightMode,
   SpeedMode,
   GearmotorMountingStyle,
@@ -755,28 +752,6 @@ export function validateInputs(
         errors.push({
           field: 'cleat_edge_offset_in',
           message: 'Cleat edge offset must be <= 12"',
-          severity: 'error',
-        });
-      }
-    }
-  }
-
-  // =========================================================================
-  // v1.4/v1.40: TOB FIELD EXISTENCE VALIDATION
-  // v1.40: Also check new support_method field for floor support
-  // =========================================================================
-
-  const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
-  const floorSupportedCheck = isFloorSupported(inputs.support_method);
-
-  // TOB fields allowed if EITHER legacy support types OR new support_method indicates floor support
-  if (!legsRequired && !floorSupportedCheck) {
-    // When NOT floor supported, TOB fields must NOT exist
-    for (const field of TOB_FIELDS) {
-      if (field in inputs && (inputs as unknown as Record<string, unknown>)[field] !== undefined) {
-        errors.push({
-          field,
-          message: `Field '${field}' must not exist when conveyor is not floor supported`,
           severity: 'error',
         });
       }
@@ -1711,15 +1686,14 @@ export function applyApplicationRules(
 }
 
 // ============================================================================
-// v1.4: TOB VALIDATION (DRAFT VS COMMIT MODE)
+// v1.40: TOB VALIDATION (DRAFT VS COMMIT MODE)
 // ============================================================================
 
 /**
  * Validate TOB fields based on validation mode.
  *
- * - draft mode: Lenient - allows missing TOB even when legs_required=true
- *   (supports legacy configs that were migrated to legs but have no TOB data)
- * - commit mode: Strict - requires all TOB fields based on height_input_mode
+ * - draft mode: Lenient - allows missing TOB
+ * - commit mode: Strict - requires TOB based on reference_end
  *
  * @param inputs - The inputs to validate
  * @param mode - 'draft' (lenient) or 'commit' (strict)
@@ -1729,23 +1703,38 @@ export function validateTob(
   mode: ValidationMode
 ): ValidationError[] {
   const errors: ValidationError[] = [];
-  const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
+  const floorSupported = isFloorSupported(inputs.support_method);
+  const usingHtobGeometry = inputs.geometry_mode === GeometryMode.HorizontalTob;
 
-  // If legs not required, no TOB validation needed (field existence checked in validateInputs)
-  if (!legsRequired) {
+  // TOB validation only applies when floor supported or using H_TOB geometry
+  if (!floorSupported && !usingHtobGeometry) {
     return errors;
   }
 
-  // In draft mode, allow missing TOB (legacy migrated configs)
+  // In draft mode, allow missing TOB
   if (mode === 'draft') {
     return errors;
   }
 
-  // Commit mode: strict validation
-  const heightInputMode = inputs.height_input_mode ?? HeightInputMode.ReferenceAndAngle;
-
-  if (heightInputMode === HeightInputMode.ReferenceAndAngle || heightInputMode === 'reference_and_angle') {
-    // Mode A: Only reference TOB required
+  // Commit mode: validate based on reference_end
+  // H_TOB mode requires both TOBs
+  if (usingHtobGeometry) {
+    if (inputs.tail_tob_in === undefined) {
+      errors.push({
+        field: 'tail_tob_in',
+        message: 'Tail TOB is required in H_TOB geometry mode',
+        severity: 'error',
+      });
+    }
+    if (inputs.drive_tob_in === undefined) {
+      errors.push({
+        field: 'drive_tob_in',
+        message: 'Drive TOB is required in H_TOB geometry mode',
+        severity: 'error',
+      });
+    }
+  } else if (floorSupported) {
+    // Floor supported: require reference TOB based on reference_end
     const referenceEnd = inputs.reference_end ?? 'tail';
 
     if (referenceEnd === 'tail') {
@@ -1765,36 +1754,20 @@ export function validateTob(
         });
       }
     }
-  } else {
-    // Mode B: Both TOBs required
-    if (inputs.tail_tob_in === undefined) {
-      errors.push({
-        field: 'tail_tob_in',
-        message: 'Tail TOB is required in both-ends height input mode',
-        severity: 'error',
-      });
-    }
-    if (inputs.drive_tob_in === undefined) {
-      errors.push({
-        field: 'drive_tob_in',
-        message: 'Drive TOB is required in both-ends height input mode',
-        severity: 'error',
-      });
-    }
   }
 
   return errors;
 }
 
 /**
- * Apply v1.4 height/support warnings.
+ * Apply height/support warnings.
  * Called as part of applyApplicationRules.
  */
 function applyHeightWarnings(inputs: SliderbedInputs): ValidationWarning[] {
   const warnings: ValidationWarning[] = [];
-  const legsRequired = derivedLegsRequired(inputs.tail_support_type, inputs.drive_support_type);
+  const floorSupported = isFloorSupported(inputs.support_method);
 
-  if (!legsRequired) {
+  if (!floorSupported) {
     return warnings;
   }
 
