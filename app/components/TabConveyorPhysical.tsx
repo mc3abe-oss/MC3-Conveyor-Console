@@ -64,6 +64,7 @@ import FrameHeightBreakdownCard from './conveyorPhysical/cards/FrameHeightBreakd
 import CleatsPreviewCard from './conveyorPhysical/cards/CleatsPreviewCard';
 import DerivedGeometryCard from './conveyorPhysical/cards/DerivedGeometryCard';
 import PulleyPreviewCards from './conveyorPhysical/cards/PulleyPreviewCards';
+import BeltPiwPilCard from './conveyorPhysical/cards/BeltPiwPilCard';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
@@ -777,61 +778,16 @@ export default function TabConveyorPhysical({
             </div>
           </div>
 
-          {/* PIW/PIL Display - Compact Inline */}
-          {inputs.belt_catalog_key && (
-            <div className="bg-gray-50 border border-gray-200 rounded px-2.5 py-1.5">
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                {/* PIW */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500">PIW:</span>
-                  {inputs.belt_piw_override !== undefined ? (
-                    <>
-                      <input
-                        type="number"
-                        id="belt_piw_override"
-                        className="w-16 px-1.5 py-0.5 text-xs border border-amber-300 bg-amber-50 rounded"
-                        value={inputs.belt_piw_override}
-                        onChange={(e) => updateInput('belt_piw_override', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        step="0.001"
-                      />
-                      <span className="text-xs text-gray-400">({inputs.belt_piw ?? '—'})</span>
-                      <button type="button" onClick={() => updateInput('belt_piw_override', undefined)} className="text-xs text-gray-500 hover:text-gray-700">×</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium text-blue-600">{inputs.belt_piw ?? '—'}</span>
-                      <button type="button" onClick={() => updateInput('belt_piw_override', inputs.belt_piw ?? 0.109)} className="text-xs text-blue-500 hover:text-blue-700">✎</button>
-                    </>
-                  )}
-                </div>
-                <span className="text-gray-300">|</span>
-                {/* PIL */}
-                <div className="flex items-center gap-1.5">
-                  <span className="text-xs text-gray-500">PIL:</span>
-                  {inputs.belt_pil_override !== undefined ? (
-                    <>
-                      <input
-                        type="number"
-                        id="belt_pil_override"
-                        className="w-16 px-1.5 py-0.5 text-xs border border-amber-300 bg-amber-50 rounded"
-                        value={inputs.belt_pil_override}
-                        onChange={(e) => updateInput('belt_pil_override', e.target.value ? parseFloat(e.target.value) : undefined)}
-                        step="0.001"
-                      />
-                      <span className="text-xs text-gray-400">({inputs.belt_pil ?? '—'})</span>
-                      <button type="button" onClick={() => updateInput('belt_pil_override', undefined)} className="text-xs text-gray-500 hover:text-gray-700">×</button>
-                    </>
-                  ) : (
-                    <>
-                      <span className="font-medium text-blue-600">{inputs.belt_pil ?? '—'}</span>
-                      <button type="button" onClick={() => updateInput('belt_pil_override', inputs.belt_pil ?? 0.109)} className="text-xs text-blue-500 hover:text-blue-700">✎</button>
-                    </>
-                  )}
-                </div>
-                <span className="text-xs text-gray-400">lb/in</span>
-              </div>
-            </div>
-          )}
+          {/* PIW/PIL Display - Extracted to separate component (v1.41 slice 4) */}
+          <BeltPiwPilCard
+            beltCatalogKey={inputs.belt_catalog_key}
+            beltPiw={inputs.belt_piw}
+            beltPil={inputs.belt_pil}
+            beltPiwOverride={inputs.belt_piw_override}
+            beltPilOverride={inputs.belt_pil_override}
+            onPiwOverrideChange={(value) => updateInput('belt_piw_override', value)}
+            onPilOverrideChange={(value) => updateInput('belt_pil_override', value)}
+          />
 
           {/* ===== TRACKING SUBSECTION ===== */}
           <SectionDivider title="Tracking" />
