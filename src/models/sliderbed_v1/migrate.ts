@@ -303,10 +303,20 @@ export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
   const manualDriveDia = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
   const drivePulleyDiameterIn = catalogDriveDia ?? manualDriveDia;
 
+  // Warn if catalog key was provided but lookup failed (stub returns undefined)
+  if (migrated.head_pulley_catalog_key && catalogDriveDia === undefined && process.env.NODE_ENV !== 'production') {
+    console.warn(`[Migrate] Drive pulley catalog key "${migrated.head_pulley_catalog_key}" not found. Using fallback: ${drivePulleyDiameterIn}"`);
+  }
+
   // For tail: check tail_pulley_catalog_key first
   const catalogTailDia = getEffectiveDiameterByKey(migrated.tail_pulley_catalog_key);
   const manualTailDia = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
   const tailPulleyDiameterIn = catalogTailDia ?? manualTailDia;
+
+  // Warn if catalog key was provided but lookup failed
+  if (migrated.tail_pulley_catalog_key && catalogTailDia === undefined && process.env.NODE_ENV !== 'production') {
+    console.warn(`[Migrate] Tail pulley catalog key "${migrated.tail_pulley_catalog_key}" not found. Using fallback: ${tailPulleyDiameterIn}"`);
+  }
 
   return { drivePulleyDiameterIn, tailPulleyDiameterIn };
 }
@@ -336,10 +346,20 @@ export function normalizeInputsForCalculationV2(inputs: SliderbedInputs): {
   const manualDriveDia = migrated.drive_pulley_diameter_in ?? migrated.pulley_diameter_in ?? DEFAULT_PULLEY_DIAMETER_IN;
   const drivePulleyDiameterIn = catalogDriveDia ?? manualDriveDia;
 
+  // Warn if catalog key was provided but lookup failed (stub returns undefined)
+  if (migrated.head_pulley_catalog_key && catalogDriveDia === undefined && process.env.NODE_ENV !== 'production') {
+    console.warn(`[Migrate] Drive pulley catalog key "${migrated.head_pulley_catalog_key}" not found. Using fallback: ${drivePulleyDiameterIn}"`);
+  }
+
   // For tail: check tail_pulley_catalog_key first
   const catalogTailDia = getEffectiveDiameterByKey(migrated.tail_pulley_catalog_key);
   const manualTailDia = migrated.tail_pulley_diameter_in ?? drivePulleyDiameterIn;
   const tailPulleyDiameterIn = catalogTailDia ?? manualTailDia;
+
+  // Warn if catalog key was provided but lookup failed
+  if (migrated.tail_pulley_catalog_key && catalogTailDia === undefined && process.env.NODE_ENV !== 'production') {
+    console.warn(`[Migrate] Tail pulley catalog key "${migrated.tail_pulley_catalog_key}" not found. Using fallback: ${tailPulleyDiameterIn}"`);
+  }
 
   // Normalize geometry (v1.10)
   const { normalized, derived } = normalizeGeometry(migrated);

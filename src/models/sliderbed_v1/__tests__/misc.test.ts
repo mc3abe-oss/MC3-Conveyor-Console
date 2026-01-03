@@ -23,7 +23,6 @@ import {
   PowerFeed,
   ControlsPackage,
   SpecSource,
-  SupportOption,
   FieldWiringRequired,
   BearingGrade,
   DocumentationPackage,

@@ -73,14 +73,21 @@ import {
 } from '../../lib/frame-catalog';
 // PHASE 0: Legacy pulley catalog imports removed - will be replaced by application_pulleys in Phase 2
 // Stub functions to maintain API compatibility during transition
+// WARNING: These stubs return undefined - callers MUST fall through to backup values
 function getEffectiveDiameterByKey(_key: string | undefined): number | undefined {
-  return undefined; // Pulley diameter resolution moved to application_pulleys
+  // Legacy catalog removed - resolution moved to application_pulleys
+  // Callers should fall through to manual diameter inputs
+  return undefined;
 }
 function getFinishedOdByVariantKey(_key: string | undefined): number | undefined {
-  return undefined; // Pulley variant resolution moved to application_pulleys
+  // Pulley variant catalog not yet connected - resolution moved to application_pulleys
+  // Callers should fall through to manual diameter inputs
+  return undefined;
 }
 function getShellOdByVariantKey(_key: string | undefined): number | undefined {
-  return undefined; // Pulley variant resolution moved to application_pulleys
+  // Pulley variant catalog not yet connected - resolution moved to application_pulleys
+  // Callers should fall through to manual diameter inputs
+  return undefined;
 }
 import {
   getCachedCleatCatalog,
@@ -156,8 +163,12 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   driveFinishedOdIn: number | undefined;
   tailShellOdIn: number | undefined;
   tailFinishedOdIn: number | undefined;
+  pulleyResolutionWarnings: string[];
 } {
+  const pulleyResolutionWarnings: string[] = [];
+
   // Drive pulley: check variant first, then legacy catalog, then manual values
+  // IMPORTANT: Fall through to backup values if lookup returns undefined
   let effectiveDrivePulleyDiameterIn: number | undefined;
   let driveShellOdIn: number | undefined;
   let driveFinishedOdIn: number | undefined;
@@ -165,23 +176,39 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   if (inputs.drive_pulley_manual_override) {
     // Manual override takes precedence
     effectiveDrivePulleyDiameterIn = inputs.drive_pulley_diameter_in;
-  } else if (inputs.drive_pulley_variant_key) {
-    // v1.24: Use variant finished_od_in (falls back to shell_od_in)
-    driveFinishedOdIn = getFinishedOdByVariantKey(inputs.drive_pulley_variant_key);
-    driveShellOdIn = getShellOdByVariantKey(inputs.drive_pulley_variant_key);
-    effectiveDrivePulleyDiameterIn = driveFinishedOdIn;
-  } else if (inputs.head_pulley_catalog_key) {
-    // Legacy: use old catalog
-    effectiveDrivePulleyDiameterIn = getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
-  } else if (inputs.drive_pulley_diameter_in !== undefined && inputs.drive_pulley_diameter_in > 0) {
-    // Backward compatibility: use provided diameter without override flag
-    effectiveDrivePulleyDiameterIn = inputs.drive_pulley_diameter_in;
-  } else if (inputs.pulley_diameter_in !== undefined && inputs.pulley_diameter_in > 0) {
-    // Legacy fallback: use single pulley_diameter_in
-    effectiveDrivePulleyDiameterIn = inputs.pulley_diameter_in;
+  } else {
+    // Try variant key first
+    if (inputs.drive_pulley_variant_key) {
+      driveFinishedOdIn = getFinishedOdByVariantKey(inputs.drive_pulley_variant_key);
+      driveShellOdIn = getShellOdByVariantKey(inputs.drive_pulley_variant_key);
+      effectiveDrivePulleyDiameterIn = driveFinishedOdIn;
+      if (effectiveDrivePulleyDiameterIn === undefined) {
+        pulleyResolutionWarnings.push(
+          `Drive pulley variant key "${inputs.drive_pulley_variant_key}" not found in catalog. Falling back to manual diameter.`
+        );
+      }
+    }
+    // Try legacy catalog key if variant failed or not set
+    if (effectiveDrivePulleyDiameterIn === undefined && inputs.head_pulley_catalog_key) {
+      effectiveDrivePulleyDiameterIn = getEffectiveDiameterByKey(inputs.head_pulley_catalog_key);
+      if (effectiveDrivePulleyDiameterIn === undefined) {
+        pulleyResolutionWarnings.push(
+          `Drive pulley catalog key "${inputs.head_pulley_catalog_key}" not found. Falling back to manual diameter.`
+        );
+      }
+    }
+    // Try manual diameter (backward compatibility)
+    if (effectiveDrivePulleyDiameterIn === undefined && inputs.drive_pulley_diameter_in !== undefined && inputs.drive_pulley_diameter_in > 0) {
+      effectiveDrivePulleyDiameterIn = inputs.drive_pulley_diameter_in;
+    }
+    // Try legacy single pulley_diameter_in
+    if (effectiveDrivePulleyDiameterIn === undefined && inputs.pulley_diameter_in !== undefined && inputs.pulley_diameter_in > 0) {
+      effectiveDrivePulleyDiameterIn = inputs.pulley_diameter_in;
+    }
   }
 
   // Tail pulley: check variant first, then legacy catalog, then manual values
+  // IMPORTANT: Fall through to backup values if lookup returns undefined
   let effectiveTailPulleyDiameterIn: number | undefined;
   let tailShellOdIn: number | undefined;
   let tailFinishedOdIn: number | undefined;
@@ -189,20 +216,35 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
   if (inputs.tail_pulley_manual_override) {
     // Manual override takes precedence
     effectiveTailPulleyDiameterIn = inputs.tail_pulley_diameter_in;
-  } else if (inputs.tail_pulley_variant_key) {
-    // v1.24: Use variant finished_od_in (falls back to shell_od_in)
-    tailFinishedOdIn = getFinishedOdByVariantKey(inputs.tail_pulley_variant_key);
-    tailShellOdIn = getShellOdByVariantKey(inputs.tail_pulley_variant_key);
-    effectiveTailPulleyDiameterIn = tailFinishedOdIn;
-  } else if (inputs.tail_pulley_catalog_key) {
-    // Legacy: use old catalog
-    effectiveTailPulleyDiameterIn = getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
-  } else if (inputs.tail_pulley_diameter_in !== undefined && inputs.tail_pulley_diameter_in > 0) {
-    // Backward compatibility: use provided diameter without override flag
-    effectiveTailPulleyDiameterIn = inputs.tail_pulley_diameter_in;
-  } else if (effectiveDrivePulleyDiameterIn !== undefined) {
+  } else {
+    // Try variant key first
+    if (inputs.tail_pulley_variant_key) {
+      tailFinishedOdIn = getFinishedOdByVariantKey(inputs.tail_pulley_variant_key);
+      tailShellOdIn = getShellOdByVariantKey(inputs.tail_pulley_variant_key);
+      effectiveTailPulleyDiameterIn = tailFinishedOdIn;
+      if (effectiveTailPulleyDiameterIn === undefined) {
+        pulleyResolutionWarnings.push(
+          `Tail pulley variant key "${inputs.tail_pulley_variant_key}" not found in catalog. Falling back to manual diameter.`
+        );
+      }
+    }
+    // Try legacy catalog key if variant failed or not set
+    if (effectiveTailPulleyDiameterIn === undefined && inputs.tail_pulley_catalog_key) {
+      effectiveTailPulleyDiameterIn = getEffectiveDiameterByKey(inputs.tail_pulley_catalog_key);
+      if (effectiveTailPulleyDiameterIn === undefined) {
+        pulleyResolutionWarnings.push(
+          `Tail pulley catalog key "${inputs.tail_pulley_catalog_key}" not found. Falling back to manual diameter.`
+        );
+      }
+    }
+    // Try manual diameter (backward compatibility)
+    if (effectiveTailPulleyDiameterIn === undefined && inputs.tail_pulley_diameter_in !== undefined && inputs.tail_pulley_diameter_in > 0) {
+      effectiveTailPulleyDiameterIn = inputs.tail_pulley_diameter_in;
+    }
     // Tail defaults to drive if not specified
-    effectiveTailPulleyDiameterIn = effectiveDrivePulleyDiameterIn;
+    if (effectiveTailPulleyDiameterIn === undefined && effectiveDrivePulleyDiameterIn !== undefined) {
+      effectiveTailPulleyDiameterIn = effectiveDrivePulleyDiameterIn;
+    }
   }
 
   return {
@@ -212,6 +254,7 @@ export function getEffectivePulleyDiameters(inputs: SliderbedInputs): {
     driveFinishedOdIn,
     tailShellOdIn,
     tailFinishedOdIn,
+    pulleyResolutionWarnings,
   };
 }
 
@@ -1625,7 +1668,14 @@ export function calculate(
     driveFinishedOdIn,
     tailShellOdIn,
     tailFinishedOdIn,
+    pulleyResolutionWarnings,
   } = getEffectivePulleyDiameters(inputs);
+
+  // Log pulley resolution warnings in dev/test mode
+  if (process.env.NODE_ENV !== 'production' && pulleyResolutionWarnings.length > 0) {
+    pulleyResolutionWarnings.forEach((w) => console.warn('[Pulley Resolution]', w));
+  }
+
   const drivePulleyDiameterIn = effectiveDrivePulleyDiameterIn ?? NaN;
   const tailPulleyDiameterIn = effectiveTailPulleyDiameterIn ?? NaN;
 

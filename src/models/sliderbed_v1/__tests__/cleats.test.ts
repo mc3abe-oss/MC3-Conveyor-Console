@@ -41,7 +41,7 @@ import {
   ShaftDiameterMode,
   FrameHeightMode,
   SpeedMode,
-  SupportOption,
+  SupportMethod,
 } from '../schema';
 
 describe('Belt Cleats (v1.3)', () => {
@@ -55,7 +55,7 @@ describe('Belt Cleats (v1.3)', () => {
     power_feed: PowerFeed.V480_3Ph,
     controls_package: ControlsPackage.StartStop,
     spec_source: SpecSource.Standard,
-    support_option: SupportOption.FloorMounted,
+    support_method: SupportMethod.External,
     field_wiring_required: FieldWiringRequired.No,
     bearing_grade: BearingGrade.Standard,
     documentation_package: DocumentationPackage.Basic,
