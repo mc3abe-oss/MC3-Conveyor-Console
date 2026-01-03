@@ -86,6 +86,9 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   // ========================================================================
@@ -517,6 +520,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       // v1.48: Belt-dependent outputs require explicit belt selection
       // Using belt_coeff_piw/pil to provide explicit coefficients
       const inputs: SliderbedInputs = {
+        ...APPLICATION_DEFAULTS,
         conveyor_length_cc_in: 100,
         belt_width_in: 20,
         pulley_diameter_in: 2.5,
@@ -531,7 +535,6 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_spacing_in: 0,
         belt_coeff_piw: DEFAULT_PARAMETERS.piw_2p5,
         belt_coeff_pil: DEFAULT_PARAMETERS.pil_2p5,
-        ...APPLICATION_DEFAULTS,
       };
 
       const result = runCalculation({ inputs });
@@ -544,6 +547,7 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       // v1.48: Belt-dependent outputs require explicit belt selection
       // Using belt_coeff_piw/pil to provide explicit coefficients
       const inputs: SliderbedInputs = {
+        ...APPLICATION_DEFAULTS,
         conveyor_length_cc_in: 100,
         belt_width_in: 20,
         pulley_diameter_in: 3.0,
@@ -558,7 +562,6 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         part_spacing_in: 0,
         belt_coeff_piw: DEFAULT_PARAMETERS.piw_other,
         belt_coeff_pil: DEFAULT_PARAMETERS.pil_other,
-        ...APPLICATION_DEFAULTS,
       };
 
       const result = runCalculation({ inputs });
@@ -668,7 +671,9 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,
       part_spacing_in: 0,
-        ...APPLICATION_DEFAULTS,
+      belt_coeff_piw: 0.138, // v1.48: Required for belt selection (2.5" pulley)
+      belt_coeff_pil: 0.138,
+      ...APPLICATION_DEFAULTS,
     };
 
     it('should use custom safety_factor when provided', () => {
@@ -922,6 +927,8 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,
       part_spacing_in: 0,
+      belt_coeff_piw: 0.109, // v1.48: Required for belt selection
+      belt_coeff_pil: 0.109,
       ...APPLICATION_DEFAULTS,
     };
 
@@ -1199,21 +1206,24 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.belt_pil_effective).toBe(0.120);
     });
 
-    it('should gate belt-dependent outputs to null when no belt selected (v1.48)', () => {
+    it('should error when no belt is selected (v1.48)', () => {
       const inputs = {
         ...baseInputs,
-        // No belt_catalog_key, belt_piw, or belt_pil
+        // Explicitly clear all belt selection fields
+        belt_catalog_key: undefined,
+        belt_piw: undefined,
+        belt_pil: undefined,
+        belt_piw_override: undefined,
+        belt_pil_override: undefined,
+        belt_coeff_piw: undefined,
+        belt_coeff_pil: undefined,
       };
       const result = runCalculation({ inputs });
 
-      expect(result.success).toBe(true);
-      // v1.48: Belt-dependent outputs are null when no belt is selected
-      expect(result.outputs?.piw_used).toBeNull();
-      expect(result.outputs?.pil_used).toBeNull();
-      expect(result.outputs?.belt_weight_lbf).toBeNull();
-      expect(result.outputs?.friction_pull_lb).toBeNull();
-      expect(result.outputs?.total_belt_pull_lb).toBeNull();
-      expect(result.outputs?.torque_drive_shaft_inlbf).toBeNull();
+      // v1.48: Belt selection is now mandatory
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'belt_catalog_key')).toBe(true);
+      expect(result.errors?.some(e => e.message.includes('Belt selection is required'))).toBe(true);
     });
 
     it('should reject belt_piw_override <= 0', () => {

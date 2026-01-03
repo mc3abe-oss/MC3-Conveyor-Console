@@ -259,6 +259,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       drive_hand: DriveHand.RightHand,
       belt_tracking_method: BeltTrackingMethod.Crowned,
       shaft_diameter_mode: ShaftDiameterMode.Calculated,
+      // v1.48: Belt selection is mandatory
+      belt_coeff_piw: 0.109,
+      belt_coeff_pil: 0.109,
     };
 
     const baseInputs: SliderbedInputs = {
@@ -507,6 +510,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       drive_hand: DriveHand.RightHand,
       belt_tracking_method: BeltTrackingMethod.Crowned,
       shaft_diameter_mode: ShaftDiameterMode.Calculated,
+      // v1.48: Belt selection is mandatory
+      belt_coeff_piw: 0.109,
+      belt_coeff_pil: 0.109,
     };
 
     const frameHeightBaseInputs: SliderbedInputs = {
@@ -995,6 +1001,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           drive_hand: DriveHand.RightHand,
           belt_tracking_method: BeltTrackingMethod.Crowned,
           shaft_diameter_mode: ShaftDiameterMode.Calculated,
+          // v1.48: Belt selection is mandatory
+          belt_coeff_piw: 0.109,
+          belt_coeff_pil: 0.109,
         };
 
         const result = runCalculation({ inputs });
@@ -1061,6 +1070,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
           drive_hand: DriveHand.RightHand,
           belt_tracking_method: BeltTrackingMethod.Crowned,
           shaft_diameter_mode: ShaftDiameterMode.Calculated,
+          // v1.48: Belt selection is mandatory
+          belt_coeff_piw: 0.109,
+          belt_coeff_pil: 0.109,
         };
 
         const result = runCalculation({ inputs });
@@ -1130,6 +1142,9 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
       cleat_height_in: 1,
       cleat_spacing_in: 6,
       cleat_edge_offset_in: 0.5,
+      // v1.48: Belt selection is mandatory
+      belt_coeff_piw: 0.109,
+      belt_coeff_pil: 0.109,
     };
 
     it('should PASS when cleats enabled and snubs NOT required (frame height above threshold)', () => {
@@ -1297,6 +1312,9 @@ describe('Frame Construction Validation (v1.14)', () => {
     // v1.14: Frame construction defaults
     frame_construction_type: 'sheet_metal',
     frame_sheet_metal_gauge: '12_GA',
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   it('should require gauge when construction type is sheet_metal', () => {
