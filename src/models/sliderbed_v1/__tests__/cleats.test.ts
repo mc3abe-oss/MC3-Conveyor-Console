@@ -47,6 +47,7 @@ import {
 describe('Belt Cleats (v1.3)', () => {
   // Application field defaults
   const APPLICATION_DEFAULTS = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
@@ -441,6 +442,7 @@ describe('Belt Cleats (v1.3)', () => {
 describe('Cleat Weight & Spacing (v1.43)', () => {
   // Base inputs for cleat weight tests
   const BASE_CLEAT_WEIGHT_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     conveyor_length_cc_in: 120,
     belt_width_in: 48, // 48" belt
     pulley_diameter_in: 4,

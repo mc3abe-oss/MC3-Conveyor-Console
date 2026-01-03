@@ -1774,22 +1774,27 @@ export function calculate(
     riskFlags = bulkResult.riskFlags;
   } else {
     // PARTS MODE: Existing calculation (unchanged)
+    // v1.48: Use nullish coalescing - validation blocks if these are undefined
+    const partLengthIn = inputs.part_length_in ?? 0;
+    const partWidthIn = inputs.part_width_in ?? 0;
+    const partWeightLbs = inputs.part_weight_lbs ?? 0;
+
     // Step 4: Parts on belt
     partsOnBelt = calculatePartsOnBelt(
       inputs.conveyor_length_cc_in,
-      inputs.part_length_in,
-      inputs.part_width_in,
+      partLengthIn,
+      partWidthIn,
       partSpacingIn,
       inputs.orientation
     );
 
     // Step 5: Load on belt from parts
-    loadOnBeltLbf = calculateLoadOnBelt(partsOnBelt, inputs.part_weight_lbs);
+    loadOnBeltLbf = calculateLoadOnBelt(partsOnBelt, partWeightLbs);
 
     // Step 12 (moved here): Pitch (travel dimension + spacing)
     pitchIn = calculatePitch(
-      inputs.part_length_in,
-      inputs.part_width_in,
+      partLengthIn,
+      partWidthIn,
       partSpacingIn,
       inputs.orientation
     );

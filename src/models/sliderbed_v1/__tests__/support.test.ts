@@ -50,6 +50,7 @@ import {
 
 describe('Unified Support Method & Model Selection (v1.39)', () => {
   const BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     conveyor_length_cc_in: 120,
     belt_width_in: 24,
     pulley_diameter_in: 4,
@@ -250,6 +251,7 @@ describe('Unified Support Method & Model Selection (v1.39)', () => {
 
 describe('Floor Support Logic - Decouple TOB from Legs/Casters (v1.40)', () => {
   const BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     conveyor_length_cc_in: 120,
     belt_width_in: 24,
     conveyor_incline_deg: 5, // 5 degree incline for derived TOB test

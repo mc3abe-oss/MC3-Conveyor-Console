@@ -1036,14 +1036,15 @@ export interface SliderbedInputs {
   surge_duration_sec?: number;
 
   // PRODUCT / PART (PARTS mode only)
+  // v1.48: Made optional - new applications don't have defaults, user must enter
   /** Part Weight in lbs */
-  part_weight_lbs: number;
+  part_weight_lbs?: number;
 
   /** Part Length in inches */
-  part_length_in: number;
+  part_length_in?: number;
 
   /** Part Width in inches */
-  part_width_in: number;
+  part_width_in?: number;
 
   /** Drop height in inches (vertical distance from part release to belt surface) */
   drop_height_in: number;
@@ -2615,8 +2616,9 @@ export const DEFAULT_INPUT_VALUES = {
   conveyor_incline_deg: 0,
   // horizontal_run_in is derived in L_ANGLE mode, not set by default
 
-  // Material form defaults (v1.29)
-  material_form: MaterialForm.Parts, // Default to PARTS to preserve existing behavior
+  // Material form: NO DEFAULT (v1.48)
+  // New applications must explicitly select PARTS or BULK before calculation.
+  // Legacy configs default to PARTS via migrate.ts.
 
   drop_height_in: 0,
   part_spacing_in: 0,
@@ -2753,16 +2755,15 @@ export function buildDefaultInputs(): SliderbedInputs {
     speed_mode: SpeedMode.BeltSpeed,
     drive_rpm_input: 100,
 
-    // Product / Part definition (PARTS mode defaults)
-    material_form: MaterialForm.Parts,
-    part_weight_lbs: 5,
-    part_length_in: 12,
-    part_width_in: 6,
+    // Product / Material definition (v1.48)
+    // material_form: NOT SET - new applications must explicitly select PARTS or BULK
+    // part_weight_lbs, part_length_in, part_width_in: NOT SET - user must enter
+    // These are only set after material_form is selected
     drop_height_in: 0,
     part_temperature_class: 'AMBIENT',
     fluid_type: 'NONE',
     orientation: Orientation.Lengthwise,
-    part_spacing_in: 6,
+    part_spacing_in: 0, // Changed from 6 to 0 - user must set explicitly
     throughput_margin_pct: 0,
 
     // Application fields - catalog item_keys

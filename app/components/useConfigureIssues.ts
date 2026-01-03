@@ -9,7 +9,7 @@
  */
 
 import { useMemo } from 'react';
-import { SliderbedInputs, LacingStyle, BeltTrackingMethod } from '../../src/models/sliderbed_v1/schema';
+import { SliderbedInputs, LacingStyle, BeltTrackingMethod, MaterialForm } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateTrackingRecommendation,
   TRACKING_MODE_LABELS,
@@ -125,49 +125,70 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
   const issues: Issue[] = [];
 
   // ---------------------------------------------------------------------------
-  // APPLICATION TAB - Product Definition
+  // APPLICATION TAB - Material Form Selection (v1.48)
   // ---------------------------------------------------------------------------
 
-  if (inputs.part_weight_lbs <= 0) {
+  const materialForm = inputs.material_form as MaterialForm | string | undefined;
+  const isPartsMode = materialForm === MaterialForm.Parts || materialForm === 'PARTS';
+
+  // v1.48: Material form is required for new applications
+  if (!materialForm) {
     issues.push({
       severity: 'error',
-      message: 'Part weight must be greater than 0',
+      message: 'Material form not selected',
+      detail: 'Choose PARTS or BULK to proceed with configuration',
       tabKey: 'application',
       sectionKey: 'product',
-      fieldKeys: ['part_weight_lbs'],
+      fieldKeys: ['material_form'],
     });
   }
 
-  if (inputs.part_length_in <= 0) {
-    issues.push({
-      severity: 'error',
-      message: 'Part length must be greater than 0',
-      tabKey: 'application',
-      sectionKey: 'product',
-      fieldKeys: ['part_length_in'],
-    });
-  }
+  // ---------------------------------------------------------------------------
+  // APPLICATION TAB - Product Definition (PARTS mode only)
+  // ---------------------------------------------------------------------------
 
-  if (inputs.part_width_in <= 0) {
-    issues.push({
-      severity: 'error',
-      message: 'Part width must be greater than 0',
-      tabKey: 'application',
-      sectionKey: 'product',
-      fieldKeys: ['part_width_in'],
-    });
-  }
+  if (isPartsMode) {
+    if (!inputs.part_weight_lbs || inputs.part_weight_lbs <= 0) {
+      issues.push({
+        severity: 'error',
+        message: 'Part weight must be greater than 0',
+        tabKey: 'application',
+        sectionKey: 'product',
+        fieldKeys: ['part_weight_lbs'],
+      });
+    }
 
-  // Part width vs belt width warning
-  if (inputs.part_width_in > inputs.belt_width_in) {
-    issues.push({
-      severity: 'warning',
-      message: 'Part width exceeds belt width',
-      detail: 'Part may not fit on belt or may overhang edges',
-      tabKey: 'application',
-      sectionKey: 'product',
-      fieldKeys: ['part_width_in'],
-    });
+    if (!inputs.part_length_in || inputs.part_length_in <= 0) {
+      issues.push({
+        severity: 'error',
+        message: 'Part length must be greater than 0',
+        tabKey: 'application',
+        sectionKey: 'product',
+        fieldKeys: ['part_length_in'],
+      });
+    }
+
+    if (!inputs.part_width_in || inputs.part_width_in <= 0) {
+      issues.push({
+        severity: 'error',
+        message: 'Part width must be greater than 0',
+        tabKey: 'application',
+        sectionKey: 'product',
+        fieldKeys: ['part_width_in'],
+      });
+    }
+
+    // Part width vs belt width warning
+    if (inputs.part_width_in && inputs.part_width_in > inputs.belt_width_in) {
+      issues.push({
+        severity: 'warning',
+        message: 'Part width exceeds belt width',
+        detail: 'Part may not fit on belt or may overhang edges',
+        tabKey: 'application',
+        sectionKey: 'product',
+        fieldKeys: ['part_width_in'],
+      });
+    }
   }
 
   // High drop height warning

@@ -54,6 +54,7 @@ import {
 describe('Belt Tracking Guidance', () => {
   // Application field defaults (used in all tests)
   const TRACKING_APPLICATION_DEFAULTS = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,

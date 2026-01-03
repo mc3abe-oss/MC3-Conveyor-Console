@@ -346,11 +346,61 @@ export function validateInputs(
   }
 
   // =========================================================================
-  // v1.29: MATERIAL FORM VALIDATION
+  // v1.48: MATERIAL FORM REQUIRED VALIDATION
   // =========================================================================
 
   const materialForm = inputs.material_form as MaterialForm | string | undefined;
+  const isPartsMode = materialForm === MaterialForm.Parts || materialForm === 'PARTS';
   const isBulkMode = materialForm === MaterialForm.Bulk || materialForm === 'BULK';
+
+  // v1.48: Material form is REQUIRED for new applications
+  // Block calculation until user explicitly selects PARTS or BULK
+  if (!materialForm) {
+    errors.push({
+      field: 'material_form',
+      message: 'Material form not selected. Choose PARTS or BULK to proceed.',
+      severity: 'error',
+    });
+    // Return early - no point validating other fields if material form is not set
+    return errors;
+  }
+
+  // =========================================================================
+  // v1.48: PARTS MODE VALIDATION - explicit dimensional entry required
+  // =========================================================================
+
+  if (isPartsMode) {
+    // part_weight_lbs is required
+    if (inputs.part_weight_lbs === undefined || inputs.part_weight_lbs <= 0) {
+      errors.push({
+        field: 'part_weight_lbs',
+        message: 'Part weight is required and must be greater than 0',
+        severity: 'error',
+      });
+    }
+
+    // part_length_in is required
+    if (inputs.part_length_in === undefined || inputs.part_length_in <= 0) {
+      errors.push({
+        field: 'part_length_in',
+        message: 'Part length is required and must be greater than 0',
+        severity: 'error',
+      });
+    }
+
+    // part_width_in is required
+    if (inputs.part_width_in === undefined || inputs.part_width_in <= 0) {
+      errors.push({
+        field: 'part_width_in',
+        message: 'Part width is required and must be greater than 0',
+        severity: 'error',
+      });
+    }
+  }
+
+  // =========================================================================
+  // v1.29: BULK MODE VALIDATION
+  // =========================================================================
 
   if (isBulkMode) {
     // -------------------------------------------------------------------------
@@ -408,43 +458,16 @@ export function validateInputs(
 
     // Note: PARTS fields (part_weight_lbs, part_length_in, etc.) are NOT validated in BULK mode
     // They are not required and should be ignored.
+  }
 
-  } else {
-    // -------------------------------------------------------------------------
-    // PARTS MODE VALIDATION (default, unchanged from previous versions)
-    // -------------------------------------------------------------------------
-
-    if (inputs.part_weight_lbs <= 0) {
-      errors.push({
-        field: 'part_weight_lbs',
-        message: 'Part Weight must be greater than 0',
-        severity: 'error',
-      });
-    }
-
-    if (inputs.part_length_in <= 0) {
-      errors.push({
-        field: 'part_length_in',
-        message: 'Part Length must be greater than 0',
-        severity: 'error',
-      });
-    }
-
-    if (inputs.part_width_in <= 0) {
-      errors.push({
-        field: 'part_width_in',
-        message: 'Part Width must be greater than 0',
-        severity: 'error',
-      });
-    }
-
-    if (inputs.part_spacing_in < 0) {
-      errors.push({
-        field: 'part_spacing_in',
-        message: 'Part Spacing must be >= 0',
-        severity: 'error',
-      });
-    }
+  // v1.48: PARTS validation moved to isPartsMode block above (lines 372-398)
+  // The part_spacing_in validation remains here as it applies to both modes when relevant
+  if (isPartsMode && inputs.part_spacing_in < 0) {
+    errors.push({
+      field: 'part_spacing_in',
+      message: 'Part Spacing must be >= 0',
+      severity: 'error',
+    });
   }
 
   // DROP HEIGHT (applies to both modes)
@@ -1045,6 +1068,10 @@ export function applyApplicationRules(
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
 
+  // v1.48: Material form check for conditional validation
+  const materialForm = inputs.material_form as MaterialForm | string | undefined;
+  const isPartsMode = materialForm === MaterialForm.Parts || materialForm === 'PARTS';
+
   // HARD ERROR: Red hot parts
   if (inputs.part_temperature_class === 'RED_HOT' || inputs.part_temperature_class === PartTemperatureClass.RedHot) {
     errors.push({
@@ -1133,7 +1160,7 @@ export function applyApplicationRules(
   // v1.29: BULK MODE WARNINGS
   // =========================================================================
 
-  const materialForm = inputs.material_form as MaterialForm | string | undefined;
+  // v1.48: materialForm already declared at function top, just compute isBulkMode
   const isBulkMode = materialForm === MaterialForm.Bulk || materialForm === 'BULK';
 
   if (isBulkMode) {
@@ -1289,10 +1316,10 @@ export function applyApplicationRules(
   // High incline WITHOUT cleats (already covered above in incline warnings)
   // Just reinforce: if incline > 20° and no cleats, already warned
 
-  // Cleat spacing vs part size
-  if (inputs.cleats_enabled && inputs.cleat_spacing_in !== undefined) {
+  // Cleat spacing vs part size (v1.48: only check if part dimensions are set)
+  if (inputs.cleats_enabled && inputs.cleat_spacing_in !== undefined && isPartsMode) {
     const travelDim = inputs.orientation === 'Lengthwise' ? inputs.part_length_in : inputs.part_width_in;
-    if (inputs.cleat_spacing_in < travelDim) {
+    if (travelDim !== undefined && inputs.cleat_spacing_in < travelDim) {
       warnings.push({
         field: 'cleat_spacing_in',
         message: `Cleat spacing (${inputs.cleat_spacing_in}") is less than part travel dimension (${travelDim}"). Parts may not fit between cleats.`,

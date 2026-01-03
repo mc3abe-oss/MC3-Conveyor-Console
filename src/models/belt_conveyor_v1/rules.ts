@@ -100,8 +100,8 @@ export function validateInputs(inputs: BeltConveyorInputs): ValidationError[] {
     });
   }
 
-  // PRODUCT / PART
-  if (inputs.part_weight_lbs <= 0) {
+  // PRODUCT / PART (v1.48: fields are now optional, only validate if set)
+  if (inputs.part_weight_lbs !== undefined && inputs.part_weight_lbs <= 0) {
     errors.push({
       field: 'part_weight_lbs',
       message: 'Part Weight must be greater than 0',
@@ -109,7 +109,7 @@ export function validateInputs(inputs: BeltConveyorInputs): ValidationError[] {
     });
   }
 
-  if (inputs.part_length_in <= 0) {
+  if (inputs.part_length_in !== undefined && inputs.part_length_in <= 0) {
     errors.push({
       field: 'part_length_in',
       message: 'Part Length must be greater than 0',
@@ -117,7 +117,7 @@ export function validateInputs(inputs: BeltConveyorInputs): ValidationError[] {
     });
   }
 
-  if (inputs.part_width_in <= 0) {
+  if (inputs.part_width_in !== undefined && inputs.part_width_in <= 0) {
     errors.push({
       field: 'part_width_in',
       message: 'Part Width must be greater than 0',

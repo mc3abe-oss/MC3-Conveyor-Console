@@ -42,6 +42,8 @@ function buildInputsFromScenario(scenarioInputs: Partial<SliderbedInputs>): Slid
   const defaults = buildDefaultInputs();
   return {
     ...defaults,
+    // v1.48: material_form is required, default to PARTS for test scenarios
+    material_form: 'PARTS',
     ...scenarioInputs,
   } as SliderbedInputs;
 }

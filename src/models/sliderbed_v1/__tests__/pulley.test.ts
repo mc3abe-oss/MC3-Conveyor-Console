@@ -60,6 +60,7 @@ function clearPulleyCatalogCache(): void {
 describe('Split Pulley Diameter (v1.3)', () => {
   // Application field defaults (used in all tests)
   const APPLICATION_DEFAULTS = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
@@ -288,6 +289,7 @@ describe('Split Pulley Diameter (v1.3)', () => {
 describe('Belt Minimum Pulley Diameter (v1.11)', () => {
   // Base inputs for all tests
   const BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     conveyor_length_cc_in: 120,
     belt_width_in: 24,
     conveyor_incline_deg: 0,

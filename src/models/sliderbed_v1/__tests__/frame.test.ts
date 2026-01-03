@@ -226,6 +226,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
   describe('Integration: Full Calculation with Frame Height', () => {
     const APPLICATION_DEFAULTS = {
+    material_form: 'PARTS', // v1.48: Required for new applications
       material_type: MaterialType.Steel,
       process_type: ProcessType.Assembly,
       parts_sharp: PartsSharp.No,
@@ -420,6 +421,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
     it('should error when Custom mode has no custom_frame_height_in', () => {
       const inputs = {
+        material_form: 'PARTS', // v1.48: Required for new applications
         conveyor_length_cc_in: 120,
         belt_width_in: 24,
         pulley_diameter_in: 4,
@@ -433,6 +435,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
     it('should error when custom_frame_height_in < minimum', () => {
       const inputs = {
+        material_form: 'PARTS', // v1.48: Required for new applications
         conveyor_length_cc_in: 120,
         belt_width_in: 24,
         pulley_diameter_in: 4,
@@ -470,6 +473,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
   describe('Frame Height with Cleats & Pulleys (v1.33)', () => {
     // Application field defaults (same as other integration tests)
     const FRAME_TEST_DEFAULTS = {
+      material_form: 'PARTS', // v1.48: Required for new applications
       material_type: MaterialType.Steel,
       process_type: ProcessType.Assembly,
       parts_sharp: PartsSharp.No,
@@ -939,6 +943,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
     describe('Integration: Roller Coexistence', () => {
       it('should output both gravity and snub rollers for low profile long conveyor', () => {
         const inputs: SliderbedInputs = {
+          material_form: 'PARTS', // v1.48: Required for new applications
           conveyor_length_cc_in: 360, // 30 feet
           belt_width_in: 24,
           pulley_diameter_in: 4,
@@ -1006,6 +1011,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
       it('should output only gravity rollers when frame height above snub threshold', () => {
         const inputs: SliderbedInputs = {
+          material_form: 'PARTS', // v1.48: Required for new applications
           conveyor_length_cc_in: 240,
           belt_width_in: 24,
           pulley_diameter_in: 4,
@@ -1072,6 +1078,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
   describe('Cleats + Snub Rollers Compatibility (v1.28)', () => {
     // Base inputs with cleats enabled
     const cleatsBaseInputs: SliderbedInputs = {
+      material_form: 'PARTS', // v1.48: Required for new applications
       conveyor_length_cc_in: 120,
       belt_width_in: 18,
       drive_pulley_diameter_in: 5.5, // 5.5" pulley → standard frame = 6.5"
@@ -1236,6 +1243,7 @@ describe('Frame Height & Snub Roller Logic (v1.5)', () => {
 
 describe('Frame Construction Validation (v1.14)', () => {
   const BASE_FRAME_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     conveyor_length_cc_in: 120,
     belt_width_in: 24,
     conveyor_incline_deg: 0,

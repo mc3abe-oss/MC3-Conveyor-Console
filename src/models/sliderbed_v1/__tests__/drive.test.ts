@@ -50,6 +50,7 @@ import { migrateInputs } from '../migrate';
 describe('v1.6 Speed Mode Regression Tests', () => {
   // Application field defaults (used in all tests)
   const APPLICATION_DEFAULTS = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,
@@ -326,6 +327,7 @@ describe('v1.6 Speed Mode Regression Tests', () => {
 describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
   // Application field defaults (used in all tests)
   const APPLICATION_DEFAULTS = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,

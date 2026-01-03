@@ -10,6 +10,7 @@
  */
 
 import { runCalculation } from '../../../lib/calculator/engine';
+import { migrateInputs } from '../migrate';
 import {
   SliderbedInputs,
   PartTemperatureClass,
@@ -51,6 +52,7 @@ import { migrateInputs } from '../migrate';
 describe('PCI Tube Stress Calculations (v1.27)', () => {
   // Base inputs for PCI tests
   const PCI_BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Required for new applications
     conveyor_length_cc_in: 120,
     belt_width_in: 24,
     belt_speed_fpm: 100,
@@ -229,6 +231,7 @@ describe('PCI Tube Stress Calculations (v1.27)', () => {
 describe('Material Form - PARTS vs BULK (v1.29)', () => {
   // Base inputs for testing - shared across all BULK tests
   const BULK_BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS', // v1.48: Default to PARTS, tests override for BULK
     conveyor_length_cc_in: 120, // 10 ft
     belt_width_in: 24,
     belt_speed_fpm: 60, // 60 FPM
@@ -281,14 +284,16 @@ describe('Material Form - PARTS vs BULK (v1.29)', () => {
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
   };
 
-  // Test 1: Legacy config (no material_form) defaults to PARTS
-  it('should default material_form to PARTS for legacy configs', () => {
-    // Inputs without material_form should calculate as PARTS
-    const inputs: SliderbedInputs = { ...BULK_BASE_INPUTS };
-    // Remove material_form to simulate legacy config
-    delete (inputs as Record<string, unknown>).material_form;
+  // Test 1: Legacy config (no material_form) defaults to PARTS via migration
+  // v1.48: Legacy configs go through migrateInputs which adds material_form
+  it('should default material_form to PARTS for legacy configs via migration', () => {
+    // Simulate legacy config from database (no material_form)
+    const rawInputs: Partial<SliderbedInputs> = { ...BULK_BASE_INPUTS };
+    delete (rawInputs as Record<string, unknown>).material_form;
 
-    const result = runCalculation({ inputs });
+    // Legacy configs go through migration which adds material_form = PARTS
+    const migratedInputs = migrateInputs(rawInputs as SliderbedInputs);
+    const result = runCalculation({ inputs: migratedInputs });
 
     expect(result.success).toBe(true);
     // Should have PARTS-specific outputs
@@ -296,17 +301,22 @@ describe('Material Form - PARTS vs BULK (v1.29)', () => {
     expect(result.outputs?.parts_on_belt).toBeGreaterThan(0);
     expect(result.outputs?.capacity_pph).toBeDefined();
     expect(result.outputs?.pitch_in).toBeDefined();
+    expect(result.outputs?.material_form_used).toBe('PARTS');
   });
 
-  // Test 2: Explicit PARTS mode matches legacy calculation
-  it('should calculate PARTS mode identically to legacy', () => {
-    const legacyInputs: SliderbedInputs = { ...BULK_BASE_INPUTS };
-    delete (legacyInputs as Record<string, unknown>).material_form;
+  // Test 2: Explicit PARTS mode matches legacy calculation (via migration)
+  it('should calculate PARTS mode identically to legacy (via migration)', () => {
+    // Legacy config - no material_form
+    const rawLegacyInputs: Partial<SliderbedInputs> = { ...BULK_BASE_INPUTS };
+    delete (rawLegacyInputs as Record<string, unknown>).material_form;
+    const legacyInputs = migrateInputs(rawLegacyInputs as SliderbedInputs);
 
-    const partsInputs: SliderbedInputs = {
+    // Apply migration to partsInputs too to ensure same defaults
+    // (migration adds speed_mode, geometry_mode, etc. that affect calculation)
+    const partsInputs = migrateInputs({
       ...BULK_BASE_INPUTS,
       material_form: 'PARTS',
-    };
+    } as SliderbedInputs);
 
     const legacyResult = runCalculation({ inputs: legacyInputs });
     const partsResult = runCalculation({ inputs: partsInputs });
@@ -319,6 +329,19 @@ describe('Material Form - PARTS vs BULK (v1.29)', () => {
     expect(partsResult.outputs?.load_on_belt_lbf).toBe(legacyResult.outputs?.load_on_belt_lbf);
     expect(partsResult.outputs?.capacity_pph).toBe(legacyResult.outputs?.capacity_pph);
     expect(partsResult.outputs?.total_belt_pull_lb).toBe(legacyResult.outputs?.total_belt_pull_lb);
+  });
+
+  // Test 2b: v1.48 - Calculation fails without material_form (no migration)
+  it('should fail calculation when material_form is missing (no migration)', () => {
+    const inputs: Partial<SliderbedInputs> = { ...BULK_BASE_INPUTS };
+    delete (inputs as Record<string, unknown>).material_form;
+
+    // Without migration, missing material_form should fail validation
+    const result = runCalculation({ inputs: inputs as SliderbedInputs });
+
+    expect(result.success).toBe(false);
+    expect(result.errors?.some(e => e.field === 'material_form')).toBe(true);
+    expect(result.errors?.some(e => e.message?.includes('Material form not selected'))).toBe(true);
   });
 
   // Test 3: PARTS validation - zero weight should fail
