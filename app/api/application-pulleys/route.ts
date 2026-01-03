@@ -13,6 +13,11 @@ export type PulleyPosition = 'DRIVE' | 'TAIL';
 export type FaceProfile = 'FLAT' | 'CROWNED' | 'V_GUIDED';
 export type LaggingType = 'NONE' | 'RUBBER' | 'URETHANE';
 
+import { LaggingPattern, isValidLaggingPattern } from '../../../src/lib/lagging-patterns';
+
+// Re-export for convenience
+export type { LaggingPattern } from '../../../src/lib/lagging-patterns';
+
 export type WallValidationStatus = 'NOT_VALIDATED' | 'PASS' | 'RECOMMEND_UPGRADE' | 'FAIL_ENGINEERING_REQUIRED';
 
 export interface ApplicationPulley {
@@ -25,6 +30,8 @@ export interface ApplicationPulley {
   v_guide_key: string | null;
   lagging_type: LaggingType;
   lagging_thickness_in: number | null;
+  lagging_pattern: LaggingPattern | null;
+  lagging_pattern_notes: string | null;
   face_width_in: number | null;
   shell_od_in: number | null;
   shell_wall_in: number | null;
@@ -175,6 +182,31 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Validate lagging pattern
+    const laggingPattern = body.lagging_pattern || 'none';
+    if (!isValidLaggingPattern(laggingPattern)) {
+      return NextResponse.json(
+        { error: `Invalid lagging_pattern. Must be one of: none, smooth, herringbone_clockwise, herringbone_counterclockwise, straight_grooves, diamond, custom` },
+        { status: 400 }
+      );
+    }
+
+    // Lagging pattern must be 'none' when lagging is disabled
+    if (laggingType === 'NONE' && laggingPattern !== 'none') {
+      return NextResponse.json(
+        { error: 'lagging_pattern must be "none" when lagging_type is NONE' },
+        { status: 400 }
+      );
+    }
+
+    // Custom pattern requires notes
+    if (laggingPattern === 'custom' && !body.lagging_pattern_notes?.trim()) {
+      return NextResponse.json(
+        { error: 'lagging_pattern_notes is required when lagging_pattern is "custom"' },
+        { status: 400 }
+      );
+    }
+
     // Compute finished_od_in from shell_od_in + 2 * lagging_thickness
     const shellOdIn = body.shell_od_in ?? null;
     const laggingThicknessIn = laggingType !== 'NONE' ? (body.lagging_thickness_in ?? 0) : 0;
@@ -189,6 +221,10 @@ export async function POST(request: NextRequest) {
       v_guide_key: faceProfile === 'V_GUIDED' ? body.v_guide_key : null,
       lagging_type: laggingType,
       lagging_thickness_in: laggingType !== 'NONE' ? body.lagging_thickness_in : null,
+      lagging_pattern: laggingPattern,
+      lagging_pattern_notes: laggingPattern === 'custom' || body.lagging_pattern_notes?.trim()
+        ? body.lagging_pattern_notes?.trim() || null
+        : null,
       face_width_in: body.face_width_in ?? null,
       shell_od_in: shellOdIn,
       shell_wall_in: body.shell_wall_in ?? null,

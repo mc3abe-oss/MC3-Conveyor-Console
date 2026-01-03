@@ -13,7 +13,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ApplicationPulley, LaggingType } from '../api/application-pulleys/route';
+import { ApplicationPulley, LaggingType, LaggingPattern } from '../api/application-pulleys/route';
+import { LAGGING_PATTERN_LABELS } from '../../src/lib/lagging-patterns';
 import { PulleyLibraryModel } from '../api/admin/pulley-models/route';
 import {
   getBeltTrackingMode,
@@ -65,6 +66,8 @@ interface PulleyFormData {
   model_key: string;
   lagging_type: LaggingType;
   lagging_thickness_in: string;
+  lagging_pattern: LaggingPattern;
+  lagging_pattern_notes: string;
   face_width_mode: FaceWidthMode;  // v1.28: AUTO = belt_width + allowance, MANUAL = user override
   face_width_allowance_in: string; // v1.28: Allowance for Auto mode
   face_width_in: string;
@@ -89,6 +92,8 @@ const emptyForm: PulleyFormData = {
   model_key: '',
   lagging_type: 'NONE',
   lagging_thickness_in: '',
+  lagging_pattern: 'none',
+  lagging_pattern_notes: '',
   face_width_mode: 'AUTO',
   face_width_allowance_in: '',
   face_width_in: '',
@@ -220,6 +225,8 @@ export default function PulleyConfigModal({
       model_key: model.model_key,
       lagging_type: 'NONE',
       lagging_thickness_in: '',
+      lagging_pattern: 'none',
+      lagging_pattern_notes: '',
       face_width_mode: 'AUTO',
       face_width_allowance_in: defaultAllowance.toString(),
       face_width_in: defaultFaceWidth?.toString() || '',
@@ -285,6 +292,8 @@ export default function PulleyConfigModal({
       model_key: effectiveModelKey || '',
       lagging_type: pulley.lagging_type,
       lagging_thickness_in: pulley.lagging_thickness_in?.toString() || '',
+      lagging_pattern: pulley.lagging_pattern || 'none',
+      lagging_pattern_notes: pulley.lagging_pattern_notes || '',
       face_width_mode: faceWidthMode,
       face_width_allowance_in: inferredAllowance,
       face_width_in: pulley.face_width_in?.toString() || '',
@@ -496,6 +505,16 @@ export default function PulleyConfigModal({
       return;
     }
 
+    // Validate lagging pattern notes required for custom pattern
+    if (driveForm.lagging_pattern === 'custom' && !driveForm.lagging_pattern_notes.trim()) {
+      setError('Drive pulley: Pattern notes are required for custom lagging pattern');
+      return;
+    }
+    if (tailForm.lagging_pattern === 'custom' && !tailForm.lagging_pattern_notes.trim()) {
+      setError('Tail pulley: Pattern notes are required for custom lagging pattern');
+      return;
+    }
+
     setIsSaving(true);
     setError(null);
     setSaveMessage(null);
@@ -516,6 +535,8 @@ export default function PulleyConfigModal({
             driveForm.lagging_type !== 'NONE'
               ? parseFloat(driveForm.lagging_thickness_in) || null
               : null,
+          lagging_pattern: driveForm.lagging_type !== 'NONE' ? driveForm.lagging_pattern : 'none',
+          lagging_pattern_notes: driveForm.lagging_pattern_notes.trim() || null,
           face_width_in: driveForm.face_width_in ? parseFloat(driveForm.face_width_in) : null,
           shell_od_in: driveModel?.shell_od_in || null,
           shell_wall_in: driveForm.shell_wall_in ? parseFloat(driveForm.shell_wall_in) : null,
@@ -556,6 +577,8 @@ export default function PulleyConfigModal({
             tailForm.lagging_type !== 'NONE'
               ? parseFloat(tailForm.lagging_thickness_in) || null
               : null,
+          lagging_pattern: tailForm.lagging_type !== 'NONE' ? tailForm.lagging_pattern : 'none',
+          lagging_pattern_notes: tailForm.lagging_pattern_notes.trim() || null,
           face_width_in: tailForm.face_width_in ? parseFloat(tailForm.face_width_in) : null,
           shell_od_in: tailModel?.shell_od_in || null,
           shell_wall_in: tailForm.shell_wall_in ? parseFloat(tailForm.shell_wall_in) : null,
@@ -885,30 +908,68 @@ export default function PulleyConfigModal({
 
               {/* Lagging */}
               {selectedModel?.eligible_lagging && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Lagging Type</label>
-                    <select
-                      value={currentForm.lagging_type}
-                      onChange={(e) => updateForm(activeTab, 'lagging_type', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                    >
-                      {Object.entries(LAGGING_TYPE_LABELS).map(([value, label]) => (
-                        <option key={value} value={value}>{label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  {currentForm.lagging_type !== 'NONE' && (
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Lagging Thickness (in)</label>
-                      <input
-                        type="number"
-                        step="0.125"
-                        value={currentForm.lagging_thickness_in}
-                        onChange={(e) => updateForm(activeTab, 'lagging_thickness_in', e.target.value)}
-                        placeholder="0.25"
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Lagging Type</label>
+                      <select
+                        value={currentForm.lagging_type}
+                        onChange={(e) => {
+                          updateForm(activeTab, 'lagging_type', e.target.value);
+                          // Reset pattern to none when disabling lagging
+                          if (e.target.value === 'NONE') {
+                            updateForm(activeTab, 'lagging_pattern', 'none');
+                            updateForm(activeTab, 'lagging_pattern_notes', '');
+                          }
+                        }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md"
-                      />
+                      >
+                        {Object.entries(LAGGING_TYPE_LABELS).map(([value, label]) => (
+                          <option key={value} value={value}>{label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {currentForm.lagging_type !== 'NONE' && (
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Lagging Thickness (in)</label>
+                        <input
+                          type="number"
+                          step="0.125"
+                          value={currentForm.lagging_thickness_in}
+                          onChange={(e) => updateForm(activeTab, 'lagging_thickness_in', e.target.value)}
+                          placeholder="0.25"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {/* Lagging Pattern - only show when lagging is enabled */}
+                  {currentForm.lagging_type !== 'NONE' && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Lagging Pattern</label>
+                        <select
+                          value={currentForm.lagging_pattern}
+                          onChange={(e) => updateForm(activeTab, 'lagging_pattern', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                        >
+                          {Object.entries(LAGGING_PATTERN_LABELS).map(([value, label]) => (
+                            <option key={value} value={value}>{label}</option>
+                          ))}
+                        </select>
+                      </div>
+                      {currentForm.lagging_pattern === 'custom' && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Pattern Notes *</label>
+                          <input
+                            type="text"
+                            value={currentForm.lagging_pattern_notes}
+                            onChange={(e) => updateForm(activeTab, 'lagging_pattern_notes', e.target.value)}
+                            placeholder="Describe custom pattern..."
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
@@ -926,6 +987,17 @@ export default function PulleyConfigModal({
                       <span className="text-gray-500">Finished OD:</span>
                       <span className="ml-2 font-medium text-blue-600">{getComputedFinishedOd(activeTab)}</span>
                     </div>
+                    {currentForm.lagging_type !== 'NONE' && currentForm.lagging_pattern !== 'none' && (
+                      <div className="col-span-2">
+                        <span className="text-gray-500">Lagging Pattern:</span>
+                        <span className="ml-2 font-medium">
+                          {LAGGING_PATTERN_LABELS[currentForm.lagging_pattern]}
+                          {currentForm.lagging_pattern === 'custom' && currentForm.lagging_pattern_notes && (
+                            <span className="text-gray-500 ml-1">({currentForm.lagging_pattern_notes})</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
