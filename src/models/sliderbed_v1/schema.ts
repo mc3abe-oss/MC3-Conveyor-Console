@@ -1861,35 +1861,35 @@ export interface SliderbedOutputs {
   /** Load on belt from parts in lbf (pounds-force) */
   load_on_belt_lbf: number;
 
-  /** Belt weight in lbf */
-  belt_weight_lbf: number;
+  /** Belt weight in lbf. Null when no belt is selected (requires belt). */
+  belt_weight_lbf: number | null;
 
-  /** Total load (belt + parts) in lbf */
-  total_load_lbf: number;
+  /** Total load (belt + parts) in lbf. Null when no belt is selected (requires belt). */
+  total_load_lbf: number | null;
 
   /** Total belt length in inches */
   total_belt_length_in: number;
 
-  /** Friction pull in lb (friction_coeff * total_load_lb) */
-  friction_pull_lb: number;
+  /** Friction pull in lb (friction_coeff * total_load_lb). Null when no belt is selected (requires belt). */
+  friction_pull_lb: number | null;
 
-  /** Incline pull in lb (total_load_lb * sin(incline_rad)) */
-  incline_pull_lb: number;
+  /** Incline pull in lb (total_load_lb * sin(incline_rad)). Null when no belt is selected (requires belt). */
+  incline_pull_lb: number | null;
 
   /** Starting belt pull in lb */
   starting_belt_pull_lb: number;
 
-  /** Total belt pull in lb (friction_pull + incline_pull + starting_pull) */
-  total_belt_pull_lb: number;
+  /** Total belt pull in lb (friction_pull + incline_pull + starting_pull). Null when no belt is selected (requires belt). */
+  total_belt_pull_lb: number | null;
 
-  /** Legacy calculated belt pull (deprecated, kept for compatibility) */
-  belt_pull_calc_lb: number;
+  /** Legacy calculated belt pull (deprecated, kept for compatibility). Null when no belt is selected (requires belt). */
+  belt_pull_calc_lb: number | null;
 
-  /** Belt weight coefficient used (piw) */
-  piw_used: number;
+  /** Belt weight coefficient used (piw). Null when no belt is selected (requires belt). */
+  piw_used: number | null;
 
-  /** Belt weight coefficient used (pil) */
-  pil_used: number;
+  /** Belt weight coefficient used (pil). Null when no belt is selected (requires belt). */
+  pil_used: number | null;
 
   /** Belt PIW effective - override if provided, else catalog value, else parameter default */
   belt_piw_effective?: number;
@@ -1982,8 +1982,8 @@ export interface SliderbedOutputs {
   /** Drive shaft RPM (required output RPM of gearmotor) */
   drive_shaft_rpm: number;
 
-  /** Torque on drive shaft in in-lbf (inch-pounds-force) */
-  torque_drive_shaft_inlbf: number;
+  /** Torque on drive shaft in in-lbf (inch-pounds-force). Null when no belt is selected (requires belt). */
+  torque_drive_shaft_inlbf: number | null;
 
   /** Gear ratio (motor RPM / drive shaft RPM) */
   gear_ratio: number;

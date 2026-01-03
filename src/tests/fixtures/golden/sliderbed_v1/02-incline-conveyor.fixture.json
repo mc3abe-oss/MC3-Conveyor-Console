@@ -19,6 +19,8 @@
     "part_width_in": 8,
     "part_spacing_in": 4,
     "belt_tracking_method": "Crowned",
+    "belt_coeff_piw": 0.109,
+    "belt_coeff_pil": 0.109,
     "drive_pulley_diameter_in": 6,
     "tail_pulley_diameter_in": 4,
     "gearmotor_mounting_style": "shaft_mounted",
