@@ -14,7 +14,6 @@ import {
   SliderbedInputs,
   SliderbedOutputs,
   BeltTrackingMethod,
-  PULLEY_DIAMETER_PRESETS,
   FrameHeightMode,
   // v1.24: PulleySurfaceType removed - now per-pulley via PulleyConfigModal
   GeometryMode,
@@ -65,6 +64,7 @@ import DerivedGeometryCard from './conveyorPhysical/cards/DerivedGeometryCard';
 import PulleyPreviewCards from './conveyorPhysical/cards/PulleyPreviewCards';
 import BeltPiwPilCard from './conveyorPhysical/cards/BeltPiwPilCard';
 import VGuideSelectCard from './conveyorPhysical/cards/VGuideSelectCard';
+import LegacyPulleyOverrideCard from './conveyorPhysical/cards/LegacyPulleyOverrideCard';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
@@ -153,6 +153,13 @@ export default function TabConveyorPhysical({
       updateInput('vguide_min_pulley_dia_solid_pu_in', undefined);
       updateInput('vguide_min_pulley_dia_notched_pu_in', undefined);
     }
+  };
+
+  // Handle legacy drive pulley override value change - sets TWO fields
+  // NOTE: This handler stays in TabConveyorPhysical per refactor constraints (cross-field logic)
+  const handleDriveOverrideValueChange = (value: number | undefined) => {
+    updateInput('drive_pulley_diameter_in', value);
+    updateInput('pulley_diameter_in', value);
   };
 
   // v1.17: Override-based diameter resolution
@@ -914,73 +921,20 @@ export default function TabConveyorPhysical({
             </FootnoteRow>
           )}
 
-          {/* Legacy Manual Override Section - collapsed by default */}
-          <details className="mt-4">
-            <summary className="text-sm text-gray-600 cursor-pointer hover:text-gray-800">
-              Legacy Manual Diameter Override
-            </summary>
-            <div className="mt-3 pl-4 border-l-2 border-gray-200 space-y-4">
-              {/* Drive override */}
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={driveOverride}
-                    onChange={(e) => updateInput('drive_pulley_manual_override', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">Override drive pulley diameter</span>
-                </label>
-                {driveOverride && (
-                  <div className="mt-2 flex gap-2">
-                    <select
-                      className={`input flex-1 ${drivePulleyBelowMinimum ? 'border-red-500' : ''}`}
-                      value={manualDriveDia?.toString() || ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                        updateInput('drive_pulley_diameter_in', value);
-                        updateInput('pulley_diameter_in', value);
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      {PULLEY_DIAMETER_PRESETS.map((size) => (
-                        <option key={size} value={size.toString()}>{size}"</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-              {/* Tail override */}
-              <div>
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={tailOverride}
-                    onChange={(e) => updateInput('tail_pulley_manual_override', e.target.checked)}
-                    className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                  />
-                  <span className="text-sm text-gray-700">Override tail pulley diameter</span>
-                </label>
-                {tailOverride && (
-                  <div className="mt-2 flex gap-2">
-                    <select
-                      className={`input flex-1 ${tailPulleyBelowMinimum ? 'border-red-500' : ''}`}
-                      value={manualTailDia?.toString() || ''}
-                      onChange={(e) => {
-                        const value = e.target.value ? parseFloat(e.target.value) : undefined;
-                        updateInput('tail_pulley_diameter_in', value);
-                      }}
-                    >
-                      <option value="">Select...</option>
-                      {PULLEY_DIAMETER_PRESETS.map((size) => (
-                        <option key={size} value={size.toString()}>{size}"</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-              </div>
-            </div>
-          </details>
+          {/* Legacy Manual Override Section - Extracted to separate component (v1.41 slice 5) */}
+          {/* NOTE: handleDriveOverrideValueChange contains cross-field logic and remains in this file */}
+          <LegacyPulleyOverrideCard
+            driveOverride={driveOverride}
+            tailOverride={tailOverride}
+            manualDriveDia={manualDriveDia}
+            manualTailDia={manualTailDia}
+            drivePulleyBelowMinimum={drivePulleyBelowMinimum}
+            tailPulleyBelowMinimum={tailPulleyBelowMinimum}
+            onDriveOverrideToggle={(checked) => updateInput('drive_pulley_manual_override', checked)}
+            onTailOverrideToggle={(checked) => updateInput('tail_pulley_manual_override', checked)}
+            onDriveOverrideValueChange={handleDriveOverrideValueChange}
+            onTailOverrideValueChange={(value) => updateInput('tail_pulley_diameter_in', value)}
+          />
 
           {/* ===== SHAFTS SUBSECTION ===== */}
           <SectionDivider title="Shafts" />
