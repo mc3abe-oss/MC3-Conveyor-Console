@@ -1,0 +1,30 @@
+{
+  "id": "05-missing-pulley-nan",
+  "status": "pending",
+  "intent": "edge",
+  "description": "Missing pulley diameter should NOT produce NaN - tests graceful degradation (currently FAILS)",
+  "baseline_source": "app",
+  "baseline_git_sha": "fix/so30884",
+  "baseline_date": "2026-01-02",
+  "inputs": {
+    "bed_type": "slider_bed",
+    "geometry_mode": "L_ANGLE",
+    "conveyor_length_cc_in": 144,
+    "belt_width_in": 18,
+    "conveyor_incline_deg": 0,
+    "belt_speed_fpm": 75,
+    "speed_mode": "belt_speed",
+    "part_weight_lbs": 10,
+    "part_length_in": 8,
+    "part_width_in": 6,
+    "part_spacing_in": 8,
+    "belt_tracking_method": "Crowned",
+    "gearmotor_mounting_style": "shaft_mounted",
+    "frame_height_mode": "Standard",
+    "shaft_diameter_mode": "Calculated"
+  },
+  "expected": {
+    "belt_speed_fpm": { "value": 75, "tol_abs": 0.1 }
+  },
+  "_notes": "This fixture intentionally has no pulley diameter configured to test NaN handling. The assertNotNaN detector will throw, indicating the root cause."
+}

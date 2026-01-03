@@ -1,0 +1,43 @@
+{
+  "id": "04-so30884-shaft-regression",
+  "status": "golden",
+  "intent": "regression",
+  "description": "SO30884 shaft calculation regression - ensure shaft outputs are finite",
+  "baseline_source": "app",
+  "baseline_git_sha": "fix/so30884",
+  "baseline_date": "2026-01-02",
+  "inputs": {
+    "bed_type": "slider_bed",
+    "geometry_mode": "L_ANGLE",
+    "conveyor_length_cc_in": 144,
+    "belt_width_in": 18,
+    "conveyor_incline_deg": 0,
+    "belt_speed_fpm": 75,
+    "speed_mode": "belt_speed",
+    "part_weight_lbs": 10,
+    "part_length_in": 8,
+    "part_width_in": 6,
+    "part_spacing_in": 8,
+    "belt_tracking_method": "Crowned",
+    "drive_pulley_diameter_in": 4.5,
+    "tail_pulley_diameter_in": 4.5,
+    "drive_pulley_manual_override": true,
+    "tail_pulley_manual_override": true,
+    "gearmotor_mounting_style": "shaft_mounted",
+    "frame_height_mode": "Standard",
+    "shaft_diameter_mode": "Calculated"
+  },
+  "expected": {
+    "total_belt_pull_lb": { "value": 116.8679, "tol_abs": 0.5 },
+    "torque_drive_shaft_inlbf": { "value": 525.9055, "tol_abs": 0.5 },
+    "drive_shaft_diameter_in": { "value": 1.375, "tol_abs": 0.0625 },
+    "tail_shaft_diameter_in": { "value": 1.125, "tol_abs": 0.0625 },
+    "total_belt_length_in": { "value": 302.1372, "tol_abs": 1 },
+    "belt_speed_fpm": { "value": 75, "tol_abs": 0.1 },
+    "friction_pull_lb": { "value": 41.8679, "tol_abs": 0.5 },
+    "incline_pull_lb": { "value": 0, "tol_abs": 0.1 },
+    "drive_T1_lbf": { "value": 229.8, "tol_abs": 1 },
+    "drive_T2_lbf": { "value": 89.5, "tol_abs": 1 },
+    "drive_pulley_resultant_load_lbf": { "value": 319.3, "tol_abs": 1 }
+  }
+}

@@ -93,6 +93,39 @@ import {
 } from '../../lib/cleat-catalog';
 
 // ============================================================================
+// NAN DETECTION (dev/test only)
+// ============================================================================
+
+/**
+ * Check if value is NaN and throw descriptive error.
+ * Only active in dev/test mode (NODE_ENV !== 'production').
+ *
+ * Usage: assertNotNaN(value, 'variableName', { dep1: val1, dep2: val2 });
+ */
+function assertNotNaN(
+  value: number,
+  name: string,
+  dependencies: Record<string, number | undefined | null> = {}
+): void {
+  if (process.env.NODE_ENV === 'production') return;
+
+  if (Number.isNaN(value)) {
+    const depInfo = Object.entries(dependencies)
+      .map(([k, v]) => `${k}=${v === undefined ? 'undefined' : v === null ? 'null' : Number.isNaN(v) ? 'NaN' : v}`)
+      .join(', ');
+    const nanDeps = Object.entries(dependencies)
+      .filter(([, v]) => v === undefined || v === null || (typeof v === 'number' && Number.isNaN(v)))
+      .map(([k]) => k);
+
+    const cause = nanDeps.length > 0
+      ? `caused by: ${nanDeps.join(', ')}`
+      : 'check formula logic';
+
+    throw new Error(`NaN detected in ${name} - ${cause}. Dependencies: {${depInfo}}`);
+  }
+}
+
+// ============================================================================
 // CONSTANTS
 // ============================================================================
 
@@ -1348,6 +1381,20 @@ export function calculate(
   } = getEffectivePulleyDiameters(inputs);
   const drivePulleyDiameterIn = effectiveDrivePulleyDiameterIn ?? NaN;
   const tailPulleyDiameterIn = effectiveTailPulleyDiameterIn ?? NaN;
+
+  // NaN detection for pulley diameters (these are the upstream source of many NaN issues)
+  assertNotNaN(drivePulleyDiameterIn, 'drivePulleyDiameterIn', {
+    effectiveDrivePulleyDiameterIn,
+    drive_pulley_diameter_in: inputs.drive_pulley_diameter_in,
+    drive_pulley_manual_override: inputs.drive_pulley_manual_override ? 1 : 0,
+    drive_pulley_variant_key: inputs.drive_pulley_variant_key ? 1 : 0,
+  });
+  assertNotNaN(tailPulleyDiameterIn, 'tailPulleyDiameterIn', {
+    effectiveTailPulleyDiameterIn,
+    tail_pulley_diameter_in: inputs.tail_pulley_diameter_in,
+    tail_pulley_manual_override: inputs.tail_pulley_manual_override ? 1 : 0,
+    tail_pulley_variant_key: inputs.tail_pulley_variant_key ? 1 : 0,
+  });
 
   // Step 1: Belt weight coefficients (v1.3: uses drive pulley for PIW/PIL lookup)
   const { piw, pil, belt_piw_effective, belt_pil_effective } = calculateEffectiveBeltCoefficients(
