@@ -1126,6 +1126,24 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.drive_shaft_diameter_in).toBeGreaterThan(0);
       expect(result.outputs?.tail_shaft_diameter_in).toBeGreaterThan(0);
     });
+
+    // Regression test: shaft outputs must NEVER be NaN
+    it('should produce finite shaft outputs (never NaN or Infinity)', () => {
+      const inputs = {
+        ...baseInputs,
+        shaft_diameter_mode: ShaftDiameterMode.Calculated,
+      };
+      const result = runCalculation({ inputs });
+
+      expect(result.success).toBe(true);
+      // Shaft outputs must be finite numbers if defined
+      if (result.outputs?.drive_shaft_diameter_in !== undefined) {
+        expect(Number.isFinite(result.outputs.drive_shaft_diameter_in)).toBe(true);
+      }
+      if (result.outputs?.tail_shaft_diameter_in !== undefined) {
+        expect(Number.isFinite(result.outputs.tail_shaft_diameter_in)).toBe(true);
+      }
+    });
   });
 
   // ========================================================================

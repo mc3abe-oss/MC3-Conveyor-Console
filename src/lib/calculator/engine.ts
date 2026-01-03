@@ -77,10 +77,16 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
   // Step 1: Validate inputs and parameters
   const { errors, warnings } = validate(inputs, parameters);
 
-  // Step 2: If there are errors, return early (do not calculate)
+  // Step 2: Execute calculations (even with errors)
+  // The formulas use NaN for missing values and propagate gracefully.
+  // This allows users to see partial/calculated values while fixing errors.
+  const outputs = calculate(inputs, parameters);
+
+  // Step 3: Return result with both outputs and any errors/warnings
   if (errors.length > 0) {
     return {
       success: false,
+      outputs, // Include outputs even on failure for partial results
       errors,
       warnings,
       metadata: {
@@ -90,9 +96,6 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
       },
     };
   }
-
-  // Step 3: Execute calculations
-  const outputs = calculate(inputs, parameters);
 
   // Step 4: Return successful result
   return {
