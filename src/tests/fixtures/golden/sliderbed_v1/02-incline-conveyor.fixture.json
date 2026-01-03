@@ -1,8 +1,11 @@
 {
   "id": "02-incline-conveyor",
-  "status": "pending",
+  "status": "golden",
   "intent": "regression",
   "description": "Incline sliderbed conveyor at 15 degrees - tests incline pull component",
+  "baseline_source": "app",
+  "baseline_git_sha": "7bcbd42",
+  "baseline_date": "2026-01-02",
   "inputs": {
     "bed_type": "slider_bed",
     "geometry_mode": "L_ANGLE",
@@ -22,24 +25,24 @@
     "frame_height_mode": "Standard"
   },
   "expected": {
-    "torque_drive_shaft_inlbf": { "value": null, "tol_abs": 0.1 },
-    "drive_shaft_rpm": { "value": null, "tol_abs": 1 },
-    "gearmotor_output_rpm": { "value": null, "tol_abs": 1 },
-    "gear_ratio": { "value": null, "tol_abs": 0.01 },
-    "chain_ratio": { "value": null, "tol_abs": 0.01 },
-    "total_belt_pull_lb": { "value": null, "tol_abs": 0.1 },
-    "friction_pull_lb": { "value": null, "tol_abs": 0.1 },
-    "incline_pull_lb": { "value": null, "tol_abs": 0.1 },
-    "drive_T1_lbf": { "value": null, "tol_abs": 1 },
-    "drive_T2_lbf": { "value": null, "tol_abs": 1 },
-    "drive_shaft_diameter_in": { "value": null, "tol_abs": 0.0625 },
-    "tail_shaft_diameter_in": { "value": null, "tol_abs": 0.0625 },
-    "drive_pulley_resultant_load_lbf": { "value": null, "tol_abs": 1 },
+    "torque_drive_shaft_inlbf": { "value": 1153.2332, "tol_abs": 0.1 },
+    "drive_shaft_rpm": { "value": 25.4648, "tol_abs": 1 },
+    "gearmotor_output_rpm": { "value": 25.4648, "tol_abs": 1 },
+    "gear_ratio": { "value": 68.7223, "tol_abs": 0.01 },
+    "chain_ratio": { "value": 1, "tol_abs": 0.01 },
+    "total_belt_pull_lb": { "value": 192.2055, "tol_abs": 0.1 },
+    "friction_pull_lb": { "value": 57.587, "tol_abs": 0.1 },
+    "incline_pull_lb": { "value": 59.6185, "tol_abs": 0.1 },
+    "drive_T1_lbf": { "value": 377.9, "tol_abs": 1 },
+    "drive_T2_lbf": { "value": 147.3, "tol_abs": 1 },
+    "drive_shaft_diameter_in": { "value": 1.5, "tol_abs": 0.0625 },
+    "tail_shaft_diameter_in": { "value": 1.375, "tol_abs": 0.0625 },
+    "drive_pulley_resultant_load_lbf": { "value": 525.2, "tol_abs": 1 },
     "required_min_pulley_diameter_in": { "value": null, "tol_abs": 0.5 },
     "drive_pulley_meets_minimum": { "value": null },
     "tail_pulley_meets_minimum": { "value": null },
-    "pci_tube_stress_status": { "value": null },
-    "belt_speed_fpm": { "value": null, "tol_abs": 0.1 },
-    "total_belt_length_in": { "value": null, "tol_abs": 1 }
+    "pci_tube_stress_status": { "value": "incomplete" },
+    "belt_speed_fpm": { "value": 40, "tol_abs": 0.1 },
+    "total_belt_length_in": { "value": 375.708, "tol_abs": 1 }
   }
 }
