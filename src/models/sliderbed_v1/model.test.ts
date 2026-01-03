@@ -52,11 +52,9 @@ import {
   BeltTrackingMethod,
   ShaftDiameterMode,
   VGuideProfile,
-  // v1.4: Support & Height
+  // v1.4: Support & Height (enums still exist for test backward compatibility)
   EndSupportType,
   HeightInputMode,
-  derivedLegsRequired,
-  TOB_FIELDS,
   // v1.5: Frame Height
   FrameHeightMode,
   // v1.39: Unified Support Method
@@ -87,6 +85,19 @@ function setCachedPulleys(_pulleys: PulleyCatalogItem[]): void {
 function clearPulleyCatalogCache(): void {
   // No-op: Legacy catalog removed
 }
+
+// LEGACY_REMOVED: Stub for removed derivedLegsRequired (used in skipped tests)
+function derivedLegsRequired(
+  tailSupportType?: EndSupportType | string,
+  driveSupportType?: EndSupportType | string
+): boolean {
+  const tailIsExternal = tailSupportType === undefined || tailSupportType === EndSupportType.External || tailSupportType === 'External';
+  const driveIsExternal = driveSupportType === undefined || driveSupportType === EndSupportType.External || driveSupportType === 'External';
+  return !tailIsExternal || !driveIsExternal;
+}
+
+// LEGACY_REMOVED: Stub for removed TOB_FIELDS constant
+const TOB_FIELDS = ['height_input_mode', 'reference_end', 'tail_tob_in', 'drive_tob_in', 'adjustment_required_in'] as const;
 import { normalizeInputsForCalculation } from './migrate';
 import {
   calculateTrackingGuidance,
@@ -2269,9 +2280,11 @@ describe('Belt Cleats (v1.3)', () => {
 
 // ============================================================================
 // v1.4: SUPPORT & HEIGHT MODEL TESTS
+// LEGACY_REMOVED: Legacy per-end support_type system removed in v1.42.
+// Tests skipped - they reference removed exports (derivedLegsRequired, HeightInputMode, etc.)
 // ============================================================================
 
-describe('Support & Height Model (v1.4)', () => {
+describe.skip('Support & Height Model (v1.4) - LEGACY_REMOVED', () => {
   // Application field defaults
   const APPLICATION_DEFAULTS = {
     material_type: MaterialType.Steel,
@@ -6874,6 +6887,80 @@ describe('Floor Support Logic - Decouple TOB from Legs/Casters (v1.40)', () => {
 
       expect(result.errors?.some(e => e.field === 'caster_rigid_model_key')).toBe(true);
     });
+  });
+});
+
+// ============================================================================
+// v1.42: LEGACY KEY STRIPPING REGRESSION TEST
+// ============================================================================
+
+describe('Legacy Key Stripping (v1.42)', () => {
+  it('should strip legacy tail_support_type, drive_support_type, height_input_mode on migration', () => {
+    // Simulate an old config with legacy keys
+    const legacyInputs = {
+      conveyor_length_cc_in: 120,
+      belt_width_in: 24,
+      conveyor_incline_deg: 0,
+      part_weight_lbs: 5,
+      part_length_in: 6,
+      part_width_in: 4,
+      part_spacing_in: 12,
+      belt_speed_fpm: 50,
+      // Legacy fields that should be stripped
+      tail_support_type: 'Legs',
+      drive_support_type: 'Casters',
+      height_input_mode: 'reference_and_angle',
+      support_option: 'Floor Mounted',
+    } as Record<string, unknown>;
+
+    const migrated = migrateInputs(legacyInputs as SliderbedInputs);
+
+    // All legacy keys should be stripped
+    expect((migrated as Record<string, unknown>).tail_support_type).toBeUndefined();
+    expect((migrated as Record<string, unknown>).drive_support_type).toBeUndefined();
+    expect((migrated as Record<string, unknown>).height_input_mode).toBeUndefined();
+    expect((migrated as Record<string, unknown>).support_option).toBeUndefined();
+  });
+
+  it('should preserve valid TOB fields (tail_tob_in, drive_tob_in, reference_end)', () => {
+    // These fields are still valid in the new system
+    const inputs = {
+      conveyor_length_cc_in: 120,
+      belt_width_in: 24,
+      conveyor_incline_deg: 0,
+      part_weight_lbs: 5,
+      part_length_in: 6,
+      part_width_in: 4,
+      part_spacing_in: 12,
+      belt_speed_fpm: 50,
+      support_method: SupportMethod.FloorSupported,
+      reference_end: 'tail' as const,
+      tail_tob_in: 36,
+      drive_tob_in: 42,
+    } as SliderbedInputs;
+
+    const migrated = migrateInputs(inputs);
+
+    // These should be preserved
+    expect(migrated.reference_end).toBe('tail');
+    expect(migrated.tail_tob_in).toBe(36);
+    expect(migrated.drive_tob_in).toBe(42);
+    expect(migrated.support_method).toBe(SupportMethod.FloorSupported);
+  });
+
+  it('should not crash when loading old config with removed keys', () => {
+    const oldConfig = {
+      conveyor_length_cc_in: 120,
+      belt_width_in: 24,
+      tail_support_type: 'External',
+      drive_support_type: 'External',
+    } as Record<string, unknown>;
+
+    // This should not throw
+    expect(() => migrateInputs(oldConfig as SliderbedInputs)).not.toThrow();
+
+    const migrated = migrateInputs(oldConfig as SliderbedInputs);
+    expect(migrated.conveyor_length_cc_in).toBe(120);
   });
 });
 

@@ -51,10 +51,6 @@
 
 import {
   SliderbedInputs,
-  SupportOption,
-  EndSupportType,
-  derivedLegsRequired,
-  TOB_FIELDS,
   SpeedMode,
   GeometryMode,
   FrameConstructionType,
@@ -176,52 +172,14 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
   delete migrated.tail_matches_drive;
 
   // =========================================================================
-  // v1.4: SUPPORT OPTION MIGRATION
+  // v1.42: LEGACY SUPPORT/HEIGHT FIELD STRIPPING
+  // Remove deprecated fields: tail_support_type, drive_support_type, height_input_mode
   // =========================================================================
 
-  // Migrate legacy support_option to per-end support types
-  if (inputs.support_option !== undefined && migrated.tail_support_type === undefined) {
-    const supportOption = inputs.support_option;
-
-    if (supportOption === SupportOption.FloorMounted || supportOption === 'Floor Mounted') {
-      migrated.tail_support_type = EndSupportType.Legs;
-      migrated.drive_support_type = EndSupportType.Legs;
-    } else if (supportOption === SupportOption.Suspended || supportOption === 'Suspended') {
-      migrated.tail_support_type = EndSupportType.External;
-      migrated.drive_support_type = EndSupportType.External;
-    } else if (supportOption === SupportOption.IntegratedFrame || supportOption === 'Integrated Frame') {
-      migrated.tail_support_type = EndSupportType.External;
-      migrated.drive_support_type = EndSupportType.External;
-    } else {
-      // Default to External for unknown values
-      migrated.tail_support_type = EndSupportType.External;
-      migrated.drive_support_type = EndSupportType.External;
-    }
-
-    // Remove deprecated field after migration
-    delete (migrated as unknown as Record<string, unknown>).support_option;
-  }
-
-  // Default to External if per-end types not set
-  if (migrated.tail_support_type === undefined) {
-    migrated.tail_support_type = EndSupportType.External;
-  }
-  if (migrated.drive_support_type === undefined) {
-    migrated.drive_support_type = EndSupportType.External;
-  }
-
-  // =========================================================================
-  // v1.4: TOB FIELD ENFORCEMENT
-  // =========================================================================
-
-  const legsRequired = derivedLegsRequired(migrated.tail_support_type, migrated.drive_support_type);
-
-  if (!legsRequired) {
-    // Remove TOB fields that must not exist when legs_required=false
-    for (const field of TOB_FIELDS) {
-      delete (migrated as unknown as Record<string, unknown>)[field];
-    }
-  }
+  delete (migrated as unknown as Record<string, unknown>).support_option;
+  delete (migrated as unknown as Record<string, unknown>).tail_support_type;
+  delete (migrated as unknown as Record<string, unknown>).drive_support_type;
+  delete (migrated as unknown as Record<string, unknown>).height_input_mode;
 
   // =========================================================================
   // v1.6: SPEED MODE MIGRATION

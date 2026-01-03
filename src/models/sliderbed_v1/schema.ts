@@ -1129,16 +1129,6 @@ export interface SliderbedInputs {
   support_option?: SupportOption | string;
 
   // =========================================================================
-  // v1.4: PER-END SUPPORT TYPES
-  // =========================================================================
-
-  /** Tail end support type (v1.4) - DEPRECATED: use support_method instead */
-  tail_support_type?: EndSupportType | string;
-
-  /** Drive end support type (v1.4) - DEPRECATED: use support_method instead */
-  drive_support_type?: EndSupportType | string;
-
-  // =========================================================================
   // v1.39: UNIFIED SUPPORT METHOD & MODEL SELECTION
   // =========================================================================
 
@@ -1201,13 +1191,10 @@ export interface SliderbedInputs {
 
   // =========================================================================
   // v1.4: HEIGHT MODEL (TOP OF BELT)
-  // Only present when legs_required=true (derived from support types)
+  // Used by floor-supported conveyors and H_TOB geometry mode
   // =========================================================================
 
-  /** Height input mode - Mode A (reference + angle) or Mode B (both ends) */
-  height_input_mode?: HeightInputMode | string;
-
-  /** Reference end for Mode A (which end user specifies TOB for) */
+  /** Reference end for TOB input (which end user specifies TOB for) */
   reference_end?: HeightReferenceEnd;
 
   /** Top of Belt height at tail end in inches */
@@ -2547,9 +2534,6 @@ export const DEFAULT_INPUT_VALUES = {
   power_feed: PowerFeed.V480_3Ph,
   controls_package: ControlsPackage.StartStop,
   spec_source: SpecSource.Standard,
-  // v1.4: support_option deprecated, use per-end support types
-  tail_support_type: EndSupportType.External,
-  drive_support_type: EndSupportType.External,
   field_wiring_required: FieldWiringRequired.No,
   bearing_grade: BearingGrade.Standard,
   documentation_package: DocumentationPackage.Basic,
@@ -2735,10 +2719,6 @@ export function buildDefaultInputs(): SliderbedInputs {
     frame_height_mode: FrameHeightMode.Standard,
     frame_clearance_in: 0.5, // v1.36: explicit clearance
 
-    // Per-end support types (v1.4) - DEPRECATED
-    tail_support_type: EndSupportType.External,
-    drive_support_type: EndSupportType.External,
-
     // Unified support method (v1.39)
     support_method: SupportMethod.External,
     // leg_model_key: undefined (only set when support_method='legs')
@@ -2779,45 +2759,6 @@ export function buildDefaultInputs(): SliderbedInputs {
     tail_pulley_manual_override: false,
   } as SliderbedInputs;
 }
-
-// ============================================================================
-// v1.4: DERIVED HELPERS
-// ============================================================================
-
-/**
- * Determine if legs are required based on per-end support types.
- * legs_required = true if EITHER end is NOT External (i.e., has floor contact)
- *
- * This is a DERIVED value - never stored in inputs.
- */
-export function derivedLegsRequired(
-  tailSupportType?: EndSupportType | string,
-  driveSupportType?: EndSupportType | string
-): boolean {
-  // If undefined, default to External (no floor contact)
-  const tailIsExternal =
-    tailSupportType === undefined ||
-    tailSupportType === EndSupportType.External ||
-    tailSupportType === 'External';
-  const driveIsExternal =
-    driveSupportType === undefined ||
-    driveSupportType === EndSupportType.External ||
-    driveSupportType === 'External';
-
-  // legs_required if EITHER end is NOT External
-  return !tailIsExternal || !driveIsExternal;
-}
-
-/**
- * TOB field keys that must NOT exist when legs_required=false
- */
-export const TOB_FIELDS = [
-  'height_input_mode',
-  'reference_end',
-  'tail_tob_in',
-  'drive_tob_in',
-  'adjustment_required_in',
-] as const;
 
 // ============================================================================
 // v1.9: ENVIRONMENT FACTORS HELPERS
