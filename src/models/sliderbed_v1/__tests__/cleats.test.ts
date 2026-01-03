@@ -212,7 +212,8 @@ describe('Belt Cleats (v1.3)', () => {
       expect(result.outputs?.cleats_summary).toBe('Cleats: 1" high @ 12" c/c, 0.5" from belt edge');
     });
 
-    it('should NOT affect power/tension calculations (spec only)', () => {
+    // v1.43: Cleat weight now affects belt pull calculations
+    it('should increase belt pull when cleat weight is enabled (v1.43)', () => {
       const withoutCleats = {
         ...baseInputs,
         cleats_enabled: false,
@@ -231,14 +232,46 @@ describe('Belt Cleats (v1.3)', () => {
       expect(resultWithout.success).toBe(true);
       expect(resultWith.success).toBe(true);
 
-      // All power/tension calculations should be identical
-      expect(resultWith.outputs?.total_belt_pull_lb).toBe(resultWithout.outputs?.total_belt_pull_lb);
-      expect(resultWith.outputs?.torque_drive_shaft_inlbf).toBe(
-        resultWithout.outputs?.torque_drive_shaft_inlbf
-      );
-      expect(resultWith.outputs?.belt_weight_lbf).toBe(resultWithout.outputs?.belt_weight_lbf);
+      // Cleat weight adds to effective belt weight, increasing belt pull
+      const pullWithout = resultWithout.outputs?.total_belt_pull_lb ?? 0;
+      const pullWith = resultWith.outputs?.total_belt_pull_lb ?? 0;
+      expect(pullWith).toBeGreaterThan(pullWithout);
+
+      // Torque should also increase proportionally
+      const torqueWithout = resultWithout.outputs?.torque_drive_shaft_inlbf ?? 0;
+      const torqueWith = resultWith.outputs?.torque_drive_shaft_inlbf ?? 0;
+      expect(torqueWith).toBeGreaterThan(torqueWithout);
+
+      // Belt length should NOT change (cleats don't affect geometry)
       expect(resultWith.outputs?.total_belt_length_in).toBe(
         resultWithout.outputs?.total_belt_length_in
+      );
+    });
+
+    it('should match baseline when cleats are disabled', () => {
+      const baseline = {
+        ...baseInputs,
+        cleats_enabled: false,
+      };
+      const alsoDisabled = {
+        ...baseInputs,
+        cleats_enabled: false,
+        cleat_height_in: 2, // These values should be ignored
+        cleat_spacing_in: 8,
+      };
+
+      const resultBaseline = runCalculation({ inputs: baseline });
+      const resultAlso = runCalculation({ inputs: alsoDisabled });
+
+      expect(resultBaseline.success).toBe(true);
+      expect(resultAlso.success).toBe(true);
+
+      // When disabled, cleat config values should have no effect
+      expect(resultAlso.outputs?.total_belt_pull_lb).toBe(
+        resultBaseline.outputs?.total_belt_pull_lb
+      );
+      expect(resultAlso.outputs?.torque_drive_shaft_inlbf).toBe(
+        resultBaseline.outputs?.torque_drive_shaft_inlbf
       );
     });
   });

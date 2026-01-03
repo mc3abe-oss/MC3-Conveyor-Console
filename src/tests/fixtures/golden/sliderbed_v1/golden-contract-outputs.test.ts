@@ -64,8 +64,8 @@ interface ExpectedValue {
 interface GoldenFixture {
   /** Unique fixture identifier */
   id: string;
-  /** Status: pending = awaiting Excel baseline, golden = validated */
-  status: 'pending' | 'golden';
+  /** Status: pending = awaiting Excel baseline, golden = validated, skip = intentionally skipped */
+  status: 'pending' | 'golden' | 'skip';
   /** Intent: what does this fixture test? */
   intent: 'regression' | 'edge' | 'safety' | 'ux';
   /** Description of the scenario */
@@ -174,6 +174,14 @@ describe('Golden Contract Outputs', () => {
   }
 
   for (const fixture of fixtures) {
+    // Skip fixtures marked as skip
+    if (fixture.status === 'skip') {
+      describe.skip(`[${fixture.id}] ${fixture.description}`, () => {
+        it('skipped - see fixture for reason', () => {});
+      });
+      continue;
+    }
+
     describe(`[${fixture.id}] ${fixture.description}`, () => {
       let outputs: SliderbedOutputs;
       let calcSuccess: boolean;

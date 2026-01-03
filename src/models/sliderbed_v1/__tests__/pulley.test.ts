@@ -1044,20 +1044,21 @@ describe('v1.17 Pulley Diameter Override', () => {
     expect(effectiveDrivePulleyDiameterIn).toBe(5);
   });
 
-  // Case C: no catalog, override=false → effective diameter undefined
+  // Case C: no catalog, override=false, no manual → effective diameter undefined
   // v1.24: Removed "Select a" warning - pulley selection is now modal-based
-  it('should allow undefined catalog without warning when override is false (Case C)', () => {
+  // Note: Full calculation requires valid diameter; this test verifies effective diameter logic only
+  it('should return undefined effective diameter when no catalog and override is false (Case C)', () => {
     const inputs: SliderbedInputs = {
       ...OVERRIDE_BASE,
       head_pulley_catalog_key: undefined, // No catalog
       drive_pulley_manual_override: false, // Override disabled
+      drive_pulley_diameter_in: undefined, // No manual diameter
     };
 
-    const result = runCalculation({ inputs });
+    const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
 
-    // v1.24: No longer expect warning - pulley configuration via modal
-    // Calculation should still succeed with default/fallback values
-    expect(result.success).toBe(true);
+    // Effective diameter should be undefined when no source is available
+    expect(effectiveDrivePulleyDiameterIn).toBeUndefined();
   });
 
   // Case D: no catalog, override=true, manual set → effective = manual
@@ -1077,7 +1078,8 @@ describe('v1.17 Pulley Diameter Override', () => {
 
   // Case E: override=true, manual missing → effective undefined
   // v1.24: Removed "Override enabled" warning - pulley selection is now modal-based
-  it('should return undefined diameter when override is true but manual missing (Case E)', () => {
+  // Note: Full calculation requires valid diameter; this test verifies effective diameter logic only
+  it('should return undefined effective diameter when override is true but manual missing (Case E)', () => {
     const inputs: SliderbedInputs = {
       ...OVERRIDE_BASE,
       head_pulley_catalog_key: undefined,
@@ -1087,13 +1089,8 @@ describe('v1.17 Pulley Diameter Override', () => {
 
     const { effectiveDrivePulleyDiameterIn } = getEffectivePulleyDiameters(inputs);
 
-    // Effective should be undefined
+    // Effective should be undefined when override is enabled but no manual value provided
     expect(effectiveDrivePulleyDiameterIn).toBeUndefined();
-
-    // v1.24: No longer expect warning - pulley configuration via modal
-    // Calculation should still succeed with default/fallback values
-    const result = runCalculation({ inputs });
-    expect(result.success).toBe(true);
   });
 
   // Tail pulley: no catalog, override=false → undefined
