@@ -76,8 +76,10 @@ export default function SaveTargetModal({
     try {
       const res = await fetch('/api/quotes');
       if (res.ok) {
-        const data = await res.json();
-        setQuotes(data);
+        const json = await res.json();
+        // API returns { data: Quote[], total, page, pageSize } - extract data array defensively
+        const arr = Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
+        setQuotes(arr);
       }
     } catch (err) {
       console.error('Failed to fetch quotes:', err);
@@ -88,8 +90,10 @@ export default function SaveTargetModal({
     try {
       const res = await fetch('/api/sales-orders');
       if (res.ok) {
-        const data = await res.json();
-        setSalesOrders(data);
+        const json = await res.json();
+        // API returns { data: SalesOrder[], total, page, pageSize } - extract data array defensively
+        const arr = Array.isArray(json) ? json : (Array.isArray(json?.data) ? json.data : []);
+        setSalesOrders(arr);
       }
     } catch (err) {
       console.error('Failed to fetch sales orders:', err);
