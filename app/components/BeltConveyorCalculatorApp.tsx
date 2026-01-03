@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
 import DesignLogicPanel from './DesignLogicPanel';
@@ -18,6 +18,7 @@ import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
 import { createClient } from '../../src/lib/supabase/browser';
+import { stripSoContextFromSearchParams } from '../../src/lib/strip-so-context';
 
 type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
@@ -57,6 +58,9 @@ export default function BeltConveyorCalculatorApp() {
   const [isAutoCalcPending, setIsAutoCalcPending] = useState(false);
   const autoCalcTimerRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_CALC_DEBOUNCE_MS = 300;
+
+  // Ref to skip URL-change effect during deliberate Clear
+  const isClearingRef = useRef(false);
 
   const [isSaving, setIsSaving] = useState(false);
 
@@ -98,6 +102,8 @@ export default function BeltConveyorCalculatorApp() {
 
   // URL-based loading state
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const pathname = usePathname();
   const [loadState, setLoadState] = useState<LoadState>('idle');
   const [loadError, setLoadError] = useState<string | null>(null);
   const [jobLineSelectModal, setJobLineSelectModal] = useState<{
@@ -337,6 +343,13 @@ export default function BeltConveyorCalculatorApp() {
   const currentParams = `${currentAppId}|${currentQuote}|${currentSo}|${currentSuffix}|${currentJobLine}`;
 
   useEffect(() => {
+    // Skip if we're in the middle of a deliberate Clear operation
+    if (isClearingRef.current) {
+      console.log('[Load] Skipping URL change effect - clearing in progress');
+      setLastLoadParams(currentParams);
+      return;
+    }
+
     if (lastLoadParams !== null && lastLoadParams !== currentParams && loadState === 'loaded') {
       console.log('[Load] URL params changed, resetting to reload new application');
       // DEV: LOADED_APP_ID_RESET
@@ -604,6 +617,9 @@ export default function BeltConveyorCalculatorApp() {
   const handleClear = () => {
     console.log('[Clear] Resetting all state to new application');
 
+    // Set clearing flag to prevent URL-change effect from double-resetting state
+    isClearingRef.current = true;
+
     // DEV: LOADED_APP_ID_RESET
     if (process.env.NODE_ENV === 'development') {
       console.log('[DEV][LOADED_APP_ID_RESET]', {
@@ -644,6 +660,17 @@ export default function BeltConveyorCalculatorApp() {
 
     // Clear draft vault
     setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
+
+    // Strip SO/Quote context params from URL to prevent rehydration on refresh
+    const cleanedSearch = stripSoContextFromSearchParams(searchParams);
+    const newUrl = cleanedSearch ? `${pathname}?${cleanedSearch}` : pathname;
+    // @ts-expect-error - Next.js typed routes require string literal, but dynamic URL is valid at runtime
+    router.replace(newUrl, { scroll: false });
+
+    // Clear the clearing flag after a short delay to allow URL change to propagate
+    setTimeout(() => {
+      isClearingRef.current = false;
+    }, 100);
 
     showToast('Cleared - start fresh');
   };
