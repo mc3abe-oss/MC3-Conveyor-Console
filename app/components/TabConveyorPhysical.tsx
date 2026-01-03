@@ -62,6 +62,8 @@ import ReturnSupportCard from './conveyorPhysical/cards/ReturnSupportCard';
 import ShaftsCard from './conveyorPhysical/cards/ShaftsCard';
 import FrameHeightBreakdownCard from './conveyorPhysical/cards/FrameHeightBreakdownCard';
 import CleatsPreviewCard from './conveyorPhysical/cards/CleatsPreviewCard';
+import DerivedGeometryCard from './conveyorPhysical/cards/DerivedGeometryCard';
+import PulleyPreviewCards from './conveyorPhysical/cards/PulleyPreviewCards';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../src/lib/pulley-tracking';
 import { ApplicationPulley } from '../api/application-pulleys/route';
 import {
@@ -72,12 +74,8 @@ import {
 } from '../../src/lib/cleat-catalog';
 import { useCleatCatalog } from '../../src/lib/hooks/useCleatCatalog';
 import {
-  SpecGrid,
-  CompactCardHeader,
   FootnoteRow,
   CompactInfoBanner,
-  CompactCard,
-  EditButton,
   SectionDivider,
 } from './CompactCardLayouts';
 
@@ -97,38 +95,6 @@ interface TabConveyorPhysicalProps {
   outputs?: SliderbedOutputs | null;
   /** v1.35: Toast notification callback */
   showToast?: (message: string) => void;
-}
-
-/**
- * Stat tile for derived geometry display
- */
-function GeometryStat({
-  label,
-  value,
-  subtext,
-  derived,
-}: {
-  label: string;
-  value: string;
-  subtext?: string;
-  derived?: boolean;
-}) {
-  return (
-    <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-      <div className="text-[11px] font-medium text-gray-500">{label}</div>
-      <div
-        className={[
-          'mt-1 text-lg font-semibold tabular-nums',
-          derived ? 'text-blue-600' : 'text-gray-900',
-        ].join(' ')}
-      >
-        {value}
-      </div>
-      {subtext && (
-        <div className="text-xs text-gray-400">{subtext}</div>
-      )}
-    </div>
-  );
 }
 
 export default function TabConveyorPhysical({
@@ -722,41 +688,11 @@ export default function TabConveyorPhysical({
             </>
           )}
 
-          {/* Derived Geometry Panel */}
-          <div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h4 className="text-xs font-semibold tracking-wide text-gray-600 uppercase">
-                Derived Geometry
-              </h4>
-              <div className="text-xs text-gray-500">
-                <span className="text-blue-600 font-medium">Blue</span> = derived
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <GeometryStat
-                label="L (C-C)"
-                value={`${derivedGeometry.L_cc_in.toFixed(1)}"`}
-                derived={geometryMode !== GeometryMode.LengthAngle}
-              />
-              <GeometryStat
-                label="H (Horizontal)"
-                value={`${derivedGeometry.H_cc_in.toFixed(1)}"`}
-                derived={geometryMode === GeometryMode.LengthAngle}
-              />
-              <GeometryStat
-                label="Angle"
-                value={Math.abs(derivedGeometry.theta_deg) < 0.01 ? '0.0°' : `${derivedGeometry.theta_deg.toFixed(1)}°`}
-                subtext={Math.abs(derivedGeometry.theta_deg) < 0.01 ? 'Flat' : undefined}
-                derived={geometryMode === GeometryMode.HorizontalTob}
-              />
-              <GeometryStat
-                label="Rise"
-                value={`${derivedGeometry.rise_in.toFixed(1)}"`}
-                derived={true}
-              />
-            </div>
-          </div>
+          {/* Derived Geometry Panel - Extracted to separate component (v1.41 slice 3) */}
+          <DerivedGeometryCard
+            derivedGeometry={derivedGeometry}
+            geometryMode={geometryMode}
+          />
 
           {/* Incline Warning Banner */}
           {(inputs.conveyor_incline_deg ?? 0) > 15 && (
@@ -988,64 +924,15 @@ export default function TabConveyorPhysical({
           {/* ===== PULLEYS SUBSECTION ===== */}
           <SectionDivider title="Pulleys" />
 
-          {/* Pulley Cards - Compact Side-by-Side */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            {/* DRIVE PULLEY CARD */}
-            <CompactCard configured={!!drivePulley}>
-              <CompactCardHeader
-                title="Head/Drive"
-                badges={drivePulley ? [{ label: 'Configured', variant: 'success' }] : []}
-                actions={applicationLineId && (
-                  <EditButton onClick={() => setIsPulleyModalOpen(true)} configured={!!drivePulley} />
-                )}
-              />
-              {pulleysLoading ? (
-                <p className="text-xs text-gray-500">Loading...</p>
-              ) : drivePulley ? (
-                <SpecGrid
-                  items={[
-                    { label: 'Style', value: drivePulley.style_key },
-                    { label: 'Track', value: trackingLabel },
-                    { label: 'Lagging', value: drivePulley.lagging_type === 'NONE' ? 'None' : `${drivePulley.lagging_type}` },
-                    ...(drivePulley.finished_od_in ? [{ label: 'OD', value: `${drivePulley.finished_od_in}"`, highlight: true }] : []),
-                  ]}
-                  columns={2}
-                />
-              ) : !applicationLineId ? (
-                <p className="text-xs text-amber-600">Save to configure</p>
-              ) : (
-                <p className="text-xs text-gray-500">Not configured</p>
-              )}
-            </CompactCard>
-
-            {/* TAIL PULLEY CARD */}
-            <CompactCard configured={!!tailPulley}>
-              <CompactCardHeader
-                title="Tail"
-                badges={tailPulley ? [{ label: 'Configured', variant: 'success' }] : []}
-                actions={applicationLineId && (
-                  <EditButton onClick={() => setIsPulleyModalOpen(true)} configured={!!tailPulley} />
-                )}
-              />
-              {pulleysLoading ? (
-                <p className="text-xs text-gray-500">Loading...</p>
-              ) : tailPulley ? (
-                <SpecGrid
-                  items={[
-                    { label: 'Style', value: tailPulley.style_key },
-                    { label: 'Track', value: trackingLabel },
-                    { label: 'Lagging', value: tailPulley.lagging_type === 'NONE' ? 'None' : `${tailPulley.lagging_type}` },
-                    ...(tailPulley.finished_od_in ? [{ label: 'OD', value: `${tailPulley.finished_od_in}"`, highlight: true }] : []),
-                  ]}
-                  columns={2}
-                />
-              ) : !applicationLineId ? (
-                <p className="text-xs text-amber-600">Save to configure</p>
-              ) : (
-                <p className="text-xs text-gray-500">Not configured</p>
-              )}
-            </CompactCard>
-          </div>
+          {/* Pulley Cards - Extracted to separate component (v1.41 slice 3) */}
+          <PulleyPreviewCards
+            drivePulley={drivePulley}
+            tailPulley={tailPulley}
+            trackingLabel={trackingLabel}
+            applicationLineId={applicationLineId}
+            pulleysLoading={pulleysLoading}
+            onEditClick={() => setIsPulleyModalOpen(true)}
+          />
 
           {/* Min Pulley Requirements - Governing (Footnote style) */}
           {minPulleyRequired !== undefined && (
