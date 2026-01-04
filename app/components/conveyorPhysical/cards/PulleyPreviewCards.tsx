@@ -19,7 +19,8 @@ interface PulleyPreviewCardsProps {
   trackingLabel: string;
   applicationLineId?: string | null;
   pulleysLoading: boolean;
-  onEditClick: () => void;
+  onEditDrive: () => void;
+  onEditTail: () => void;
 }
 
 export default function PulleyPreviewCards({
@@ -28,7 +29,8 @@ export default function PulleyPreviewCards({
   trackingLabel,
   applicationLineId,
   pulleysLoading,
-  onEditClick,
+  onEditDrive,
+  onEditTail,
 }: PulleyPreviewCardsProps) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -38,7 +40,7 @@ export default function PulleyPreviewCards({
           title="Head/Drive"
           badges={drivePulley ? [{ label: 'Configured', variant: 'success' }] : []}
           actions={applicationLineId && (
-            <EditButton onClick={onEditClick} configured={!!drivePulley} />
+            <EditButton onClick={onEditDrive} configured={!!drivePulley} />
           )}
         />
         {pulleysLoading ? (
@@ -66,7 +68,7 @@ export default function PulleyPreviewCards({
           title="Tail"
           badges={tailPulley ? [{ label: 'Configured', variant: 'success' }] : []}
           actions={applicationLineId && (
-            <EditButton onClick={onEditClick} configured={!!tailPulley} />
+            <EditButton onClick={onEditTail} configured={!!tailPulley} />
           )}
         />
         {pulleysLoading ? (

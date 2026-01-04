@@ -240,7 +240,8 @@ export default function TabConveyorPhysical({
   const tailPulleyBelowMinimum = !!tailPulleyIssue;
 
   // Pulley configuration modal state
-  const [isPulleyModalOpen, setIsPulleyModalOpen] = useState(false);
+  // null = closed, 'drive' | 'tail' = which end is being edited
+  const [pulleyModalEnd, setPulleyModalEnd] = useState<'drive' | 'tail' | null>(null);
   const [applicationPulleys, setApplicationPulleys] = useState<ApplicationPulley[]>([]);
   const [pulleysLoading, setPulleysLoading] = useState(false);
 
@@ -892,7 +893,8 @@ export default function TabConveyorPhysical({
             trackingLabel={trackingLabel}
             applicationLineId={applicationLineId}
             pulleysLoading={pulleysLoading}
-            onEditClick={() => setIsPulleyModalOpen(true)}
+            onEditDrive={() => setPulleyModalEnd('drive')}
+            onEditTail={() => setPulleyModalEnd('tail')}
           />
 
           {/* Min Pulley Requirements - Governing (Footnote style) */}
@@ -1210,8 +1212,9 @@ export default function TabConveyorPhysical({
 
       {/* Pulley Configuration Modal */}
       <PulleyConfigModal
-        isOpen={isPulleyModalOpen}
-        onClose={() => setIsPulleyModalOpen(false)}
+        isOpen={pulleyModalEnd !== null}
+        pulleyEnd={pulleyModalEnd || 'drive'}
+        onClose={() => setPulleyModalEnd(null)}
         applicationLineId={applicationLineId || null}
         beltTrackingMethod={inputs.belt_tracking_method}
         vGuideKey={inputs.v_guide_key}

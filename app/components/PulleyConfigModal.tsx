@@ -44,6 +44,7 @@ import {
 
 interface Props {
   isOpen: boolean;
+  pulleyEnd: 'drive' | 'tail';
   onClose: () => void;
   applicationLineId: string | null;
   beltTrackingMethod?: BeltTrackingMethod | string | null;
@@ -111,6 +112,7 @@ const emptyForm: PulleyFormData = {
 
 export default function PulleyConfigModal({
   isOpen,
+  pulleyEnd,
   onClose,
   applicationLineId,
   beltTrackingMethod,
@@ -118,7 +120,8 @@ export default function PulleyConfigModal({
   beltWidthIn,
   onSave,
 }: Props) {
-  const [activeTab, setActiveTab] = useState<TabPosition>('DRIVE');
+  // Derive activeTab from pulleyEnd prop (no longer using internal tab state)
+  const activeTab: TabPosition = pulleyEnd === 'drive' ? 'DRIVE' : 'TAIL';
   const [models, setModels] = useState<PulleyLibraryModel[]>([]);
   const [driveForm, setDriveForm] = useState<PulleyFormData>(emptyForm);
   const [tailForm, setTailForm] = useState<PulleyFormData>(emptyForm);
@@ -493,25 +496,20 @@ export default function PulleyConfigModal({
       return;
     }
 
-    // Validate face widths
-    const driveFaceValidation = getFaceWidthValidation('DRIVE');
-    const tailFaceValidation = getFaceWidthValidation('TAIL');
-    if (driveFaceValidation && !driveFaceValidation.valid) {
-      setError(`Drive pulley: ${driveFaceValidation.message}`);
-      return;
-    }
-    if (tailFaceValidation && !tailFaceValidation.valid) {
-      setError(`Tail pulley: ${tailFaceValidation.message}`);
+    // Only validate and save the active pulley
+    const currentForm = activeTab === 'DRIVE' ? driveForm : tailForm;
+    const positionLabel = activeTab === 'DRIVE' ? 'Drive' : 'Tail';
+
+    // Validate face width for active pulley only
+    const faceValidation = getFaceWidthValidation(activeTab);
+    if (faceValidation && !faceValidation.valid) {
+      setError(`${positionLabel} pulley: ${faceValidation.message}`);
       return;
     }
 
     // Validate lagging pattern notes required for custom pattern
-    if (driveForm.lagging_pattern === 'custom' && !driveForm.lagging_pattern_notes.trim()) {
-      setError('Drive pulley: Pattern notes are required for custom lagging pattern');
-      return;
-    }
-    if (tailForm.lagging_pattern === 'custom' && !tailForm.lagging_pattern_notes.trim()) {
-      setError('Tail pulley: Pattern notes are required for custom lagging pattern');
+    if (currentForm.lagging_pattern === 'custom' && !currentForm.lagging_pattern_notes.trim()) {
+      setError(`${positionLabel} pulley: Pattern notes are required for custom lagging pattern`);
       return;
     }
 
@@ -520,91 +518,49 @@ export default function PulleyConfigModal({
     setSaveMessage(null);
 
     try {
-      // Save drive pulley
-      if (driveForm.model_key) {
-        const driveModel = models.find((m) => m.model_key === driveForm.model_key);
-        const drivePayload = {
+      // Save only the active pulley
+      if (currentForm.model_key) {
+        const model = models.find((m) => m.model_key === currentForm.model_key);
+        const payload = {
           application_line_id: applicationLineId,
-          position: 'DRIVE',
-          model_key: driveForm.model_key,
-          style_key: driveModel?.style_key || driveForm.model_key, // Keep style_key for backward compat
+          position: activeTab,
+          model_key: currentForm.model_key,
+          style_key: model?.style_key || currentForm.model_key, // Keep style_key for backward compat
           face_profile: trackingMode,
           v_guide_key: trackingMode === 'V_GUIDED' ? vGuideKey : null,
-          lagging_type: driveForm.lagging_type,
+          lagging_type: currentForm.lagging_type,
           lagging_thickness_in:
-            driveForm.lagging_type !== 'NONE'
-              ? parseFloat(driveForm.lagging_thickness_in) || null
+            currentForm.lagging_type !== 'NONE'
+              ? parseFloat(currentForm.lagging_thickness_in) || null
               : null,
-          lagging_pattern: driveForm.lagging_type !== 'NONE' ? driveForm.lagging_pattern : 'none',
-          lagging_pattern_notes: driveForm.lagging_pattern_notes.trim() || null,
-          face_width_in: driveForm.face_width_in ? parseFloat(driveForm.face_width_in) : null,
-          shell_od_in: driveModel?.shell_od_in || null,
-          shell_wall_in: driveForm.shell_wall_in ? parseFloat(driveForm.shell_wall_in) : null,
-          hub_centers_in: driveForm.hub_centers_in ? parseFloat(driveForm.hub_centers_in) : null,
-          enforce_pci_checks: driveForm.enforce_pci_checks,
-          notes: driveForm.notes.trim() || null,
-          wall_validation_status: driveForm.wallValidationStatus,
-          wall_validation_result: driveForm.wallValidationResult,
+          lagging_pattern: currentForm.lagging_type !== 'NONE' ? currentForm.lagging_pattern : 'none',
+          lagging_pattern_notes: currentForm.lagging_pattern_notes.trim() || null,
+          face_width_in: currentForm.face_width_in ? parseFloat(currentForm.face_width_in) : null,
+          shell_od_in: model?.shell_od_in || null,
+          shell_wall_in: currentForm.shell_wall_in ? parseFloat(currentForm.shell_wall_in) : null,
+          hub_centers_in: currentForm.hub_centers_in ? parseFloat(currentForm.hub_centers_in) : null,
+          enforce_pci_checks: currentForm.enforce_pci_checks,
+          notes: currentForm.notes.trim() || null,
+          wall_validation_status: currentForm.wallValidationStatus,
+          wall_validation_result: currentForm.wallValidationResult,
           // v1.30: Hub Connection
-          hub_connection_type: driveForm.hub_connection_type,
-          bushing_system: requiresBushingSystem(driveForm.hub_connection_type) ? driveForm.bushing_system : null,
+          hub_connection_type: currentForm.hub_connection_type,
+          bushing_system: requiresBushingSystem(currentForm.hub_connection_type) ? currentForm.bushing_system : null,
         };
 
-        const driveRes = await fetch('/api/application-pulleys', {
+        const res = await fetch('/api/application-pulleys', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(drivePayload),
+          body: JSON.stringify(payload),
         });
 
-        if (!driveRes.ok) {
-          const err = await driveRes.json();
-          throw new Error(`Drive pulley: ${err.error}`);
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(`${positionLabel} pulley: ${err.error}`);
         }
       }
 
-      // Save tail pulley
-      if (tailForm.model_key) {
-        const tailModel = models.find((m) => m.model_key === tailForm.model_key);
-        const tailPayload = {
-          application_line_id: applicationLineId,
-          position: 'TAIL',
-          model_key: tailForm.model_key,
-          style_key: tailModel?.style_key || tailForm.model_key,
-          face_profile: trackingMode,
-          v_guide_key: trackingMode === 'V_GUIDED' ? vGuideKey : null,
-          lagging_type: tailForm.lagging_type,
-          lagging_thickness_in:
-            tailForm.lagging_type !== 'NONE'
-              ? parseFloat(tailForm.lagging_thickness_in) || null
-              : null,
-          lagging_pattern: tailForm.lagging_type !== 'NONE' ? tailForm.lagging_pattern : 'none',
-          lagging_pattern_notes: tailForm.lagging_pattern_notes.trim() || null,
-          face_width_in: tailForm.face_width_in ? parseFloat(tailForm.face_width_in) : null,
-          shell_od_in: tailModel?.shell_od_in || null,
-          shell_wall_in: tailForm.shell_wall_in ? parseFloat(tailForm.shell_wall_in) : null,
-          hub_centers_in: tailForm.hub_centers_in ? parseFloat(tailForm.hub_centers_in) : null,
-          enforce_pci_checks: tailForm.enforce_pci_checks,
-          notes: tailForm.notes.trim() || null,
-          wall_validation_status: tailForm.wallValidationStatus,
-          wall_validation_result: tailForm.wallValidationResult,
-          // v1.30: Hub Connection
-          hub_connection_type: tailForm.hub_connection_type,
-          bushing_system: requiresBushingSystem(tailForm.hub_connection_type) ? tailForm.bushing_system : null,
-        };
-
-        const tailRes = await fetch('/api/application-pulleys', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(tailPayload),
-        });
-
-        if (!tailRes.ok) {
-          const err = await tailRes.json();
-          throw new Error(`Tail pulley: ${err.error}`);
-        }
-      }
-
-      setSaveMessage('Pulley configuration saved!');
+      setSaveMessage(`${positionLabel} pulley configuration saved!`);
       onSave?.();
 
       setTimeout(() => {
@@ -652,7 +608,9 @@ export default function PulleyConfigModal({
       <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Configure Pulleys</h2>
+          <h2 className="text-lg font-semibold text-gray-900">
+            Configure {activeTab === 'DRIVE' ? 'Head/Drive' : 'Tail'} Pulley
+          </h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -671,24 +629,7 @@ export default function PulleyConfigModal({
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="px-6 pt-4 border-b border-gray-200">
-          <div className="flex gap-4">
-            {(['DRIVE', 'TAIL'] as TabPosition[]).map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`pb-3 px-1 text-sm font-medium border-b-2 transition-colors ${
-                  activeTab === tab
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {tab === 'DRIVE' ? 'Head/Drive Pulley' : 'Tail Pulley'}
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* Tab row removed - modal is now locked to single pulley end */}
 
         {/* Content */}
         <div className="px-6 py-4 overflow-y-auto max-h-[55vh]">
@@ -1170,10 +1111,10 @@ export default function PulleyConfigModal({
             </button>
             <button
               onClick={handleSave}
-              disabled={isSaving || !driveForm.model_key || !tailForm.model_key}
+              disabled={isSaving || !currentForm.model_key}
               className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50"
             >
-              {isSaving ? 'Saving...' : 'Save Configuration'}
+              {isSaving ? 'Saving...' : `Save ${activeTab === 'DRIVE' ? 'Drive' : 'Tail'} Pulley`}
             </button>
           </div>
         </div>
