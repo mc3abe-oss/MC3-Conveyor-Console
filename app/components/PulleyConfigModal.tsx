@@ -305,8 +305,8 @@ export default function PulleyConfigModal({
       enforce_pci_checks: pulley.enforce_pci_checks,
       notes: pulley.notes || '',
       // v1.30: Hub Connection (restore from saved or default)
-      hub_connection_type: (pulley as any).hub_connection_type || defaultHubConnection,
-      bushing_system: (pulley as any).bushing_system || DEFAULT_BUSHING_SYSTEM,
+      hub_connection_type: pulley.hub_connection_type || defaultHubConnection,
+      bushing_system: pulley.bushing_system || DEFAULT_BUSHING_SYSTEM,
       hub_details_expanded: false,
       wallValidationStatus: (pulley.wall_validation_status as PulleyFormData['wallValidationStatus']) || 'NOT_VALIDATED',
       wallValidationResult: pulley.wall_validation_result as WallValidationResult | null,
