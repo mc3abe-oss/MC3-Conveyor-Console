@@ -41,6 +41,9 @@ export interface ApplicationPulley {
   override_reason: string | null;  // v1.24: for when user deviates from defaults
   wall_validation_status: WallValidationStatus;  // v1.24
   wall_validation_result: Record<string, unknown> | null;  // v1.24: JSONB
+  // v1.30: Hub Connection (PCI Pages 12-14)
+  hub_connection_type: string | null;
+  bushing_system: string | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -233,6 +236,9 @@ export async function POST(request: NextRequest) {
       enforce_pci_checks: body.enforce_pci_checks ?? false,
       wall_validation_status: body.wall_validation_status ?? 'NOT_VALIDATED',  // v1.24
       wall_validation_result: body.wall_validation_result ?? null,  // v1.24
+      // v1.30: Hub Connection (PCI Pages 12-14)
+      hub_connection_type: body.hub_connection_type ?? null,
+      bushing_system: body.bushing_system ?? null,
       notes: body.notes?.trim() || null,
     };
 

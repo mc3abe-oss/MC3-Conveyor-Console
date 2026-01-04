@@ -12,6 +12,48 @@ import {
   CompactCard,
   EditButton,
 } from '../../CompactCardLayouts';
+import { LAGGING_PATTERN_LABELS, LaggingPattern } from '../../../../src/lib/lagging-patterns';
+import { getHubConnectionOption } from '../../../../src/models/sliderbed_v1/pciHubConnections';
+
+/**
+ * Format lagging display string
+ * Examples: "None", "Rubber 0.25\" Smooth", "Urethane 0.5\" Herringbone (CW)"
+ */
+function formatLagging(pulley: ApplicationPulley): string {
+  if (pulley.lagging_type === 'NONE') return 'None';
+
+  const parts: string[] = [pulley.lagging_type];
+
+  if (pulley.lagging_thickness_in != null) {
+    parts.push(`${pulley.lagging_thickness_in}"`);
+  }
+
+  if (pulley.lagging_pattern && pulley.lagging_pattern !== 'none' && pulley.lagging_pattern !== 'smooth') {
+    const patternLabel = LAGGING_PATTERN_LABELS[pulley.lagging_pattern as LaggingPattern] || pulley.lagging_pattern;
+    // Shorten some long pattern names for card display
+    const shortLabel = patternLabel
+      .replace('Herringbone (Clockwise)', 'Herringbone CW')
+      .replace('Herringbone (Counter-Clockwise)', 'Herringbone CCW');
+    parts.push(shortLabel);
+  }
+
+  return parts.join(' ');
+}
+
+/**
+ * Get short hub connection label for card display
+ */
+function getHubConnectionLabel(hubConnectionType: string | null): string | null {
+  if (!hubConnectionType) return null;
+  const option = getHubConnectionOption(hubConnectionType);
+  if (!option) return null;
+  // Shorten long labels for card display
+  return option.label
+    .replace('Weld-On Hubs & Compression Bushings', 'Weld-On Hubs')
+    .replace('Flat End Disk with Integral Hub', 'Flat End Disk')
+    .replace('Contoured End Disk with Integral Hub', 'Contoured End Disk')
+    .replace('ER Style Internal Bearings', 'ER Internal');
+}
 
 interface PulleyPreviewCardsProps {
   drivePulley: ApplicationPulley | undefined;
@@ -50,8 +92,9 @@ export default function PulleyPreviewCards({
             items={[
               { label: 'Style', value: drivePulley.style_key },
               { label: 'Track', value: trackingLabel },
-              { label: 'Lagging', value: drivePulley.lagging_type === 'NONE' ? 'None' : `${drivePulley.lagging_type}` },
+              { label: 'Lagging', value: formatLagging(drivePulley) },
               ...(drivePulley.finished_od_in ? [{ label: 'OD', value: `${drivePulley.finished_od_in}"`, highlight: true }] : []),
+              ...(getHubConnectionLabel(drivePulley.hub_connection_type) ? [{ label: 'Hub', value: getHubConnectionLabel(drivePulley.hub_connection_type)! }] : []),
             ]}
             columns={2}
           />
@@ -78,8 +121,9 @@ export default function PulleyPreviewCards({
             items={[
               { label: 'Style', value: tailPulley.style_key },
               { label: 'Track', value: trackingLabel },
-              { label: 'Lagging', value: tailPulley.lagging_type === 'NONE' ? 'None' : `${tailPulley.lagging_type}` },
+              { label: 'Lagging', value: formatLagging(tailPulley) },
               ...(tailPulley.finished_od_in ? [{ label: 'OD', value: `${tailPulley.finished_od_in}"`, highlight: true }] : []),
+              ...(getHubConnectionLabel(tailPulley.hub_connection_type) ? [{ label: 'Hub', value: getHubConnectionLabel(tailPulley.hub_connection_type)! }] : []),
             ]}
             columns={2}
           />
