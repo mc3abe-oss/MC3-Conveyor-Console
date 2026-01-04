@@ -50,6 +50,7 @@ interface Props {
   beltTrackingMethod?: BeltTrackingMethod | string | null;
   vGuideKey?: string | null;
   beltWidthIn?: number;
+  calculatedPulleyRpm?: number;  // Calculated pulley RPM for balancing recommendation
   onSave?: () => void;
 }
 
@@ -80,6 +81,12 @@ interface PulleyFormData {
   hub_connection_type: string;
   bushing_system: string;
   hub_details_expanded: boolean;
+  // Pulley Balancing
+  balance_required: boolean;
+  balance_method: 'static' | 'dynamic';
+  balance_rpm: string;
+  balance_grade: string;
+  balance_source: 'internal_guideline' | 'vendor_spec' | 'user_override';
   // Validation state
   wallValidationStatus: 'NOT_VALIDATED' | 'PASS' | 'RECOMMEND_UPGRADE' | 'FAIL_ENGINEERING_REQUIRED';
   wallValidationResult: WallValidationResult | null;
@@ -106,6 +113,12 @@ const emptyForm: PulleyFormData = {
   hub_connection_type: DEFAULT_DRIVE_HUB_CONNECTION_TYPE,
   bushing_system: DEFAULT_BUSHING_SYSTEM,
   hub_details_expanded: false,
+  // Pulley Balancing defaults
+  balance_required: false,
+  balance_method: 'dynamic',
+  balance_rpm: '',
+  balance_grade: '',
+  balance_source: 'internal_guideline',
   wallValidationStatus: 'NOT_VALIDATED',
   wallValidationResult: null,
 };
@@ -118,6 +131,7 @@ export default function PulleyConfigModal({
   beltTrackingMethod,
   vGuideKey,
   beltWidthIn,
+  calculatedPulleyRpm,
   onSave,
 }: Props) {
   // Derive activeTab from pulleyEnd prop (no longer using internal tab state)
@@ -241,6 +255,12 @@ export default function PulleyConfigModal({
       hub_connection_type: defaultHubConnection,
       bushing_system: DEFAULT_BUSHING_SYSTEM,
       hub_details_expanded: false,
+      // Pulley Balancing defaults
+      balance_required: false,
+      balance_method: 'dynamic',
+      balance_rpm: '',
+      balance_grade: '',
+      balance_source: 'internal_guideline',
       wallValidationStatus: 'NOT_VALIDATED',
       wallValidationResult: null,
     };
@@ -308,6 +328,12 @@ export default function PulleyConfigModal({
       hub_connection_type: pulley.hub_connection_type || defaultHubConnection,
       bushing_system: pulley.bushing_system || DEFAULT_BUSHING_SYSTEM,
       hub_details_expanded: false,
+      // Pulley Balancing (restore from saved or defaults)
+      balance_required: pulley.balance_required ?? false,
+      balance_method: (pulley.balance_method as 'static' | 'dynamic') || 'dynamic',
+      balance_rpm: pulley.balance_rpm?.toString() || '',
+      balance_grade: pulley.balance_grade || '',
+      balance_source: (pulley.balance_source as PulleyFormData['balance_source']) || 'internal_guideline',
       wallValidationStatus: (pulley.wall_validation_status as PulleyFormData['wallValidationStatus']) || 'NOT_VALIDATED',
       wallValidationResult: pulley.wall_validation_result as WallValidationResult | null,
     };
@@ -546,6 +572,12 @@ export default function PulleyConfigModal({
           // v1.30: Hub Connection
           hub_connection_type: currentForm.hub_connection_type,
           bushing_system: requiresBushingSystem(currentForm.hub_connection_type) ? currentForm.bushing_system : null,
+          // Pulley Balancing
+          balance_required: currentForm.balance_required,
+          balance_method: currentForm.balance_required ? currentForm.balance_method : null,
+          balance_rpm: currentForm.balance_rpm ? parseFloat(currentForm.balance_rpm) : null,
+          balance_grade: currentForm.balance_grade.trim() || null,
+          balance_source: currentForm.balance_source,
         };
 
         const res = await fetch('/api/application-pulleys', {
@@ -605,7 +637,7 @@ export default function PulleyConfigModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-gray-900">
@@ -915,6 +947,73 @@ export default function PulleyConfigModal({
                   )}
                 </div>
               )}
+
+              {/* Pulley Balancing */}
+              <div className="space-y-3 p-3 bg-gray-50 rounded-md border border-gray-200">
+                <h4 className="text-sm font-medium text-gray-700">Pulley Balancing</h4>
+
+                {/* Recommendation note - only when RPM >= 100 */}
+                {(calculatedPulleyRpm ?? 0) >= 100 && (
+                  <p className="text-sm text-gray-600 bg-blue-50 p-2 rounded border border-blue-100">
+                    Pulley speed exceeds 100 RPM. Balancing is recommended and must be validated with the pulley supplier.
+                  </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Balance this pulley checkbox */}
+                  <div className="col-span-2">
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={currentForm.balance_required}
+                        onChange={(e) => updateForm(activeTab, 'balance_required', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-700">Balance this pulley</span>
+                    </label>
+                  </div>
+
+                  {/* Balance Method */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Balance Method</label>
+                    <select
+                      value={currentForm.balance_method}
+                      onChange={(e) => updateForm(activeTab, 'balance_method', e.target.value)}
+                      disabled={!currentForm.balance_required}
+                      className={`w-full px-3 py-2 border border-gray-300 rounded-md ${!currentForm.balance_required ? 'bg-gray-100 text-gray-500' : ''}`}
+                    >
+                      <option value="dynamic">Dynamic</option>
+                      <option value="static">Static</option>
+                    </select>
+                  </div>
+
+                  {/* Balance Speed (RPM) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Balance Speed (RPM)</label>
+                    <input
+                      type="number"
+                      value={currentForm.balance_rpm || (calculatedPulleyRpm?.toString() ?? '')}
+                      onChange={(e) => updateForm(activeTab, 'balance_rpm', e.target.value)}
+                      placeholder={calculatedPulleyRpm ? `${calculatedPulleyRpm} (calculated)` : 'Enter RPM'}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                      min="0"
+                      step="1"
+                    />
+                  </div>
+
+                  {/* Balance Grade */}
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Balance Grade (optional)</label>
+                    <input
+                      type="text"
+                      value={currentForm.balance_grade}
+                      onChange={(e) => updateForm(activeTab, 'balance_grade', e.target.value)}
+                      placeholder="e.g. G100"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                    />
+                  </div>
+                </div>
+              </div>
 
               {/* Summary */}
               {selectedModel && (

@@ -55,6 +55,32 @@ function getHubConnectionLabel(hubConnectionType: string | null): string | null 
     .replace('ER Style Internal Bearings', 'ER Internal');
 }
 
+/**
+ * Format balancing display string
+ * Examples: "Dynamic @ 150 RPM", "Static G100", "Dynamic @ 120 RPM G100"
+ */
+function formatBalancing(pulley: ApplicationPulley): string | null {
+  if (!pulley.balance_required) return null;
+
+  const parts: string[] = [];
+
+  // Method (capitalize)
+  const method = pulley.balance_method || 'dynamic';
+  parts.push(method.charAt(0).toUpperCase() + method.slice(1));
+
+  // RPM if provided
+  if (pulley.balance_rpm != null) {
+    parts.push(`@ ${pulley.balance_rpm} RPM`);
+  }
+
+  // Grade if provided
+  if (pulley.balance_grade) {
+    parts.push(pulley.balance_grade);
+  }
+
+  return parts.join(' ');
+}
+
 interface PulleyPreviewCardsProps {
   drivePulley: ApplicationPulley | undefined;
   tailPulley: ApplicationPulley | undefined;
@@ -95,6 +121,7 @@ export default function PulleyPreviewCards({
               { label: 'Lagging', value: formatLagging(drivePulley) },
               ...(drivePulley.finished_od_in ? [{ label: 'OD', value: `${drivePulley.finished_od_in}"`, highlight: true }] : []),
               ...(getHubConnectionLabel(drivePulley.hub_connection_type) ? [{ label: 'Hub', value: getHubConnectionLabel(drivePulley.hub_connection_type)! }] : []),
+              ...(formatBalancing(drivePulley) ? [{ label: 'Balance', value: formatBalancing(drivePulley)! }] : []),
             ]}
             columns={2}
           />
@@ -124,6 +151,7 @@ export default function PulleyPreviewCards({
               { label: 'Lagging', value: formatLagging(tailPulley) },
               ...(tailPulley.finished_od_in ? [{ label: 'OD', value: `${tailPulley.finished_od_in}"`, highlight: true }] : []),
               ...(getHubConnectionLabel(tailPulley.hub_connection_type) ? [{ label: 'Hub', value: getHubConnectionLabel(tailPulley.hub_connection_type)! }] : []),
+              ...(formatBalancing(tailPulley) ? [{ label: 'Balance', value: formatBalancing(tailPulley)! }] : []),
             ]}
             columns={2}
           />

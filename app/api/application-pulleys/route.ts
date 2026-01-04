@@ -20,6 +20,10 @@ export type { LaggingPattern } from '../../../src/lib/lagging-patterns';
 
 export type WallValidationStatus = 'NOT_VALIDATED' | 'PASS' | 'RECOMMEND_UPGRADE' | 'FAIL_ENGINEERING_REQUIRED';
 
+// Pulley Balancing types
+export type BalanceMethod = 'static' | 'dynamic';
+export type BalanceSource = 'internal_guideline' | 'vendor_spec' | 'user_override';
+
 export interface ApplicationPulley {
   id: string;
   application_line_id: string;
@@ -44,6 +48,12 @@ export interface ApplicationPulley {
   // v1.30: Hub Connection (PCI Pages 12-14)
   hub_connection_type: string | null;
   bushing_system: string | null;
+  // Pulley Balancing
+  balance_required: boolean;
+  balance_method: BalanceMethod | null;
+  balance_rpm: number | null;
+  balance_grade: string | null;
+  balance_source: BalanceSource | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
@@ -239,6 +249,12 @@ export async function POST(request: NextRequest) {
       // v1.30: Hub Connection (PCI Pages 12-14)
       hub_connection_type: body.hub_connection_type ?? null,
       bushing_system: body.bushing_system ?? null,
+      // Pulley Balancing
+      balance_required: body.balance_required ?? false,
+      balance_method: body.balance_required ? (body.balance_method ?? 'dynamic') : null,
+      balance_rpm: body.balance_rpm ?? null,
+      balance_grade: body.balance_grade?.trim() || null,
+      balance_source: body.balance_source ?? 'internal_guideline',
       notes: body.notes?.trim() || null,
     };
 
