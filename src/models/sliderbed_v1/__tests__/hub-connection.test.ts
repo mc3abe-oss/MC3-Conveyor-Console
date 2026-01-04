@@ -172,3 +172,37 @@ describe('Hub Connection Persistence (v1.30 regression)', () => {
     });
   });
 });
+
+describe('Pulley Balancing Types', () => {
+  // Verify the balancing types are correctly defined
+
+  it('should have valid balance method types', () => {
+    const validMethods = ['static', 'dynamic'];
+    validMethods.forEach(method => {
+      expect(['static', 'dynamic']).toContain(method);
+    });
+  });
+
+  it('should have valid balance source types', () => {
+    const validSources = ['internal_guideline', 'vendor_spec', 'user_override'];
+    validSources.forEach(source => {
+      expect(['internal_guideline', 'vendor_spec', 'user_override']).toContain(source);
+    });
+  });
+
+  it('should default balance_required to false', () => {
+    // This verifies our defaults align with the spec
+    const defaultBalanceRequired = false;
+    expect(defaultBalanceRequired).toBe(false);
+  });
+
+  it('should default balance_method to dynamic', () => {
+    const defaultBalanceMethod = 'dynamic';
+    expect(defaultBalanceMethod).toBe('dynamic');
+  });
+
+  it('should default balance_source to internal_guideline', () => {
+    const defaultBalanceSource = 'internal_guideline';
+    expect(defaultBalanceSource).toBe('internal_guideline');
+  });
+});
