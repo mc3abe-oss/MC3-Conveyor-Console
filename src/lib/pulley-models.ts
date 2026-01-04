@@ -6,9 +6,18 @@
  * - Face width validation
  * - Wall thickness validation (PCI tube stress)
  * - Finished OD computation
+ *
+ * v1.50: Wall thickness formatting now uses unified Thickness Library.
+ * Frame and Pulley dropdowns show the SAME options.
  */
 
 import { PulleyFaceProfile } from './pulley-tracking';
+import {
+  getAllThicknessOptions,
+  getThicknessOptionByValue,
+  formatThickness,
+  type ThicknessOption,
+} from './thickness';
 
 // Types for pulley model data
 export interface PulleyModel {
@@ -351,46 +360,56 @@ export function getWallOptions(model: PulleyModel): number[] {
 }
 
 /**
+ * Get pulley wall thickness options from unified library
+ * Returns options sorted by sort_order (thickest to thinnest)
+ *
+ * NOTE: Returns the SAME options as frame dropdown.
+ * Both dropdowns show identical options with the same labels.
+ */
+export function getPulleyWallThicknessOptions(): ThicknessOption[] {
+  return getAllThicknessOptions();
+}
+
+/**
  * Format wall thickness for display
  *
- * Rules:
- * - Sheet gauge thicknesses show gauge callout (e.g., "0.134" (10 ga)")
- * - Plate thicknesses show inch fractions only (e.g., "0.188" (3/16")")
- * - Other thicknesses show decimal only
- *
+ * v1.50: Now uses unified Thickness Library for consistent formatting.
  * Uses tolerance-based lookup for floating point safety.
  */
 export function formatWallThickness(wallIn: number): string {
   const TOLERANCE = 0.002; // Allow small float tolerance for matching
 
-  // Sheet gauge mappings (true gauge thicknesses)
+  // Try to find in thickness library first
+  const option = getThicknessOptionByValue(wallIn, TOLERANCE);
+  if (option) {
+    return formatThickness(option);
+  }
+
+  // Fallback to legacy format for unknown thicknesses
+  // (preserved for backward compatibility with non-standard values)
   const gaugeThicknesses: Array<{ nominal: number; label: string }> = [
-    { nominal: 0.109, label: '12 ga' },  // 12 ga ≈ 0.1046", 0.109 is common industrial callout
-    { nominal: 0.134, label: '10 ga' },  // 10 ga = 0.1345"
-    { nominal: 0.165, label: '8 ga' },   // 8 ga = 0.1644"
+    { nominal: 0.109, label: '12 ga' },
+    { nominal: 0.134, label: '10 ga' },
+    { nominal: 0.165, label: '8 ga' },
   ];
 
-  // Plate thicknesses (show fractions, NOT gauge)
   const plateThicknesses: Array<{ nominal: number; label: string }> = [
-    { nominal: 0.188, label: '3/16"' },  // 3/16" = 0.1875"
-    { nominal: 0.250, label: '1/4"' },   // 1/4" = 0.25"
-    { nominal: 0.375, label: '3/8"' },   // 3/8" = 0.375"
+    { nominal: 0.188, label: '3/16"' },
+    { nominal: 0.250, label: '1/4"' },
+    { nominal: 0.375, label: '3/8"' },
   ];
 
-  // Check gauge thicknesses
   for (const g of gaugeThicknesses) {
     if (Math.abs(wallIn - g.nominal) < TOLERANCE) {
       return `${wallIn}" (${g.label})`;
     }
   }
 
-  // Check plate thicknesses
   for (const p of plateThicknesses) {
     if (Math.abs(wallIn - p.nominal) < TOLERANCE) {
       return `${wallIn}" (${p.label})`;
     }
   }
 
-  // Default: just show decimal
   return `${wallIn}"`;
 }

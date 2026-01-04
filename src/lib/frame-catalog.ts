@@ -1,5 +1,5 @@
 /**
- * Frame Catalog (v1.14)
+ * Frame Catalog (v1.14, updated v1.50)
  *
  * Lookup tables for frame construction materials.
  * - Sheet metal gauge → thickness (in)
@@ -7,22 +7,36 @@
  *
  * Values are industry-standard references.
  * Full precision stored; round only for display.
+ *
+ * v1.50: Now uses unified Thickness Library internally.
+ * Frame and Pulley dropdowns show the SAME options.
  */
 
 import type {
   SheetMetalGauge,
   StructuralChannelSeries,
 } from '../models/sliderbed_v1/schema';
+import {
+  getAllThicknessOptions,
+  legacyGaugeToThicknessKey,
+  getThicknessOption,
+  formatThickness,
+  type ThicknessOption,
+} from './thickness';
 
 // ============================================================================
 // SHEET METAL GAUGE THICKNESS (inches)
+// v1.50: Now derived from Thickness Library for consistency
 // ============================================================================
 
 /**
  * Sheet metal gauge to thickness lookup (standard steel gauge)
  *
- * Source: Manufacturers' Standard Gauge for Steel Sheet
+ * Source: Manufacturers' Standard Gauge for Steel Sheet (via Thickness Library)
  * Values in inches, full precision.
+ *
+ * COMPATIBILITY: This object is preserved for backward compatibility.
+ * New code should use getAllThicknessOptions().
  */
 export const SHEET_METAL_GAUGE_THICKNESS: Record<SheetMetalGauge, number> = {
   '10_GA': 0.1345,
@@ -34,6 +48,9 @@ export const SHEET_METAL_GAUGE_THICKNESS: Record<SheetMetalGauge, number> = {
 
 /**
  * All sheet metal gauge values in order (thickest to thinnest)
+ *
+ * COMPATIBILITY: This array is preserved for backward compatibility.
+ * New code should use getAllThicknessOptions().
  */
 export const SHEET_METAL_GAUGES: SheetMetalGauge[] = [
   '10_GA',
@@ -42,6 +59,15 @@ export const SHEET_METAL_GAUGES: SheetMetalGauge[] = [
   '16_GA',
   '18_GA',
 ];
+
+/**
+ * Get ALL thickness options from unified library
+ * Returns the SAME options for both frame and pulley dropdowns.
+ * Sorted by sort_order (thickest to thinnest)
+ */
+export function getSheetMetalThicknessOptions(): ThicknessOption[] {
+  return getAllThicknessOptions();
+}
 
 // ============================================================================
 // STRUCTURAL CHANNEL THICKNESS (inches)
@@ -102,16 +128,27 @@ export function getStructuralChannelThickness(series: StructuralChannelSeries): 
 /**
  * Format gauge label with thickness for UI display
  * @param gauge - Sheet metal gauge
- * @returns Formatted string like "12 ga (0.10 in)"
+ * @returns Formatted string from canonical Thickness Library
+ *
+ * v1.50: Now uses Thickness Library for consistent formatting.
  */
 export function formatGaugeWithThickness(gauge: SheetMetalGauge): string {
+  // Use thickness library if available
+  const thicknessKey = legacyGaugeToThicknessKey(gauge);
+  if (thicknessKey) {
+    const option = getThicknessOption(thicknessKey);
+    if (option) {
+      return formatThickness(option);
+    }
+  }
+
+  // Fallback to legacy format (should not happen with valid gauges)
   const thickness = SHEET_METAL_GAUGE_THICKNESS[gauge];
   if (thickness === undefined) {
     return gauge.replace('_GA', ' ga');
   }
-  // Extract gauge number and format with thickness to 2 decimals
   const gaugeNum = gauge.replace('_GA', '');
-  return `${gaugeNum} ga (${thickness.toFixed(2)} in)`;
+  return `${gaugeNum} ga (${thickness.toFixed(3)}")`;
 }
 
 /**

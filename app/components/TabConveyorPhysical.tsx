@@ -23,7 +23,6 @@ import {
   SheetMetalGauge,
   StructuralChannelSeries,
   FRAME_CONSTRUCTION_TYPE_LABELS,
-  SHEET_METAL_GAUGE_LABELS,
   STRUCTURAL_CHANNEL_SERIES_LABELS,
   // v1.29: Return Support types moved to ReturnSupportCard
   // UI Cleanup: Lacing moved from Build Options
@@ -49,7 +48,7 @@ function getEffectiveDiameterByKey(_key: string | undefined): number | undefined
   return undefined; // Legacy catalog removed - Phase 2 will use application_pulleys
 }
 import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../../src/lib/belt-catalog';
-import { formatGaugeWithThickness } from '../../src/lib/frame-catalog';
+import { getSheetMetalThicknessOptions } from '../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from './useConfigureIssues';
 import { useState, useEffect, useMemo } from 'react';
@@ -1016,18 +1015,18 @@ export default function TabConveyorPhysical({
               <select
                 id="frame_sheet_metal_gauge"
                 className="input"
-                value={inputs.frame_sheet_metal_gauge ?? '12_GA'}
+                value={inputs.frame_sheet_metal_gauge ?? 'ga_12'}
                 onChange={(e) => updateInput('frame_sheet_metal_gauge', e.target.value as SheetMetalGauge)}
                 required
               >
-                {(Object.keys(SHEET_METAL_GAUGE_LABELS) as SheetMetalGauge[]).map((gauge) => (
-                  <option key={gauge} value={gauge}>
-                    {formatGaugeWithThickness(gauge)}
+                {getSheetMetalThicknessOptions().map((option) => (
+                  <option key={option.key} value={option.key}>
+                    {option.label}
                   </option>
                 ))}
               </select>
               <p className="text-xs text-gray-500 mt-1">
-                Lower gauge = thicker material. 12 ga is standard for most applications.
+                Thicker material provides more rigidity. 12 ga is standard for most applications.
               </p>
             </div>
           )}
