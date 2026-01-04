@@ -13,7 +13,12 @@ import {
   EditButton,
 } from '../../CompactCardLayouts';
 import { LAGGING_PATTERN_LABELS, LaggingPattern } from '../../../../src/lib/lagging-patterns';
-import { getHubConnectionOption } from '../../../../src/models/sliderbed_v1/pciHubConnections';
+import {
+  getHubConnectionOption,
+  getBushingSystemOption,
+  requiresBushingSystem,
+  HubConnectionType,
+} from '../../../../src/models/sliderbed_v1/pciHubConnections';
 
 /**
  * Format lagging display string
@@ -81,6 +86,66 @@ function formatBalancing(pulley: ApplicationPulley): string | null {
   return parts.join(' ');
 }
 
+/**
+ * Get secondary detail label for hub connection (bushing system or shaft style)
+ * This provides clarity on what the user selected without reopening the modal.
+ */
+function getHubConnectionDetail(
+  hubConnectionType: string | null,
+  bushingSystem: string | null
+): string | null {
+  if (!hubConnectionType) return null;
+
+  // For weld-on hubs, show the bushing system
+  if (requiresBushingSystem(hubConnectionType) && bushingSystem) {
+    const bushingOption = getBushingSystemOption(bushingSystem);
+    if (bushingOption) {
+      // Format: "QD® Compression Bushing", "XT® Compression Bushing", etc.
+      return `${bushingOption.label} Compression Bushing`;
+    }
+  }
+
+  // For other hub types, show a clarifying detail
+  switch (hubConnectionType) {
+    case HubConnectionType.KeylessLockingDevices:
+      return 'Shrink Disc';
+    case HubConnectionType.FixedStubShafts:
+      return 'Fixed Shaft';
+    case HubConnectionType.RemovableStubShafts:
+      return 'Removable Shaft';
+    case HubConnectionType.KeyedHubSetScrew:
+      return 'Keyed + Set Screw';
+    case HubConnectionType.ErStyleInternalBearings:
+      return 'ER Internal';
+    case HubConnectionType.FlatEndDiskIntegralHub:
+    case HubConnectionType.ContouredEndDiskIntegralHub:
+      return 'Integral Hub';
+    case HubConnectionType.DeadShaftAssembly:
+      return 'Dead Shaft';
+    default:
+      return null;
+  }
+}
+
+/**
+ * Render hub connection with optional secondary detail line
+ */
+function HubConnectionDisplay({ pulley }: { pulley: ApplicationPulley }) {
+  const hubLabel = getHubConnectionLabel(pulley.hub_connection_type);
+  const hubDetail = getHubConnectionDetail(pulley.hub_connection_type, pulley.bushing_system);
+
+  if (!hubLabel) return null;
+
+  return (
+    <span className="flex flex-col">
+      <span>{hubLabel}</span>
+      {hubDetail && (
+        <span className="text-[10px] text-gray-500 font-normal">{hubDetail}</span>
+      )}
+    </span>
+  );
+}
+
 interface PulleyPreviewCardsProps {
   drivePulley: ApplicationPulley | undefined;
   tailPulley: ApplicationPulley | undefined;
@@ -120,7 +185,7 @@ export default function PulleyPreviewCards({
               { label: 'Track', value: trackingLabel },
               { label: 'Lagging', value: formatLagging(drivePulley) },
               ...(drivePulley.finished_od_in ? [{ label: 'OD', value: `${drivePulley.finished_od_in}"`, highlight: true }] : []),
-              ...(getHubConnectionLabel(drivePulley.hub_connection_type) ? [{ label: 'Hub', value: getHubConnectionLabel(drivePulley.hub_connection_type)! }] : []),
+              ...(drivePulley.hub_connection_type ? [{ label: 'Hub', value: <HubConnectionDisplay pulley={drivePulley} /> }] : []),
               ...(formatBalancing(drivePulley) ? [{ label: 'Balance', value: formatBalancing(drivePulley)! }] : []),
             ]}
             columns={2}
@@ -150,7 +215,7 @@ export default function PulleyPreviewCards({
               { label: 'Track', value: trackingLabel },
               { label: 'Lagging', value: formatLagging(tailPulley) },
               ...(tailPulley.finished_od_in ? [{ label: 'OD', value: `${tailPulley.finished_od_in}"`, highlight: true }] : []),
-              ...(getHubConnectionLabel(tailPulley.hub_connection_type) ? [{ label: 'Hub', value: getHubConnectionLabel(tailPulley.hub_connection_type)! }] : []),
+              ...(tailPulley.hub_connection_type ? [{ label: 'Hub', value: <HubConnectionDisplay pulley={tailPulley} /> }] : []),
               ...(formatBalancing(tailPulley) ? [{ label: 'Balance', value: formatBalancing(tailPulley)! }] : []),
             ]}
             columns={2}
