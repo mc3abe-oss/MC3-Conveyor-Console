@@ -14,11 +14,15 @@ import {
   SliderbedInputs,
   SliderbedParameters,
   CalculationResult,
-  DEFAULT_PARAMETERS,
 } from '../../models/sliderbed_v1/schema';
-import { calculate } from '../../models/sliderbed_v1/formulas';
 import { validate } from '../../models/sliderbed_v1/rules';
 import { MODEL_KEY, MODEL_VERSION_ID } from '../model-identity';
+// Use belt_conveyor_v1 for COF resolution based on bed_type
+import {
+  calculate,
+  DEFAULT_PARAMETERS,
+  BeltConveyorParameters,
+} from '../../models/belt_conveyor_v1';
 
 // ============================================================================
 // INPUT NORMALIZATION
@@ -69,7 +73,8 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
   const inputs = normalizeInputs(rawInputs);
 
   // Merge default parameters with any overrides
-  const parameters: SliderbedParameters = {
+  // Use BeltConveyorParameters for bed-type-specific COF defaults
+  const parameters: BeltConveyorParameters = {
     ...DEFAULT_PARAMETERS,
     ...parameterOverrides,
   };

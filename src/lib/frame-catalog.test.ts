@@ -125,15 +125,18 @@ describe('frame-catalog', () => {
 
   describe('formatGaugeWithThickness', () => {
     it('formats 12_GA correctly', () => {
-      expect(formatGaugeWithThickness('12_GA')).toBe('12 ga (0.10 in)');
+      // v1.50: Now uses Thickness Library format
+      expect(formatGaugeWithThickness('12_GA')).toBe('12 ga (0.109")');
     });
 
     it('formats 16_GA correctly', () => {
-      expect(formatGaugeWithThickness('16_GA')).toBe('16 ga (0.06 in)');
+      // v1.50: Now uses Thickness Library format
+      expect(formatGaugeWithThickness('16_GA')).toBe('16 ga (0.060")');
     });
 
     it('formats 10_GA correctly', () => {
-      expect(formatGaugeWithThickness('10_GA')).toBe('10 ga (0.13 in)');
+      // v1.50: Now uses Thickness Library format
+      expect(formatGaugeWithThickness('10_GA')).toBe('10 ga (0.134")');
     });
   });
 
