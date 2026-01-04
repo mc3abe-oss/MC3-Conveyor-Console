@@ -90,6 +90,9 @@ describe('v1.6 Speed Mode Regression Tests', () => {
     // v1.4: Support types
     tail_support_type: EndSupportType.External,
     drive_support_type: EndSupportType.External,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   // Tolerance for floating point comparisons
@@ -350,6 +353,9 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
     lacing_style: LacingStyle.Standard,
     head_pulley_surface: PulleySurfaceType.Bare,
     tail_pulley_surface: PulleySurfaceType.Bare,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   const BASE_INPUTS: SliderbedInputs = {

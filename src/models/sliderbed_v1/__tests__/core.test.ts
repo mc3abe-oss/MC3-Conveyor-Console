@@ -86,6 +86,9 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   // ========================================================================
@@ -513,8 +516,11 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.parts_on_belt).toBeCloseTo(6.6667, 3);
     });
 
-    it('should use correct belt weight coefficients for 2.5" pulley', () => {
+    it('should use explicit belt coefficients via advanced mode (2.5" pulley)', () => {
+      // v1.48: Belt-dependent outputs require explicit belt selection
+      // Using belt_coeff_piw/pil to provide explicit coefficients
       const inputs: SliderbedInputs = {
+        ...APPLICATION_DEFAULTS,
         conveyor_length_cc_in: 100,
         belt_width_in: 20,
         pulley_diameter_in: 2.5,
@@ -527,7 +533,8 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
         part_spacing_in: 0,
-        ...APPLICATION_DEFAULTS,
+        belt_coeff_piw: DEFAULT_PARAMETERS.piw_2p5,
+        belt_coeff_pil: DEFAULT_PARAMETERS.pil_2p5,
       };
 
       const result = runCalculation({ inputs });
@@ -536,8 +543,11 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.pil_used).toBe(DEFAULT_PARAMETERS.pil_2p5);
     });
 
-    it('should use correct belt weight coefficients for non-2.5" pulley', () => {
+    it('should use explicit belt coefficients via advanced mode (non-2.5" pulley)', () => {
+      // v1.48: Belt-dependent outputs require explicit belt selection
+      // Using belt_coeff_piw/pil to provide explicit coefficients
       const inputs: SliderbedInputs = {
+        ...APPLICATION_DEFAULTS,
         conveyor_length_cc_in: 100,
         belt_width_in: 20,
         pulley_diameter_in: 3.0,
@@ -550,7 +560,8 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
         fluid_type: FluidType.None,
         orientation: Orientation.Lengthwise,
         part_spacing_in: 0,
-        ...APPLICATION_DEFAULTS,
+        belt_coeff_piw: DEFAULT_PARAMETERS.piw_other,
+        belt_coeff_pil: DEFAULT_PARAMETERS.pil_other,
       };
 
       const result = runCalculation({ inputs });
@@ -660,7 +671,9 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,
       part_spacing_in: 0,
-        ...APPLICATION_DEFAULTS,
+      belt_coeff_piw: 0.138, // v1.48: Required for belt selection (2.5" pulley)
+      belt_coeff_pil: 0.138,
+      ...APPLICATION_DEFAULTS,
     };
 
     it('should use custom safety_factor when provided', () => {
@@ -816,7 +829,10 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,
       part_spacing_in: 0,
-        ...APPLICATION_DEFAULTS,
+      belt_catalog_key: 'TEST_BELT', // v1.48: Required for belt-dependent outputs
+      belt_piw: 0.109,
+      belt_pil: 0.109,
+      ...APPLICATION_DEFAULTS,
     };
 
     it('should calculate incline pull correctly for 0° incline', () => {
@@ -911,6 +927,8 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       fluid_type: FluidType.None,
       orientation: Orientation.Lengthwise,
       part_spacing_in: 0,
+      belt_coeff_piw: 0.109, // v1.48: Required for belt selection
+      belt_coeff_pil: 0.109,
       ...APPLICATION_DEFAULTS,
     };
 
@@ -1188,17 +1206,24 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       expect(result.outputs?.belt_pil_effective).toBe(0.120);
     });
 
-    it('should fall back to parameter defaults when no belt selected', () => {
+    it('should error when no belt is selected (v1.48)', () => {
       const inputs = {
         ...baseInputs,
-        // No belt_catalog_key, belt_piw, or belt_pil
+        // Explicitly clear all belt selection fields
+        belt_catalog_key: undefined,
+        belt_piw: undefined,
+        belt_pil: undefined,
+        belt_piw_override: undefined,
+        belt_pil_override: undefined,
+        belt_coeff_piw: undefined,
+        belt_coeff_pil: undefined,
       };
       const result = runCalculation({ inputs });
 
-      expect(result.success).toBe(true);
-      // For 4.0" pulley, should use default piw_other = 0.109
-      expect(result.outputs?.piw_used).toBe(DEFAULT_PARAMETERS.piw_other);
-      expect(result.outputs?.pil_used).toBe(DEFAULT_PARAMETERS.pil_other);
+      // v1.48: Belt selection is now mandatory
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'belt_catalog_key')).toBe(true);
+      expect(result.errors?.some(e => e.message.includes('Belt selection is required'))).toBe(true);
     });
 
     it('should reject belt_piw_override <= 0', () => {

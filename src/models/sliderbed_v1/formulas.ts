@@ -303,6 +303,45 @@ export function calculateEffectiveBeltCoefficients(
 }
 
 /**
+ * Check whether a belt is explicitly selected (v1.48)
+ *
+ * A belt is considered "selected" if PIW/PIL coefficients are explicitly provided
+ * through any of these sources:
+ *   1. belt_catalog_key (belt from catalog lookup)
+ *   2. belt_piw_override + belt_pil_override (user manual override)
+ *   3. belt_piw + belt_pil (from catalog when belt is selected)
+ *   4. belt_coeff_piw + belt_coeff_pil (advanced parameter mode)
+ *
+ * If none of these are set, PIW/PIL would fall back to parameter defaults,
+ * which produces "implicit" belt calculations that should be gated.
+ *
+ * @returns true if belt is explicitly selected, false otherwise
+ */
+export function hasBeltSelection(inputs: SliderbedInputs): boolean {
+  // Primary: belt selected from catalog
+  if (inputs.belt_catalog_key !== undefined && inputs.belt_catalog_key !== null) {
+    return true;
+  }
+
+  // User override (both PIW and PIL must be provided)
+  if (inputs.belt_piw_override !== undefined && inputs.belt_pil_override !== undefined) {
+    return true;
+  }
+
+  // Catalog lookup values (both PIW and PIL must be provided)
+  if (inputs.belt_piw !== undefined && inputs.belt_pil !== undefined) {
+    return true;
+  }
+
+  // Advanced coefficient mode (both PIW and PIL must be provided)
+  if (inputs.belt_coeff_piw !== undefined && inputs.belt_coeff_pil !== undefined) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
  * Calculate belt weight coefficients (piw, pil)
  *
  * v1.2: Now accepts user overrides, otherwise falls back to pulley-diameter-based defaults
@@ -1657,6 +1696,9 @@ export function calculate(
   const frictionCoeff = inputs.friction_coeff ?? parameters.friction_coeff;
   const motorRpm = inputs.motor_rpm ?? parameters.motor_rpm;
 
+  // v1.48: Check if belt is explicitly selected (gates belt-dependent outputs)
+  const beltSelected = hasBeltSelection(inputs);
+
   // v1.17: Get effective pulley diameters (override-based, no silent defaults)
   // v1.24: Extended to support pulley family/variant selection
   // If diameters are undefined, use NaN to propagate through calculations
@@ -2253,22 +2295,23 @@ export function calculate(
   });
 
   // Return all outputs
+  // v1.48: Belt-dependent outputs are gated to null when no belt is selected
   return {
     // Intermediate outputs
     parts_on_belt: partsOnBelt,
     load_on_belt_lbf: loadOnBeltLbf,
-    belt_weight_lbf: beltWeightLbf,
-    total_load_lbf: totalLoadLbf,
+    belt_weight_lbf: beltSelected ? beltWeightLbf : null,
+    total_load_lbf: beltSelected ? totalLoadLbf : null,
     total_belt_length_in: totalBeltLengthIn,
-    friction_pull_lb: frictionPullLb,
-    incline_pull_lb: inclinePullLb,
+    friction_pull_lb: beltSelected ? frictionPullLb : null,
+    incline_pull_lb: beltSelected ? inclinePullLb : null,
     starting_belt_pull_lb: startingBeltPullLb,
-    total_belt_pull_lb: totalBeltPullLb,
-    belt_pull_calc_lb: beltPullCalcLb,
-    piw_used: piw,
-    pil_used: pil,
-    belt_piw_effective,
-    belt_pil_effective,
+    total_belt_pull_lb: beltSelected ? totalBeltPullLb : null,
+    belt_pull_calc_lb: beltSelected ? beltPullCalcLb : null,
+    piw_used: beltSelected ? piw : null,
+    pil_used: beltSelected ? pil : null,
+    belt_piw_effective: beltSelected ? belt_piw_effective : undefined,
+    belt_pil_effective: beltSelected ? belt_pil_effective : undefined,
 
     // v1.6: Speed mode
     speed_mode_used: speedMode,
@@ -2293,7 +2336,7 @@ export function calculate(
 
     // Final outputs
     drive_shaft_rpm: driveShaftRpm,
-    torque_drive_shaft_inlbf: torqueDriveShaftInlbf,
+    torque_drive_shaft_inlbf: beltSelected ? torqueDriveShaftInlbf : null,
     gear_ratio: gearRatio,
 
     // v1.7: Chain ratio stage

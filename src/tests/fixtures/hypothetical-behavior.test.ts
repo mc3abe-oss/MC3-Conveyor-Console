@@ -44,6 +44,9 @@ function buildInputsFromScenario(scenarioInputs: Partial<SliderbedInputs>): Slid
     ...defaults,
     // v1.48: material_form is required, default to PARTS for test scenarios
     material_form: 'PARTS',
+    // v1.48: Belt coefficients required for belt-dependent outputs
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
     ...scenarioInputs,
   } as SliderbedInputs;
 }

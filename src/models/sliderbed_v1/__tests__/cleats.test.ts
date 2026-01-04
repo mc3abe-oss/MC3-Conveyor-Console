@@ -96,6 +96,8 @@ describe('Belt Cleats (v1.3)', () => {
     fluid_type: FluidType.None,
     orientation: Orientation.Lengthwise,
     part_spacing_in: 0,
+    belt_coeff_piw: 0.109, // v1.48: Required for belt-dependent outputs
+    belt_coeff_pil: 0.109,
     ...APPLICATION_DEFAULTS,
   };
 
@@ -456,6 +458,8 @@ describe('Cleat Weight & Spacing (v1.43)', () => {
     orientation: Orientation.Lengthwise,
     part_spacing_in: 0.5,
     belt_speed_fpm: 50,
+    belt_coeff_piw: 0.109, // v1.48: Required for belt-dependent outputs
+    belt_coeff_pil: 0.109,
     material_type: MaterialType.Steel,
     process_type: ProcessType.Assembly,
     parts_sharp: PartsSharp.No,

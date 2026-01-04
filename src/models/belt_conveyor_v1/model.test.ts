@@ -78,6 +78,10 @@ const LEGACY_SLIDERBED_INPUTS: SliderbedInputs = {
   belt_speed_fpm: 50,
   drive_rpm: 100,
 
+  // v1.48: Belt coefficients required for belt-dependent outputs
+  belt_coeff_piw: 0.109,
+  belt_coeff_pil: 0.109,
+
   // Product
   part_weight_lbs: 5,
   part_length_in: 12,

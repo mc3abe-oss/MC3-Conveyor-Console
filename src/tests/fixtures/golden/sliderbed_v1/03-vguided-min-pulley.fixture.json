@@ -20,6 +20,8 @@
     "part_spacing_in": 4,
     "belt_tracking_method": "V-guided",
     "v_guide_key": "K10",
+    "belt_coeff_piw": 0.109,
+    "belt_coeff_pil": 0.109,
     "vguide_min_pulley_dia_solid_in": 3.5,
     "vguide_min_pulley_dia_notched_in": 2.5,
     "belt_min_pulley_dia_with_vguide_in": 3.0,

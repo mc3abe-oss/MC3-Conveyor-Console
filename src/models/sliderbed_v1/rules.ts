@@ -643,6 +643,27 @@ export function validateInputs(
     });
   }
 
+  // v1.48: Belt selection is REQUIRED
+  // Belt is considered "selected" if PIW/PIL coefficients are explicitly provided
+  // through any of these sources:
+  //   1. belt_catalog_key (belt from catalog lookup)
+  //   2. belt_piw_override + belt_pil_override (user manual override)
+  //   3. belt_piw + belt_pil (from catalog when belt is selected)
+  //   4. belt_coeff_piw + belt_coeff_pil (advanced parameter mode)
+  const hasBeltSelection =
+    (inputs.belt_catalog_key !== undefined && inputs.belt_catalog_key !== null) ||
+    (inputs.belt_piw_override !== undefined && inputs.belt_pil_override !== undefined) ||
+    (inputs.belt_piw !== undefined && inputs.belt_pil !== undefined) ||
+    (inputs.belt_coeff_piw !== undefined && inputs.belt_coeff_pil !== undefined);
+
+  if (!hasBeltSelection) {
+    errors.push({
+      field: 'belt_catalog_key',
+      message: 'Belt selection is required. Please select a belt from the catalog or provide belt coefficients.',
+      severity: 'error',
+    });
+  }
+
   // Shaft diameter range validation
   if (inputs.drive_shaft_diameter_in !== undefined) {
     if (inputs.drive_shaft_diameter_in < 0.5) {

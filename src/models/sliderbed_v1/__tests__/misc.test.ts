@@ -103,6 +103,9 @@ describe('PCI Tube Stress Calculations (v1.27)', () => {
     drive_hand: DriveHand.RightHand,
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   // Test 1: Resultant load output is populated (wire-only)
@@ -282,6 +285,9 @@ describe('Material Form - PARTS vs BULK (v1.29)', () => {
     drive_hand: DriveHand.RightHand,
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   // Test 1: Legacy config (no material_form) defaults to PARTS via migration

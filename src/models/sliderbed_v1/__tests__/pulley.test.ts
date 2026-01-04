@@ -94,6 +94,9 @@ describe('Split Pulley Diameter (v1.3)', () => {
     drive_hand: DriveHand.RightHand,
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   const baseInputs: SliderbedInputs = {
@@ -363,28 +366,31 @@ describe('Belt Minimum Pulley Diameter (v1.11)', () => {
     drive_hand: DriveHand.RightHand,
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
-  describe('No belt selected (backward compatibility)', () => {
-    it('should calculate successfully with no warnings when no belt is selected', () => {
+  describe('No belt selected (v1.48: belt is mandatory)', () => {
+    it('should error when no belt is selected', () => {
       const inputs: SliderbedInputs = {
         ...BASE_INPUTS,
         belt_catalog_key: undefined,
+        belt_piw: undefined,
+        belt_pil: undefined,
+        belt_piw_override: undefined,
+        belt_pil_override: undefined,
+        belt_coeff_piw: undefined,
+        belt_coeff_pil: undefined,
         belt_min_pulley_dia_no_vguide_in: undefined,
         belt_min_pulley_dia_with_vguide_in: undefined,
       };
 
       const result = runCalculation({ inputs });
 
-      expect(result.success).toBe(true);
-      expect(result.outputs?.min_pulley_drive_required_in).toBeUndefined();
-      expect(result.outputs?.min_pulley_tail_required_in).toBeUndefined();
-      expect(result.outputs?.drive_pulley_meets_minimum).toBeUndefined();
-      expect(result.outputs?.tail_pulley_meets_minimum).toBeUndefined();
-      // No belt-related pulley warnings
-      expect(
-        result.warnings?.some((w) => w.message.includes('below belt minimum'))
-      ).toBeFalsy();
+      // v1.48: Belt selection is mandatory
+      expect(result.success).toBe(false);
+      expect(result.errors?.some(e => e.field === 'belt_catalog_key')).toBe(true);
     });
   });
 
@@ -843,6 +849,9 @@ describe.skip('[SKIP: Pulley Catalog Phase 2] v1.16 Catalog Diameter Authority',
     drive_hand: DriveHand.RightHand,
     belt_tracking_method: BeltTrackingMethod.Crowned,
     shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    // v1.48: Belt selection is mandatory
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
   };
 
   // Test pulley catalog items
