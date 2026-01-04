@@ -897,15 +897,20 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
       )).toBe(true);
     });
 
-    it('should use conservative friction (full load) regardless of incline', () => {
+    it('should reduce friction pull with cos(incline) on inclined conveyors', () => {
       const inputs0 = { ...baseInputs, conveyor_incline_deg: 0 };
       const inputs30 = { ...baseInputs, conveyor_incline_deg: 30 };
 
       const result0 = runCalculation({ inputs: inputs0 });
       const result30 = runCalculation({ inputs: inputs30 });
 
-      // Friction pull should be the same for both (acts on full load)
-      expect(result0.outputs?.friction_pull_lb).toBeCloseTo(result30.outputs!.friction_pull_lb, 2);
+      // Physics: Normal force on incline = W * cos(θ)
+      // So friction = μ * W * cos(θ)
+      // For 30°, friction should be cos(30°) = 0.866 times the flat friction
+      const expectedRatio = Math.cos(30 * Math.PI / 180); // ~0.866
+      const actualRatio = result30.outputs!.friction_pull_lb / result0.outputs!.friction_pull_lb;
+
+      expect(actualRatio).toBeCloseTo(expectedRatio, 3);
     });
   });
 

@@ -648,15 +648,20 @@ export function calculateBeltPull(
  * Calculate friction pull in lb
  *
  * Formula:
- *   friction_pull_lb = friction_coeff * total_load_lb
+ *   friction_pull_lb = friction_coeff * total_load_lb * cos(incline_rad)
  *
- * Note: Friction is conservatively assumed to act on the full load regardless of incline
+ * Physics: On an incline, the normal force is W * cos(θ), so friction = μ * N = μ * W * cos(θ).
+ * For flat conveyors (0°), cos(0) = 1, so this reduces to μ * W.
+ *
+ * Note: The incline angle is optional for backward compatibility (defaults to 0 = flat).
  */
 export function calculateFrictionPull(
   frictionCoeff: number,
-  totalLoadLb: number
+  totalLoadLb: number,
+  inclineDeg: number = 0
 ): number {
-  return frictionCoeff * totalLoadLb;
+  const inclineRad = (inclineDeg * PI) / 180;
+  return frictionCoeff * totalLoadLb * Math.cos(inclineRad);
 }
 
 /**
@@ -1858,14 +1863,16 @@ export function calculate(
     inputs.conveyor_length_cc_in
   );
 
-  // Step 9: Friction pull (conservative: acts on full load regardless of incline)
-  const frictionPullLb = calculateFrictionPull(frictionCoeff, totalLoadLbf);
-
-  // Step 10: Incline pull (gravitational component)
+  // Step 9: Get incline angle for friction and incline calculations
   const inclineDeg = inputs.conveyor_incline_deg ?? 0;
+
+  // Step 10: Friction pull (uses cos(incline) for normal force component)
+  const frictionPullLb = calculateFrictionPull(frictionCoeff, totalLoadLbf, inclineDeg);
+
+  // Step 11: Incline pull (gravitational component = W * sin(θ))
   const inclinePullLb = calculateInclinePull(totalLoadLbf, inclineDeg);
 
-  // Step 11: Total belt pull (friction + incline + starting)
+  // Step 12: Total belt pull (friction + incline + starting)
   const totalBeltPullLb = calculateTotalBeltPull(
     frictionPullLb,
     inclinePullLb,

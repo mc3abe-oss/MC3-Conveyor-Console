@@ -344,6 +344,100 @@ describe('Roller Bed COF Changes Math', () => {
 });
 
 // ============================================================================
+// INCLINE FRICTION GEOMETRY TESTS
+// ============================================================================
+
+describe('Incline Friction Geometry', () => {
+  it('should reduce friction pull by cos(incline) on inclined conveyors', () => {
+    const flatInputs: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 0,
+      bed_type: BedType.SliderBed,
+    };
+    const inclinedInputs: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 30,
+      bed_type: BedType.SliderBed,
+    };
+
+    const flatResult = calculate(flatInputs, DEFAULT_PARAMETERS);
+    const inclinedResult = calculate(inclinedInputs, DEFAULT_PARAMETERS);
+
+    // Physics: Normal force on incline = W * cos(θ)
+    // So friction = μ * W * cos(θ)
+    // For 30°, friction should be cos(30°) ≈ 0.866 times the flat friction
+    const expectedRatio = Math.cos(30 * Math.PI / 180);
+    const actualRatio = inclinedResult.friction_pull_lb / flatResult.friction_pull_lb;
+
+    expect(actualRatio).toBeCloseTo(expectedRatio, 3);
+  });
+
+  it('should have same friction for flat conveyor (cos(0) = 1)', () => {
+    const inputs: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 0,
+      bed_type: BedType.SliderBed,
+    };
+
+    const result = calculate(inputs, DEFAULT_PARAMETERS);
+
+    // Friction pull should equal μ * total_load for flat conveyor
+    const expectedFriction = result.friction_coeff_used * result.total_load_lbf!;
+    expect(result.friction_pull_lb).toBeCloseTo(expectedFriction, 3);
+  });
+
+  it('should apply cos(incline) to roller bed friction as well', () => {
+    const flatRoller: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 0,
+      bed_type: BedType.RollerBed,
+    };
+    const inclinedRoller: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 15,
+      bed_type: BedType.RollerBed,
+    };
+
+    const flatResult = calculate(flatRoller, DEFAULT_PARAMETERS);
+    const inclinedResult = calculate(inclinedRoller, DEFAULT_PARAMETERS);
+
+    // COF should be 0.03 for roller bed
+    expect(flatResult.friction_coeff_used).toBe(0.03);
+    expect(inclinedResult.friction_coeff_used).toBe(0.03);
+
+    // Friction ratio should follow cos(15°)
+    const expectedRatio = Math.cos(15 * Math.PI / 180);
+    const actualRatio = inclinedResult.friction_pull_lb / flatResult.friction_pull_lb;
+
+    expect(actualRatio).toBeCloseTo(expectedRatio, 3);
+  });
+
+  it('should combine bed type COF with incline geometry correctly', () => {
+    // Compare slider vs roller at same incline
+    const sliderInclined: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 20,
+      bed_type: BedType.SliderBed,
+    };
+    const rollerInclined: BeltConveyorInputs = {
+      ...LEGACY_SLIDERBED_INPUTS,
+      conveyor_incline_deg: 20,
+      bed_type: BedType.RollerBed,
+    };
+
+    const sliderResult = calculate(sliderInclined, DEFAULT_PARAMETERS);
+    const rollerResult = calculate(rollerInclined, DEFAULT_PARAMETERS);
+
+    // Same cos(20°) factor, but different COF (0.25 vs 0.03)
+    // Friction ratio should be 0.03/0.25 = 0.12
+    const cofRatio = 0.03 / 0.25;
+    const frictionRatio = rollerResult.friction_pull_lb / sliderResult.friction_pull_lb;
+
+    expect(frictionRatio).toBeCloseTo(cofRatio, 3);
+  });
+});
+
+// ============================================================================
 // PREMIUM FLAGS TESTS
 // ============================================================================
 
