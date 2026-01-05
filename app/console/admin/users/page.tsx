@@ -5,13 +5,16 @@
  *
  * Features:
  * - List all users with their current roles
+ * - Search by email or user ID
+ * - Pagination (25 per page)
+ * - Copy full UUID to clipboard
  * - Change user roles (BELT_USER, BELT_ADMIN, SUPER_ADMIN)
  * - Self-demotion prevention (backend enforced)
  */
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useCurrentUserRole, Role } from '../../../hooks/useCurrentUserRole';
 
 interface UserListItem {
@@ -33,6 +36,8 @@ const ROLE_COLORS: Record<Role, string> = {
   BELT_USER: 'bg-gray-100 text-gray-800 border-gray-200',
 };
 
+const PAGE_SIZE = 25;
+
 export default function UserAdminPage() {
   const { isSuperAdmin, userId: currentUserId, isLoading: isLoadingRole } = useCurrentUserRole();
 
@@ -44,12 +49,47 @@ export default function UserAdminPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  // Search and pagination state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [toast, setToast] = useState<string | null>(null);
+
+  // Filter users based on search query
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery.trim()) return users;
+    const query = searchQuery.toLowerCase();
+    return users.filter(
+      (user) =>
+        user.email.toLowerCase().includes(query) ||
+        user.userId.toLowerCase().includes(query)
+    );
+  }, [users, searchQuery]);
+
+  // Paginate filtered users
+  const totalPages = Math.ceil(filteredUsers.length / PAGE_SIZE);
+  const paginatedUsers = useMemo(() => {
+    const start = (currentPage - 1) * PAGE_SIZE;
+    return filteredUsers.slice(start, start + PAGE_SIZE);
+  }, [filteredUsers, currentPage]);
+
+  // Reset to first page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   // Load users on mount
   useEffect(() => {
     if (!isLoadingRole && isSuperAdmin) {
       loadUsers();
     }
   }, [isLoadingRole, isSuperAdmin]);
+
+  // Auto-hide toast after 2 seconds
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 2000);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   async function loadUsers() {
     setIsLoading(true);
@@ -82,6 +122,15 @@ export default function UserAdminPage() {
     setEditingUserId(null);
     setSelectedRole(null);
     setSaveMessage(null);
+  }
+
+  async function copyUserId(userId: string) {
+    try {
+      await navigator.clipboard.writeText(userId);
+      setToast('User ID copied!');
+    } catch {
+      setToast('Failed to copy');
+    }
   }
 
   async function handleSaveRole(userId: string) {
@@ -164,7 +213,34 @@ export default function UserAdminPage() {
 
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-2xl font-bold mb-6">User Admin</h1>
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 bg-gray-900 text-white px-4 py-2 rounded shadow-lg z-50 animate-fade-in">
+          {toast}
+        </div>
+      )}
+
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-bold">User Admin</h1>
+          <p className="text-gray-600 text-sm mt-1">
+            {filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}
+            {searchQuery && ` matching "${searchQuery}"`}
+            {!searchQuery && users.length > 0 && ` total`}
+          </p>
+        </div>
+      </div>
+
+      {/* Search box */}
+      <div className="mb-4">
+        <input
+          type="text"
+          placeholder="Search by email or user ID..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        />
+      </div>
 
       {saveMessage && (
         <div
@@ -186,6 +262,9 @@ export default function UserAdminPage() {
                 User ID
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Email
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Role
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -197,18 +276,29 @@ export default function UserAdminPage() {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.map((user) => (
+            {paginatedUsers.map((user) => (
               <tr key={user.userId} className={user.userId === currentUserId ? 'bg-blue-50' : ''}>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-gray-900">
-                    {user.userId.substring(0, 8)}...
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-mono text-gray-900">
+                      {user.userId.substring(0, 8)}...
+                    </span>
+                    <button
+                      onClick={() => copyUserId(user.userId)}
+                      title="Copy full User ID"
+                      className="p-1 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    </button>
                     {user.userId === currentUserId && (
-                      <span className="ml-2 text-xs text-blue-600">(you)</span>
+                      <span className="text-xs text-blue-600 font-medium">(you)</span>
                     )}
                   </div>
-                  {user.email && (
-                    <div className="text-sm text-gray-500">{user.email}</div>
-                  )}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <span className="text-sm text-gray-900">{user.email || '(no email)'}</span>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   {editingUserId === user.userId ? (
@@ -260,16 +350,45 @@ export default function UserAdminPage() {
                 </td>
               </tr>
             ))}
-            {users.length === 0 && (
+            {paginatedUsers.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-6 py-4 text-center text-gray-500">
-                  No users found
+                <td colSpan={5} className="px-6 py-4 text-center text-gray-500">
+                  {searchQuery ? 'No users match your search' : 'No users found'}
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="mt-4 flex items-center justify-between">
+          <div className="text-sm text-gray-600">
+            Showing {(currentPage - 1) * PAGE_SIZE + 1} to{' '}
+            {Math.min(currentPage * PAGE_SIZE, filteredUsers.length)} of {filteredUsers.length}
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              disabled={currentPage === 1}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            <span className="px-3 py-1 text-sm text-gray-600">
+              Page {currentPage} of {totalPages}
+            </span>
+            <button
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              disabled={currentPage === totalPages}
+              className="px-3 py-1 border border-gray-300 rounded text-sm hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
         <h3 className="font-semibold text-blue-800">Role Permissions</h3>
