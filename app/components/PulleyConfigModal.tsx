@@ -27,6 +27,7 @@ import {
   formatWallThickness,
   WallValidationResult,
   PulleyModel,
+  getAllowedThicknessOptions,
 } from '../../src/lib/pulley-models';
 import { BeltTrackingMethod } from '../../src/models/sliderbed_v1/schema';
 import {
@@ -834,9 +835,9 @@ export default function PulleyConfigModal({
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
                 >
                   <option value="">Select wall thickness...</option>
-                  {selectedModel?.allowed_wall_steps_in?.map((wall) => (
-                    <option key={wall} value={wall.toString()}>
-                      {formatWallThickness(wall)}
+                  {selectedModel && getAllowedThicknessOptions(selectedModel as PulleyModel).map((opt) => (
+                    <option key={opt.key} value={opt.thickness_in.toString()}>
+                      {opt.label}
                     </option>
                   ))}
                 </select>

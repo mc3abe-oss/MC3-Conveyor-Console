@@ -21,6 +21,9 @@ export interface PulleyLibraryModel {
   shell_od_in: number;
   default_shell_wall_in: number;
   allowed_wall_steps_in: number[];
+  // Canonical thickness keys (v1.51) - references thickness library
+  allowed_wall_thickness_keys: string[] | null;
+  default_wall_thickness_key: string | null;
   face_width_min_in: number;
   face_width_max_in: number;
   face_width_allowance_in: number;
@@ -191,6 +194,9 @@ export async function POST(request: NextRequest) {
       shell_od_in: body.shell_od_in,
       default_shell_wall_in: body.default_shell_wall_in,
       allowed_wall_steps_in: body.allowed_wall_steps_in || [0.134, 0.188, 0.250],
+      // Canonical thickness keys (v1.51)
+      allowed_wall_thickness_keys: body.allowed_wall_thickness_keys || null,
+      default_wall_thickness_key: body.default_wall_thickness_key || null,
       face_width_min_in: body.face_width_min_in,
       face_width_max_in: body.face_width_max_in,
       face_width_allowance_in: body.face_width_allowance_in ?? 2.0,
@@ -286,6 +292,9 @@ export async function PUT(request: NextRequest) {
     if (body.shell_od_in !== undefined) updateData.shell_od_in = body.shell_od_in;
     if (body.default_shell_wall_in !== undefined) updateData.default_shell_wall_in = body.default_shell_wall_in;
     if (body.allowed_wall_steps_in !== undefined) updateData.allowed_wall_steps_in = body.allowed_wall_steps_in;
+    // Canonical thickness keys (v1.51)
+    if (body.allowed_wall_thickness_keys !== undefined) updateData.allowed_wall_thickness_keys = body.allowed_wall_thickness_keys;
+    if (body.default_wall_thickness_key !== undefined) updateData.default_wall_thickness_key = body.default_wall_thickness_key;
     if (body.face_width_min_in !== undefined) updateData.face_width_min_in = body.face_width_min_in;
     if (body.face_width_max_in !== undefined) updateData.face_width_max_in = body.face_width_max_in;
     if (body.face_width_allowance_in !== undefined) updateData.face_width_allowance_in = body.face_width_allowance_in;

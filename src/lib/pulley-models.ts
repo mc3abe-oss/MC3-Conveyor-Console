@@ -28,6 +28,9 @@ export interface PulleyModel {
   shell_od_in: number;
   default_shell_wall_in: number;
   allowed_wall_steps_in: number[];
+  // Canonical thickness keys (v1.51) - references thickness library
+  allowed_wall_thickness_keys: string[] | null;
+  default_wall_thickness_key: string | null;
   face_width_min_in: number;
   face_width_max_in: number;
   face_width_allowance_in: number;
@@ -412,4 +415,89 @@ export function formatWallThickness(wallIn: number): string {
   }
 
   return `${wallIn}"`;
+}
+
+// ============================================================================
+// CANONICAL THICKNESS KEY HELPERS (v1.51)
+// ============================================================================
+
+/**
+ * Get effective allowed wall thickness keys for a model
+ * Returns canonical keys if available, otherwise derives from legacy numeric values
+ */
+export function getEffectiveAllowedThicknessKeys(model: PulleyModel): string[] {
+  // Prefer canonical keys if available
+  if (model.allowed_wall_thickness_keys && model.allowed_wall_thickness_keys.length > 0) {
+    return model.allowed_wall_thickness_keys;
+  }
+
+  // Fall back to deriving from legacy numeric values
+  const keys: string[] = [];
+  for (const wallIn of model.allowed_wall_steps_in) {
+    const option = getThicknessOptionByValue(wallIn, 0.005);
+    if (option) {
+      keys.push(option.key);
+    }
+  }
+  return keys;
+}
+
+/**
+ * Get effective default wall thickness key for a model
+ * Returns canonical key if available, otherwise derives from legacy numeric value
+ */
+export function getEffectiveDefaultThicknessKey(model: PulleyModel): string | null {
+  // Prefer canonical key if available
+  if (model.default_wall_thickness_key) {
+    return model.default_wall_thickness_key;
+  }
+
+  // Fall back to deriving from legacy numeric value
+  const option = getThicknessOptionByValue(model.default_shell_wall_in, 0.005);
+  return option?.key || null;
+}
+
+/**
+ * Get allowed thickness options for a model (filtered from canonical library)
+ * Returns only the thickness options that are allowed for this specific model
+ */
+export function getAllowedThicknessOptions(model: PulleyModel): ThicknessOption[] {
+  const allowedKeys = getEffectiveAllowedThicknessKeys(model);
+  const allOptions = getAllThicknessOptions();
+
+  return allOptions.filter(opt => allowedKeys.includes(opt.key));
+}
+
+/**
+ * Check if a model has any unmatched legacy thickness values
+ * Returns array of numeric values that couldn't be matched to canonical keys
+ */
+export function getUnmatchedLegacyThicknesses(model: PulleyModel): number[] {
+  const unmatched: number[] = [];
+
+  for (const wallIn of model.allowed_wall_steps_in) {
+    const option = getThicknessOptionByValue(wallIn, 0.005);
+    if (!option) {
+      unmatched.push(wallIn);
+    }
+  }
+
+  return unmatched;
+}
+
+/**
+ * Convert canonical thickness keys to numeric values (for legacy field sync)
+ */
+export function thicknessKeysToNumericValues(keys: string[]): number[] {
+  const values: number[] = [];
+  const allOptions = getAllThicknessOptions();
+
+  for (const key of keys) {
+    const option = allOptions.find(opt => opt.key === key);
+    if (option) {
+      values.push(option.thickness_in);
+    }
+  }
+
+  return values.sort((a, b) => a - b);
 }

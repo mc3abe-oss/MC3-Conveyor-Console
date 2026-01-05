@@ -10,8 +10,12 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
-
+import { useState, useEffect, useMemo } from 'react';
+import {
+  getAllThicknessOptions,
+  getThicknessOption,
+  getThicknessOptionByValue,
+} from '../../../../src/lib/thickness';
 
 // ============================================================================
 // TYPES
@@ -47,6 +51,9 @@ interface PulleyModel {
   shell_od_in: number;
   default_shell_wall_in: number;
   allowed_wall_steps_in: number[];
+  // Canonical thickness keys (v1.51)
+  allowed_wall_thickness_keys: string[] | null;
+  default_wall_thickness_key: string | null;
   face_width_min_in: number;
   face_width_max_in: number;
   face_width_allowance_in: number;
@@ -630,14 +637,49 @@ interface ModelFormProps {
 }
 
 function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormProps) {
+  // Get all canonical thickness options
+  const allThicknessOptions = useMemo(() => getAllThicknessOptions(), []);
+
+  // Derive initial allowed keys from model (canonical keys if available, else from legacy values)
+  const deriveAllowedKeys = (m: PulleyModel | null): string[] => {
+    if (m?.allowed_wall_thickness_keys && m.allowed_wall_thickness_keys.length > 0) {
+      return m.allowed_wall_thickness_keys;
+    }
+    // Derive from legacy numeric values
+    if (m?.allowed_wall_steps_in) {
+      return m.allowed_wall_steps_in
+        .map(v => getThicknessOptionByValue(v, 0.005)?.key)
+        .filter((k): k is string => k !== undefined);
+    }
+    return ['ga_12', 'ga_10', 'frac_3_16']; // Default for new models
+  };
+
+  // Derive initial default key
+  const deriveDefaultKey = (m: PulleyModel | null): string | null => {
+    if (m?.default_wall_thickness_key) {
+      return m.default_wall_thickness_key;
+    }
+    if (m?.default_shell_wall_in) {
+      return getThicknessOptionByValue(m.default_shell_wall_in, 0.005)?.key || null;
+    }
+    return 'ga_10'; // Default for new models
+  };
+
+  // Check for unmatched legacy values
+  const unmatchedLegacyValues = useMemo(() => {
+    if (!model?.allowed_wall_steps_in) return [];
+    return model.allowed_wall_steps_in.filter(v => !getThicknessOptionByValue(v, 0.005));
+  }, [model]);
+
   const [formData, setFormData] = useState({
     model_key: model?.model_key || '',
     display_name: model?.display_name || '',
     description: model?.description || '',
     style_key: model?.style_key || (styles[0]?.key || ''),
     shell_od_in: model?.shell_od_in?.toString() || '6.0',
-    default_shell_wall_in: model?.default_shell_wall_in?.toString() || '0.134',
-    allowed_wall_steps_in: model?.allowed_wall_steps_in?.join(', ') || '0.109, 0.134, 0.188',
+    // Canonical thickness keys (primary)
+    allowed_wall_thickness_keys: deriveAllowedKeys(model),
+    default_wall_thickness_key: deriveDefaultKey(model),
     face_width_min_in: model?.face_width_min_in?.toString() || '6.0',
     face_width_max_in: model?.face_width_max_in?.toString() || '48.0',
     face_width_allowance_in: model?.face_width_allowance_in?.toString() || '2.0',
@@ -665,8 +707,8 @@ function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormPr
         description: model.description || '',
         style_key: model.style_key,
         shell_od_in: model.shell_od_in.toString(),
-        default_shell_wall_in: model.default_shell_wall_in.toString(),
-        allowed_wall_steps_in: model.allowed_wall_steps_in.join(', '),
+        allowed_wall_thickness_keys: deriveAllowedKeys(model),
+        default_wall_thickness_key: deriveDefaultKey(model),
         face_width_min_in: model.face_width_min_in.toString(),
         face_width_max_in: model.face_width_max_in.toString(),
         face_width_allowance_in: model.face_width_allowance_in.toString(),
@@ -689,16 +731,27 @@ function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormPr
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Parse wall steps
-    const wallSteps = formData.allowed_wall_steps_in
-      .split(',')
-      .map((s) => parseFloat(s.trim()))
-      .filter((n) => !isNaN(n) && n > 0);
-
-    if (wallSteps.length === 0) {
-      setMessage({ type: 'error', text: 'At least one wall thickness step is required' });
+    // Validate allowed thickness keys
+    if (formData.allowed_wall_thickness_keys.length === 0) {
+      setMessage({ type: 'error', text: 'At least one wall thickness is required' });
       return;
     }
+
+    // Validate default is in allowed list
+    if (formData.default_wall_thickness_key && !formData.allowed_wall_thickness_keys.includes(formData.default_wall_thickness_key)) {
+      setMessage({ type: 'error', text: 'Default wall thickness must be in the allowed list' });
+      return;
+    }
+
+    // Derive numeric values from canonical keys for backward compatibility
+    const wallSteps = formData.allowed_wall_thickness_keys
+      .map(key => getThicknessOption(key)?.thickness_in)
+      .filter((v): v is number => v !== undefined)
+      .sort((a, b) => a - b);
+
+    const defaultWallIn = formData.default_wall_thickness_key
+      ? getThicknessOption(formData.default_wall_thickness_key)?.thickness_in ?? 0.134
+      : wallSteps[0] ?? 0.134;
 
     setIsSaving(true);
     setMessage(null);
@@ -713,8 +766,12 @@ function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormPr
           description: formData.description.trim() || null,
           style_key: formData.style_key,
           shell_od_in: parseFloat(formData.shell_od_in),
-          default_shell_wall_in: parseFloat(formData.default_shell_wall_in),
+          // Legacy numeric fields (for backward compatibility)
+          default_shell_wall_in: defaultWallIn,
           allowed_wall_steps_in: wallSteps,
+          // Canonical thickness keys (primary)
+          allowed_wall_thickness_keys: formData.allowed_wall_thickness_keys,
+          default_wall_thickness_key: formData.default_wall_thickness_key,
           face_width_min_in: parseFloat(formData.face_width_min_in),
           face_width_max_in: parseFloat(formData.face_width_max_in),
           face_width_allowance_in: parseFloat(formData.face_width_allowance_in),
@@ -832,36 +889,109 @@ function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormPr
       {/* Shell Geometry */}
       <div className="border-t pt-4">
         <h3 className="text-sm font-semibold text-gray-700 mb-3">Shell Geometry</h3>
-        <div className="grid grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Shell OD (in)</label>
-            <input
-              type="number"
-              step="0.5"
-              value={formData.shell_od_in}
-              onChange={(e) => setFormData({ ...formData, shell_od_in: e.target.value })}
-              className="w-full px-3 py-2 border rounded-md"
-            />
+
+        {/* Shell OD */}
+        <div className="mb-4">
+          <label className="block text-sm font-medium text-gray-700 mb-1">Shell OD (in)</label>
+          <input
+            type="number"
+            step="0.5"
+            value={formData.shell_od_in}
+            onChange={(e) => setFormData({ ...formData, shell_od_in: e.target.value })}
+            className="w-32 px-3 py-2 border rounded-md"
+          />
+        </div>
+
+        {/* Wall Thickness Picker */}
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Allowed Wall Thicknesses
+            <span className="ml-2 text-xs text-gray-400 font-normal">
+              (check to allow, select one as default)
+            </span>
+          </label>
+
+          {/* Unmatched legacy warning */}
+          {unmatchedLegacyValues.length > 0 && (
+            <div className="mb-2 p-2 bg-amber-50 border border-amber-200 rounded text-sm text-amber-700">
+              <strong>Warning:</strong> {unmatchedLegacyValues.length} legacy value(s) not in canonical library:{' '}
+              {unmatchedLegacyValues.map(v => `${v}"`).join(', ')}
+            </div>
+          )}
+
+          {/* Thickness table */}
+          <div className="border rounded-md overflow-hidden">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 w-12">Allow</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600">Thickness</th>
+                  <th className="px-3 py-2 text-left font-medium text-gray-600 w-16">Default</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {allThicknessOptions.map((opt) => {
+                  const isAllowed = formData.allowed_wall_thickness_keys.includes(opt.key);
+                  const isDefault = formData.default_wall_thickness_key === opt.key;
+
+                  return (
+                    <tr key={opt.key} className={isAllowed ? 'bg-white' : 'bg-gray-50'}>
+                      <td className="px-3 py-2">
+                        <input
+                          type="checkbox"
+                          checked={isAllowed}
+                          onChange={(e) => {
+                            const newAllowed = e.target.checked
+                              ? [...formData.allowed_wall_thickness_keys, opt.key]
+                              : formData.allowed_wall_thickness_keys.filter(k => k !== opt.key);
+
+                            // If unchecking the default, clear it
+                            const newDefault = (!e.target.checked && isDefault)
+                              ? null
+                              : formData.default_wall_thickness_key;
+
+                            setFormData({
+                              ...formData,
+                              allowed_wall_thickness_keys: newAllowed,
+                              default_wall_thickness_key: newDefault,
+                            });
+                          }}
+                          className="rounded border-gray-300"
+                        />
+                      </td>
+                      <td className={`px-3 py-2 ${isAllowed ? 'text-gray-900' : 'text-gray-400'}`}>
+                        {opt.label}
+                      </td>
+                      <td className="px-3 py-2">
+                        <input
+                          type="radio"
+                          name="default_wall_thickness"
+                          checked={isDefault}
+                          disabled={!isAllowed}
+                          onChange={() => {
+                            setFormData({
+                              ...formData,
+                              default_wall_thickness_key: opt.key,
+                            });
+                          }}
+                          className="text-blue-600 disabled:opacity-30"
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Wall (in)</label>
-            <input
-              type="number"
-              step="0.001"
-              value={formData.default_shell_wall_in}
-              onChange={(e) => setFormData({ ...formData, default_shell_wall_in: e.target.value })}
-              className="w-full px-3 py-2 border rounded-md"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Wall Steps (comma-sep)</label>
-            <input
-              type="text"
-              value={formData.allowed_wall_steps_in}
-              onChange={(e) => setFormData({ ...formData, allowed_wall_steps_in: e.target.value })}
-              placeholder="0.109, 0.134, 0.188"
-              className="w-full px-3 py-2 border rounded-md"
-            />
+
+          {/* Summary */}
+          <div className="mt-2 text-xs text-gray-500">
+            {formData.allowed_wall_thickness_keys.length} thickness(es) allowed
+            {formData.default_wall_thickness_key && (
+              <span className="ml-2">
+                • Default: {allThicknessOptions.find(o => o.key === formData.default_wall_thickness_key)?.label || formData.default_wall_thickness_key}
+              </span>
+            )}
           </div>
         </div>
       </div>
