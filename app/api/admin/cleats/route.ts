@@ -9,9 +9,10 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { createClient } from '../../../../src/lib/supabase/server';
 import { CleatPattern, CLEAT_PATTERNS } from '../../../../src/lib/cleat-catalog';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
+import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 
 interface CleatCatalogPayload {
   id?: string;
@@ -67,16 +68,14 @@ export async function GET() {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
     }
+    const { user } = authResult;
 
+    const supabase = await createClient();
     const body = await request.json() as CleatCatalogPayload;
 
     // Validate required fields
@@ -154,7 +153,7 @@ export async function POST(request: NextRequest) {
         route: '/api/admin/cleats',
         action: 'INSERT',
         table: 'cleat_catalog',
-        userId,
+        userId: user.userId,
       });
     }
 
@@ -174,16 +173,14 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
     }
+    const { user } = authResult;
 
+    const supabase = await createClient();
     const body = await request.json() as CleatCatalogPayload;
 
     if (!body.id) {
@@ -244,7 +241,7 @@ export async function PUT(request: NextRequest) {
         route: '/api/admin/cleats',
         action: 'UPDATE',
         table: 'cleat_catalog',
-        userId,
+        userId: user.userId,
       });
     }
 

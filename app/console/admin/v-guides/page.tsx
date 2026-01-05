@@ -20,7 +20,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-
+import { useCurrentUserRole } from '../../../hooks/useCurrentUserRole';
+import { AdminReadOnlyBanner } from '../../../components/AdminReadOnlyBanner';
 
 interface VGuide {
   id: string;
@@ -66,6 +67,9 @@ const emptyForm: VGuideFormData = {
 };
 
 export default function AdminVGuidesPage() {
+  const { canBeltAdmin, email, isLoading: isLoadingRole } = useCurrentUserRole();
+  const isReadOnly = !canBeltAdmin;
+
   const [vguides, setVguides] = useState<VGuide[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -250,15 +254,12 @@ export default function AdminVGuidesPage() {
     }
   }
 
-  if (isLoading) {
+  if (isLoading || isLoadingRole) {
     return (
-
-        
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <h1 className="text-2xl font-bold mb-4">V-Guides Admin</h1>
           <p>Loading...</p>
         </main>
-
     );
   }
 
@@ -279,9 +280,10 @@ export default function AdminVGuidesPage() {
 
   return (
     <>
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <h1 className="text-2xl font-bold mb-6">V-Guides Admin</h1>
+
+        {isReadOnly && <AdminReadOnlyBanner email={email} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* V-Guide List */}
@@ -289,12 +291,14 @@ export default function AdminVGuidesPage() {
             <div className="bg-white rounded-lg shadow p-4">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-lg font-semibold">V-Guides</h2>
-                <button
-                  onClick={createNewVGuide}
-                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
-                >
-                  + New
-                </button>
+                {!isReadOnly && (
+                  <button
+                    onClick={createNewVGuide}
+                    className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700"
+                  >
+                    + New
+                  </button>
+                )}
               </div>
               <div className="space-y-2 max-h-[60vh] overflow-y-auto">
                 {vguides.map((vguide) => (
@@ -354,9 +358,9 @@ export default function AdminVGuidesPage() {
                         type="text"
                         value={formData.key}
                         onChange={(e) => updateField('key', e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         required
-                        disabled={!isCreating}
+                        disabled={isReadOnly || !isCreating}
                         placeholder="e.g., K10, K13, K17"
                       />
                       <p className="text-xs text-gray-500 mt-1">
@@ -371,9 +375,10 @@ export default function AdminVGuidesPage() {
                         type="text"
                         value={formData.na_letter}
                         onChange={(e) => updateField('na_letter', e.target.value.toUpperCase())}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         placeholder="e.g., O, A, B, C"
                         maxLength={1}
+                        disabled={isReadOnly}
                       />
                       <p className="text-xs text-gray-500 mt-1">Single letter alias (shown first in dropdown)</p>
                     </div>
@@ -389,11 +394,12 @@ export default function AdminVGuidesPage() {
                         type="number"
                         value={formData.min_pulley_dia_solid_in}
                         onChange={(e) => updateField('min_pulley_dia_solid_in', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         required
                         step="0.1"
                         min="0.1"
                         placeholder="e.g., 2.5"
+                        disabled={isReadOnly}
                       />
                       <p className="text-xs text-gray-500 mt-1">Required for PVC solid belt</p>
                     </div>
@@ -405,11 +411,12 @@ export default function AdminVGuidesPage() {
                         type="number"
                         value={formData.min_pulley_dia_notched_in}
                         onChange={(e) => updateField('min_pulley_dia_notched_in', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         required
                         step="0.1"
                         min="0.1"
                         placeholder="e.g., 2.0"
+                        disabled={isReadOnly}
                       />
                       <p className="text-xs text-gray-500 mt-1">Required for PVC notched belt</p>
                     </div>
@@ -426,10 +433,11 @@ export default function AdminVGuidesPage() {
                         type="number"
                         value={formData.min_pulley_dia_solid_pu_in}
                         onChange={(e) => updateField('min_pulley_dia_solid_pu_in', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         step="0.1"
                         min="0.1"
                         placeholder="e.g., 4.0"
+                        disabled={isReadOnly}
                       />
                       <p className="text-xs text-gray-500 mt-1">For PU solid belt (leave empty if N/A)</p>
                     </div>
@@ -442,10 +450,11 @@ export default function AdminVGuidesPage() {
                         type="number"
                         value={formData.min_pulley_dia_notched_pu_in}
                         onChange={(e) => updateField('min_pulley_dia_notched_pu_in', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         step="0.1"
                         min="0.1"
                         placeholder="e.g., 3.0"
+                        disabled={isReadOnly}
                       />
                       <p className="text-xs text-gray-500 mt-1">For PU notched belt (leave empty if N/A)</p>
                     </div>
@@ -459,9 +468,10 @@ export default function AdminVGuidesPage() {
                     <textarea
                       value={formData.notes}
                       onChange={(e) => updateField('notes', e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                      className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                       rows={2}
                       placeholder="Optional notes"
+                      disabled={isReadOnly}
                     />
                   </div>
 
@@ -475,8 +485,9 @@ export default function AdminVGuidesPage() {
                         type="number"
                         value={formData.sort_order}
                         onChange={(e) => updateField('sort_order', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded"
+                        className="w-full px-3 py-2 border border-gray-300 rounded disabled:bg-gray-100"
                         placeholder="e.g., 10"
+                        disabled={isReadOnly}
                       />
                       <p className="text-xs text-gray-500 mt-1">Lower numbers appear first</p>
                     </div>
@@ -487,6 +498,7 @@ export default function AdminVGuidesPage() {
                           checked={formData.is_active}
                           onChange={(e) => updateField('is_active', e.target.checked)}
                           className="h-4 w-4 text-blue-600 border-gray-300 rounded"
+                          disabled={isReadOnly}
                         />
                         <span className="ml-2 text-sm text-gray-700">Active</span>
                       </label>
@@ -505,30 +517,32 @@ export default function AdminVGuidesPage() {
                     </div>
                   )}
 
-                  <div className="flex gap-4 pt-4 border-t">
-                    <button
-                      type="submit"
-                      disabled={isSaving}
-                      className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
-                    >
-                      {isSaving ? 'Saving...' : isCreating ? 'Create V-Guide' : 'Save Changes'}
-                    </button>
-
-                    {selectedVGuide && !isCreating && (
+                  {!isReadOnly && (
+                    <div className="flex gap-4 pt-4 border-t">
                       <button
-                        type="button"
-                        onClick={handleToggleActive}
+                        type="submit"
                         disabled={isSaving}
-                        className={`px-4 py-2 rounded ${
-                          selectedVGuide.is_active
-                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
-                            : 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300'
-                        } disabled:opacity-50`}
+                        className="px-6 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400"
                       >
-                        {selectedVGuide.is_active ? 'Deactivate' : 'Reactivate'}
+                        {isSaving ? 'Saving...' : isCreating ? 'Create V-Guide' : 'Save Changes'}
                       </button>
-                    )}
-                  </div>
+
+                      {selectedVGuide && !isCreating && (
+                        <button
+                          type="button"
+                          onClick={handleToggleActive}
+                          disabled={isSaving}
+                          className={`px-4 py-2 rounded ${
+                            selectedVGuide.is_active
+                              ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200 border border-yellow-300'
+                              : 'bg-green-100 text-green-800 hover:bg-green-200 border border-green-300'
+                          } disabled:opacity-50`}
+                        >
+                          {selectedVGuide.is_active ? 'Deactivate' : 'Reactivate'}
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Info Box */}
                   <div className="mt-4 p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">

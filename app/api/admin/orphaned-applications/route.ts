@@ -5,13 +5,21 @@
  * These are orphaned records that can be safely deleted.
  *
  * Admin-only endpoint for cleanup purposes.
+ * Requires BELT_ADMIN or SUPER_ADMIN role.
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 
-export async function GET(_request: NextRequest) {
+export async function GET() {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+
     const supabase = await createClient();
 
     // Find applications with no quote_id AND no sales_order_id

@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
+import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 
 export interface PulleyLibraryModel {
   model_key: string;
@@ -97,6 +98,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+    const { user } = authResult;
+
     const supabase = await createClient();
     const body = await request.json();
 
@@ -211,6 +219,7 @@ export async function POST(request: NextRequest) {
         route: '/api/admin/pulley-models',
         action: 'INSERT',
         table: 'pulley_library_models',
+        userId: user.userId,
       });
     }
 
@@ -230,6 +239,13 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+    const { user } = authResult;
+
     const supabase = await createClient();
     const body = await request.json();
 
@@ -298,6 +314,7 @@ export async function PUT(request: NextRequest) {
         route: '/api/admin/pulley-models',
         action: 'UPDATE',
         table: 'pulley_library_models',
+        userId: user.userId,
       });
     }
 
@@ -316,6 +333,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+    const { user } = authResult;
+
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const modelKey = searchParams.get('model_key');
@@ -339,6 +363,7 @@ export async function DELETE(request: NextRequest) {
         route: '/api/admin/pulley-models',
         action: 'DELETE',
         table: 'pulley_library_models',
+        userId: user.userId,
       });
     }
 

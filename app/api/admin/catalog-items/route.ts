@@ -9,8 +9,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { createClient } from '../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
+import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 
 interface CatalogItemPayload {
   catalog_key: string;
@@ -70,16 +71,14 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
     }
+    const { user } = authResult;
 
+    const supabase = await createClient();
     const body = await request.json() as CatalogItemPayload;
 
     if (!body.catalog_key || !body.item_key || !body.label) {
@@ -121,7 +120,7 @@ export async function POST(request: NextRequest) {
         route: '/api/admin/catalog-items',
         action: 'INSERT',
         table: 'catalog_items',
-        userId,
+        userId: user.userId,
       });
     }
 
@@ -141,16 +140,14 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
-    const supabase = await createClient();
-
-    const userId = await getCurrentUserId();
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'Authentication required' },
-        { status: 401 }
-      );
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
     }
+    const { user } = authResult;
 
+    const supabase = await createClient();
     const body = await request.json() as CatalogItemPayload;
 
     if (!body.catalog_key || !body.item_key) {
@@ -200,7 +197,7 @@ export async function PUT(request: NextRequest) {
         route: '/api/admin/catalog-items',
         action: 'UPDATE',
         table: 'catalog_items',
-        userId,
+        userId: user.userId,
       });
     }
 

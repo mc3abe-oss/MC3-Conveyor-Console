@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
+import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 
 // Pulley style type from the database enum
 export type PulleyStyleType = 'DRUM' | 'WING' | 'SPIRAL_WING';
@@ -80,6 +81,13 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+    const { user } = authResult;
+
     const supabase = await createClient();
     const body = await request.json();
 
@@ -154,6 +162,7 @@ export async function POST(request: NextRequest) {
         route: '/api/admin/pulley-library',
         action: 'INSERT',
         table: 'pulley_library_styles',
+        userId: user.userId,
       });
     }
 
@@ -173,6 +182,13 @@ export async function POST(request: NextRequest) {
  */
 export async function PUT(request: NextRequest) {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+    const { user } = authResult;
+
     const supabase = await createClient();
     const body = await request.json();
 
@@ -232,6 +248,7 @@ export async function PUT(request: NextRequest) {
         route: '/api/admin/pulley-library',
         action: 'UPDATE',
         table: 'pulley_library_styles',
+        userId: user.userId,
       });
     }
 
@@ -251,6 +268,13 @@ export async function PUT(request: NextRequest) {
  */
 export async function DELETE(request: NextRequest) {
   try {
+    // Require belt admin role before any DB operations
+    const authResult = await requireBeltAdmin();
+    if (authResult.response) {
+      return authResult.response;
+    }
+    const { user } = authResult;
+
     const supabase = await createClient();
     const { searchParams } = new URL(request.url);
     const key = searchParams.get('key');
@@ -275,6 +299,7 @@ export async function DELETE(request: NextRequest) {
         route: '/api/admin/pulley-library',
         action: 'DELETE',
         table: 'pulley_library_styles',
+        userId: user.userId,
       });
     }
 

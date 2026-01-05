@@ -13,6 +13,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useCurrentUserRole } from '../../../hooks/useCurrentUserRole';
+import { AdminReadOnlyBanner } from '../../../components/AdminReadOnlyBanner';
 
 import {
   CleatCatalogItem,
@@ -60,6 +62,9 @@ const emptyCleatForm: CleatFormData = {
 };
 
 export default function AdminCleatsPage() {
+  const { canBeltAdmin, email, isLoading: isLoadingRole } = useCurrentUserRole();
+  const isReadOnly = !canBeltAdmin;
+
   // Catalog state
   const [catalog, setCatalog] = useState<CleatCatalogItem[]>([]);
   const [centerFactors, setCenterFactors] = useState<CleatCenterFactor[]>([]);
@@ -273,14 +278,11 @@ export default function AdminCleatsPage() {
     ? isDrillSipedSupported(catalog, 'PVC_HOT_WELDED', previewProfile, previewSize, previewPattern)
     : false;
 
-  if (isLoading) {
+  if (isLoading || isLoadingRole) {
     return (
-
-        
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <p>Loading cleat catalog...</p>
         </main>
-
     );
   }
 
@@ -300,17 +302,20 @@ export default function AdminCleatsPage() {
 
   return (
     <>
-      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Cleats Admin</h1>
-          <button
-            onClick={createNew}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            + Add Cleat Entry
-          </button>
+          {!isReadOnly && (
+            <button
+              onClick={createNew}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              + Add Cleat Entry
+            </button>
+          )}
         </div>
+
+        {isReadOnly && <AdminReadOnlyBanner email={email} />}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Column 1: Cleat Catalog List */}
@@ -483,30 +488,32 @@ export default function AdminCleatsPage() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <button
-                    type="submit"
-                    disabled={isSaving}
-                    className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                  >
-                    {isSaving ? 'Saving...' : isCreating ? 'Create' : 'Save Changes'}
-                  </button>
-
-                  {selectedItem && (
+                {!isReadOnly && (
+                  <div className="flex gap-2">
                     <button
-                      type="button"
-                      onClick={handleToggleActive}
+                      type="submit"
                       disabled={isSaving}
-                      className={`px-4 py-2 rounded ${
-                        selectedItem.is_active
-                          ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
-                          : 'bg-green-100 text-green-800 hover:bg-green-200'
-                      }`}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
                     >
-                      {selectedItem.is_active ? 'Deactivate' : 'Reactivate'}
+                      {isSaving ? 'Saving...' : isCreating ? 'Create' : 'Save Changes'}
                     </button>
-                  )}
-                </div>
+
+                    {selectedItem && (
+                      <button
+                        type="button"
+                        onClick={handleToggleActive}
+                        disabled={isSaving}
+                        className={`px-4 py-2 rounded ${
+                          selectedItem.is_active
+                            ? 'bg-yellow-100 text-yellow-800 hover:bg-yellow-200'
+                            : 'bg-green-100 text-green-800 hover:bg-green-200'
+                        }`}
+                      >
+                        {selectedItem.is_active ? 'Deactivate' : 'Reactivate'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </form>
             ) : (
               <p className="text-gray-500">Select a cleat entry from the list or create a new one.</p>
