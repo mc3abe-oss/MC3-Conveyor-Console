@@ -16,7 +16,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { supabaseAdmin } from '../../../src/lib/supabase/client';
 
 // Re-export VGuideItem type for consumers
 export interface VGuideItem {
@@ -37,14 +37,14 @@ export interface VGuideItem {
  */
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Supabase not configured' },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }
 
-    const { data: items, error } = await supabase
+    const { data: items, error } = await supabaseAdmin
       .from('v_guides')
       .select('key, na_letter, label, min_pulley_dia_solid_in, min_pulley_dia_notched_in, min_pulley_dia_solid_pu_in, min_pulley_dia_notched_pu_in')
       .eq('is_active', true)

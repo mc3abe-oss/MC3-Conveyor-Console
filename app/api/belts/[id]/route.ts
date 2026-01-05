@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, supabaseAdmin, isSupabaseConfigured, isAdminConfigured } from '../../../../src/lib/supabase/client';
+import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 
 interface BeltUsageBreakdown {
   applications: number;
@@ -34,7 +34,10 @@ interface BeltUsageResult {
  * @returns Usage count and breakdown
  */
 async function getBeltUsageCount(catalogKey: string): Promise<BeltUsageResult> {
-  const client = supabaseAdmin || supabase;
+  if (!supabaseAdmin) {
+    return { usageCount: 0, breakdown: { applications: 0, configurations: 0 } };
+  }
+  const client = supabaseAdmin;
 
   // Count calc_recipes (applications) referencing this belt
   // Using raw SQL via RPC or text search since Supabase JS doesn't support JSONB operators directly
@@ -78,9 +81,9 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Supabase not configured' },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }
@@ -88,7 +91,7 @@ export async function GET(
     const { id } = await params;
 
     // Fetch belt by id
-    const { data: belt, error } = await supabase
+    const { data: belt, error } = await supabaseAdmin
       .from('belt_catalog')
       .select('*')
       .eq('id', id)
@@ -123,16 +126,9 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
-
-    if (!isAdminConfigured() || !supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Admin access not configured. Please set SUPABASE_SERVICE_ROLE_KEY.' },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }
@@ -201,16 +197,9 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
-
-    if (!isAdminConfigured() || !supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Admin access not configured. Please set SUPABASE_SERVICE_ROLE_KEY.' },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }

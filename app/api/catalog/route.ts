@@ -8,16 +8,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { supabaseAdmin } from '../../../src/lib/supabase/client';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if Supabase is configured
-    if (!isSupabaseConfigured()) {
+    // Check if admin client is available
+    if (!supabaseAdmin) {
       return NextResponse.json(
         {
-          error: 'Supabase not configured',
-          message: 'Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local'
+          error: 'Server configuration error',
+          message: 'Service role key not configured'
         },
         { status: 503 }
       );
@@ -34,8 +34,8 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Query catalog_items table
-    const { data: items, error } = await supabase
+    // Query catalog_items table (using admin client to bypass RLS for read-only catalog data)
+    const { data: items, error } = await supabaseAdmin
       .from('catalog_items')
       .select('item_key, label')
       .eq('catalog_key', catalog_key)

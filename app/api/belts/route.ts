@@ -12,7 +12,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, supabaseAdmin, isSupabaseConfigured, isAdminConfigured } from '../../../src/lib/supabase/client';
+import { supabaseAdmin } from '../../../src/lib/supabase/client';
 import { validateMaterialProfile } from '../../../src/lib/belt-catalog';
 
 // Re-export types for backward compatibility
@@ -20,13 +20,10 @@ export type { BeltCatalogItem, BeltMaterialProfile } from '../../../src/lib/belt
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if Supabase is configured
-    if (!isSupabaseConfigured()) {
+    // Check if admin client is available
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        {
-          error: 'Supabase not configured',
-          message: 'Please configure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in .env.local',
-        },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }
@@ -35,8 +32,8 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get('includeInactive') === 'true';
 
-    // Query belt_catalog table
-    let query = supabase
+    // Query belt_catalog table (using admin client to bypass RLS)
+    let query = supabaseAdmin
       .from('belt_catalog')
       .select('*')
       .order('display_name', { ascending: true });
@@ -65,16 +62,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 503 }
-      );
-    }
-
-    if (!isAdminConfigured() || !supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Admin access not configured. Please set SUPABASE_SERVICE_ROLE_KEY.' },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }

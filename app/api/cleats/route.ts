@@ -7,7 +7,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { supabaseAdmin } from '../../../src/lib/supabase/client';
 import { CleatCatalogItem, CleatCenterFactor } from '../../../src/lib/cleat-catalog';
 
 export interface CleatsApiResponse {
@@ -21,15 +21,15 @@ export interface CleatsApiResponse {
  */
 export async function GET() {
   try {
-    if (!isSupabaseConfigured()) {
+    if (!supabaseAdmin) {
       return NextResponse.json(
-        { error: 'Supabase not configured' },
+        { error: 'Server configuration error: service role not available' },
         { status: 503 }
       );
     }
 
     // Fetch active cleat catalog entries
-    const { data: catalog, error: catalogError } = await supabase
+    const { data: catalog, error: catalogError } = await supabaseAdmin
       .from('cleat_catalog')
       .select('*')
       .eq('is_active', true)
@@ -46,7 +46,7 @@ export async function GET() {
     }
 
     // Fetch active center factors
-    const { data: centerFactors, error: factorsError } = await supabase
+    const { data: centerFactors, error: factorsError } = await supabaseAdmin
       .from('cleat_center_factors')
       .select('*')
       .eq('is_active', true)
