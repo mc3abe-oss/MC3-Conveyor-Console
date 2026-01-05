@@ -1,8 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import { useCurrentUserRole } from '../../hooks/useCurrentUserRole';
 
 export default function ConsoleAdminPage() {
+  const { isSuperAdmin } = useCurrentUserRole();
+
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin</h1>
@@ -88,6 +91,18 @@ export default function ConsoleAdminPage() {
             Manage caster models for rolling conveyor supports
           </p>
         </Link>
+
+        {isSuperAdmin && (
+          <Link
+            href="/console/admin/users"
+            className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-purple-300 bg-purple-50"
+          >
+            <h2 className="text-lg font-semibold text-purple-900 mb-2">User Admin</h2>
+            <p className="text-sm text-purple-700">
+              Manage user roles and permissions (Super Admin only)
+            </p>
+          </Link>
+        )}
       </div>
     </main>
   );
