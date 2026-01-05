@@ -46,35 +46,78 @@ export async function getSessionUser(): Promise<SessionUser | null> {
 }
 
 /**
- * Get the role for a user ID from user_profiles.
- * Returns BELT_USER if no profile exists (defensive default).
+ * User profile data including role and active status.
  */
-export async function getUserRole(userId: string): Promise<Role> {
+export interface UserProfile {
+  role: Role;
+  isActive: boolean;
+}
+
+/**
+ * Get the profile for a user ID from user_profiles.
+ * Returns default values if no profile exists (defensive default).
+ * Handles pre-migration state where is_active column may not exist.
+ */
+export async function getUserProfile(userId: string): Promise<UserProfile> {
   const supabase = await createClient();
 
-  const { data: profile, error } = await supabase
+  // Try to fetch with is_active column first
+  let { data: profile, error } = await supabase
     .from('user_profiles')
-    .select('role')
+    .select('role, is_active')
     .eq('user_id', userId)
     .maybeSingle();
 
-  if (error) {
-    console.error('[RBAC] Error fetching user role:', error);
-    return DEFAULT_ROLE;
+  // If is_active column doesn't exist (pre-migration), fall back to just role
+  if (error && error.code === '42703') {
+    const fallback = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (fallback.error) {
+      console.error('[RBAC] Error fetching user profile:', fallback.error);
+      return { role: DEFAULT_ROLE, isActive: true };
+    }
+
+    profile = fallback.data ? { ...fallback.data, is_active: true } : null;
+    error = null;
   }
 
-  if (!profile || !profile.role) {
-    return DEFAULT_ROLE;
+  if (error) {
+    console.error('[RBAC] Error fetching user profile:', error);
+    return { role: DEFAULT_ROLE, isActive: true };
+  }
+
+  if (!profile) {
+    return { role: DEFAULT_ROLE, isActive: true };
   }
 
   // Validate role is a known value
   const role = profile.role as string;
-  if (role === 'SUPER_ADMIN' || role === 'BELT_ADMIN' || role === 'BELT_USER') {
-    return role;
+  const validRole = (role === 'SUPER_ADMIN' || role === 'BELT_ADMIN' || role === 'BELT_USER')
+    ? role as Role
+    : DEFAULT_ROLE;
+
+  if (validRole !== role) {
+    console.warn(`[RBAC] Unknown role "${role}" for user ${userId}, defaulting to BELT_USER`);
   }
 
-  console.warn(`[RBAC] Unknown role "${role}" for user ${userId}, defaulting to BELT_USER`);
-  return DEFAULT_ROLE;
+  // Default is_active to true if column doesn't exist yet (pre-migration)
+  const isActive = profile.is_active ?? true;
+
+  return { role: validRole, isActive };
+}
+
+/**
+ * Get the role for a user ID from user_profiles.
+ * Returns BELT_USER if no profile exists (defensive default).
+ * @deprecated Use getUserProfile instead for is_active support
+ */
+export async function getUserRole(userId: string): Promise<Role> {
+  const profile = await getUserProfile(userId);
+  return profile.role;
 }
 
 /**
@@ -116,6 +159,19 @@ export function forbidden(message = 'Admin permissions required.'): NextResponse
     {
       error: 'FORBIDDEN',
       message,
+    },
+    { status: 403 }
+  );
+}
+
+/**
+ * 403 response for deactivated users.
+ */
+export function deactivated(): NextResponse {
+  return NextResponse.json(
+    {
+      error: 'DEACTIVATED',
+      message: 'Account is deactivated. Contact an administrator.',
     },
     { status: 403 }
   );

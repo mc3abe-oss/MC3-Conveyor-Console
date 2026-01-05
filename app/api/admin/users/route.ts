@@ -16,11 +16,13 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { requireSuperAdmin } from '../../../../src/lib/auth/require';
 import { Role, DEFAULT_ROLE } from '../../../../src/lib/auth/rbac';
+import { logAuditAction } from '../../../../src/lib/auth/audit';
 
 interface UserListItem {
   userId: string;
   email: string;
   role: Role;
+  isActive: boolean;
   createdAt: string;
 }
 
@@ -66,10 +68,29 @@ export async function GET() {
 
     const authUsers = authUsersResponse.users || [];
 
-    // Get all user profiles
-    const { data: profiles, error: profilesError } = await supabaseAdmin
+    // Get all user profiles (handle pre-migration state where is_active may not exist)
+    let { data: profiles, error: profilesError } = await supabaseAdmin
       .from('user_profiles')
-      .select('user_id, role, created_at');
+      .select('user_id, role, is_active, created_at');
+
+    // If is_active column doesn't exist (pre-migration), fall back to without it
+    if (profilesError && profilesError.code === '42703') {
+      const fallback = await supabaseAdmin
+        .from('user_profiles')
+        .select('user_id, role, created_at');
+
+      if (fallback.error) {
+        console.error('Error fetching user profiles:', fallback.error);
+        return NextResponse.json(
+          { error: 'Failed to fetch user profiles', details: fallback.error.message },
+          { status: 500 }
+        );
+      }
+
+      // Add is_active: true to all profiles (pre-migration default)
+      profiles = (fallback.data || []).map(p => ({ ...p, is_active: true }));
+      profilesError = null;
+    }
 
     if (profilesError) {
       console.error('Error fetching user profiles:', profilesError);
@@ -80,10 +101,11 @@ export async function GET() {
     }
 
     // Create a map of user_id -> profile for quick lookup
-    const profileMap = new Map<string, { role: Role; created_at: string }>();
+    const profileMap = new Map<string, { role: Role; is_active: boolean; created_at: string }>();
     for (const profile of profiles || []) {
       profileMap.set(profile.user_id, {
         role: profile.role as Role,
+        is_active: profile.is_active ?? true,
         created_at: profile.created_at,
       });
     }
@@ -95,6 +117,7 @@ export async function GET() {
         userId: authUser.id,
         email: authUser.email || '',
         role: profile?.role || DEFAULT_ROLE,
+        isActive: profile?.is_active ?? true,
         createdAt: profile?.created_at || authUser.created_at,
       };
     });
@@ -199,6 +222,12 @@ export async function PUT(request: NextRequest) {
     }
 
     console.log(`[RBAC] Role changed: ${body.userId} from ${previousRole} to ${body.role} by ${currentUser.userId}`);
+
+    // Log to audit
+    await logAuditAction(currentUser.userId, body.userId, 'ROLE_CHANGE', {
+      previousRole,
+      newRole: body.role,
+    });
 
     return NextResponse.json({
       success: true,

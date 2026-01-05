@@ -3,15 +3,19 @@
  *
  * Server-side authorization guards that return standardized responses.
  * Use these in API route handlers to enforce authentication and role requirements.
+ *
+ * IMPORTANT: All require* functions now check is_active status.
+ * Deactivated users will receive a 403 DEACTIVATED response.
  */
 
 import {
   getSessionUser,
-  getUserRole,
+  getUserProfile,
   canBeltAdmin,
   isSuperAdmin,
   unauthorized,
   forbidden,
+  deactivated,
   Role,
   SessionUser,
 } from './rbac';
@@ -26,7 +30,8 @@ export type RequireResult =
 
 /**
  * Require authentication.
- * Returns user info and role, or a 401 response.
+ * Returns user info and role, or a 401/403 response.
+ * Blocks deactivated users with 403 DEACTIVATED.
  */
 export async function requireAuth(): Promise<RequireResult> {
   const user = await getSessionUser();
@@ -35,14 +40,21 @@ export async function requireAuth(): Promise<RequireResult> {
     return { response: unauthorized() };
   }
 
-  const role = await getUserRole(user.userId);
+  const profile = await getUserProfile(user.userId);
 
-  return { user, role };
+  // Block deactivated users
+  if (!profile.isActive) {
+    console.warn(`[RBAC] Deactivated user blocked: ${user.userId} (${user.email})`);
+    return { response: deactivated() };
+  }
+
+  return { user, role: profile.role };
 }
 
 /**
  * Require BELT_ADMIN or SUPER_ADMIN role.
  * Returns user info and role, or a 401/403 response.
+ * Blocks deactivated users with 403 DEACTIVATED.
  */
 export async function requireBeltAdmin(): Promise<RequireResult> {
   const user = await getSessionUser();
@@ -51,21 +63,28 @@ export async function requireBeltAdmin(): Promise<RequireResult> {
     return { response: unauthorized() };
   }
 
-  const role = await getUserRole(user.userId);
+  const profile = await getUserProfile(user.userId);
 
-  if (!canBeltAdmin(role)) {
+  // Block deactivated users
+  if (!profile.isActive) {
+    console.warn(`[RBAC] Deactivated user blocked: ${user.userId} (${user.email})`);
+    return { response: deactivated() };
+  }
+
+  if (!canBeltAdmin(profile.role)) {
     console.warn(
-      `[RBAC] Belt admin access denied for user ${user.userId} (${user.email}) with role ${role}`
+      `[RBAC] Belt admin access denied for user ${user.userId} (${user.email}) with role ${profile.role}`
     );
     return { response: forbidden('Belt admin permissions required.') };
   }
 
-  return { user, role };
+  return { user, role: profile.role };
 }
 
 /**
  * Require SUPER_ADMIN role.
  * Returns user info and role, or a 401/403 response.
+ * Blocks deactivated users with 403 DEACTIVATED.
  */
 export async function requireSuperAdmin(): Promise<RequireResult> {
   const user = await getSessionUser();
@@ -74,14 +93,20 @@ export async function requireSuperAdmin(): Promise<RequireResult> {
     return { response: unauthorized() };
   }
 
-  const role = await getUserRole(user.userId);
+  const profile = await getUserProfile(user.userId);
 
-  if (!isSuperAdmin(role)) {
+  // Block deactivated users
+  if (!profile.isActive) {
+    console.warn(`[RBAC] Deactivated user blocked: ${user.userId} (${user.email})`);
+    return { response: deactivated() };
+  }
+
+  if (!isSuperAdmin(profile.role)) {
     console.warn(
-      `[RBAC] Super admin access denied for user ${user.userId} (${user.email}) with role ${role}`
+      `[RBAC] Super admin access denied for user ${user.userId} (${user.email}) with role ${profile.role}`
     );
     return { response: forbidden('Super admin permissions required.') };
   }
 
-  return { user, role };
+  return { user, role: profile.role };
 }

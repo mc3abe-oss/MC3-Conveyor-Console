@@ -17,7 +17,7 @@ import { updateSession } from './src/lib/supabase/middleware';
  * Only these routes are accessible without authentication.
  * All other routes require valid auth or will redirect to /login.
  */
-export const PUBLIC_ROUTES = ['/login', '/signup'];
+export const PUBLIC_ROUTES = ['/login', '/signup', '/reset-password', '/forgot-password'];
 
 /**
  * Check if dev bypass is enabled.
