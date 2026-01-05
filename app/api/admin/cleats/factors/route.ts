@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
+import { handleAdminWriteError } from '../../../../../src/lib/api/handleAdminWriteError';
 
 interface CleatCenterFactorPayload {
   id?: string;
@@ -122,11 +123,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Center factor insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create center factor', details: error.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(error, {
+        route: '/api/admin/cleats/factors',
+        action: 'INSERT',
+        table: 'cleat_center_factors',
+        userId,
+      });
     }
 
     return NextResponse.json(newItem, { status: 201 });
@@ -199,11 +201,12 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('Center factor update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update center factor', details: updateError.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(updateError, {
+        route: '/api/admin/cleats/factors',
+        action: 'UPDATE',
+        table: 'cleat_center_factors',
+        userId,
+      });
     }
 
     return NextResponse.json(updatedItem);

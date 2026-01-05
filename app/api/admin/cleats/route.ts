@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
 import { CleatPattern, CLEAT_PATTERNS } from '../../../../src/lib/cleat-catalog';
+import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 
 interface CleatCatalogPayload {
   id?: string;
@@ -149,11 +150,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Cleat catalog insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create cleat entry', details: error.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(error, {
+        route: '/api/admin/cleats',
+        action: 'INSERT',
+        table: 'cleat_catalog',
+        userId,
+      });
     }
 
     return NextResponse.json(newItem, { status: 201 });
@@ -238,11 +240,12 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('Cleat catalog update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update cleat entry', details: updateError.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(updateError, {
+        route: '/api/admin/cleats',
+        action: 'UPDATE',
+        table: 'cleat_catalog',
+        userId,
+      });
     }
 
     return NextResponse.json(updatedItem);

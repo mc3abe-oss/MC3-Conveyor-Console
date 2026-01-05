@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 
 export interface PulleyLibraryModel {
   model_key: string;
@@ -206,8 +207,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating pulley model:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleAdminWriteError(error, {
+        route: '/api/admin/pulley-models',
+        action: 'INSERT',
+        table: 'pulley_library_models',
+      });
     }
 
     return NextResponse.json(data, { status: 201 });
@@ -290,8 +294,11 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating pulley model:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleAdminWriteError(error, {
+        route: '/api/admin/pulley-models',
+        action: 'UPDATE',
+        table: 'pulley_library_models',
+      });
     }
 
     return NextResponse.json(data);
@@ -328,8 +335,11 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error deactivating pulley model:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleAdminWriteError(error, {
+        route: '/api/admin/pulley-models',
+        action: 'DELETE',
+        table: 'pulley_library_models',
+      });
     }
 
     if (!data) {

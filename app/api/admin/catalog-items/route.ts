@@ -10,6 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 
 interface CatalogItemPayload {
   catalog_key: string;
@@ -116,11 +117,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Catalog item insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create catalog item', details: error.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(error, {
+        route: '/api/admin/catalog-items',
+        action: 'INSERT',
+        table: 'catalog_items',
+        userId,
+      });
     }
 
     return NextResponse.json(newItem, { status: 201 });
@@ -194,11 +196,12 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('Catalog item update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update catalog item', details: updateError.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(updateError, {
+        route: '/api/admin/catalog-items',
+        action: 'UPDATE',
+        table: 'catalog_items',
+        userId,
+      });
     }
 
     return NextResponse.json(updatedItem);

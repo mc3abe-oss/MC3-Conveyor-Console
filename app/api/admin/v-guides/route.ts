@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
+import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 
 interface VGuidePayload {
   key: string;                          // K-code (K10, K13, etc.)
@@ -166,11 +167,12 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('V-guide insert error:', error);
-      return NextResponse.json(
-        { error: 'Failed to create v-guide', details: error.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(error, {
+        route: '/api/admin/v-guides',
+        action: 'INSERT',
+        table: 'v_guides',
+        userId,
+      });
     }
 
     return NextResponse.json(newItem, { status: 201 });
@@ -260,11 +262,12 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('V-guide update error:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update v-guide', details: updateError.message },
-        { status: 500 }
-      );
+      return handleAdminWriteError(updateError, {
+        route: '/api/admin/v-guides',
+        action: 'UPDATE',
+        table: 'v_guides',
+        userId,
+      });
     }
 
     return NextResponse.json(updatedItem);

@@ -7,6 +7,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 
 // Pulley style type from the database enum
 export type PulleyStyleType = 'DRUM' | 'WING' | 'SPIRAL_WING';
@@ -149,8 +150,11 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating pulley style:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleAdminWriteError(error, {
+        route: '/api/admin/pulley-library',
+        action: 'INSERT',
+        table: 'pulley_library_styles',
+      });
     }
 
     return NextResponse.json(data, { status: 201 });
@@ -224,8 +228,11 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating pulley style:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleAdminWriteError(error, {
+        route: '/api/admin/pulley-library',
+        action: 'UPDATE',
+        table: 'pulley_library_styles',
+      });
     }
 
     return NextResponse.json(data);
@@ -264,8 +271,11 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error deactivating pulley style:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return handleAdminWriteError(error, {
+        route: '/api/admin/pulley-library',
+        action: 'DELETE',
+        table: 'pulley_library_styles',
+      });
     }
 
     if (!data) {
