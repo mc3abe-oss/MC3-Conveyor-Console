@@ -7,12 +7,15 @@
  * Security:
  * - Only SUPER_ADMIN can access this endpoint
  * - Cannot demote yourself (prevents lockout)
+ *
+ * Note: Uses service role to access auth.users for email lookup
  */
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { requireSuperAdmin } from '../../../../src/lib/auth/require';
-import { Role } from '../../../../src/lib/auth/rbac';
+import { Role, DEFAULT_ROLE } from '../../../../src/lib/auth/rbac';
 
 interface UserListItem {
   userId: string;
@@ -31,6 +34,7 @@ const VALID_ROLES: Role[] = ['SUPER_ADMIN', 'BELT_ADMIN', 'BELT_USER'];
 /**
  * GET /api/admin/users
  * List all users with their roles
+ * Returns ALL auth users, even those without profiles (defaults to BELT_USER)
  */
 export async function GET() {
   try {
@@ -40,37 +44,63 @@ export async function GET() {
       return authResult.response;
     }
 
-    const supabase = await createClient();
-
-    // Get all user profiles with role info
-    // Note: We join with auth.users to get email, but Supabase RLS may limit this
-    // If auth.users access is restricted, we'd need a service role client
-    const { data: profiles, error } = await supabase
-      .from('user_profiles')
-      .select('user_id, role, created_at')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching user profiles:', error);
+    // Check if service role client is available
+    if (!supabaseAdmin) {
+      console.error('Service role client not configured');
       return NextResponse.json(
-        { error: 'Failed to fetch users', details: error.message },
+        { error: 'Server configuration error: service role not available' },
         { status: 500 }
       );
     }
 
-    // Get emails for each user (this requires a separate query)
-    // In production, you might want to create a view or function for this
-    const users: UserListItem[] = [];
+    // Get all auth users using service role
+    const { data: authUsersResponse, error: authError } = await supabaseAdmin.auth.admin.listUsers();
+
+    if (authError) {
+      console.error('Error fetching auth users:', authError);
+      return NextResponse.json(
+        { error: 'Failed to fetch users', details: authError.message },
+        { status: 500 }
+      );
+    }
+
+    const authUsers = authUsersResponse.users || [];
+
+    // Get all user profiles
+    const { data: profiles, error: profilesError } = await supabaseAdmin
+      .from('user_profiles')
+      .select('user_id, role, created_at');
+
+    if (profilesError) {
+      console.error('Error fetching user profiles:', profilesError);
+      return NextResponse.json(
+        { error: 'Failed to fetch user profiles', details: profilesError.message },
+        { status: 500 }
+      );
+    }
+
+    // Create a map of user_id -> profile for quick lookup
+    const profileMap = new Map<string, { role: Role; created_at: string }>();
     for (const profile of profiles || []) {
-      // Get user email from auth.users (via admin function or service role)
-      // For now, we'll return user_id and role, email can be added later
-      users.push({
-        userId: profile.user_id,
-        email: '', // Would need service role to get from auth.users
+      profileMap.set(profile.user_id, {
         role: profile.role as Role,
-        createdAt: profile.created_at,
+        created_at: profile.created_at,
       });
     }
+
+    // Build the user list: all auth users with their roles (default to BELT_USER if no profile)
+    const users: UserListItem[] = authUsers.map((authUser) => {
+      const profile = profileMap.get(authUser.id);
+      return {
+        userId: authUser.id,
+        email: authUser.email || '',
+        role: profile?.role || DEFAULT_ROLE,
+        createdAt: profile?.created_at || authUser.created_at,
+      };
+    });
+
+    // Sort by created date (newest first)
+    users.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json(users);
   } catch (error) {
@@ -85,6 +115,7 @@ export async function GET() {
 /**
  * PUT /api/admin/users
  * Update a user's role
+ * Creates profile if it doesn't exist (upsert behavior)
  */
 export async function PUT(request: NextRequest) {
   try {
@@ -136,35 +167,43 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (!existing) {
-      return NextResponse.json(
-        { error: 'User profile not found' },
-        { status: 404 }
-      );
+    const previousRole = existing?.role || DEFAULT_ROLE;
+
+    if (existing) {
+      // Update existing profile
+      const { error: updateError } = await supabase
+        .from('user_profiles')
+        .update({ role: body.role })
+        .eq('user_id', body.userId);
+
+      if (updateError) {
+        console.error('Error updating user role:', updateError);
+        return NextResponse.json(
+          { error: 'Failed to update role', details: updateError.message },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Create new profile (user existed in auth but not in profiles)
+      const { error: insertError } = await supabase
+        .from('user_profiles')
+        .insert({ user_id: body.userId, role: body.role });
+
+      if (insertError) {
+        console.error('Error creating user profile:', insertError);
+        return NextResponse.json(
+          { error: 'Failed to create profile', details: insertError.message },
+          { status: 500 }
+        );
+      }
     }
 
-    // Update the role
-    const { error: updateError } = await supabase
-      .from('user_profiles')
-      .update({ role: body.role })
-      .eq('user_id', body.userId)
-      .select()
-      .single();
-
-    if (updateError) {
-      console.error('Error updating user role:', updateError);
-      return NextResponse.json(
-        { error: 'Failed to update role', details: updateError.message },
-        { status: 500 }
-      );
-    }
-
-    console.log(`[RBAC] Role changed: ${body.userId} from ${existing.role} to ${body.role} by ${currentUser.userId}`);
+    console.log(`[RBAC] Role changed: ${body.userId} from ${previousRole} to ${body.role} by ${currentUser.userId}`);
 
     return NextResponse.json({
       success: true,
       userId: body.userId,
-      previousRole: existing.role,
+      previousRole,
       newRole: body.role,
     });
   } catch (error) {
