@@ -18,7 +18,7 @@
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useRef } from 'react';
 import {
   SliderbedInputs,
   SideRails,
@@ -40,7 +40,8 @@ interface TabBuildOptionsProps {
 }
 
 export default function TabBuildOptions({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabBuildOptionsProps) {
-  const { handleToggle, isExpanded } = useAccordionState();
+  const { handleToggle, isExpanded, expandSection } = useAccordionState();
+  const hasAutoExpandedRef = useRef(false);
 
   // v1.40: Derive support method state
   const floorSupported = isFloorSupported(inputs.support_method);
@@ -71,13 +72,15 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts, ge
   const geometryDefined = (inputs.conveyor_length_cc_in ?? 0) > 0;
 
   // Combine issue counts for the consolidated Options & Accessories section
+  // Includes: support (floor mounting), guards, guides, beltpulley (lacing)
   const optionsCounts = useMemo(() => {
     const support = sectionCounts.support || { errors: 0, warnings: 0 };
     const guards = sectionCounts.guards || { errors: 0, warnings: 0 };
     const guides = sectionCounts.guides || { errors: 0, warnings: 0 };
+    const beltpulley = sectionCounts.beltpulley || { errors: 0, warnings: 0 };
     return {
-      errors: support.errors + guards.errors + guides.errors,
-      warnings: support.warnings + guards.warnings + guides.warnings,
+      errors: support.errors + guards.errors + guides.errors + beltpulley.errors,
+      warnings: support.warnings + guards.warnings + guides.warnings + beltpulley.warnings,
     };
   }, [sectionCounts]);
 
@@ -87,8 +90,32 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts, ge
       ...getIssuesForSection('support'),
       ...getIssuesForSection('guards'),
       ...getIssuesForSection('guides'),
+      ...getIssuesForSection('beltpulley'),
     ];
   }, [getIssuesForSection]);
+
+  // Documentation section issues count
+  const documentationCounts = sectionCounts.documentation || { errors: 0, warnings: 0 };
+
+  // Auto-expand the first section with issues when tab opens
+  useEffect(() => {
+    // Only auto-expand once per mount
+    if (hasAutoExpandedRef.current) return;
+
+    // Check Options & Accessories first (combined section)
+    if (optionsCounts.errors > 0 || optionsCounts.warnings > 0) {
+      expandSection('options');
+      hasAutoExpandedRef.current = true;
+      return;
+    }
+
+    // Then check Documentation & Finish
+    if (documentationCounts.errors > 0 || documentationCounts.warnings > 0) {
+      expandSection('documentation');
+      hasAutoExpandedRef.current = true;
+      return;
+    }
+  }, [optionsCounts, documentationCounts, expandSection]);
 
   return (
     <div className="space-y-4">

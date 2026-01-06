@@ -263,7 +263,7 @@ export default function CalculatorForm({
 
           {/* Build Options Tab */}
           {activeTab === 'build' && (
-            <TabBuildOptions inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
+            <TabBuildOptions inputs={inputs} updateInput={updateInput} sectionCounts={mergedSectionCounts} getIssuesForSection={getMergedIssuesForSection} />
           )}
         </div>
       </div>

@@ -18,7 +18,7 @@ export type ConfigureTabKey = 'application' | 'physical' | 'drive' | 'build';
 export type ApplicationSectionKey = 'product' | 'throughput' | 'environment';
 export type PhysicalSectionKey = 'geometry' | 'beltPulleys' | 'frame';
 export type DriveSectionKey = 'speed' | 'electrical' | 'drive' | 'advanced';
-export type BuildSectionKey = 'guards' | 'guides' | 'beltpulley' | 'sensors' | 'documentation';
+export type BuildSectionKey = 'support' | 'guards' | 'guides' | 'beltpulley' | 'sensors' | 'documentation';
 
 export type SectionKey = ApplicationSectionKey | PhysicalSectionKey | DriveSectionKey | BuildSectionKey;
 
@@ -179,6 +179,37 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
   // ===========================================================================
   spec_source: { tabKey: 'build', sectionKey: 'documentation' },
   customer_spec_reference: { tabKey: 'build', sectionKey: 'documentation' },
+
+  // ===========================================================================
+  // Build Tab - Support Section (Floor Mounting)
+  // ===========================================================================
+  support_method: { tabKey: 'build', sectionKey: 'support' },
+  reference_end: { tabKey: 'build', sectionKey: 'support' },
+  tail_tob_in: { tabKey: 'build', sectionKey: 'support' },
+  drive_tob_in: { tabKey: 'build', sectionKey: 'support' },
+  adjustment_required_in: { tabKey: 'build', sectionKey: 'support' },
+  // Legs
+  include_legs: { tabKey: 'build', sectionKey: 'support' },
+  leg_model_key: { tabKey: 'build', sectionKey: 'support' },
+  // Casters
+  include_casters: { tabKey: 'build', sectionKey: 'support' },
+  caster_rigid_qty: { tabKey: 'build', sectionKey: 'support' },
+  caster_rigid_model_key: { tabKey: 'build', sectionKey: 'support' },
+  caster_swivel_qty: { tabKey: 'build', sectionKey: 'support' },
+  caster_swivel_model_key: { tabKey: 'build', sectionKey: 'support' },
+
+  // ===========================================================================
+  // Build Tab - Guards Section
+  // ===========================================================================
+  bottom_covers: { tabKey: 'build', sectionKey: 'guards' },
+  end_guards: { tabKey: 'build', sectionKey: 'guards' },
+  finger_safe: { tabKey: 'build', sectionKey: 'guards' },
+
+  // ===========================================================================
+  // Build Tab - Guides Section
+  // ===========================================================================
+  side_rails: { tabKey: 'build', sectionKey: 'guides' },
+  side_skirts: { tabKey: 'build', sectionKey: 'guides' },
 };
 
 /**

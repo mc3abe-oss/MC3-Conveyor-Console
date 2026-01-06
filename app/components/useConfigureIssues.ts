@@ -359,15 +359,16 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
   }
 
   // ---------------------------------------------------------------------------
-  // BUILD TAB - Belt & Pulley (Lacing)
+  // PHYSICAL TAB - Belt & Pulley (Lacing)
+  // Lacing fields are in the Physical tab's Belt & Pulleys section
   // ---------------------------------------------------------------------------
 
   if (inputs.lacing_style !== LacingStyle.Endless && !inputs.lacing_material) {
     issues.push({
       severity: 'error',
       message: 'Lacing material required when not using endless belt',
-      tabKey: 'build',
-      sectionKey: 'beltpulley',
+      tabKey: 'physical',
+      sectionKey: 'beltPulleys',
       fieldKeys: ['lacing_material'],
     });
   }
