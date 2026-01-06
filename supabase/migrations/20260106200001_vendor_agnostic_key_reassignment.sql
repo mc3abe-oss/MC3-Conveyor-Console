@@ -37,33 +37,15 @@ BEGIN
 END $$;
 
 -- ============================================================================
--- PHASE 2: UPDATE APPLICATION_PULLEYS REFERENCES (BEFORE PK CHANGE)
+-- PHASE 2: DROP FK CONSTRAINT FIRST
 -- ============================================================================
 
--- Update FK references in application_pulleys to use new keys
--- Must happen BEFORE we change the PK in pulley_library_models
-
-UPDATE application_pulleys
-SET model_key = CASE model_key
-  WHEN 'PCI_DRUM_4IN' THEN 'DRUM_4IN'
-  WHEN 'PCI_DRUM_6IN' THEN 'DRUM_6IN'
-  WHEN 'PCI_DRUM_8IN' THEN 'DRUM_8IN'
-  WHEN 'PCI_WING_6IN' THEN 'WING_6IN'
-  WHEN 'PCI_WING_8IN' THEN 'WING_8IN'
-  ELSE model_key  -- Keep unknown keys unchanged
-END
-WHERE model_key LIKE 'PCI_%';
-
--- ============================================================================
--- PHASE 3: DROP FK CONSTRAINT TEMPORARILY
--- ============================================================================
-
--- Drop the FK constraint so we can update the PK
+-- Drop the FK constraint so we can update both tables
 ALTER TABLE application_pulleys
 DROP CONSTRAINT IF EXISTS application_pulleys_model_key_fkey;
 
 -- ============================================================================
--- PHASE 4: UPDATE MODEL KEYS AND DISPLAY NAMES
+-- PHASE 3: UPDATE MODEL KEYS AND DISPLAY NAMES (source table first)
 -- ============================================================================
 
 -- Create a temporary mapping table to handle the PK update
@@ -104,6 +86,22 @@ END $$;
 
 -- Clean up temp table
 DROP TABLE model_key_mapping;
+
+-- ============================================================================
+-- PHASE 4: UPDATE APPLICATION_PULLEYS REFERENCES
+-- ============================================================================
+
+-- Update FK references in application_pulleys to use new keys
+UPDATE application_pulleys
+SET model_key = CASE model_key
+  WHEN 'PCI_DRUM_4IN' THEN 'DRUM_4IN'
+  WHEN 'PCI_DRUM_6IN' THEN 'DRUM_6IN'
+  WHEN 'PCI_DRUM_8IN' THEN 'DRUM_8IN'
+  WHEN 'PCI_WING_6IN' THEN 'WING_6IN'
+  WHEN 'PCI_WING_8IN' THEN 'WING_8IN'
+  ELSE model_key  -- Keep unknown keys unchanged
+END
+WHERE model_key LIKE 'PCI_%';
 
 -- ============================================================================
 -- PHASE 5: RESTORE FK CONSTRAINT
