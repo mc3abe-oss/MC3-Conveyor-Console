@@ -2167,16 +2167,21 @@ export function calculate(
     ? inputs.belt_min_pulley_dia_with_vguide_in
     : inputs.belt_min_pulley_dia_no_vguide_in;
 
-  // Step 21a: V-guide min pulley diameter (v1.26)
-  // Select PU or PVC values based on belt family
+  // Step 21a: V-guide min pulley diameter (v1.27)
+  // Select PU, PVC, or FLEECE values based on belt family
   const beltFamily = inputs.belt_family ?? 'PVC';
   let vguideMinPulleyDiaIn: number | undefined;
   let vguidePuDataMissing = false;
+  // Note: FLEECE belts have no V-guide rules - vguideMinPulleyDiaIn stays undefined
+  // Warning is emitted in applyApplicationRules()
 
   if (isVGuided && inputs.v_guide_key) {
     // V-guide is selected - determine which min pulley value to use
     // For now, use "solid" values (notched belt support can be added later)
-    if (beltFamily === 'PU') {
+    if (beltFamily === 'FLEECE') {
+      // FLEECE belt - no V-guide rules defined (v1.27)
+      // Leave vguideMinPulleyDiaIn undefined - warning emitted in applyApplicationRules
+    } else if (beltFamily === 'PU') {
       // PU belt - try PU values first
       if (inputs.vguide_min_pulley_dia_solid_pu_in != null) {
         vguideMinPulleyDiaIn = inputs.vguide_min_pulley_dia_solid_pu_in;

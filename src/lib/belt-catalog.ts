@@ -80,10 +80,11 @@ export interface BeltMaterialProfile {
 }
 
 /**
- * Belt family type (v1.26)
- * Determines which V-guide min pulley values to use
+ * Belt family type (v1.27)
+ * Determines which V-guide min pulley values to use.
+ * FLEECE: No V-guide rules defined - returns null/warning for V-guide lookups.
  */
-export type BeltFamily = 'PVC' | 'PU';
+export type BeltFamily = 'PVC' | 'PU' | 'FLEECE';
 
 /**
  * Belt Catalog Item

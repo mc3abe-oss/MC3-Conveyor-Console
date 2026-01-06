@@ -23,7 +23,7 @@ interface BeltFormData {
   display_name: string;
   manufacturer: string;
   material: string;
-  belt_family: 'PVC' | 'PU';
+  belt_family: 'PVC' | 'PU' | 'FLEECE';
   surface: string;
   food_grade: boolean;
   cut_resistant: boolean;
@@ -525,9 +525,10 @@ export default function AdminBeltsPage() {
                     >
                       <option value="PVC">PVC</option>
                       <option value="PU">PU</option>
+                      <option value="FLEECE">FLEECE</option>
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Determines V-guide min pulley values
+                      Determines V-guide min pulley values (FLEECE: no V-guide rules)
                     </p>
                   </div>
                   <div>

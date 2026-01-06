@@ -835,3 +835,138 @@ describe('Excel Parity Tests', () => {
     expect(true).toBe(true);
   });
 });
+
+// =========================================================================
+// v1.27: FLEECE Belt Family Tests
+// =========================================================================
+
+describe('FLEECE Belt Family (v1.27)', () => {
+  // Base inputs for FLEECE belt tests
+  const FLEECE_BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS',
+    conveyor_length_cc_in: 120,
+    belt_width_in: 24,
+    belt_speed_fpm: 100,
+    pulley_diameter_in: 6,
+    drive_pulley_manual_override: true,
+    drive_pulley_diameter_in: 6,
+    tail_pulley_manual_override: true,
+    tail_pulley_diameter_in: 6,
+    part_weight_lbs: 10,
+    part_length_in: 10,
+    part_width_in: 8,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 12,
+    drive_rpm: 100,
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: [EnvironmentFactors.Indoor],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    finger_safe: false,
+    lacing_style: LacingStyle.Endless,
+    side_skirts: false,
+    sensor_options: [],
+    pulley_surface_type: PulleySurfaceType.Plain,
+    start_stop_application: false,
+    direction_mode: DirectionMode.OneDirection,
+    side_loading_direction: SideLoadingDirection.None,
+    drive_location: DriveLocation.Head,
+    brake_motor: false,
+    gearmotor_orientation: GearmotorOrientation.SideMount,
+    drive_hand: DriveHand.RightHand,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    belt_coeff_piw: 0.058, // Matches 139C belt PIW
+    belt_coeff_pil: 0.058,
+    belt_min_pulley_dia_no_vguide_in: 5.0, // From 139C spec
+    belt_min_pulley_dia_with_vguide_in: 5.0,
+    belt_family: 'FLEECE', // v1.27: FLEECE belt family
+  };
+
+  // Test 1: FLEECE belt family is accepted and used in output
+  it('should accept FLEECE belt_family and output belt_family_used as FLEECE', () => {
+    const result = runCalculation({ inputs: FLEECE_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.belt_family_used).toBe('FLEECE');
+  });
+
+  // Test 2: FLEECE with V-guide should emit warning (not error)
+  it('should emit warning when FLEECE belt is used with V-guide tracking', () => {
+    const inputs: SliderbedInputs = {
+      ...FLEECE_BASE_INPUTS,
+      belt_tracking_method: BeltTrackingMethod.VGuided,
+      v_guide_profile: VGuideProfile.K10, // Required for V-guided
+      v_guide_key: 'K10_SOLID',
+      vguide_min_pulley_dia_solid_in: 4.0, // PVC value from V-guide
+    };
+
+    const result = runCalculation({ inputs });
+
+    // Should succeed (warning is non-blocking)
+    expect(result.success).toBe(true);
+    // Should have warning about FLEECE V-guide rules
+    const fleeceWarning = result.warnings?.find(w =>
+      w.field === 'v_guide_key' &&
+      w.message?.includes('FLEECE')
+    );
+    expect(fleeceWarning).toBeDefined();
+    expect(fleeceWarning?.message).toContain('not defined');
+  });
+
+  // Test 3: FLEECE with V-guide should NOT use PVC min pulley values
+  it('should NOT apply V-guide min pulley constraint for FLEECE belt', () => {
+    const inputs: SliderbedInputs = {
+      ...FLEECE_BASE_INPUTS,
+      belt_tracking_method: BeltTrackingMethod.VGuided,
+      v_guide_profile: VGuideProfile.K10, // Required for V-guided
+      v_guide_key: 'K10_SOLID',
+      vguide_min_pulley_dia_solid_in: 10.0, // Large PVC value - should be ignored
+    };
+
+    const result = runCalculation({ inputs });
+
+    expect(result.success).toBe(true);
+    // V-guide min pulley should be undefined (not the PVC value)
+    expect(result.outputs?.vguide_min_pulley_dia_in).toBeUndefined();
+  });
+
+  // Test 4: FLEECE without V-guide should work normally
+  it('should calculate normally when FLEECE belt uses crowned tracking', () => {
+    const result = runCalculation({ inputs: FLEECE_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.belt_family_used).toBe('FLEECE');
+    // Should use belt min pulley (5.0") not V-guide value
+    expect(result.outputs?.required_min_pulley_diameter_in).toBeDefined();
+  });
+
+  // Test 5: Verify FLEECE belt values match 139C spec sheet
+  it('should use correct min pulley from belt spec (5.0") for FLEECE', () => {
+    const result = runCalculation({ inputs: FLEECE_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    // 139C spec: min pulley 5.0" for both normal and back flex
+    // Since we're using crowned tracking, the belt's no-vguide value applies
+    // min_pulley_drive_required_in should be 5.0 (from belt spec)
+    expect(result.outputs?.min_pulley_drive_required_in).toBe(5.0);
+    expect(result.outputs?.min_pulley_tail_required_in).toBe(5.0);
+  });
+});

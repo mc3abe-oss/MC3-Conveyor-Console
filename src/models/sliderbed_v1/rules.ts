@@ -590,6 +590,9 @@ export function validateInputs(
     }
   }
 
+  // Note: FLEECE belt with V-guide warning is in applyApplicationRules (not here)
+  // since it's a non-blocking warning, not a validation error.
+
   // Manual shaft diameters required if manual mode
   const isManualShaft = inputs.shaft_diameter_mode === ShaftDiameterMode.Manual ||
                         inputs.shaft_diameter_mode === 'Manual';
@@ -1288,6 +1291,15 @@ export function applyApplicationRules(
   const minPulleyRequired = isVGuided
     ? inputs.belt_min_pulley_dia_with_vguide_in
     : inputs.belt_min_pulley_dia_no_vguide_in;
+
+  // v1.27: FLEECE belt with V-guide - no V-guide rules defined (warning, non-blocking)
+  if (isVGuided && inputs.belt_family === 'FLEECE' && inputs.v_guide_key) {
+    warnings.push({
+      field: 'v_guide_key',
+      message: 'V-guide pulley rules not defined for FLEECE belt family. Min pulley constraint from V-guide will not be applied.',
+      severity: 'warning',
+    });
+  }
 
   // Only warn if belt has a minimum requirement (belt is selected)
   if (minPulleyRequired !== undefined) {

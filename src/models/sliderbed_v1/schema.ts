@@ -1596,11 +1596,12 @@ export interface SliderbedInputs {
   // =========================================================================
 
   /**
-   * Belt family (v1.26)
+   * Belt family (v1.27)
    * Populated from belt catalog when belt is selected.
    * Determines which V-guide min pulley values to use.
+   * FLEECE: No V-guide rules defined - triggers warning for V-guide lookups.
    */
-  belt_family?: 'PVC' | 'PU';
+  belt_family?: 'PVC' | 'PU' | 'FLEECE';
 
   /**
    * V-guide min pulley diameter for solid belt - PVC (v1.26)
@@ -2253,10 +2254,11 @@ export interface SliderbedOutputs {
   // =========================================================================
 
   /**
-   * Belt family derived from selected belt (v1.26)
+   * Belt family derived from selected belt (v1.27)
    * Determines which V-guide min pulley values are used.
+   * FLEECE: No V-guide rules defined - vguide_min_pulley_dia_in will be undefined.
    */
-  belt_family_used?: 'PVC' | 'PU';
+  belt_family_used?: 'PVC' | 'PU' | 'FLEECE';
 
   /**
    * V-guide min pulley diameter requirement (inches) (v1.26)
