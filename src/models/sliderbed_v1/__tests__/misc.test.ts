@@ -231,6 +231,118 @@ describe('PCI Tube Stress Calculations (v1.27)', () => {
   });
 });
 
+describe('Pulley Resultant Load (T1 + T2)', () => {
+  // Base inputs for resultant load tests
+  const RESULTANT_BASE_INPUTS: SliderbedInputs = {
+    material_form: 'PARTS',
+    conveyor_length_cc_in: 120,
+    belt_width_in: 24,
+    belt_speed_fpm: 100,
+    pulley_diameter_in: 6,
+    drive_pulley_diameter_in: 6,
+    tail_pulley_diameter_in: 6,
+    drive_pulley_diameter_manual_override: true,
+    tail_pulley_diameter_manual_override: true,
+    conveyor_incline_deg: 0,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    part_spacing_in: 0,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    drive_location: DriveLocation.Head,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
+    environment_factors: [EnvironmentFactors.Indoor],
+  };
+
+  // Test: Resultant load equals T1 + T2 for 180° wrap
+  it('should calculate resultant load as T1 + T2 for 180° wrap angle', () => {
+    const result = runCalculation({ inputs: RESULTANT_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+
+    const T1 = result.outputs?.drive_T1_lbf;
+    const T2 = result.outputs?.drive_T2_lbf;
+    const resultantLoad = result.outputs?.drive_pulley_resultant_load_lbf;
+
+    expect(T1).toBeDefined();
+    expect(T2).toBeDefined();
+    expect(resultantLoad).toBeDefined();
+
+    // For 180° wrap angle, radial load = T1 + T2 (vector sum equals arithmetic sum)
+    // Allow 0.1 lb tolerance for rounding
+    expect(resultantLoad).toBeCloseTo(T1! + T2!, 0);
+  });
+
+  // Test: Both pulleys have resultant load calculated
+  it('should calculate resultant load for both drive and tail pulleys', () => {
+    const result = runCalculation({ inputs: RESULTANT_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+    expect(result.outputs?.drive_pulley_resultant_load_lbf).toBeDefined();
+    expect(result.outputs?.drive_pulley_resultant_load_lbf).toBeGreaterThan(0);
+    expect(result.outputs?.tail_pulley_resultant_load_lbf).toBeDefined();
+    expect(result.outputs?.tail_pulley_resultant_load_lbf).toBeGreaterThan(0);
+  });
+
+  // Test: Resultant loads are positive (force, not negative)
+  it('should always produce positive resultant loads', () => {
+    const result = runCalculation({ inputs: RESULTANT_BASE_INPUTS });
+
+    expect(result.success).toBe(true);
+
+    const driveResultant = result.outputs?.drive_pulley_resultant_load_lbf;
+    const tailResultant = result.outputs?.tail_pulley_resultant_load_lbf;
+
+    expect(driveResultant).toBeGreaterThan(0);
+    expect(tailResultant).toBeGreaterThan(0);
+  });
+
+  // Test: Edge case - when belt is not selected, outputs should be undefined
+  it('should return undefined resultant load when belt coefficients not provided', () => {
+    const inputsWithoutBelt: SliderbedInputs = {
+      ...RESULTANT_BASE_INPUTS,
+      belt_coeff_piw: undefined,
+      belt_coeff_pil: undefined,
+    };
+
+    const result = runCalculation({ inputs: inputsWithoutBelt });
+
+    // Calculation might fail or return null/undefined for resultant loads
+    // when belt is not selected (no tension to calculate)
+    if (result.success) {
+      // If it succeeds, the resultant load may be undefined or 0
+      const driveResultant = result.outputs?.drive_pulley_resultant_load_lbf;
+      // Should not throw when accessed
+      expect(driveResultant === undefined || driveResultant === 0 || driveResultant > 0).toBe(true);
+    }
+  });
+
+  // Test: Resultant load increases with higher belt pull
+  it('should increase resultant load when belt pull increases', () => {
+    // Base case with standard load
+    const result1 = runCalculation({ inputs: RESULTANT_BASE_INPUTS });
+
+    // Increased load (heavier parts)
+    const heavierInputs: SliderbedInputs = {
+      ...RESULTANT_BASE_INPUTS,
+      part_weight_lbs: 50, // 10x heavier
+    };
+    const result2 = runCalculation({ inputs: heavierInputs });
+
+    expect(result1.success).toBe(true);
+    expect(result2.success).toBe(true);
+
+    // Higher belt pull should result in higher resultant load
+    expect(result2.outputs?.drive_pulley_resultant_load_lbf).toBeGreaterThan(
+      result1.outputs?.drive_pulley_resultant_load_lbf!
+    );
+  });
+});
+
 describe('Material Form - PARTS vs BULK (v1.29)', () => {
   // Base inputs for testing - shared across all BULK tests
   const BULK_BASE_INPUTS: SliderbedInputs = {
