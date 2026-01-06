@@ -273,6 +273,17 @@ export default function CalculationResults({ result, inputs }: Props) {
                 </div>
                 <DesignLogicLink anchorId="dl-working-tension" scrollFn={scrollToDesignLogic} />
               </div>
+              {/* Belt Tension PIW = total belt pull / belt width */}
+              <ResultRow
+                label="Belt Tension (PIW)"
+                value={
+                  inputs?.belt_width_in && inputs.belt_width_in > 0 && outputs.total_belt_pull_lb != null
+                    ? outputs.total_belt_pull_lb / inputs.belt_width_in
+                    : null
+                }
+                unit="lb/in"
+                decimals={1}
+              />
             </div>
           </div>
 
