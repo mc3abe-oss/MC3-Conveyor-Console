@@ -1251,134 +1251,126 @@ export default function BeltConveyorCalculatorApp() {
           </div>
         )}
 
-        {/* Application Context Header */}
-        <ApplicationContextHeader
-          context={context}
-          loadedConfigurationId={loadedConfigurationId}
-          onClear={handleClear}
-          onDeleteLine={handleDeleteLine}
-          onDeleteDraft={handleDeleteDraft}
-          isDirty={isDirty}
-          isSaving={isSaving}
-          onSave={handleSave}
-          onSaveAsRecipe={() => setIsRecipeModalOpen(true)}
-          canSaveAsRecipe={!!(result?.success && result?.outputs && inputs)}
-          onCalculate={handleCalculateClick}
-          isCalculating={isCalculating}
-          canSave={canSave}
-          needsRecalc={needsRecalc}
-          calculationStatus={calculationStatus}
-          outputsStale={outputsStale}
-          hasCalcError={result ? !result.success : false}
-        />
+        {/* PageHeaderFrame: Header + Tabs as ONE fused unit */}
+        <div className="bg-white border-b border-gray-300">
+          {/* Application Context Header */}
+          <ApplicationContextHeader
+            context={context}
+            loadedConfigurationId={loadedConfigurationId}
+            onClear={handleClear}
+            onDeleteLine={handleDeleteLine}
+            onDeleteDraft={handleDeleteDraft}
+            isDirty={isDirty}
+            isSaving={isSaving}
+            onSave={handleSave}
+            onSaveAsRecipe={() => setIsRecipeModalOpen(true)}
+            canSaveAsRecipe={!!(result?.success && result?.outputs && inputs)}
+            onCalculate={handleCalculateClick}
+            isCalculating={isCalculating}
+            canSave={canSave}
+            needsRecalc={needsRecalc}
+            calculationStatus={calculationStatus}
+            outputsStale={outputsStale}
+            hasCalcError={result ? !result.success : false}
+          />
 
-        {/* Page-level Mode Tabs - tightened spacing, stronger visual hierarchy */}
-        <div className="border-b border-gray-300 mb-3 mt-3">
-          <nav className="-mb-px flex gap-x-1" aria-label="View mode">
+          {/* Mode Tabs - inside frame, subordinate to header */}
+          <nav className="flex border-t border-gray-200" aria-label="View mode">
             <button
               type="button"
               onClick={() => setViewMode('configure')}
               className={`
-                whitespace-nowrap py-2 px-4 font-medium text-sm transition-all
+                flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
                 ${
                   viewMode === 'configure'
-                    ? 'bg-white text-blue-700 border border-gray-300 border-b-white rounded-t-lg -mb-px'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-t-lg'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
                 }
               `}
             >
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Configure
-              </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Configure
             </button>
             <button
               type="button"
               onClick={() => setViewMode('results')}
               className={`
-                whitespace-nowrap py-2 px-4 font-medium text-sm transition-all
+                flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
                 ${
                   viewMode === 'results'
-                    ? 'bg-white text-blue-700 border border-gray-300 border-b-white rounded-t-lg -mb-px'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-t-lg'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
                 }
               `}
             >
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Results
-                {/* Status indicator: show "Updating" during auto-calc, hide stale */}
-                {(isAutoCalcPending || isCalculating) && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded animate-pulse">
-                    Updating
-                  </span>
-                )}
-              </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Results
+              {(isAutoCalcPending || isCalculating) && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded animate-pulse">
+                  Updating
+                </span>
+              )}
             </button>
-            {/* v1.42: Outputs v2 tab gated to abek@mc3mfg.com only */}
             {showOutputsV2 && (
               <button
                 type="button"
                 onClick={() => setViewMode('outputs_v2')}
                 className={`
-                  whitespace-nowrap py-2 px-4 font-medium text-sm transition-all
+                  flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
                   ${
                     viewMode === 'outputs_v2'
-                      ? 'bg-white text-blue-700 border border-gray-300 border-b-white rounded-t-lg -mb-px'
-                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-t-lg'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-600 hover:text-gray-900'
                   }
                 `}
               >
-                <span className="flex items-center gap-2">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Outputs v2
-                  {outputsV2 && (
-                    <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                      Ready
-                    </span>
-                  )}
-                </span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Outputs v2
+                {outputsV2 && (
+                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
+                    Ready
+                  </span>
+                )}
               </button>
             )}
             <button
               type="button"
               onClick={() => setViewMode('vault')}
               className={`
-                whitespace-nowrap py-2 px-4 font-medium text-sm transition-all
+                flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
                 ${
                   viewMode === 'vault'
-                    ? 'bg-white text-blue-700 border border-gray-300 border-b-white rounded-t-lg -mb-px'
-                    : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-t-lg'
+                    ? 'border-blue-600 text-blue-600'
+                    : 'border-transparent text-gray-600 hover:text-gray-900'
                 }
               `}
             >
-              <span className="flex items-center gap-2">
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-                </svg>
-                Vault
-                {!context && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded">
-                    Draft
-                  </span>
-                )}
-              </span>
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              Vault
+              {!context && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded">
+                  Draft
+                </span>
+              )}
             </button>
           </nav>
         </div>
 
+        {/* Content Area - separated from header frame */}
         {/* Configure Mode - Full width lanes */}
         {/* NOTE: Using CSS visibility instead of conditional rendering to prevent
             CalculatorForm from unmounting/remounting when switching tabs.
             This fixes a bug where the triggerCalculate ref would reset on remount,
             causing an unwanted recalculation that switched back to Results tab. */}
-        <div className={viewMode === 'configure' ? '' : 'hidden'}>
+        <div className={viewMode === 'configure' ? 'mt-4' : 'hidden'}>
           <CalculatorForm
             onCalculate={handleCalculate}
             isCalculating={isCalculating}
@@ -1395,7 +1387,7 @@ export default function BeltConveyorCalculatorApp() {
         </div>
 
         {/* Results Mode - Full width results */}
-        <div className={viewMode === 'results' ? '' : 'hidden'}>
+        <div className={viewMode === 'results' ? 'mt-4' : 'hidden'}>
           {/* With auto-calc, show results even if stale (they'll auto-update).
               Placeholder only shows for true draft state (never calculated). */}
           {(() => {
@@ -1464,7 +1456,7 @@ export default function BeltConveyorCalculatorApp() {
 
         {/* Outputs V2 Mode - v1.42: gated to abek@mc3mfg.com only */}
         {showOutputsV2 && (
-          <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
+          <div className={viewMode === 'outputs_v2' ? 'mt-4' : 'hidden'}>
             {outputsV2 ? (
               <OutputsV2Tabs outputs={outputsV2} />
           ) : (
@@ -1487,7 +1479,7 @@ export default function BeltConveyorCalculatorApp() {
         )}
 
         {/* Vault Mode */}
-        <div className={viewMode === 'vault' ? '' : 'hidden'}>
+        <div className={viewMode === 'vault' ? 'mt-4' : 'hidden'}>
           <VaultTab
             applicationId={loadedConfigurationId}
             onOpenSaveModal={() => setIsSaveTargetModalOpen(true)}

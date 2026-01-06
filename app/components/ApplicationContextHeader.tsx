@@ -8,24 +8,28 @@ interface ApplicationContextHeaderProps {
   context: SaveTarget | null;
   loadedConfigurationId?: string | null;
   onClear?: () => void;
-  onDeleteLine?: () => void;  // Called after successful line delete (saved application)
-  onDeleteDraft?: () => Promise<void> | void; // Called to delete an unsaved draft (clears context + deletes DB record)
+  onDeleteLine?: () => void;
+  onDeleteDraft?: () => Promise<void> | void;
   isDirty?: boolean;
   isSaving?: boolean;
   onSave?: () => void;
-  onSaveAsRecipe?: () => void; // Open save as recipe modal
-  canSaveAsRecipe?: boolean; // Whether save as recipe is available (needs calculated results)
+  onSaveAsRecipe?: () => void;
+  canSaveAsRecipe?: boolean;
   onCalculate?: () => void;
   isCalculating?: boolean;
   canSave?: boolean;
   needsRecalc?: boolean;
-  // Calculation status (v1.21)
   calculationStatus?: 'draft' | 'calculated';
   outputsStale?: boolean;
-  // Auto-calc: only show calc button on error (manual retry)
   hasCalcError?: boolean;
 }
 
+/**
+ * ApplicationContextHeader - A2-Flat Layout
+ *
+ * ROW 1 (Primary): Quote number (prominent) + type label | inline buttons
+ * ROW 2 (Context): Customer · Line · Qty | Status pill
+ */
 export default function ApplicationContextHeader({
   context,
   loadedConfigurationId,
@@ -51,6 +55,15 @@ export default function ApplicationContextHeader({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
+  const [canHardDelete, setCanHardDelete] = useState<boolean | null>(null);
+  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+
+  // Derived state
+  const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
+  const isSavedApplication = !!loadedConfigurationId;
+  const isDraftWithContext = !!context && !isSavedApplication;
+  const isQuoteContext = context?.type === 'quote';
 
   // Close save menu on click outside
   useEffect(() => {
@@ -60,90 +73,37 @@ export default function ApplicationContextHeader({
     return () => document.removeEventListener('click', handleClick);
   }, [showSaveMenu]);
 
-  // Line delete eligibility state - fetched from server
-  // canHardDelete = true means application is ONLY referenced by this line type
-  // canHardDelete = false means application is ALSO referenced by the other type
-  const [canHardDelete, setCanHardDelete] = useState<boolean | null>(null);
-  const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
-
-  // Determine display status: only "Calculated" if truly calculated and not stale
-  const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
-
-  // Determine if this is a saved application (has DB record)
-  const isSavedApplication = !!loadedConfigurationId;
-
-  // Determine if this is a draft with context (linked to Quote/SO but not saved)
-  const isDraftWithContext = !!context && !isSavedApplication;
-
-  // DEV: Debug logging for delete button visibility
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[DEV][ApplicationContextHeader] Delete button state:', {
-      contextType: context?.type || 'none',
-      contextId: context?.id || null,
-      isSavedApplication,
-      isDraftWithContext,
-      loadedConfigurationId: loadedConfigurationId || null,
-      // Delete button hidden because:
-      // - For saved: shown when isSavedApplication && onDeleteLine
-      // - For draft: shown when isDraftWithContext && onDeleteDraft
-      deleteLineVisible: isSavedApplication && !!onDeleteLine,
-      deleteDraftVisible: isDraftWithContext && !!onDeleteDraft,
-    });
-  }
-
-  // Fetch delete eligibility from server when application is loaded
+  // Fetch delete eligibility
   useEffect(() => {
     if (!loadedConfigurationId) {
       setCanHardDelete(null);
       return;
     }
-
-    // Fetch eligibility from server
     setIsCheckingEligibility(true);
     fetch(`/api/applications/${loadedConfigurationId}/delete-eligibility`)
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json();
           setCanHardDelete(data.canHardDelete);
-          console.log('[DeleteEligibility]', data);
         } else {
           setCanHardDelete(false);
         }
       })
-      .catch((err) => {
-        console.error('[DeleteEligibility] Error:', err);
-        setCanHardDelete(false);
-      })
-      .finally(() => {
-        setIsCheckingEligibility(false);
-      });
+      .catch(() => setCanHardDelete(false))
+      .finally(() => setIsCheckingEligibility(false));
   }, [loadedConfigurationId]);
 
-  // Contextual button label based on context type
-  const isQuoteContext = context?.type === 'quote';
-  const deleteButtonLabel = 'Delete';
-
-  const handleClearClick = () => {
-    setShowClearConfirm(true);
-  };
-
+  // Handlers
+  const handleClearClick = () => setShowClearConfirm(true);
   const handleConfirmClear = () => {
     setShowClearConfirm(false);
-    if (onClear) {
-      onClear();
-    }
+    if (onClear) onClear();
   };
-
   const handleDeleteClick = () => {
     setDeleteError(null);
     setShowDeleteConfirm(true);
   };
-
-  const handleDeleteDraftClick = () => {
-    setShowDeleteDraftConfirm(true);
-  };
-
-  const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+  const handleDeleteDraftClick = () => setShowDeleteDraftConfirm(true);
 
   const handleConfirmDeleteDraft = async () => {
     if (onDeleteDraft) {
@@ -161,88 +121,62 @@ export default function ApplicationContextHeader({
 
   const handleConfirmDelete = async () => {
     if (!loadedConfigurationId || !context) return;
-
     setIsDeleting(true);
     setDeleteError(null);
-
     try {
-      // Call contextual delete endpoint based on context type
       const endpoint = context.type === 'quote'
         ? `/api/applications/${loadedConfigurationId}/delete-quote-line`
         : `/api/applications/${loadedConfigurationId}/delete-so-line`;
-
-      const response = await fetch(endpoint, {
-        method: 'DELETE',
-      });
-
+      const response = await fetch(endpoint, { method: 'DELETE' });
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to delete line');
-      }
-
-      // Success - close modal and notify parent
+      if (!response.ok) throw new Error(data.error || 'Failed to delete line');
       setShowDeleteConfirm(false);
-      if (onDeleteLine) {
-        onDeleteLine();
-      }
+      if (onDeleteLine) onDeleteLine();
     } catch (error) {
-      console.error('Delete error:', error);
       setDeleteError(error instanceof Error ? error.message : 'Failed to delete line');
     } finally {
       setIsDeleting(false);
     }
   };
 
-  // Draft state (no context - not linked to any Quote/SO)
+  // Status chip config
+  const getStatusChip = () => {
+    if (isSavedApplication) {
+      return isFullyCalculated
+        ? { bg: 'bg-green-100 text-green-700', label: 'Calculated' }
+        : { bg: 'bg-blue-100 text-blue-700', label: 'Saved' };
+    }
+    return { bg: 'bg-amber-100 text-amber-700', label: 'Draft' };
+  };
+  const statusChip = getStatusChip();
+
+  // ============================================================
+  // DRAFT STATE (No context - not linked to any Quote/SO)
+  // ============================================================
   if (!context) {
     return (
-      <div className="bg-white border-b border-gray-200 mb-6">
-        <div className="flex items-center justify-between py-4">
-          {/* Left: Header Content */}
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-bold text-gray-900">
-                New Application
-              </h1>
-              {/* Status Chip */}
-              <span className="px-2 py-0.5 text-xs font-medium rounded bg-amber-100 text-amber-700">
-                Draft
-              </span>
-            </div>
-            <p className="text-sm text-gray-500 mt-1">
-              Not yet saved
-            </p>
-          </div>
-
-          {/* Right: Action Buttons */}
+      <>
+        {/* ROW 1: Primary header with buttons */}
+        <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
-            {/* Recalculate - only shown on error (manual retry) */}
+            <h1 className="text-xl font-bold text-gray-900">New Application</h1>
+          </div>
+          {/* Inline buttons */}
+          <div className="flex items-center gap-2">
             {onCalculate && hasCalcError && (
               <button
                 type="button"
-                className="btn bg-red-600 hover:bg-red-700 text-white hidden md:inline-flex"
+                className="btn btn-sm bg-red-600 hover:bg-red-700 text-white hidden md:inline-flex"
                 onClick={onCalculate}
                 disabled={isCalculating}
               >
-                {isCalculating ? (
-                  <span className="flex items-center gap-1.5">
-                    <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                    </svg>
-                    Retrying
-                  </span>
-                ) : (
-                  'Recalculate now'
-                )}
+                {isCalculating ? 'Retrying...' : 'Recalculate'}
               </button>
             )}
-            {/* Save - hidden on mobile (shown in bottom bar) */}
             {onSave && (
               <button
                 type="button"
-                className="btn btn-outline hidden md:inline-flex"
+                className="btn btn-sm btn-primary hidden md:inline-flex"
                 onClick={onSave}
                 disabled={isSaving}
               >
@@ -252,9 +186,8 @@ export default function ApplicationContextHeader({
             {onClear && (
               <button
                 type="button"
-                className="btn btn-outline text-gray-500 hover:text-gray-700"
+                className="btn btn-sm btn-outline text-gray-600"
                 onClick={handleClearClick}
-                title="Clear and start fresh"
               >
                 Clear
               </button>
@@ -262,148 +195,94 @@ export default function ApplicationContextHeader({
           </div>
         </div>
 
+        {/* ROW 2: Context metadata */}
+        <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+          <p className="text-sm text-gray-600">Not yet saved</p>
+          <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusChip.bg}`}>
+            {statusChip.label}
+          </span>
+        </div>
+
         {/* Clear Confirmation Modal */}
         {showClearConfirm && (
-          <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowClearConfirm(false)}>
-            <div className="flex min-h-screen items-center justify-center p-4">
-              <div className="fixed inset-0 bg-black/50 -z-10" />
-              <div
-                className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                  Clear this application?
-                </h3>
-                <p className="text-gray-600 mb-4">
-                  This resets the form and unlinks from any Quote/Sales Order.
-                  Saved records are not deleted.
-                </p>
-
-                <div className="flex justify-end gap-3">
-                  <button
-                    type="button"
-                    className="btn btn-outline"
-                    onClick={() => setShowClearConfirm(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleConfirmClear}
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+          <ConfirmModal
+            title="Clear this application?"
+            message="This resets the form and unlinks from any Quote/Sales Order. Saved records are not deleted."
+            confirmLabel="Clear"
+            onConfirm={handleConfirmClear}
+            onCancel={() => setShowClearConfirm(false)}
+          />
         )}
-      </div>
+      </>
     );
   }
 
-  // Linked state (has context - linked to a Quote or Sales Order)
+  // ============================================================
+  // LINKED STATE (Has context - linked to Quote or Sales Order)
+  // ============================================================
   const isQuote = context.type === 'quote';
   const href = (isQuote ? `/console/quotes/${context.id}` : `/console/sales-orders/${context.id}`) as `/console/quotes/${string}`;
-  const typeLabel = isQuote ? 'Quote' : 'Sales Order';
+  const typeLabel = isQuote ? 'Quote' : 'SO';
   const refDisplay = formatSaveTarget(context);
 
   return (
-    <div className="bg-white border-b border-gray-200 mb-6">
-      <div className="flex items-start justify-between py-4">
-        {/* Left: Header Content */}
-        <div>
-          {/* Line 1: Reference · Type · Status Chip */}
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-gray-900">
-              <Link
-                href={href}
-                className="hover:text-gray-700 hover:underline"
-              >
-                {refDisplay}
-              </Link>
-              <span className="text-gray-400 font-normal mx-2">·</span>
-              <span className="text-gray-600 font-semibold">{typeLabel}</span>
-              {isDirty && (
-                <span className="ml-3 inline-block w-2 h-2 bg-gray-400 rounded-full" title="Unsaved changes" />
-              )}
-            </h1>
-            {/* Status Chip - show Saved vs Draft based on loadedConfigurationId */}
-            <span className={`px-2 py-0.5 text-xs font-medium rounded ${
-              isSavedApplication
-                ? (isFullyCalculated ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700')
-                : 'bg-amber-100 text-amber-700'
-            }`}>
-              {isSavedApplication
-                ? (isFullyCalculated ? 'Calculated' : 'Saved')
-                : 'Draft'}
-            </span>
-          </div>
-
-          {/* Line 2: Customer */}
-          <p className="text-base text-gray-700 mt-1">
-            {context.customer_name || 'No customer'}
-          </p>
-
-          {/* Line 3: Line · Qty */}
-          <p className="text-sm text-gray-500 mt-0.5">
-            Line {context.jobLine} · Qty {context.quantity}
-          </p>
+    <>
+      {/* ROW 1: Primary header - Quote number + inline buttons */}
+      <div className="flex items-center justify-between px-4 py-3">
+        {/* Left: Primary identifier */}
+        <div className="flex items-center gap-3">
+          <Link href={href} className="text-xl font-bold text-gray-900 hover:text-blue-600">
+            {refDisplay}
+          </Link>
+          <span className="text-sm font-medium text-gray-500">{typeLabel}</span>
+          {isDirty && (
+            <span className="w-2 h-2 bg-amber-400 rounded-full" title="Unsaved changes" />
+          )}
         </div>
 
-        {/* Right: Action Buttons */}
-        <div className="flex items-center gap-3 pt-1">
-          {/* Recalculate - only shown on error (manual retry) */}
+        {/* Right: Inline action buttons */}
+        <div className="flex items-center gap-2">
+          {/* Recalculate - only on error */}
           {onCalculate && hasCalcError && (
             <button
               type="button"
-              className="btn bg-red-600 hover:bg-red-700 text-white hidden md:inline-flex"
+              className="btn btn-sm bg-red-600 hover:bg-red-700 text-white hidden md:inline-flex"
               onClick={onCalculate}
               disabled={isCalculating}
             >
-              {isCalculating ? (
-                <span className="flex items-center gap-1.5">
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  Retrying
-                </span>
-              ) : (
-                'Recalculate now'
-              )}
+              {isCalculating ? 'Retrying...' : 'Recalculate'}
             </button>
           )}
-          {/* Save with dropdown - hidden on mobile (shown in bottom bar) */}
+
+          {/* Save with dropdown */}
           {onSave && (
             <div className="relative hidden md:inline-flex">
               <button
                 type="button"
-                className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} rounded-r-none border-r-0`}
+                className={`btn btn-sm ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} rounded-r-none border-r-0`}
                 onClick={onSave}
                 disabled={!canSave || isSaving}
-                title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft (results are stale)' : ''}
+                title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft' : ''}
               >
                 {isSaving ? 'Saving...' : 'Save'}
               </button>
               <button
                 type="button"
-                className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} rounded-l-none px-2`}
+                className={`btn btn-sm ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} rounded-l-none px-1.5`}
                 onClick={(e) => { e.stopPropagation(); setShowSaveMenu(!showSaveMenu); }}
                 disabled={isSaving}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                 </svg>
               </button>
               {showSaveMenu && (
-                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                <div className="absolute right-0 top-full mt-1 w-40 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
                   <button
                     type="button"
                     onClick={() => { onSave(); setShowSaveMenu(false); }}
                     disabled={!canSave || isSaving}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
+                    className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
                   >
                     Save
                   </button>
@@ -412,7 +291,7 @@ export default function ApplicationContextHeader({
                       type="button"
                       onClick={() => { onSaveAsRecipe(); setShowSaveMenu(false); }}
                       disabled={!canSaveAsRecipe}
-                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
+                      className="w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
                     >
                       Save as Recipe
                     </button>
@@ -421,173 +300,165 @@ export default function ApplicationContextHeader({
               )}
             </div>
           )}
+
+          {/* Clear */}
           {onClear && (
             <button
               type="button"
-              className="btn btn-outline text-gray-500 hover:text-gray-700"
+              className="btn btn-sm btn-outline text-gray-600"
               onClick={handleClearClick}
-              title="Clear and start a new application"
             >
               Clear
             </button>
           )}
-          {/* Delete Draft - show for unsaved drafts with context */}
+
+          {/* Delete Draft */}
           {isDraftWithContext && onDeleteDraft && (
             <button
               type="button"
-              className="btn btn-outline text-red-600 hover:text-red-700 hover:border-red-300"
+              className="btn btn-sm btn-outline text-red-600 hover:border-red-300"
               onClick={handleDeleteDraftClick}
-              title="Delete this draft"
             >
-              Delete Draft
+              Delete
             </button>
           )}
-          {/* Delete Line - show for saved applications */}
+
+          {/* Delete Line */}
           {isSavedApplication && onDeleteLine && (
             <button
               type="button"
-              className="btn btn-outline text-red-600 hover:text-red-700 hover:border-red-300"
+              className="btn btn-sm btn-outline text-red-600 hover:border-red-300"
               onClick={handleDeleteClick}
               disabled={isCheckingEligibility}
-              title={`Delete this ${isQuoteContext ? 'Quote' : 'Sales Order'} line`}
             >
-              {isCheckingEligibility ? '...' : deleteButtonLabel}
+              {isCheckingEligibility ? '...' : 'Delete'}
             </button>
           )}
         </div>
       </div>
 
+      {/* ROW 2: Supporting context - Customer · Line · Qty | Status */}
+      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <span className="truncate max-w-[200px]">{context.customer_name || 'No customer'}</span>
+          <span className="text-gray-400">·</span>
+          <span>Line {context.jobLine}</span>
+          <span className="text-gray-400">·</span>
+          <span>Qty {context.quantity}</span>
+        </div>
+        <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusChip.bg}`}>
+          {statusChip.label}
+        </span>
+      </div>
+
       {/* Clear Confirmation Modal */}
       {showClearConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => setShowClearConfirm(false)}>
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50 -z-10" />
-            <div
-              className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Clear this application?
-              </h3>
-              <p className="text-gray-600 mb-4">
-                This resets the form and unlinks from any Quote/Sales Order.
-                Saved records are not deleted.
-              </p>
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setShowClearConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={handleConfirmClear}
-                >
-                  Clear
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title="Clear this application?"
+          message="This resets the form and unlinks from any Quote/Sales Order. Saved records are not deleted."
+          confirmLabel="Clear"
+          onConfirm={handleConfirmClear}
+          onCancel={() => setShowClearConfirm(false)}
+        />
       )}
 
       {/* Delete Line Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => !isDeleting && setShowDeleteConfirm(false)}>
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50 -z-10" />
-            <div
-              className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                {deleteButtonLabel}?
-              </h3>
-              <p className="text-gray-600 mb-2">
-                This will remove the {isQuoteContext ? 'Quote' : 'Sales Order'} line.
-              </p>
-              {!canHardDelete && (
-                <p className="text-amber-600 text-sm mb-4">
-                  This application is also linked to a {isQuoteContext ? 'Sales Order' : 'Quote'}, so it will be deactivated (not permanently deleted).
-                </p>
-              )}
-              {canHardDelete && (
-                <p className="text-gray-500 text-sm mb-4">
-                  The application will be permanently deleted. This cannot be undone.
-                </p>
-              )}
-
-              {deleteError && (
-                <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
-                  {deleteError}
-                </div>
-              )}
-
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setShowDeleteConfirm(false)}
-                  disabled={isDeleting}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn bg-red-600 hover:bg-red-700 text-white"
-                  onClick={handleConfirmDelete}
-                  disabled={isDeleting}
-                >
-                  {isDeleting ? 'Deleting...' : deleteButtonLabel}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+        <ConfirmModal
+          title="Delete?"
+          message={`This will remove the ${isQuoteContext ? 'Quote' : 'Sales Order'} line.`}
+          subMessage={
+            canHardDelete === false
+              ? `This application is also linked to a ${isQuoteContext ? 'Sales Order' : 'Quote'}, so it will be deactivated (not permanently deleted).`
+              : canHardDelete
+                ? 'The application will be permanently deleted. This cannot be undone.'
+                : undefined
+          }
+          error={deleteError}
+          confirmLabel={isDeleting ? 'Deleting...' : 'Delete'}
+          confirmDestructive
+          onConfirm={handleConfirmDelete}
+          onCancel={() => setShowDeleteConfirm(false)}
+          disabled={isDeleting}
+        />
       )}
 
       {/* Delete Draft Confirmation Modal */}
       {showDeleteDraftConfirm && (
-        <div className="fixed inset-0 z-50 overflow-y-auto" onClick={() => !isDeletingDraft && setShowDeleteDraftConfirm(false)}>
-          <div className="flex min-h-screen items-center justify-center p-4">
-            <div className="fixed inset-0 bg-black/50 -z-10" />
-            <div
-              className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Delete Draft?
-              </h3>
-              <p className="text-gray-600 mb-4">
-                This will permanently delete the {context?.type === 'quote' ? 'Quote' : 'Sales Order'} record and return to a new application.
-              </p>
+        <ConfirmModal
+          title="Delete Draft?"
+          message={`This will permanently delete the ${context?.type === 'quote' ? 'Quote' : 'Sales Order'} record and return to a new application.`}
+          confirmLabel={isDeletingDraft ? 'Deleting...' : 'Delete Draft'}
+          confirmDestructive
+          onConfirm={handleConfirmDeleteDraft}
+          onCancel={() => setShowDeleteDraftConfirm(false)}
+          disabled={isDeletingDraft}
+        />
+      )}
+    </>
+  );
+}
 
-              <div className="flex justify-end gap-3">
-                <button
-                  type="button"
-                  className="btn btn-outline"
-                  onClick={() => setShowDeleteDraftConfirm(false)}
-                  disabled={isDeletingDraft}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn bg-red-600 hover:bg-red-700 text-white"
-                  onClick={handleConfirmDeleteDraft}
-                  disabled={isDeletingDraft}
-                >
-                  {isDeletingDraft ? 'Deleting...' : 'Delete Draft'}
-                </button>
-              </div>
+// ============================================================
+// Reusable Confirm Modal
+// ============================================================
+function ConfirmModal({
+  title,
+  message,
+  subMessage,
+  error,
+  confirmLabel,
+  confirmDestructive = false,
+  onConfirm,
+  onCancel,
+  disabled = false,
+}: {
+  title: string;
+  message: string;
+  subMessage?: string;
+  error?: string | null;
+  confirmLabel: string;
+  confirmDestructive?: boolean;
+  onConfirm: () => void;
+  onCancel: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto" onClick={disabled ? undefined : onCancel}>
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black/50 -z-10" />
+        <div
+          className="relative bg-white rounded-lg shadow-xl max-w-md w-full p-6"
+          onClick={(e) => e.stopPropagation()}
+        >
+          <h3 className="text-lg font-semibold text-gray-900 mb-2">{title}</h3>
+          <p className="text-gray-600 mb-2">{message}</p>
+          {subMessage && <p className="text-sm text-amber-600 mb-4">{subMessage}</p>}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-700">
+              {error}
             </div>
+          )}
+          <div className="flex justify-end gap-3">
+            <button
+              type="button"
+              className="btn btn-outline"
+              onClick={onCancel}
+              disabled={disabled}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className={`btn ${confirmDestructive ? 'bg-red-600 hover:bg-red-700 text-white' : 'btn-primary'}`}
+              onClick={onConfirm}
+              disabled={disabled}
+            >
+              {confirmLabel}
+            </button>
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
