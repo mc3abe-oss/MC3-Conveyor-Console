@@ -45,7 +45,7 @@ export default function EnvironmentFactorsSelect({
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const buttonRef = useRef<HTMLButtonElement>(null);
+  const buttonRef = useRef<HTMLDivElement>(null);
 
   // Load catalog items
   const actualCatalogKey = CATALOG_KEYS.environment_factors;
@@ -174,70 +174,86 @@ export default function EnvironmentFactorsSelect({
 
   return (
     <div id={id}>
-      {/* Selected chips */}
-      {selectedValues.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-3">
-          {selectedValues.map((val) => (
-            <span
-              key={val}
-              className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-            >
-              {getLabel(val)}
-              {!disabled && (
-                <button
-                  type="button"
-                  onClick={() => handleRemove(val)}
-                  className="ml-1.5 text-blue-600 hover:text-blue-800 focus:outline-none"
-                  aria-label={`Remove ${getLabel(val)}`}
-                >
-                  <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
-                    <path
-                      fillRule="evenodd"
-                      d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
-                      clipRule="evenodd"
-                    />
-                  </svg>
-                </button>
-              )}
-            </span>
-          ))}
-          {selectedValues.length > 1 && !disabled && (
-            <button
-              type="button"
-              onClick={handleClearAll}
-              className="text-xs text-gray-500 hover:text-gray-700 underline"
-            >
-              Clear all
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Dropdown button */}
+      {/* Dropdown trigger with inline chips - fixed height to prevent layout shift */}
       <div className="relative">
-        <button
+        <div
           ref={buttonRef}
-          type="button"
+          role="button"
+          tabIndex={disabled ? -1 : 0}
           onClick={() => !disabled && setIsOpen(!isOpen)}
-          disabled={disabled}
-          className={`input w-full flex items-center justify-between text-left ${
+          onKeyDown={(e) => { if (!disabled && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); setIsOpen(!isOpen); }}}
+          className={`input w-full min-h-[42px] flex items-center justify-between text-left ${
             disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
           }`}
         >
-          <span className={selectedValues.length === 0 ? 'text-gray-500' : ''}>
-            {selectedValues.length === 0
-              ? 'Select environmental factors...'
-              : `${selectedValues.length} selected`}
-          </span>
-          <svg
-            className={`h-5 w-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
+          <div className="flex-1 flex items-center gap-1 overflow-hidden">
+            {selectedValues.length === 0 ? (
+              <span className="text-gray-500">Select environmental factors...</span>
+            ) : selectedValues.length <= 2 ? (
+              /* Show chips inline if 2 or fewer */
+              <div className="flex flex-wrap gap-1 items-center">
+                {selectedValues.map((val) => (
+                  <span
+                    key={val}
+                    className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                  >
+                    {getLabel(val)}
+                    {!disabled && (
+                      <button
+                        type="button"
+                        onClick={(e) => { e.stopPropagation(); handleRemove(val); }}
+                        className="ml-1 text-blue-600 hover:text-blue-800 focus:outline-none"
+                        aria-label={`Remove ${getLabel(val)}`}
+                      >
+                        <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path
+                            fillRule="evenodd"
+                            d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                      </button>
+                    )}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              /* Show count + first chip if more than 2 */
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  {getLabel(selectedValues[0])}
+                </span>
+                <span className="text-xs text-gray-500">+{selectedValues.length - 1} more</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+            {selectedValues.length > 0 && !disabled && (
+              <button
+                type="button"
+                onClick={(e) => { e.stopPropagation(); handleClearAll(); }}
+                className="p-0.5 text-gray-400 hover:text-gray-600"
+                aria-label="Clear all"
+              >
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                  <path
+                    fillRule="evenodd"
+                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              </button>
+            )}
+            <svg
+              className={`h-5 w-5 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
+          </div>
+        </div>
 
         {/* Dropdown panel */}
         {isOpen && (

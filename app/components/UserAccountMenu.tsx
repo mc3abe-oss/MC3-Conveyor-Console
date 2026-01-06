@@ -114,15 +114,16 @@ export default function UserAccountMenu({ onSignOut, darkMode = false }: UserAcc
         </div>
       )}
 
-      {/* User identity trigger */}
+      {/* User identity trigger - compact, only initials shown */}
       <button
         ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-2 py-1 rounded-md transition-colors ${
+        className={`flex items-center gap-1 px-1.5 py-1 rounded-md transition-colors ${
           darkMode
             ? 'hover:bg-white/10 text-white'
             : 'hover:bg-gray-100 text-gray-700'
         }`}
+        title={email || 'Account'}
       >
         {/* Avatar with initials */}
         <div
@@ -134,12 +135,6 @@ export default function UserAccountMenu({ onSignOut, darkMode = false }: UserAcc
         >
           {initials}
         </div>
-        {/* Email - hidden on very small screens */}
-        <span className={`text-sm hidden sm:inline truncate max-w-[150px] ${
-          darkMode ? 'text-white/80' : 'text-gray-600'
-        }`}>
-          {email}
-        </span>
         {/* Dropdown indicator */}
         <svg
           className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''} ${

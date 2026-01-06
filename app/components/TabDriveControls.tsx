@@ -464,30 +464,60 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             />
           </div>
 
-          {/* Brake Motor */}
-          <div>
-            <label className="label">Brake Motor</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="brake_motor"
-                  checked={inputs.brake_motor === false}
-                  onChange={() => updateInput('brake_motor', false)}
-                  className="mr-2"
-                />
-                No
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="brake_motor"
-                  checked={inputs.brake_motor === true}
-                  onChange={() => updateInput('brake_motor', true)}
-                  className="mr-2"
-                />
-                Yes
-              </label>
+          {/* Binary options row - compact 2-column layout on desktop */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Brake Motor */}
+            <div>
+              <label className="label">Brake Motor</label>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="brake_motor"
+                    checked={inputs.brake_motor === false}
+                    onChange={() => updateInput('brake_motor', false)}
+                    className="mr-2"
+                  />
+                  No
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="brake_motor"
+                    checked={inputs.brake_motor === true}
+                    onChange={() => updateInput('brake_motor', true)}
+                    className="mr-2"
+                  />
+                  Yes
+                </label>
+              </div>
+            </div>
+
+            {/* Field Wiring Required - moved here for compact layout */}
+            <div>
+              <label className="label">Field Wiring Required</label>
+              <div className="flex gap-4">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="field_wiring_required"
+                    checked={inputs.field_wiring_required === 'No'}
+                    onChange={() => updateInput('field_wiring_required', 'No')}
+                    className="mr-2"
+                  />
+                  No
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    name="field_wiring_required"
+                    checked={inputs.field_wiring_required === 'Yes'}
+                    onChange={() => updateInput('field_wiring_required', 'Yes')}
+                    className="mr-2"
+                  />
+                  Yes
+                </label>
+              </div>
             </div>
           </div>
 
@@ -563,33 +593,6 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             </DropdownPortal>
 
             <p className="text-xs text-gray-500 mt-1">Preference only. No logic applied yet.</p>
-          </div>
-
-          {/* Field Wiring Required */}
-          <div>
-            <label className="label">Field Wiring Required</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="field_wiring_required"
-                  checked={inputs.field_wiring_required === 'No'}
-                  onChange={() => updateInput('field_wiring_required', 'No')}
-                  className="mr-2"
-                />
-                No
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="field_wiring_required"
-                  checked={inputs.field_wiring_required === 'Yes'}
-                  onChange={() => updateInput('field_wiring_required', 'Yes')}
-                  className="mr-2"
-                />
-                Yes
-              </label>
-            </div>
           </div>
         </div>
       </AccordionSection>
