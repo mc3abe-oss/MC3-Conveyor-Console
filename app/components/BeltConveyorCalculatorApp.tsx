@@ -1216,7 +1216,7 @@ export default function BeltConveyorCalculatorApp() {
       {/* PAGE HEADER FRAME - Edge-to-edge, anchored to top            */}
       {/* This is a STRUCTURAL FRAME, not a card. No rounded, no shadow */}
       {/* ============================================================ */}
-      <div className="bg-white border-b border-gray-300">
+      <div className="bg-white border-b-2 border-gray-300">
         <div className="max-w-7xl mx-auto">
           {/* Application Context Header */}
           <ApplicationContextHeader
@@ -1249,11 +1249,11 @@ export default function BeltConveyorCalculatorApp() {
                 aria-selected={viewMode === 'configure'}
                 onClick={() => setViewMode('configure')}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                  flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
                   ${
                     viewMode === 'configure'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                      : 'font-medium text-gray-600 hover:text-gray-900'
                   }
                 `}
               >
@@ -1268,11 +1268,11 @@ export default function BeltConveyorCalculatorApp() {
                 aria-selected={viewMode === 'results'}
                 onClick={() => setViewMode('results')}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                  flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
                   ${
                     viewMode === 'results'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                      : 'font-medium text-gray-600 hover:text-gray-900'
                   }
                 `}
               >
@@ -1291,11 +1291,11 @@ export default function BeltConveyorCalculatorApp() {
                   aria-selected={viewMode === 'outputs_v2'}
                   onClick={() => setViewMode('outputs_v2')}
                   className={`
-                    flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                    flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
                     ${
                       viewMode === 'outputs_v2'
-                        ? 'bg-white text-gray-900 shadow-sm'
-                        : 'text-gray-600 hover:text-gray-900'
+                        ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                        : 'font-medium text-gray-600 hover:text-gray-900'
                     }
                   `}
                 >
@@ -1311,11 +1311,11 @@ export default function BeltConveyorCalculatorApp() {
                 aria-selected={viewMode === 'vault'}
                 onClick={() => setViewMode('vault')}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                  flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
                   ${
                     viewMode === 'vault'
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900'
+                      ? 'bg-white text-gray-900 font-semibold shadow-sm'
+                      : 'font-medium text-gray-600 hover:text-gray-900'
                   }
                 `}
               >
