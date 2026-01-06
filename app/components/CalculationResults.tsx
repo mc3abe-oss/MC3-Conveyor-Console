@@ -284,6 +284,19 @@ export default function CalculationResults({ result, inputs }: Props) {
                 unit="lb/in"
                 decimals={1}
               />
+              {/* Pulley Resultant Loads (T1 + T2) */}
+              <ResultRow
+                label="Drive Pulley Resultant Load"
+                value={outputs.drive_pulley_resultant_load_lbf}
+                unit="lb"
+                decimals={1}
+              />
+              <ResultRow
+                label="Tail Pulley Resultant Load"
+                value={outputs.tail_pulley_resultant_load_lbf}
+                unit="lb"
+                decimals={1}
+              />
             </div>
           </div>
 
