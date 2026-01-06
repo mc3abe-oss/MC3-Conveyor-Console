@@ -14,11 +14,11 @@ import {
   formatWallThickness,
 } from './pulley-models';
 
-// Mock models for testing
+// Mock models for testing (vendor-agnostic keys, v1.53)
 const mockModels: PulleyModel[] = [
   {
-    model_key: 'PCI_DRUM_4IN',
-    display_name: 'PCI Drum – 4"',
+    model_key: 'DRUM_4IN',
+    display_name: 'Standard Drum – 4"',
     description: null,
     style_key: 'DRUM_STEEL_STANDARD',
     shell_od_in: 4.0,
@@ -38,8 +38,8 @@ const mockModels: PulleyModel[] = [
     is_active: true,
   },
   {
-    model_key: 'PCI_DRUM_6IN',
-    display_name: 'PCI Drum – 6"',
+    model_key: 'DRUM_6IN',
+    display_name: 'Standard Drum – 6"',
     description: null,
     style_key: 'DRUM_STEEL_STANDARD',
     shell_od_in: 6.0,
@@ -59,8 +59,8 @@ const mockModels: PulleyModel[] = [
     is_active: true,
   },
   {
-    model_key: 'PCI_WING_6IN',
-    display_name: 'PCI Wing – 6"',
+    model_key: 'WING_6IN',
+    display_name: 'Wing Pulley – 6"',
     description: null,
     style_key: 'WING_STEEL_STANDARD',
     shell_od_in: 6.0,
@@ -105,28 +105,28 @@ const mockModels: PulleyModel[] = [
 describe('getEligibleModels', () => {
   it('filters by DRIVE position', () => {
     const result = getEligibleModels(mockModels, 'DRIVE', 'FLAT');
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_4IN');
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_6IN');
-    expect(result.map((m) => m.model_key)).not.toContain('PCI_WING_6IN'); // Wing not drive-eligible
+    expect(result.map((m) => m.model_key)).toContain('DRUM_4IN');
+    expect(result.map((m) => m.model_key)).toContain('DRUM_6IN');
+    expect(result.map((m) => m.model_key)).not.toContain('WING_6IN'); // Wing not drive-eligible
   });
 
   it('filters by TAIL position', () => {
     const result = getEligibleModels(mockModels, 'TAIL', 'FLAT');
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_4IN');
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_6IN');
-    expect(result.map((m) => m.model_key)).toContain('PCI_WING_6IN');
+    expect(result.map((m) => m.model_key)).toContain('DRUM_4IN');
+    expect(result.map((m) => m.model_key)).toContain('DRUM_6IN');
+    expect(result.map((m) => m.model_key)).toContain('WING_6IN');
   });
 
   it('filters by CROWNED tracking', () => {
     const result = getEligibleModels(mockModels, 'TAIL', 'CROWNED');
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_4IN');
-    expect(result.map((m) => m.model_key)).not.toContain('PCI_WING_6IN'); // Wing not crown-eligible
+    expect(result.map((m) => m.model_key)).toContain('DRUM_4IN');
+    expect(result.map((m) => m.model_key)).not.toContain('WING_6IN'); // Wing not crown-eligible
   });
 
   it('filters by V_GUIDED tracking', () => {
     const result = getEligibleModels(mockModels, 'TAIL', 'V_GUIDED');
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_4IN');
-    expect(result.map((m) => m.model_key)).not.toContain('PCI_WING_6IN'); // Wing not V-guided eligible
+    expect(result.map((m) => m.model_key)).toContain('DRUM_4IN');
+    expect(result.map((m) => m.model_key)).not.toContain('WING_6IN'); // Wing not V-guided eligible
   });
 
   it('excludes inactive models', () => {
@@ -139,23 +139,23 @@ describe('getModelsForBeltWidth', () => {
   it('returns models that can accommodate belt width', () => {
     const result = getModelsForBeltWidth(mockModels, 24);
     // 24" belt + 2" allowance = 26" face width needed
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_4IN'); // max 36"
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_6IN'); // max 54"
-    expect(result.map((m) => m.model_key)).toContain('PCI_WING_6IN'); // max 48" (needs 28" with 4" allowance)
+    expect(result.map((m) => m.model_key)).toContain('DRUM_4IN'); // max 36"
+    expect(result.map((m) => m.model_key)).toContain('DRUM_6IN'); // max 54"
+    expect(result.map((m) => m.model_key)).toContain('WING_6IN'); // max 48" (needs 28" with 4" allowance)
   });
 
   it('excludes models where belt exceeds max face width', () => {
     const result = getModelsForBeltWidth(mockModels, 48);
     // 48" belt + 2" allowance = 50" face width needed
-    expect(result.map((m) => m.model_key)).not.toContain('PCI_DRUM_4IN'); // max 36"
-    expect(result.map((m) => m.model_key)).toContain('PCI_DRUM_6IN'); // max 54"
+    expect(result.map((m) => m.model_key)).not.toContain('DRUM_4IN'); // max 36"
+    expect(result.map((m) => m.model_key)).toContain('DRUM_6IN'); // max 54"
     // Wing needs 48 + 4 = 52", max 48", so excluded
-    expect(result.map((m) => m.model_key)).not.toContain('PCI_WING_6IN');
+    expect(result.map((m) => m.model_key)).not.toContain('WING_6IN');
   });
 });
 
 describe('validateFaceWidth', () => {
-  const model = mockModels[0]; // PCI_DRUM_4IN: min 6", max 36"
+  const model = mockModels[0]; // DRUM_4IN: min 6", max 36"
 
   it('returns valid for face width within limits', () => {
     const result = validateFaceWidth(model, 24);
@@ -198,7 +198,7 @@ describe('computeFinishedOd', () => {
 });
 
 describe('validateWallThickness', () => {
-  const model = mockModels[1]; // PCI_DRUM_6IN
+  const model = mockModels[1]; // DRUM_6IN
 
   it('returns PASS for adequate wall thickness', () => {
     const result = validateWallThickness({

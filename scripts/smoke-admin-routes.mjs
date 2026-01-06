@@ -389,12 +389,12 @@ async function testPulleyModels() {
   console.log(bold('\n--- /api/admin/pulley-models ---'));
 
   // First, we need a valid style_key. Use an existing one.
-  // We'll use 'PCI_DRUM' which should exist from seed data
+  // We'll use 'DRUM_STEEL_STANDARD' which should exist from seed data
   const testKey = uniqueKey('SMOKE_MODEL');
   const postBody = {
     model_key: testKey,
     display_name: 'Smoke Test Model',
-    style_key: 'PCI_DRUM', // Must exist
+    style_key: 'DRUM_STEEL_STANDARD', // Must exist
     shell_od_in: 4.0,
     default_shell_wall_in: 0.134,
     face_width_min_in: 6,
@@ -415,7 +415,7 @@ async function testPulleyModels() {
 
   // If POST failed because style_key doesn't exist, note it
   if (!postOk && created?.error?.includes('not found')) {
-    console.log(yellow('    Note: PCI_DRUM style may not exist. Skipping model tests.'));
+    console.log(yellow('    Note: DRUM_STEEL_STANDARD style may not exist. Skipping model tests.'));
     return;
   }
 

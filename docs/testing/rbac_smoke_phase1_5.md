@@ -194,8 +194,8 @@ These indicate the 403 handling is working correctly.
 ### Token Expired
 Tokens expire after ~1 hour. Re-run `get-access-token.mjs` if tests fail with 401.
 
-### PCI_DRUM Style Not Found
-The pulley-models tests require a `PCI_DRUM` style to exist. If missing, the test will skip with a note.
+### DRUM_STEEL_STANDARD Style Not Found
+The pulley-models tests require a `DRUM_STEEL_STANDARD` style to exist. If missing, the test will skip with a note.
 
 ### 500 Instead of 403
 If you see 500 errors for permission denials, verify:

@@ -24,7 +24,7 @@ The following tables require `BELT_ADMIN` or `SUPER_ADMIN` role to modify:
 |-------|---------|
 | `v_guides` | V-Guide profiles (min pulley diameters) |
 | `pulley_library_styles` | Pulley style definitions (DRUM, WING, etc.) |
-| `pulley_library_models` | Concrete pulley models (PCI_DRUM_4IN, etc.) |
+| `pulley_library_models` | Concrete pulley models (DRUM_4IN, DRUM_6IN, etc.) |
 | `cleat_catalog` | Cleat catalog entries |
 | `cleat_center_factors` | Cleat center spacing factors |
 | `catalog_items` | Generic catalog items (leg models, casters, etc.) |

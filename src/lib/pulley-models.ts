@@ -43,6 +43,11 @@ export interface PulleyModel {
   tube_stress_limit_flat_psi: number | null;
   tube_stress_limit_vgroove_psi: number | null;
   is_active: boolean;
+  // Manufacturer attribution (v1.53)
+  manufacturer_name?: string | null;
+  manufacturer_part_number?: string | null;
+  source_doc?: string | null;
+  source_url?: string | null;
 }
 
 export type PulleyPosition = 'DRIVE' | 'TAIL';

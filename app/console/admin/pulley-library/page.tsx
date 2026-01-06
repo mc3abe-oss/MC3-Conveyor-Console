@@ -835,7 +835,7 @@ function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormPr
             value={formData.model_key}
             onChange={(e) => setFormData({ ...formData, model_key: e.target.value })}
             disabled={!isCreating}
-            placeholder="e.g., PCI_DRUM_6IN"
+            placeholder="e.g., DRUM_6IN"
             className="w-full px-3 py-2 border rounded-md disabled:bg-gray-100"
           />
         </div>
@@ -845,7 +845,7 @@ function ModelForm({ model, styles, isCreating, onSaved, onCancel }: ModelFormPr
             type="text"
             value={formData.display_name}
             onChange={(e) => setFormData({ ...formData, display_name: e.target.value })}
-            placeholder="e.g., PCI Drum – 6&quot;"
+            placeholder="e.g., Standard Drum – 6&quot;"
             className="w-full px-3 py-2 border rounded-md"
           />
         </div>
