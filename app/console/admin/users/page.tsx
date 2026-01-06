@@ -18,8 +18,9 @@
 
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useCurrentUserRole, Role } from '../../../hooks/useCurrentUserRole';
+import DropdownPortal from '../../../components/DropdownPortal';
 
 interface UserListItem {
   userId: string;
@@ -74,6 +75,7 @@ export default function UserAdminPage() {
   } | null>(null);
   const [isPerformingAction, setIsPerformingAction] = useState(false);
   const [openMenuUserId, setOpenMenuUserId] = useState<string | null>(null);
+  const actionButtonRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
 
   // Filter users based on search query and status
   const filteredUsers = useMemo(() => {
@@ -129,13 +131,6 @@ export default function UserAdminPage() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  // Close menu when clicking outside
-  useEffect(() => {
-    if (!openMenuUserId) return;
-    const handleClick = () => setOpenMenuUserId(null);
-    document.addEventListener('click', handleClick);
-    return () => document.removeEventListener('click', handleClick);
-  }, [openMenuUserId]);
 
   async function loadUsers() {
     setIsLoading(true);
@@ -619,15 +614,22 @@ export default function UserAdminPage() {
                         >
                           Edit
                         </button>
-                        <div className="relative">
+                        <div>
                           <button
+                            ref={(el) => { if (el) actionButtonRefs.current.set(user.userId, el); }}
                             onClick={(e) => { e.stopPropagation(); setOpenMenuUserId(openMenuUserId === user.userId ? null : user.userId); }}
                             className="px-2 py-1 text-gray-600 hover:bg-gray-100 rounded text-xs"
                           >
                             Actions ▾
                           </button>
-                          {openMenuUserId === user.userId && (
-                            <ul className="absolute right-0 mt-1 w-52 bg-white border border-gray-300 rounded-lg shadow-xl z-50 py-2 list-none">
+                          <DropdownPortal
+                            isOpen={openMenuUserId === user.userId}
+                            onClose={() => setOpenMenuUserId(null)}
+                            triggerRef={{ current: actionButtonRefs.current.get(user.userId) || null }}
+                            align="right"
+                            autoFlip={true}
+                          >
+                            <ul className="w-52 bg-white border border-gray-300 rounded-lg shadow-xl py-2 list-none">
                               <li>
                                 <a href="#" onClick={(e) => { e.preventDefault(); handleSendMagicLink(user.email); setOpenMenuUserId(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                   Send Magic Link
@@ -650,7 +652,7 @@ export default function UserAdminPage() {
                                 </a>
                               </li>
                             </ul>
-                          )}
+                          </DropdownPortal>
                         </div>
                       </div>
                     )}

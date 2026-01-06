@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { PRODUCTS } from '../../src/lib/products';
 import { createClient } from '../../src/lib/supabase/browser';
+import { clearCachedRole } from '../hooks/useCurrentUserRole';
 import MC3Logo from '../components/MC3Logo';
 import MobileNavDrawer from '../components/MobileNavDrawer';
+import UserAccountMenu from '../components/UserAccountMenu';
 
 interface ConsoleLayoutProps {
   children: React.ReactNode;
@@ -21,6 +23,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
   const currentProduct = PRODUCTS.find((p) => pathname.startsWith(p.href));
 
   const handleLogout = async () => {
+    clearCachedRole();
     const supabase = createClient();
     await supabase.auth.signOut();
     router.push('/login');
@@ -127,12 +130,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                 Admin
               </Link>
               <div className="h-5 w-px bg-mc3-mist/30 mx-2" />
-              <button
-                onClick={handleLogout}
-                className="px-3 py-2 rounded text-sm font-medium text-mc3-mist/60 hover:bg-mc3-blue/50 hover:text-white transition-colors"
-              >
-                Sign out
-              </button>
+              <UserAccountMenu onSignOut={handleLogout} darkMode />
             </nav>
           </div>
         </div>

@@ -14,7 +14,7 @@
 
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
   SliderbedInputs,
   SliderbedOutputs,
@@ -32,6 +32,7 @@ import AccordionSection, { useAccordionState } from './AccordionSection';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 import DriveArrangementModal from './DriveArrangementModal';
 import AdvancedParametersModal from './AdvancedParametersModal';
+import DropdownPortal from './DropdownPortal';
 
 interface TabDriveControlsProps {
   inputs: SliderbedInputs;
@@ -50,18 +51,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
 
   // Sensor dropdown state
   const [sensorDropdownOpen, setSensorDropdownOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setSensorDropdownOpen(false);
-      }
-    }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const sensorTriggerRef = useRef<HTMLDivElement>(null);
 
   const handleSensorToggle = (option: string) => {
     const current = inputs.sensor_options || [];
@@ -507,11 +497,12 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
           </h4>
 
           {/* Sensor Options */}
-          <div ref={dropdownRef} className="relative">
+          <div>
             <label className="label">Sensor Options</label>
 
-            {/* Selected chips */}
+            {/* Selected chips - trigger element */}
             <div
+              ref={sensorTriggerRef}
               className="input min-h-[42px] flex flex-wrap gap-1 items-center cursor-pointer"
               onClick={() => setSensorDropdownOpen(!sensorDropdownOpen)}
             >
@@ -539,9 +530,15 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
               )}
             </div>
 
-            {/* Dropdown */}
-            {sensorDropdownOpen && (
-              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+            {/* Portal-based dropdown */}
+            <DropdownPortal
+              isOpen={sensorDropdownOpen}
+              onClose={() => setSensorDropdownOpen(false)}
+              triggerRef={sensorTriggerRef}
+              width="trigger"
+              align="left"
+            >
+              <div className="bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
                 {Object.values(SensorOption).map((option) => {
                   const isSelected = (inputs.sensor_options || []).includes(option);
                   return (
@@ -563,7 +560,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   );
                 })}
               </div>
-            )}
+            </DropdownPortal>
 
             <p className="text-xs text-gray-500 mt-1">Preference only. No logic applied yet.</p>
           </div>
