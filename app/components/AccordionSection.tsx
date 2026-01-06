@@ -96,9 +96,11 @@ export default function AccordionSection({
 /**
  * Hook for managing accordion state with single-section-expanded behavior.
  * All sections start collapsed by default.
+ *
+ * @param initialExpanded - Optional section ID to expand initially
  */
-export function useAccordionState() {
-  const [expandedSection, setExpandedSection] = useState<string>('');
+export function useAccordionState(initialExpanded: string = '') {
+  const [expandedSection, setExpandedSection] = useState<string>(initialExpanded);
 
   const handleToggle = (sectionId: string) => {
     // Toggle: if already expanded, collapse it; otherwise expand it (and collapse others)
@@ -107,5 +109,12 @@ export function useAccordionState() {
 
   const isExpanded = (sectionId: string) => expandedSection === sectionId;
 
-  return { expandedSection, handleToggle, isExpanded };
+  /**
+   * Expand a specific section (e.g., the first section with issues)
+   */
+  const expandSection = (sectionId: string) => {
+    setExpandedSection(sectionId);
+  };
+
+  return { expandedSection, handleToggle, isExpanded, expandSection };
 }
