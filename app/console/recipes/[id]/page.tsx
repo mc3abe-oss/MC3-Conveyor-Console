@@ -19,7 +19,8 @@ interface Recipe {
   model_version_id: string;
   model_build_id: string | null;
   model_snapshot_hash: string | null;
-  inputs: Record<string, unknown>;
+  inputs: Record<string, unknown>; // Raw inputs (legacy/audit)
+  user_inputs_json: Record<string, unknown> | null; // Canonical user inputs
   inputs_hash: string;
   expected_outputs: Record<string, unknown> | null;
   expected_issues: Array<{ code: string; severity: string; required: boolean }> | null;
@@ -443,13 +444,25 @@ export default function ConsoleRecipeDetailPage() {
         )}
       </div>
 
-      {/* Inputs */}
+      {/* Inputs - show canonical user_inputs_json if available, otherwise fall back to raw inputs */}
       <div className="bg-white shadow rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-gray-900 mb-4">Inputs</h2>
+        <h2 className="text-lg font-semibold text-gray-900 mb-4">User Inputs</h2>
         <pre className="bg-gray-50 p-4 rounded-md text-sm overflow-auto max-h-64">
-          {JSON.stringify(recipe.inputs, null, 2)}
+          {JSON.stringify(recipe.user_inputs_json ?? recipe.inputs, null, 2)}
         </pre>
         <p className="text-xs text-gray-400 mt-2 font-mono">Hash: {recipe.inputs_hash}</p>
+
+        {/* Raw inputs (collapsed by default) - only show if different from canonical */}
+        {recipe.user_inputs_json && (
+          <details className="mt-4">
+            <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700">
+              Show raw inputs (audit)
+            </summary>
+            <pre className="mt-2 bg-gray-100 p-4 rounded-md text-sm overflow-auto max-h-48 text-gray-600">
+              {JSON.stringify(recipe.inputs, null, 2)}
+            </pre>
+          </details>
+        )}
       </div>
 
       {/* Expected Outputs (Golden only) */}

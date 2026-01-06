@@ -27,6 +27,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
 import { hashCanonical, stripUndefined } from '../../../src/lib/recipes/hash';
+import { canonicalizeRecipeInputs } from '../../../src/lib/recipes/canon/canonicalize-inputs';
 
 export async function GET(request: NextRequest) {
   try {
@@ -151,9 +152,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Golden recipes require outputs' }, { status: 400 });
     }
 
-    // Normalize inputs and compute hash
+    // Normalize inputs (strip undefined)
     const normalizedInputs = stripUndefined(inputs);
-    const inputsHash = hashCanonical(normalizedInputs);
+
+    // Canonicalize inputs - produce clean user_inputs
+    const { userInputs, removedKeys } = canonicalizeRecipeInputs(normalizedInputs);
+
+    // Compute hash from CANONICALIZED inputs (not raw)
+    const inputsHash = hashCanonical(userInputs);
+
+    // Log removed keys for debugging (in development)
+    if (removedKeys.length > 0 && process.env.NODE_ENV === 'development') {
+      console.log('Recipe inputs canonicalization removed keys:', removedKeys);
+    }
 
     // Build the recipe row
     const recipeRow: Record<string, unknown> = {
@@ -163,8 +174,9 @@ export async function POST(request: NextRequest) {
       recipe_status: 'draft', // Default status
       model_key,
       model_version_id,
-      inputs: normalizedInputs,
-      inputs_hash: inputsHash,
+      inputs: normalizedInputs, // Keep raw inputs for audit
+      user_inputs_json: userInputs, // Store canonical inputs
+      inputs_hash: inputsHash, // Hash computed from canonical inputs
       source: 'calculator',
       notes: notes || null,
       tolerance_policy: recipe_type === 'golden' ? 'explicit' : 'default_fallback',

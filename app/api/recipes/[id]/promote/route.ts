@@ -15,6 +15,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { canonicalizeRecipeInputs } from '../../../../../src/lib/recipes/canon/canonicalize-inputs';
+import { hashCanonical } from '../../../../../src/lib/recipes/hash';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -75,11 +77,26 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       });
     }
 
+    // Canonicalize inputs on promote
+    // This ensures promoted recipes have clean user_inputs_json
+    const rawInputs = current.inputs || {};
+    const { userInputs, removedKeys } = canonicalizeRecipeInputs(rawInputs);
+
+    // Recompute hash from canonical inputs
+    const inputsHash = hashCanonical(userInputs);
+
+    // Log removed keys for debugging
+    if (removedKeys.length > 0 && process.env.NODE_ENV === 'development') {
+      console.log('Promote canonicalization removed keys:', removedKeys);
+    }
+
     // Build update payload
     const updatePayload: Record<string, unknown> = {
       is_fixture: true,
       recipe_tier: tier || 'regression',
       recipe_status: 'active',
+      user_inputs_json: userInputs, // Store canonical inputs
+      inputs_hash: inputsHash, // Update hash to match canonical inputs
       updated_at: new Date().toISOString(),
     };
 
