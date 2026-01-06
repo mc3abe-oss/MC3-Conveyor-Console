@@ -541,7 +541,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
 
             {/* Dropdown */}
             {sensorDropdownOpen && (
-              <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+              <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
                 {Object.values(SensorOption).map((option) => {
                   const isSelected = (inputs.sensor_options || []).includes(option);
                   return (

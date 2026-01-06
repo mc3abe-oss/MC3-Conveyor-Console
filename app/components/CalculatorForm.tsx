@@ -196,7 +196,7 @@ export default function CalculatorForm({
   return (
     <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
       {/* Configure Sub-Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
         {/* Sub-tab navigation */}
         <div className="border-b border-gray-200 bg-gray-50">
           <nav className="flex -mb-px overflow-x-auto scrollbar-hide" aria-label="Configure tabs">

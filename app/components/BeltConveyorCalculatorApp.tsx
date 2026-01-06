@@ -11,6 +11,7 @@ import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
 import MobileBottomActionBar from './MobileBottomActionBar';
+import SaveRecipeModal from './SaveRecipeModal';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs } from '../../src/models/sliderbed_v1/schema';
 import { buildOutputsV2, OutputsV2 } from '../../src/models/sliderbed_v1/outputs_v2';
 import { OutputsV2Tabs } from './outputs_v2';
@@ -65,6 +66,10 @@ export default function BeltConveyorCalculatorApp() {
   const [isSaving, setIsSaving] = useState(false);
 
   const [toast, setToast] = useState<string | null>(null);
+
+  // Save Recipe Modal
+  const [isRecipeModalOpen, setIsRecipeModalOpen] = useState(false);
+  const [isSavingRecipe, setIsSavingRecipe] = useState(false);
 
   // Save Target Modal (for first save in draft mode)
   const [isSaveTargetModalOpen, setIsSaveTargetModalOpen] = useState(false);
@@ -903,6 +908,40 @@ export default function BeltConveyorCalculatorApp() {
     }
   };
 
+  // Handle Save as Recipe
+  const handleSaveRecipe = async (data: { name: string; recipe_type: 'golden' | 'reference'; notes: string }) => {
+    if (!inputs || !result?.outputs) {
+      throw new Error('Missing inputs or outputs');
+    }
+
+    setIsSavingRecipe(true);
+    try {
+      const response = await fetch('/api/recipes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: data.name,
+          recipe_type: data.recipe_type,
+          notes: data.notes || null,
+          inputs: inputs,
+          outputs: result.outputs,
+          model_key: result.metadata.model_key,
+          model_version_id: result.metadata.model_version_id,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to save recipe');
+      }
+
+      const savedRecipe = await response.json();
+      showToast(`Recipe "${savedRecipe.name}" saved`);
+    } finally {
+      setIsSavingRecipe(false);
+    }
+  };
+
   // Handle selecting a target from the modal
   const handleSelectSaveTarget = async (target: SaveTarget) => {
     setIsSaveTargetModalOpen(false);
@@ -1157,6 +1196,14 @@ export default function BeltConveyorCalculatorApp() {
           defaultQuantity={conveyorQty}
         />
 
+        {/* Save Recipe Modal */}
+        <SaveRecipeModal
+          isOpen={isRecipeModalOpen}
+          onClose={() => setIsRecipeModalOpen(false)}
+          onSave={handleSaveRecipe}
+          isSaving={isSavingRecipe}
+        />
+
         {/* Line Selection Modal */}
         {jobLineSelectModal && (
           <JobLineSelectModal
@@ -1214,6 +1261,8 @@ export default function BeltConveyorCalculatorApp() {
           isDirty={isDirty}
           isSaving={isSaving}
           onSave={handleSave}
+          onSaveAsRecipe={() => setIsRecipeModalOpen(true)}
+          canSaveAsRecipe={!!(result?.success && result?.outputs && inputs)}
           onCalculate={handleCalculateClick}
           isCalculating={isCalculating}
           canSave={canSave}
@@ -1411,21 +1460,6 @@ export default function BeltConveyorCalculatorApp() {
             );
           })()}
 
-          {/* Edit Inputs CTA - Show when we have calculated results */}
-          {result && calculationStatus === 'calculated' && (
-            <div className="mt-6 flex justify-center">
-              <button
-                type="button"
-                onClick={() => setViewMode('configure')}
-                className="px-6 py-3 bg-gray-100 text-gray-700 font-medium rounded-lg hover:bg-gray-200 transition-colors flex items-center gap-2"
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Edit Configuration
-              </button>
-            </div>
-          )}
         </div>
 
         {/* Outputs V2 Mode - v1.42: gated to abek@mc3mfg.com only */}

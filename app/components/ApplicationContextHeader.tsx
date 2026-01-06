@@ -13,6 +13,8 @@ interface ApplicationContextHeaderProps {
   isDirty?: boolean;
   isSaving?: boolean;
   onSave?: () => void;
+  onSaveAsRecipe?: () => void; // Open save as recipe modal
+  canSaveAsRecipe?: boolean; // Whether save as recipe is available (needs calculated results)
   onCalculate?: () => void;
   isCalculating?: boolean;
   canSave?: boolean;
@@ -33,6 +35,8 @@ export default function ApplicationContextHeader({
   isDirty = false,
   isSaving = false,
   onSave,
+  onSaveAsRecipe,
+  canSaveAsRecipe = false,
   onCalculate,
   isCalculating = false,
   canSave = true,
@@ -46,6 +50,15 @@ export default function ApplicationContextHeader({
   const [showDeleteDraftConfirm, setShowDeleteDraftConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showSaveMenu, setShowSaveMenu] = useState(false);
+
+  // Close save menu on click outside
+  useEffect(() => {
+    if (!showSaveMenu) return;
+    const handleClick = () => setShowSaveMenu(false);
+    document.addEventListener('click', handleClick);
+    return () => document.removeEventListener('click', handleClick);
+  }, [showSaveMenu]);
 
   // Line delete eligibility state - fetched from server
   // canHardDelete = true means application is ONLY referenced by this line type
@@ -108,7 +121,7 @@ export default function ApplicationContextHeader({
 
   // Contextual button label based on context type
   const isQuoteContext = context?.type === 'quote';
-  const deleteButtonLabel = isQuoteContext ? 'Delete Quote Line' : 'Delete SO Line';
+  const deleteButtonLabel = 'Delete';
 
   const handleClearClick = () => {
     setShowClearConfirm(true);
@@ -362,17 +375,51 @@ export default function ApplicationContextHeader({
               )}
             </button>
           )}
-          {/* Save - hidden on mobile (shown in bottom bar) */}
+          {/* Save with dropdown - hidden on mobile (shown in bottom bar) */}
           {onSave && (
-            <button
-              type="button"
-              className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} hidden md:inline-flex`}
-              onClick={onSave}
-              disabled={!canSave || isSaving}
-              title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft (results are stale)' : ''}
-            >
-              {isSaving ? 'Saving...' : 'Save'}
-            </button>
+            <div className="relative hidden md:inline-flex">
+              <button
+                type="button"
+                className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} rounded-r-none border-r-0`}
+                onClick={onSave}
+                disabled={!canSave || isSaving}
+                title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft (results are stale)' : ''}
+              >
+                {isSaving ? 'Saving...' : 'Save'}
+              </button>
+              <button
+                type="button"
+                className={`btn ${isDirty && canSave ? 'btn-primary' : 'btn-outline'} rounded-l-none px-2`}
+                onClick={(e) => { e.stopPropagation(); setShowSaveMenu(!showSaveMenu); }}
+                disabled={isSaving}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showSaveMenu && (
+                <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-lg shadow-lg z-50 py-1">
+                  <button
+                    type="button"
+                    onClick={() => { onSave(); setShowSaveMenu(false); }}
+                    disabled={!canSave || isSaving}
+                    className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
+                  >
+                    Save
+                  </button>
+                  {onSaveAsRecipe && (
+                    <button
+                      type="button"
+                      onClick={() => { onSaveAsRecipe(); setShowSaveMenu(false); }}
+                      disabled={!canSaveAsRecipe}
+                      className="w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
+                    >
+                      Save as Recipe
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
           )}
           {onClear && (
             <button

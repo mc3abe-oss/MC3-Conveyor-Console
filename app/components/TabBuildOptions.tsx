@@ -552,32 +552,6 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts, ge
             </div>
           </div>
 
-          {/* Send to Estimating */}
-          <div>
-            <label className="label">Send to Estimating</label>
-            <div className="flex gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="send_to_estimating"
-                  checked={inputs.send_to_estimating === 'No'}
-                  onChange={() => updateInput('send_to_estimating', 'No')}
-                  className="mr-2"
-                />
-                No
-              </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="send_to_estimating"
-                  checked={inputs.send_to_estimating === 'Yes'}
-                  onChange={() => updateInput('send_to_estimating', 'Yes')}
-                  className="mr-2"
-                />
-                Yes
-              </label>
-            </div>
-          </div>
         </div>
       </AccordionSection>
     </div>

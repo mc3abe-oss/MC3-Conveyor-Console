@@ -17,7 +17,6 @@
 
 'use client';
 
-import { useState } from 'react';
 import {
   SliderbedInputs,
   SideLoadingDirection,
@@ -26,13 +25,12 @@ import {
   AMBIENT_TEMPERATURE_CLASS_LABELS,
   MaterialForm,
   BulkInputMethod,
+  Orientation,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 import EnvironmentFactorsSelect from './EnvironmentFactorsSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
-import BulkMaterialConfigModal, { getBulkMaterialSummary } from './BulkMaterialConfigModal';
-import DiscretePartsConfigModal, { getDiscretePartsSummary } from './DiscretePartsConfigModal';
 
 interface TabApplicationDemandProps {
   inputs: SliderbedInputs;
@@ -43,17 +41,10 @@ interface TabApplicationDemandProps {
 
 export default function TabApplicationDemand({ inputs, updateInput, sectionCounts, getIssuesForSection }: TabApplicationDemandProps) {
   const { handleToggle, isExpanded } = useAccordionState();
-  const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
-  const [isDiscreteModalOpen, setIsDiscreteModalOpen] = useState(false);
 
   // Determine current material mode (if any)
   const isDiscreteMode = inputs.material_form === MaterialForm.Parts || inputs.material_form === 'PARTS';
   const isBulkMode = inputs.material_form === MaterialForm.Bulk || inputs.material_form === 'BULK';
-  const hasNoMode = !isDiscreteMode && !isBulkMode;
-
-  // Get summaries for configured modes
-  const discreteSummary = isDiscreteMode ? getDiscretePartsSummary(inputs) : null;
-  const bulkSummary = isBulkMode ? getBulkMaterialSummary(inputs) : null;
 
   // Issue counts for Material section (product + throughput)
   const materialIssueCounts: SectionCounts = {
@@ -73,26 +64,6 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
   };
 
   const environmentIssues = getIssuesForSection('environment');
-
-  // Handle opening discrete modal
-  const handleOpenDiscrete = () => {
-    updateInput('material_form', MaterialForm.Parts);
-    setIsDiscreteModalOpen(true);
-  };
-
-  // Handle opening bulk modal
-  const handleOpenBulk = () => {
-    updateInput('material_form', MaterialForm.Bulk);
-    if (!inputs.bulk_input_method) {
-      updateInput('bulk_input_method', BulkInputMethod.WeightFlow);
-    }
-    setIsBulkModalOpen(true);
-  };
-
-  // Handle changing material type (with implicit clear of other mode)
-  const handleChangeMaterialType = () => {
-    updateInput('material_form', undefined);
-  };
 
   return (
     <div className="space-y-4">
@@ -146,101 +117,287 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
             </div>
           </div>
 
-          {/* Material Form Selection */}
+          {/* Material Form Selection - Selection-first pattern */}
           <div>
-            <p className="text-xs font-medium text-gray-400 mb-2">Material Form</p>
+            <p className="text-xs font-medium text-gray-400 mb-2">Material Form <span className="text-red-500">*</span></p>
 
-            {/* NO MODE SELECTED - Show two configure buttons */}
-            {hasNoMode && (
-              <div className="flex flex-wrap gap-3">
-                <button
-                  type="button"
-                  onClick={handleOpenDiscrete}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200"
-                >
-                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Configure Discrete Parts
-                </button>
-                <button
-                  type="button"
-                  onClick={handleOpenBulk}
-                  className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors border border-gray-200"
-                >
-                  <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                  Configure Bulk Material
-                </button>
-              </div>
-            )}
+            {/* Material Type Selection - Always visible */}
+            <div className="flex flex-wrap gap-3 mb-4">
+              <label
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border cursor-pointer transition-colors ${
+                  isDiscreteMode
+                    ? 'bg-blue-50 border-blue-500 text-blue-700'
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="material_form_type"
+                  checked={isDiscreteMode}
+                  onChange={() => {
+                    updateInput('material_form', MaterialForm.Parts);
+                  }}
+                  className="sr-only"
+                />
+                <svg className={`w-5 h-5 ${isDiscreteMode ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                </svg>
+                Discrete Parts
+              </label>
+              <label
+                className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg border cursor-pointer transition-colors ${
+                  isBulkMode
+                    ? 'bg-blue-50 border-blue-500 text-blue-700'
+                    : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name="material_form_type"
+                  checked={isBulkMode}
+                  onChange={() => {
+                    updateInput('material_form', MaterialForm.Bulk);
+                    if (!inputs.bulk_input_method) {
+                      updateInput('bulk_input_method', BulkInputMethod.WeightFlow);
+                    }
+                  }}
+                  className="sr-only"
+                />
+                <svg className={`w-5 h-5 ${isBulkMode ? 'text-blue-500' : 'text-gray-400'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Bulk Material
+              </label>
+            </div>
 
-            {/* DISCRETE PARTS CONFIGURED - Green summary card */}
+            {/* DISCRETE PARTS - Inline Configuration */}
             {isDiscreteMode && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm font-semibold text-green-900">Discrete Parts Configured</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsDiscreteModalOpen(true)}
-                      className="text-sm text-green-700 hover:text-green-800 font-medium"
-                    >
-                      Edit
-                    </button>
-                    <span className="text-gray-300">|</span>
-                    <button
-                      type="button"
-                      onClick={handleChangeMaterialType}
-                      className="text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      Change Type
-                    </button>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+                {/* Part Dimensions */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Part Dimensions</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div>
+                      <label htmlFor="part_length_in" className="label">Length (in)</label>
+                      <input
+                        type="number"
+                        id="part_length_in"
+                        className="input"
+                        value={inputs.part_length_in || ''}
+                        onChange={(e) => updateInput('part_length_in', e.target.value ? parseFloat(e.target.value) : 0)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 12"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="part_width_in" className="label">Width (in)</label>
+                      <input
+                        type="number"
+                        id="part_width_in"
+                        className="input"
+                        value={inputs.part_width_in || ''}
+                        onChange={(e) => updateInput('part_width_in', e.target.value ? parseFloat(e.target.value) : 0)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 8"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="part_weight_lbs" className="label">Weight (lbs)</label>
+                      <input
+                        type="number"
+                        id="part_weight_lbs"
+                        className="input"
+                        value={inputs.part_weight_lbs || ''}
+                        onChange={(e) => updateInput('part_weight_lbs', e.target.value ? parseFloat(e.target.value) : 0)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 5"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="orientation" className="label">Orientation</label>
+                      <select
+                        id="orientation"
+                        className="input"
+                        value={inputs.orientation ?? Orientation.Lengthwise}
+                        onChange={(e) => updateInput('orientation', e.target.value as Orientation)}
+                      >
+                        <option value={Orientation.Lengthwise}>Lengthwise</option>
+                        <option value={Orientation.Crosswise}>Crosswise</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
-                {discreteSummary && (
-                  <p className="mt-2 text-sm text-green-800 ml-7">{discreteSummary}</p>
-                )}
+                {/* Throughput */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Throughput</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <label htmlFor="part_spacing_in" className="label">Part Spacing (in)</label>
+                      <input
+                        type="number"
+                        id="part_spacing_in"
+                        className="input"
+                        value={inputs.part_spacing_in || ''}
+                        onChange={(e) => updateInput('part_spacing_in', e.target.value ? parseFloat(e.target.value) : 0)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 6"
+                      />
+                      <p className="text-xs text-gray-500 mt-1">Center-to-center</p>
+                    </div>
+                    <div>
+                      <label htmlFor="required_throughput_pph" className="label">Required Throughput (pph) <span className="text-gray-400 font-normal">(opt)</span></label>
+                      <input
+                        type="number"
+                        id="required_throughput_pph"
+                        className="input"
+                        value={inputs.required_throughput_pph ?? ''}
+                        onChange={(e) => updateInput('required_throughput_pph', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        step="1"
+                        min="0"
+                        placeholder="e.g., 500"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="throughput_margin_pct" className="label">Throughput Margin (%) <span className="text-gray-400 font-normal">(opt)</span></label>
+                      <input
+                        type="number"
+                        id="throughput_margin_pct"
+                        className="input"
+                        value={inputs.throughput_margin_pct ?? ''}
+                        onChange={(e) => updateInput('throughput_margin_pct', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        step="1"
+                        min="0"
+                        placeholder="e.g., 10"
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Material Properties */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Material Properties</h4>
+                  <div className="flex gap-4">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="parts_sharp"
+                        checked={inputs.parts_sharp === 'No'}
+                        onChange={() => updateInput('parts_sharp', 'No')}
+                        className="mr-2"
+                      />
+                      Parts not sharp
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="parts_sharp"
+                        checked={inputs.parts_sharp === 'Yes'}
+                        onChange={() => updateInput('parts_sharp', 'Yes')}
+                        className="mr-2"
+                      />
+                      Parts are sharp/abrasive
+                    </label>
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* BULK MATERIAL CONFIGURED - Green summary card */}
+            {/* BULK MATERIAL - Inline Configuration */}
             {isBulkMode && (
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <svg className="w-5 h-5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                    </svg>
-                    <span className="text-sm font-semibold text-green-900">Bulk Material Configured</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setIsBulkModalOpen(true)}
-                      className="text-sm text-green-700 hover:text-green-800 font-medium"
-                    >
-                      Edit
-                    </button>
-                    <span className="text-gray-300">|</span>
-                    <button
-                      type="button"
-                      onClick={handleChangeMaterialType}
-                      className="text-sm text-gray-500 hover:text-gray-700"
-                    >
-                      Change Type
-                    </button>
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
+                {/* Input Method */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Input Method</h4>
+                  <div className="flex flex-wrap gap-3">
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="bulk_input_method"
+                        checked={inputs.bulk_input_method === BulkInputMethod.WeightFlow}
+                        onChange={() => updateInput('bulk_input_method', BulkInputMethod.WeightFlow)}
+                        className="mr-2"
+                      />
+                      Weight Flow Rate
+                    </label>
+                    <label className="inline-flex items-center">
+                      <input
+                        type="radio"
+                        name="bulk_input_method"
+                        checked={inputs.bulk_input_method === BulkInputMethod.VolumeFlow}
+                        onChange={() => updateInput('bulk_input_method', BulkInputMethod.VolumeFlow)}
+                        className="mr-2"
+                      />
+                      Volume Flow Rate
+                    </label>
                   </div>
                 </div>
-                {bulkSummary && (
-                  <p className="mt-2 text-sm text-green-800 ml-7">{bulkSummary}</p>
-                )}
+                {/* Flow Rate Inputs - based on method */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Material Properties</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {inputs.bulk_input_method === BulkInputMethod.WeightFlow && (
+                      <div>
+                        <label htmlFor="mass_flow_lbs_per_hr" className="label">Mass Flow (lb/hr)</label>
+                        <input
+                          type="number"
+                          id="mass_flow_lbs_per_hr"
+                          className="input"
+                          value={inputs.mass_flow_lbs_per_hr || ''}
+                          onChange={(e) => updateInput('mass_flow_lbs_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
+                          step="1"
+                          min="0"
+                          placeholder="e.g., 1000"
+                        />
+                      </div>
+                    )}
+                    {inputs.bulk_input_method === BulkInputMethod.VolumeFlow && (
+                      <>
+                        <div>
+                          <label htmlFor="volume_flow_ft3_per_hr" className="label">Volume Flow (ft³/hr)</label>
+                          <input
+                            type="number"
+                            id="volume_flow_ft3_per_hr"
+                            className="input"
+                            value={inputs.volume_flow_ft3_per_hr || ''}
+                            onChange={(e) => updateInput('volume_flow_ft3_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
+                            step="0.1"
+                            min="0"
+                            placeholder="e.g., 20"
+                          />
+                        </div>
+                        <div>
+                          <label htmlFor="density_lbs_per_ft3" className="label">Density (lb/ft³)</label>
+                          <input
+                            type="number"
+                            id="density_lbs_per_ft3"
+                            className="input"
+                            value={inputs.density_lbs_per_ft3 || ''}
+                            onChange={(e) => updateInput('density_lbs_per_ft3', e.target.value ? parseFloat(e.target.value) : undefined)}
+                            step="0.1"
+                            min="0"
+                            placeholder="e.g., 50"
+                          />
+                        </div>
+                      </>
+                    )}
+                    <div>
+                      <label htmlFor="max_lump_size_in" className="label">Max Lump Size (in)</label>
+                      <input
+                        type="number"
+                        id="max_lump_size_in"
+                        className="input"
+                        value={inputs.max_lump_size_in || ''}
+                        onChange={(e) => updateInput('max_lump_size_in', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 2"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -381,22 +538,6 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
           </div>
         </div>
       </AccordionSection>
-
-      {/* Discrete Parts Configuration Modal */}
-      <DiscretePartsConfigModal
-        isOpen={isDiscreteModalOpen}
-        onClose={() => setIsDiscreteModalOpen(false)}
-        inputs={inputs}
-        updateInput={updateInput}
-      />
-
-      {/* Bulk Material Configuration Modal */}
-      <BulkMaterialConfigModal
-        isOpen={isBulkModalOpen}
-        onClose={() => setIsBulkModalOpen(false)}
-        inputs={inputs}
-        updateInput={updateInput}
-      />
     </div>
   );
 }

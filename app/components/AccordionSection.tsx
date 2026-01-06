@@ -37,7 +37,7 @@ export default function AccordionSection({
   issues,
 }: AccordionSectionProps) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 rounded-lg">
       {/* Header - clickable */}
       <button
         type="button"
