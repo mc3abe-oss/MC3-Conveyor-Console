@@ -1,17 +1,19 @@
 /**
  * GET /api/recipes
  *
- * Fetch engineering recipes from calc_recipes table.
- * Returns all recipes (golden + reference) for engineers/admins.
+ * Fetch engineering recipes (CI fixtures) from calc_recipes table.
+ * By default, returns only fixtures (is_fixture = true).
+ * Application snapshots (quotes/sales orders) are excluded.
  *
  * Query params:
  *   - type: 'golden' | 'reference' (optional filter)
  *   - tier: 'smoke' | 'regression' | 'edge' | 'longtail' (optional filter)
  *   - status: 'draft' | 'active' | 'locked' | 'deprecated' (optional filter)
+ *   - include_applications: 'true' to include non-fixtures (default: false)
  *
  * POST /api/recipes
  *
- * Create a new engineering recipe.
+ * Create a new engineering recipe (fixture).
  * Body:
  *   - name: string (required)
  *   - recipe_type: 'golden' | 'reference' (required)
@@ -42,12 +44,19 @@ export async function GET(request: NextRequest) {
     const typeFilter = searchParams.get('type');
     const tierFilter = searchParams.get('tier');
     const statusFilter = searchParams.get('status');
+    const includeApplications = searchParams.get('include_applications') === 'true';
 
-    // Build query - no domain/commercial filters
+    // Build query - filter to fixtures only by default
     let query = supabase
       .from('calc_recipes')
       .select('*')
       .order('updated_at', { ascending: false });
+
+    // CRITICAL: Only show fixtures (CI recipes) unless explicitly requested
+    // This prevents application snapshots (quotes/sales orders) from appearing
+    if (!includeApplications) {
+      query = query.eq('is_fixture', true);
+    }
 
     // Apply optional filters
     if (typeFilter) {
@@ -128,6 +137,7 @@ export async function POST(request: NextRequest) {
       source: 'calculator',
       notes: notes || null,
       tolerance_policy: recipe_type === 'golden' ? 'explicit' : 'default_fallback',
+      is_fixture: true, // Engineering recipes are CI fixtures
     };
 
     // For golden recipes, store expected outputs and default tolerances
