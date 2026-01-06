@@ -1179,80 +1179,45 @@ export default function BeltConveyorCalculatorApp() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <div className="space-y-6">
-        {/* Toast notification */}
-        {toast && (
-          <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg">
-            {toast}
-          </div>
-        )}
+    <div>
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed top-4 right-4 z-50 bg-gray-900 text-white px-4 py-2 rounded-md shadow-lg">
+          {toast}
+        </div>
+      )}
 
-        {/* Save Target Modal (for first save in draft mode) */}
-        <SaveTargetModal
-          isOpen={isSaveTargetModalOpen}
-          onClose={() => setIsSaveTargetModalOpen(false)}
-          onSelect={handleSelectSaveTarget}
-          defaultQuantity={conveyorQty}
+      {/* Modals - outside flow */}
+      <SaveTargetModal
+        isOpen={isSaveTargetModalOpen}
+        onClose={() => setIsSaveTargetModalOpen(false)}
+        onSelect={handleSelectSaveTarget}
+        defaultQuantity={conveyorQty}
+      />
+      <SaveRecipeModal
+        isOpen={isRecipeModalOpen}
+        onClose={() => setIsRecipeModalOpen(false)}
+        onSave={handleSaveRecipe}
+        isSaving={isSavingRecipe}
+      />
+      {jobLineSelectModal && (
+        <JobLineSelectModal
+          isOpen={jobLineSelectModal.isOpen}
+          availableJobLines={jobLineSelectModal.availableJobLines}
+          referenceType={jobLineSelectModal.referenceType}
+          referenceBase={jobLineSelectModal.referenceBase}
+          suffix={jobLineSelectModal.suffix}
+          onSelect={handleJobLineSelect}
+          onClose={() => setJobLineSelectModal(null)}
         />
+      )}
 
-        {/* Save Recipe Modal */}
-        <SaveRecipeModal
-          isOpen={isRecipeModalOpen}
-          onClose={() => setIsRecipeModalOpen(false)}
-          onSave={handleSaveRecipe}
-          isSaving={isSavingRecipe}
-        />
-
-        {/* Line Selection Modal */}
-        {jobLineSelectModal && (
-          <JobLineSelectModal
-            isOpen={jobLineSelectModal.isOpen}
-            availableJobLines={jobLineSelectModal.availableJobLines}
-            referenceType={jobLineSelectModal.referenceType}
-            referenceBase={jobLineSelectModal.referenceBase}
-            suffix={jobLineSelectModal.suffix}
-            onSelect={handleJobLineSelect}
-            onClose={() => setJobLineSelectModal(null)}
-          />
-        )}
-
-        {/* Loading State */}
-        {loadState === 'loading' && (
-          <div className="flex items-center justify-center py-12">
-            <div className="flex items-center gap-3 text-gray-500">
-              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-              <span>Loading application...</span>
-            </div>
-          </div>
-        )}
-
-        {/* Error State */}
-        {loadState === 'error' && loadError && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-            <div className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div>
-                <h3 className="text-sm font-medium text-red-800">Failed to load application</h3>
-                <p className="text-sm text-red-700 mt-1">{loadError}</p>
-                <button
-                  onClick={() => { setLoadState('loaded'); setLoadError(null); }}
-                  className="mt-2 text-sm font-medium text-red-600 hover:text-red-500"
-                >
-                  Start a new application instead
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* PageHeaderFrame: Header + Tabs as ONE fused unit */}
-        <div className="bg-white border-b border-gray-300">
+      {/* ============================================================ */}
+      {/* PAGE HEADER FRAME - Edge-to-edge, anchored to top            */}
+      {/* This is a STRUCTURAL FRAME, not a card. No rounded, no shadow */}
+      {/* ============================================================ */}
+      <div className="bg-white border-b border-gray-300">
+        <div className="max-w-7xl mx-auto">
           {/* Application Context Header */}
           <ApplicationContextHeader
             context={context}
@@ -1274,103 +1239,141 @@ export default function BeltConveyorCalculatorApp() {
             hasCalcError={result ? !result.success : false}
           />
 
-          {/* Mode Tabs - inside frame, subordinate to header */}
-          <nav className="flex border-t border-gray-200" aria-label="View mode">
-            <button
-              type="button"
-              onClick={() => setViewMode('configure')}
-              className={`
-                flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
-                ${
-                  viewMode === 'configure'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }
-              `}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-              </svg>
-              Configure
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('results')}
-              className={`
-                flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
-                ${
-                  viewMode === 'results'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }
-              `}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-              </svg>
-              Results
-              {(isAutoCalcPending || isCalculating) && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded animate-pulse">
-                  Updating
-                </span>
-              )}
-            </button>
-            {showOutputsV2 && (
+          {/* Mode Segmented Control - NO border-t, compressed with header */}
+          <div className="flex items-center gap-3 px-4 py-2">
+            <span className="text-sm font-medium text-gray-500">Mode:</span>
+            <div className="inline-flex rounded-lg bg-gray-100 p-0.5" role="tablist" aria-label="View mode">
               <button
                 type="button"
-                onClick={() => setViewMode('outputs_v2')}
+                role="tab"
+                aria-selected={viewMode === 'configure'}
+                onClick={() => setViewMode('configure')}
                 className={`
-                  flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
+                  flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
                   ${
-                    viewMode === 'outputs_v2'
-                      ? 'border-blue-600 text-blue-600'
-                      : 'border-transparent text-gray-600 hover:text-gray-900'
+                    viewMode === 'configure'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
                   }
                 `}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                 </svg>
-                Outputs v2
-                {outputsV2 && (
-                  <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-700 rounded">
-                    Ready
-                  </span>
+                Configure
+              </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'results'}
+                onClick={() => setViewMode('results')}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                  ${
+                    viewMode === 'results'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Results
+                {(isAutoCalcPending || isCalculating) && (
+                  <span className="ml-1 w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
                 )}
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() => setViewMode('vault')}
-              className={`
-                flex items-center gap-2 px-5 py-2.5 text-sm font-medium border-b-2 -mb-[2px] transition-all
-                ${
-                  viewMode === 'vault'
-                    ? 'border-blue-600 text-blue-600'
-                    : 'border-transparent text-gray-600 hover:text-gray-900'
-                }
-              `}
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-              </svg>
-              Vault
-              {!context && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs font-medium bg-gray-100 text-gray-500 rounded">
-                  Draft
-                </span>
+              {showOutputsV2 && (
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={viewMode === 'outputs_v2'}
+                  onClick={() => setViewMode('outputs_v2')}
+                  className={`
+                    flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                    ${
+                      viewMode === 'outputs_v2'
+                        ? 'bg-white text-gray-900 shadow-sm'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }
+                  `}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Outputs v2
+                </button>
               )}
-            </button>
-          </nav>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'vault'}
+                onClick={() => setViewMode('vault')}
+                className={`
+                  flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium rounded-md transition-all
+                  ${
+                    viewMode === 'vault'
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-600 hover:text-gray-900'
+                  }
+                `}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                </svg>
+                Vault
+              </button>
+            </div>
+          </div>
         </div>
+      </div>
+      {/* END PAGE HEADER FRAME */}
 
-        {/* Content Area - separated from header frame */}
+      {/* ============================================================ */}
+      {/* CONTENT AREA - Padded container below anchored header        */}
+      {/* ============================================================ */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Loading State */}
+        {loadState === 'loading' && (
+          <div className="flex items-center justify-center py-12">
+            <div className="flex items-center gap-3 text-gray-500">
+              <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+              </svg>
+              <span>Loading application...</span>
+            </div>
+          </div>
+        )}
+
+        {/* Error State */}
+        {loadState === 'error' && loadError && (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
+            <div className="flex items-start gap-3">
+              <svg className="w-5 h-5 text-red-500 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <h3 className="text-sm font-medium text-red-800">Failed to load application</h3>
+                <p className="text-sm text-red-700 mt-1">{loadError}</p>
+                <button
+                  onClick={() => { setLoadState('loaded'); setLoadError(null); }}
+                  className="mt-2 text-sm font-medium text-red-600 hover:text-red-500"
+                >
+                  Start a new application instead
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Configure Mode - Full width lanes */}
         {/* NOTE: Using CSS visibility instead of conditional rendering to prevent
             CalculatorForm from unmounting/remounting when switching tabs.
             This fixes a bug where the triggerCalculate ref would reset on remount,
             causing an unwanted recalculation that switched back to Results tab. */}
-        <div className={viewMode === 'configure' ? 'mt-4' : 'hidden'}>
+        <div className={viewMode === 'configure' ? '' : 'hidden'}>
           <CalculatorForm
             onCalculate={handleCalculate}
             isCalculating={isCalculating}
@@ -1387,7 +1390,7 @@ export default function BeltConveyorCalculatorApp() {
         </div>
 
         {/* Results Mode - Full width results */}
-        <div className={viewMode === 'results' ? 'mt-4' : 'hidden'}>
+        <div className={viewMode === 'results' ? '' : 'hidden'}>
           {/* With auto-calc, show results even if stale (they'll auto-update).
               Placeholder only shows for true draft state (never calculated). */}
           {(() => {
@@ -1456,7 +1459,7 @@ export default function BeltConveyorCalculatorApp() {
 
         {/* Outputs V2 Mode - v1.42: gated to abek@mc3mfg.com only */}
         {showOutputsV2 && (
-          <div className={viewMode === 'outputs_v2' ? 'mt-4' : 'hidden'}>
+          <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
             {outputsV2 ? (
               <OutputsV2Tabs outputs={outputsV2} />
           ) : (
@@ -1479,7 +1482,7 @@ export default function BeltConveyorCalculatorApp() {
         )}
 
         {/* Vault Mode */}
-        <div className={viewMode === 'vault' ? 'mt-4' : 'hidden'}>
+        <div className={viewMode === 'vault' ? '' : 'hidden'}>
           <VaultTab
             applicationId={loadedConfigurationId}
             onOpenSaveModal={() => setIsSaveTargetModalOpen(true)}

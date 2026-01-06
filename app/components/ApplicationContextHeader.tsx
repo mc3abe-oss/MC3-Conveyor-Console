@@ -157,7 +157,7 @@ export default function ApplicationContextHeader({
     return (
       <>
         {/* ROW 1: Primary header with buttons */}
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center gap-3">
             <h1 className="text-xl font-bold text-gray-900">New Application</h1>
           </div>
@@ -195,8 +195,8 @@ export default function ApplicationContextHeader({
           </div>
         </div>
 
-        {/* ROW 2: Context metadata */}
-        <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+        {/* ROW 2: Context metadata - NO border, compressed with row 1 */}
+        <div className="flex items-center justify-between px-4 py-1">
           <p className="text-sm text-gray-600">Not yet saved</p>
           <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusChip.bg}`}>
             {statusChip.label}
@@ -228,7 +228,7 @@ export default function ApplicationContextHeader({
   return (
     <>
       {/* ROW 1: Primary header - Quote number + inline buttons */}
-      <div className="flex items-center justify-between px-4 py-3">
+      <div className="flex items-center justify-between px-4 py-2">
         {/* Left: Primary identifier */}
         <div className="flex items-center gap-3">
           <Link href={href} className="text-xl font-bold text-gray-900 hover:text-blue-600">
@@ -337,8 +337,8 @@ export default function ApplicationContextHeader({
         </div>
       </div>
 
-      {/* ROW 2: Supporting context - Customer · Line · Qty | Status */}
-      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+      {/* ROW 2: Supporting context - NO border, compressed with row 1 */}
+      <div className="flex items-center justify-between px-4 py-1">
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <span className="truncate max-w-[200px]">{context.customer_name || 'No customer'}</span>
           <span className="text-gray-400">·</span>
