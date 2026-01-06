@@ -1,17 +1,19 @@
 /**
  * GET /api/recipes
  *
- * Fetch engineering recipes from calc_recipes table.
- * Returns all recipes (golden + reference) for engineers/admins.
+ * Fetch engineering recipes (CI fixtures) from calc_recipes table.
+ * By default, returns only fixtures (is_fixture = true).
+ * Application snapshots (quotes/sales orders) are excluded.
  *
  * Query params:
  *   - type: 'golden' | 'reference' (optional filter)
  *   - tier: 'smoke' | 'regression' | 'edge' | 'longtail' (optional filter)
  *   - status: 'draft' | 'active' | 'locked' | 'deprecated' (optional filter)
+ *   - include_applications: 'true' to include non-fixtures (default: false)
  *
  * POST /api/recipes
  *
- * Create a new engineering recipe.
+ * Create a new engineering recipe (fixture).
  * Body:
  *   - name: string (required)
  *   - recipe_type: 'golden' | 'reference' (required)
@@ -42,8 +44,9 @@ export async function GET(request: NextRequest) {
     const typeFilter = searchParams.get('type');
     const tierFilter = searchParams.get('tier');
     const statusFilter = searchParams.get('status');
+    const includeApplications = searchParams.get('include_applications') === 'true';
 
-    // Build query - no domain/commercial filters
+    // Build query
     let query = supabase
       .from('calc_recipes')
       .select('*')
@@ -60,7 +63,44 @@ export async function GET(request: NextRequest) {
       query = query.eq('recipe_status', statusFilter);
     }
 
-    const { data: recipes, error } = await query;
+    // CRITICAL: Only show fixtures (CI recipes) unless explicitly requested
+    // This prevents application snapshots (quotes/sales orders) from appearing
+    if (!includeApplications) {
+      query = query.eq('is_fixture', true);
+    }
+
+    let { data: recipes, error } = await query;
+
+    // Fallback: if is_fixture column doesn't exist, fetch all and filter client-side
+    // This handles the case where migration hasn't been applied yet
+    if (error?.message?.includes('is_fixture')) {
+      console.warn('is_fixture column not found, falling back to unfiltered query');
+
+      // Re-run query without is_fixture filter
+      let fallbackQuery = supabase
+        .from('calc_recipes')
+        .select('*')
+        .order('updated_at', { ascending: false });
+
+      if (typeFilter) fallbackQuery = fallbackQuery.eq('recipe_type', typeFilter);
+      if (tierFilter) fallbackQuery = fallbackQuery.eq('recipe_tier', tierFilter);
+      if (statusFilter) fallbackQuery = fallbackQuery.eq('recipe_status', statusFilter);
+
+      const fallbackResult = await fallbackQuery;
+      recipes = fallbackResult.data;
+      error = fallbackResult.error;
+
+      // Filter client-side: exclude records that look like applications
+      if (!includeApplications && recipes) {
+        recipes = recipes.filter((r: Record<string, unknown>) =>
+          r.quote_id === null &&
+          r.sales_order_id === null &&
+          !(r.name as string)?.startsWith('SALES_ORDER') &&
+          !(r.name as string)?.startsWith('QUOTE') &&
+          !(r.name as string)?.match(/^(SO|Q)\d+/)
+        );
+      }
+    }
 
     if (error) {
       console.error('Recipes fetch error:', error);
@@ -128,6 +168,7 @@ export async function POST(request: NextRequest) {
       source: 'calculator',
       notes: notes || null,
       tolerance_policy: recipe_type === 'golden' ? 'explicit' : 'default_fallback',
+      is_fixture: true, // Engineering recipes are CI fixtures
     };
 
     // For golden recipes, store expected outputs and default tolerances
