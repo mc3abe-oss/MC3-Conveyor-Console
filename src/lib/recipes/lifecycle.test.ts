@@ -82,9 +82,10 @@ describe('RecipeRole', () => {
       expect(true).toBe(true);
     });
 
-    it('documents that golden recipes cannot be deleted', () => {
-      // Golden recipes are protected and cannot be deleted
-      // Must downgrade to reference or deprecated first
+    it('documents that golden recipes CAN be deleted by admins', () => {
+      // UPDATED: Admins (BELT_ADMIN, SUPER_ADMIN) can delete ANY recipe
+      // Including golden recipes - no role restrictions on delete
+      // Non-admins cannot see or call delete at all
       expect(true).toBe(true);
     });
 

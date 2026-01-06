@@ -3,6 +3,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useCurrentUserRole } from '../../../hooks/useCurrentUserRole';
 
 type RecipeRole = 'reference' | 'regression' | 'golden' | 'deprecated';
 
@@ -75,6 +76,9 @@ export default function ConsoleRecipeDetailPage() {
   const router = useRouter();
   const id = params?.id as string;
 
+  // User role for admin-only features
+  const { canBeltAdmin, isLoading: roleLoading } = useCurrentUserRole();
+
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [runs, setRuns] = useState<RecipeRun[]>([]);
   const [loading, setLoading] = useState(true);
@@ -97,6 +101,9 @@ export default function ConsoleRecipeDetailPage() {
   const [roleReason, setRoleReason] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  // Delete confirmation - type "DELETE" to confirm
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
 
   // Close actions menu on click outside
   useEffect(() => {
@@ -152,9 +159,10 @@ export default function ConsoleRecipeDetailPage() {
     setActionsOpen(false);
   };
 
-  // Open delete modal
+  // Open delete modal (admin only)
   const openDeleteModal = () => {
     setActionError(null);
+    setDeleteConfirmText('');
     setDeleteModalOpen(true);
     setActionsOpen(false);
   };
@@ -291,8 +299,6 @@ export default function ConsoleRecipeDetailPage() {
     );
   }
 
-  const isGolden = recipe.role === 'golden';
-
   return (
     <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       {/* Breadcrumb */}
@@ -372,18 +378,18 @@ export default function ConsoleRecipeDetailPage() {
                     >
                       Duplicate
                     </button>
-                    <hr className="my-1" />
-                    <button
-                      onClick={openDeleteModal}
-                      className={`block w-full text-left px-4 py-2 text-sm ${
-                        isGolden
-                          ? 'text-gray-400 cursor-not-allowed'
-                          : 'text-red-600 hover:bg-red-50'
-                      }`}
-                      disabled={isGolden}
-                    >
-                      Delete {isGolden && '(protected)'}
-                    </button>
+                    {/* Delete - admin only */}
+                    {canBeltAdmin && !roleLoading && (
+                      <>
+                        <hr className="my-1" />
+                        <button
+                          onClick={openDeleteModal}
+                          className="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                        >
+                          Delete
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               )}
@@ -712,57 +718,63 @@ export default function ConsoleRecipeDetailPage() {
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal (admin only, type-to-confirm) */}
       {deleteModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Delete Recipe</h2>
+              <h2 className="text-lg font-semibold text-red-600 mb-4">Permanently Delete Recipe</h2>
               {actionError && (
                 <div className="mb-4 p-3 bg-red-50 text-red-700 rounded text-sm">{actionError}</div>
               )}
 
-              {isGolden ? (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded">
-                  <p className="text-yellow-800">
-                    <strong>Cannot delete golden recipe.</strong>
-                    <br />
-                    Change role to reference or deprecated first.
-                  </p>
-                </div>
-              ) : (
-                <>
-                  <p className="text-gray-600 mb-4">
-                    Are you sure you want to delete <strong>{recipe.name}</strong>?
-                  </p>
-                  <div className="p-3 bg-gray-50 rounded text-sm">
-                    <p>
-                      <span className="text-gray-500">Role:</span>{' '}
-                      <span className={`font-medium ${ROLE_BADGE_COLORS[recipe.role]?.split(' ')[1]}`}>
-                        {ROLE_LABELS[recipe.role]}
-                      </span>
-                    </p>
-                    <p className="text-gray-500 mt-1">This action cannot be undone.</p>
-                  </div>
-                </>
-              )}
+              <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded">
+                <p className="text-red-800 text-sm">
+                  <strong>Warning:</strong> This permanently deletes this recipe. This cannot be undone.
+                </p>
+              </div>
 
-              <div className="mt-6 flex justify-end gap-3">
+              <div className="mb-4 p-3 bg-gray-50 rounded text-sm">
+                <p>
+                  <span className="text-gray-500">Name:</span>{' '}
+                  <strong>{recipe.name}</strong>
+                </p>
+                <p className="mt-1">
+                  <span className="text-gray-500">Role:</span>{' '}
+                  <span className={`font-medium ${ROLE_BADGE_COLORS[recipe.role]?.split(' ')[1]}`}>
+                    {ROLE_LABELS[recipe.role]}
+                  </span>
+                </p>
+              </div>
+
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Type <span className="font-mono font-bold text-red-600">DELETE</span> to confirm:
+                </label>
+                <input
+                  type="text"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  className="input w-full font-mono"
+                  placeholder="DELETE"
+                  autoComplete="off"
+                />
+              </div>
+
+              <div className="flex justify-end gap-3">
                 <button
                   onClick={() => setDeleteModalOpen(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
                 >
                   Cancel
                 </button>
-                {!isGolden && (
-                  <button
-                    onClick={handleDelete}
-                    disabled={actionLoading}
-                    className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50"
-                  >
-                    {actionLoading ? 'Deleting...' : 'Delete'}
-                  </button>
-                )}
+                <button
+                  onClick={handleDelete}
+                  disabled={actionLoading || deleteConfirmText !== 'DELETE'}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {actionLoading ? 'Deleting...' : 'Delete Forever'}
+                </button>
               </div>
             </div>
           </div>

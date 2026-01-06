@@ -3,7 +3,7 @@
  *
  * GET /api/recipes/[id] - Fetch single recipe with runs
  * PATCH /api/recipes/[id] - Update recipe metadata (name, notes, role, tags)
- * DELETE /api/recipes/[id] - Delete recipe (blocked for golden role)
+ * DELETE /api/recipes/[id] - Hard delete recipe (admin only, no role restrictions)
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -15,6 +15,7 @@ import {
   RecipeType,
   RecipeStatus,
 } from '../../../../src/lib/recipes/types';
+import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -233,11 +234,17 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 }
 
 // ============================================================================
-// DELETE - Delete recipe
+// DELETE - Delete recipe (admin only, hard delete)
 // ============================================================================
 
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
+    // Require BELT_ADMIN or SUPER_ADMIN role
+    const auth = await requireBeltAdmin();
+    if (auth.response) {
+      return auth.response;
+    }
+
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         { error: 'Supabase not configured' },
@@ -247,10 +254,10 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     const { id } = await params;
 
-    // Fetch current recipe to check role
+    // Verify recipe exists
     const { data: currentRecipe, error: fetchError } = await supabase
       .from('calc_recipes')
-      .select('*')
+      .select('id, name')
       .eq('id', id)
       .single();
 
@@ -264,20 +271,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const currentRole = getEffectiveRole(currentRecipe);
-
-    // Block deletion of golden recipes
-    if (currentRole === 'golden') {
-      return NextResponse.json(
-        {
-          error: 'Cannot delete golden recipe',
-          message: 'Golden recipes are protected. Change role to reference or deprecated first.',
-        },
-        { status: 403 }
-      );
-    }
-
-    // Delete the recipe
+    // Hard delete - no role checks, admins can delete anything
     const { error: deleteError } = await supabase
       .from('calc_recipes')
       .delete()
@@ -291,7 +285,9 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return new NextResponse(null, { status: 204 });
+    console.log(`[DELETE] Recipe ${id} (${currentRecipe.name}) deleted by ${auth.user.email}`);
+
+    return NextResponse.json({ ok: true });
   } catch (error) {
     console.error('Recipe DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
