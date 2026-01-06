@@ -193,6 +193,65 @@ describe('isStyleCompatible', () => {
   });
 });
 
+// =========================================================================
+// Face Allowance Default Tests (v1.52)
+// These verify the expected face allowance values per tracking mode.
+// The actual UI logic is in PulleyConfigModal.tsx but these constants
+// document the specification.
+// =========================================================================
+
+describe('Face Allowance Defaults Specification', () => {
+  // These constants match PulleyConfigModal.tsx
+  const DEFAULT_ALLOWANCE_CROWNED_IN = 2.0;
+  const DEFAULT_ALLOWANCE_V_GUIDED_IN = 0.75;
+  const DEFAULT_ALLOWANCE_FLAT_IN = 1.0;
+
+  // Helper to get default allowance for tracking mode (mirrors modal logic)
+  function getDefaultAllowanceForTracking(trackingMode: 'CROWNED' | 'V_GUIDED' | 'FLAT'): number {
+    switch (trackingMode) {
+      case 'CROWNED':
+        return DEFAULT_ALLOWANCE_CROWNED_IN;
+      case 'V_GUIDED':
+        return DEFAULT_ALLOWANCE_V_GUIDED_IN;
+      case 'FLAT':
+      default:
+        return DEFAULT_ALLOWANCE_FLAT_IN;
+    }
+  }
+
+  it('CROWNED tracking should default to +2.00" allowance', () => {
+    expect(getDefaultAllowanceForTracking('CROWNED')).toBe(2.0);
+  });
+
+  it('V_GUIDED tracking should default to +0.75" allowance', () => {
+    expect(getDefaultAllowanceForTracking('V_GUIDED')).toBe(0.75);
+  });
+
+  it('FLAT tracking should default to +1.00" allowance', () => {
+    expect(getDefaultAllowanceForTracking('FLAT')).toBe(1.0);
+  });
+
+  describe('Face width calculation', () => {
+    // face_width = belt_width + allowance (total add, not per-side)
+    const beltWidth = 24;
+
+    it('Crowned face width: belt_width + 2.00 = 26.00"', () => {
+      const allowance = getDefaultAllowanceForTracking('CROWNED');
+      expect(beltWidth + allowance).toBe(26.0);
+    });
+
+    it('V-Guided face width: belt_width + 0.75 = 24.75"', () => {
+      const allowance = getDefaultAllowanceForTracking('V_GUIDED');
+      expect(beltWidth + allowance).toBe(24.75);
+    });
+
+    it('Flat face width: belt_width + 1.00 = 25.00"', () => {
+      const allowance = getDefaultAllowanceForTracking('FLAT');
+      expect(beltWidth + allowance).toBe(25.0);
+    });
+  });
+});
+
 describe('computeFinishedOd', () => {
   it('returns shell OD when not lagged', () => {
     expect(computeFinishedOd(6.0, false)).toBe(6.0);

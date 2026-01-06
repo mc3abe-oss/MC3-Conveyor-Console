@@ -93,9 +93,13 @@ interface PulleyFormData {
   wallValidationResult: WallValidationResult | null;
 }
 
-// Minimum allowance based on tracking method
-const MIN_ALLOWANCE_CROWNED_IN = 2.0;
-const MIN_ALLOWANCE_NOT_CROWNED_IN = 0.75;
+// Default allowance based on tracking method (total add to belt width)
+// CROWNED: +2.00" total → face = belt_width + 2.00
+// V_GUIDED: +0.75" total → face = belt_width + 0.75
+// FLAT: +1.00" total (fallback)
+const DEFAULT_ALLOWANCE_CROWNED_IN = 2.0;
+const DEFAULT_ALLOWANCE_V_GUIDED_IN = 0.75;
+const DEFAULT_ALLOWANCE_FLAT_IN = 1.0;
 
 const emptyForm: PulleyFormData = {
   model_key: '',
@@ -220,16 +224,31 @@ export default function PulleyConfigModal({
     return getEligibleModels(allModels as PulleyModel[], position, trackingMode) as PulleyLibraryModel[];
   }
 
-  // Get minimum allowance based on tracking mode
-  function getMinAllowanceIn(): number {
-    return trackingMode === 'CROWNED' ? MIN_ALLOWANCE_CROWNED_IN : MIN_ALLOWANCE_NOT_CROWNED_IN;
+  // Get default allowance based on tracking mode
+  // Returns tracking-specific default (not model-based)
+  function getDefaultAllowanceForTracking(): number {
+    switch (trackingMode) {
+      case 'CROWNED':
+        return DEFAULT_ALLOWANCE_CROWNED_IN;
+      case 'V_GUIDED':
+        return DEFAULT_ALLOWANCE_V_GUIDED_IN;
+      case 'FLAT':
+      default:
+        return DEFAULT_ALLOWANCE_FLAT_IN;
+    }
   }
 
-  // Get default allowance from model or use minimum
-  function getDefaultAllowance(model: PulleyLibraryModel): number {
-    const modelAllowance = model.face_width_allowance_in;
-    const minAllowance = getMinAllowanceIn();
-    return Math.max(modelAllowance, minAllowance);
+  // Alias for backward compatibility (used in warnings)
+  function getMinAllowanceIn(): number {
+    return getDefaultAllowanceForTracking();
+  }
+
+  // Get default allowance for a new pulley configuration
+  // Uses tracking-specific default, ignoring model's face_width_allowance_in
+  // This ensures CROWNED=2.0" and V_GUIDED=0.75" are applied consistently
+  function getDefaultAllowance(_model: PulleyLibraryModel): number {
+    // Always use tracking-specific default (not model-based)
+    return getDefaultAllowanceForTracking();
   }
 
   function createFormFromModel(model: PulleyLibraryModel, position: TabPosition): PulleyFormData {
@@ -440,16 +459,16 @@ export default function PulleyConfigModal({
     });
   }
 
-  // Get allowance validation warning (below minimum = warning only, not error)
+  // Get allowance validation warning (below default = warning only, not error)
   function getAllowanceWarning(position: TabPosition): string | null {
     const form = position === 'DRIVE' ? driveForm : tailForm;
     const allowance = parseFloat(form.face_width_allowance_in);
     if (isNaN(allowance)) return null;
 
-    const minAllowance = getMinAllowanceIn();
-    if (allowance < minAllowance) {
-      const trackingLabel = trackingMode === 'CROWNED' ? 'crowned' : 'non-crowned';
-      return `Warning: Allowance ${allowance}" is below minimum ${minAllowance}" for ${trackingLabel} pulleys. This may cause belt tracking issues.`;
+    const defaultAllowance = getDefaultAllowanceForTracking();
+    if (allowance < defaultAllowance) {
+      const trackingLabel = trackingMode === 'CROWNED' ? 'crowned' : trackingMode === 'V_GUIDED' ? 'V-guided' : 'flat';
+      return `Warning: Allowance ${allowance}" is below recommended ${defaultAllowance}" for ${trackingLabel} pulleys. This may cause belt tracking issues.`;
     }
     return null;
   }
@@ -770,14 +789,14 @@ export default function PulleyConfigModal({
                         </div>
                       </div>
                     </div>
-                    {/* Allowance warning (below minimum) */}
+                    {/* Allowance warning (below recommended default) */}
                     {getAllowanceWarning(activeTab) && (
                       <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded px-2 py-1">
                         {getAllowanceWarning(activeTab)}
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      Min allowance: {getMinAllowanceIn()}" for {trackingMode === 'CROWNED' ? 'crowned' : 'non-crowned'} pulleys
+                      Default allowance: {getDefaultAllowanceForTracking()}" for {trackingMode === 'CROWNED' ? 'crowned' : trackingMode === 'V_GUIDED' ? 'V-guided' : 'flat'} pulleys
                     </p>
                   </>
                 ) : (
@@ -800,7 +819,7 @@ export default function PulleyConfigModal({
                       <p className="text-xs text-gray-500">
                         Implied allowance: {(parseFloat(currentForm.face_width_in) - beltWidthIn).toFixed(2)}"
                         {parseFloat(currentForm.face_width_in) - beltWidthIn < getMinAllowanceIn() && (
-                          <span className="text-amber-600"> (below min {getMinAllowanceIn()}")</span>
+                          <span className="text-amber-600"> (below recommended {getDefaultAllowanceForTracking()}")</span>
                         )}
                       </p>
                     )}
