@@ -120,6 +120,16 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                 Recipes
               </Link>
               <Link
+                href="/console/library"
+                className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
+                  pathname.startsWith('/console/library')
+                    ? 'bg-mc3-blue text-white'
+                    : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
+                }`}
+              >
+                Library
+              </Link>
+              <Link
                 href="/console/admin"
                 className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
                   pathname.startsWith('/console/admin')

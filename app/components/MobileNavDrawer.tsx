@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: '/console/quotes', label: 'Quotes' },
   { href: '/console/sales-orders', label: 'Sales Orders' },
   { href: '/console/recipes', label: 'Recipes' },
+  { href: '/console/library', label: 'Library' },
   { href: '/console/admin', label: 'Admin' },
 ];
 
