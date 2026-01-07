@@ -5,6 +5,11 @@
  * - Selected gearmotor output RPM
  * - Drive ratio (chain/sprocket configuration)
  * - Drive pulley diameter
+ *
+ * The function returns ActualBeltSpeedResult with:
+ * - actualBeltSpeedFpm: computed belt speed (null if guards fail)
+ * - actualDriveShaftRpm: computed drive shaft RPM (null if guards fail)
+ * - warningCode: warning code if guards fail (null if successful)
  */
 
 import { describe, it, expect } from 'vitest';
@@ -34,29 +39,25 @@ describe('calculateActualBeltSpeed', () => {
 
       // Expected: 50 * PI * (4/12) = 50 * PI * 0.333... = 52.36 FPM
       const expected = 50 * PI * (4 / 12);
-      expect(result).toBeCloseTo(expected, 2);
+      expect(result.actualBeltSpeedFpm).toBeCloseTo(expected, 2);
+      expect(result.actualDriveShaftRpm).toBeCloseTo(50, 2);
+      expect(result.warningCode).toBeNull();
     });
 
     it('should handle various pulley diameters', () => {
       const gearmotorRpm = 100;
 
       // 3" pulley
-      expect(calculateActualBeltSpeed(gearmotorRpm, 3, 18, 24, false)).toBeCloseTo(
-        100 * PI * (3 / 12),
-        2
-      );
+      const result3 = calculateActualBeltSpeed(gearmotorRpm, 3, 18, 24, false);
+      expect(result3.actualBeltSpeedFpm).toBeCloseTo(100 * PI * (3 / 12), 2);
 
       // 6" pulley
-      expect(calculateActualBeltSpeed(gearmotorRpm, 6, 18, 24, false)).toBeCloseTo(
-        100 * PI * (6 / 12),
-        2
-      );
+      const result6 = calculateActualBeltSpeed(gearmotorRpm, 6, 18, 24, false);
+      expect(result6.actualBeltSpeedFpm).toBeCloseTo(100 * PI * (6 / 12), 2);
 
       // 8" pulley
-      expect(calculateActualBeltSpeed(gearmotorRpm, 8, 18, 24, false)).toBeCloseTo(
-        100 * PI * (8 / 12),
-        2
-      );
+      const result8 = calculateActualBeltSpeed(gearmotorRpm, 8, 18, 24, false);
+      expect(result8.actualBeltSpeedFpm).toBeCloseTo(100 * PI * (8 / 12), 2);
     });
   });
 
@@ -83,7 +84,9 @@ describe('calculateActualBeltSpeed', () => {
       // belt_speed = 50 * PI * (4/12) = 52.36 FPM
       const driveRatio = gmTeeth / driveTeeth;
       const expected = gearmotorRpm * driveRatio * PI * (pulleyDia / 12);
-      expect(result).toBeCloseTo(expected, 1);
+      expect(result.actualBeltSpeedFpm).toBeCloseTo(expected, 1);
+      expect(result.actualDriveShaftRpm).toBeCloseTo(gearmotorRpm * driveRatio, 2);
+      expect(result.warningCode).toBeNull();
     });
 
     it('should increase belt speed when gearmotor sprocket is larger', () => {
@@ -93,16 +96,16 @@ describe('calculateActualBeltSpeed', () => {
       const driveTeeth = 24;
 
       // 18T gearmotor sprocket (ratio 0.75)
-      const speed18T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 18, driveTeeth, true);
+      const result18T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 18, driveTeeth, true);
 
       // 24T gearmotor sprocket (ratio 1.0)
-      const speed24T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 24, driveTeeth, true);
+      const result24T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 24, driveTeeth, true);
 
       // 30T gearmotor sprocket (ratio 1.25)
-      const speed30T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 30, driveTeeth, true);
+      const result30T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 30, driveTeeth, true);
 
-      expect(speed24T).toBeGreaterThan(speed18T);
-      expect(speed30T).toBeGreaterThan(speed24T);
+      expect(result24T.actualBeltSpeedFpm!).toBeGreaterThan(result18T.actualBeltSpeedFpm!);
+      expect(result30T.actualBeltSpeedFpm!).toBeGreaterThan(result24T.actualBeltSpeedFpm!);
     });
 
     it('should decrease belt speed when drive shaft sprocket is larger', () => {
@@ -112,16 +115,16 @@ describe('calculateActualBeltSpeed', () => {
       const gmTeeth = 18;
 
       // 18T drive sprocket (ratio 1.0)
-      const speed18T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, gmTeeth, 18, true);
+      const result18T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, gmTeeth, 18, true);
 
       // 24T drive sprocket (ratio 0.75)
-      const speed24T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, gmTeeth, 24, true);
+      const result24T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, gmTeeth, 24, true);
 
       // 30T drive sprocket (ratio 0.6)
-      const speed30T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, gmTeeth, 30, true);
+      const result30T = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, gmTeeth, 30, true);
 
-      expect(speed24T).toBeLessThan(speed18T);
-      expect(speed30T).toBeLessThan(speed24T);
+      expect(result24T.actualBeltSpeedFpm!).toBeLessThan(result18T.actualBeltSpeedFpm!);
+      expect(result30T.actualBeltSpeedFpm!).toBeLessThan(result24T.actualBeltSpeedFpm!);
     });
 
     it('should handle 1:1 chain ratio', () => {
@@ -132,24 +135,75 @@ describe('calculateActualBeltSpeed', () => {
       const resultChain = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 18, 18, true);
       const resultDirect = calculateActualBeltSpeed(gearmotorRpm, pulleyDia, 18, 18, false);
 
-      expect(resultChain).toBeCloseTo(resultDirect, 2);
+      expect(resultChain.actualBeltSpeedFpm).toBeCloseTo(resultDirect.actualBeltSpeedFpm!, 2);
     });
   });
 
-  describe('edge cases', () => {
-    it('should handle zero gearmotor sprocket teeth (defaults to ratio 1.0)', () => {
-      const result = calculateActualBeltSpeed(50, 4, 0, 24, true);
-      // When gmTeeth is 0, should use ratio 1.0
+  describe('edge cases and guards', () => {
+    it('should return null and warning code when gearmotor RPM is 0', () => {
+      const result = calculateActualBeltSpeed(0, 4, 18, 24, false);
+      expect(result.actualBeltSpeedFpm).toBeNull();
+      expect(result.actualDriveShaftRpm).toBeNull();
+      expect(result.warningCode).toBe('ACTUAL_GM_RPM_INVALID');
+    });
+
+    it('should return null with no warning when gearmotor RPM is null/undefined', () => {
+      const resultNull = calculateActualBeltSpeed(null, 4, 18, 24, false);
+      expect(resultNull.actualBeltSpeedFpm).toBeNull();
+      expect(resultNull.warningCode).toBeNull();
+
+      const resultUndefined = calculateActualBeltSpeed(undefined, 4, 18, 24, false);
+      expect(resultUndefined.actualBeltSpeedFpm).toBeNull();
+      expect(resultUndefined.warningCode).toBeNull();
+    });
+
+    it('should return null with no warning when gearmotor RPM is negative', () => {
+      const result = calculateActualBeltSpeed(-50, 4, 18, 24, false);
+      expect(result.actualBeltSpeedFpm).toBeNull();
+      expect(result.warningCode).toBeNull();
+    });
+
+    it('should return warning code when pulley diameter is 0 or missing', () => {
+      const result0 = calculateActualBeltSpeed(50, 0, 18, 24, false);
+      expect(result0.actualBeltSpeedFpm).toBeNull();
+      expect(result0.warningCode).toBe('PULLEY_DIAMETER_MISSING');
+
+      const resultNull = calculateActualBeltSpeed(50, null, 18, 24, false);
+      expect(resultNull.actualBeltSpeedFpm).toBeNull();
+      expect(resultNull.warningCode).toBe('PULLEY_DIAMETER_MISSING');
+    });
+
+    it('should return warning code when sprocket teeth are missing for bottom mount', () => {
+      // Zero gearmotor sprocket
+      const resultGm0 = calculateActualBeltSpeed(50, 4, 0, 24, true);
+      expect(resultGm0.actualBeltSpeedFpm).toBeNull();
+      expect(resultGm0.warningCode).toBe('SPROCKET_TEETH_MISSING');
+
+      // Zero drive sprocket
+      const resultDrive0 = calculateActualBeltSpeed(50, 4, 18, 0, true);
+      expect(resultDrive0.actualBeltSpeedFpm).toBeNull();
+      expect(resultDrive0.warningCode).toBe('SPROCKET_TEETH_MISSING');
+
+      // Null sprocket teeth
+      const resultNull = calculateActualBeltSpeed(50, 4, null, 24, true);
+      expect(resultNull.actualBeltSpeedFpm).toBeNull();
+      expect(resultNull.warningCode).toBe('SPROCKET_TEETH_MISSING');
+    });
+
+    it('should succeed with null sprocket teeth for shaft mount (not used)', () => {
+      // Sprocket teeth are ignored for shaft mount
+      const result = calculateActualBeltSpeed(50, 4, null, null, false);
       const expected = 50 * PI * (4 / 12);
-      expect(result).toBeCloseTo(expected, 2);
+      expect(result.actualBeltSpeedFpm).toBeCloseTo(expected, 2);
+      expect(result.warningCode).toBeNull();
     });
 
     it('should handle default sprocket values', () => {
-      // Using default values (18T/24T)
+      // Using default values (no sprocket params passed, isBottomMount defaults to false)
       const result = calculateActualBeltSpeed(50, 4);
       // Default is shaft mounted (no chain), so ratio = 1.0
       const expected = 50 * PI * (4 / 12);
-      expect(result).toBeCloseTo(expected, 2);
+      expect(result.actualBeltSpeedFpm).toBeCloseTo(expected, 2);
     });
   });
 });
@@ -230,7 +284,8 @@ describe('integration: full speed chain', () => {
     const driveTeeth = 24;
     const desiredFpm = 50;
 
-    const actualFpm = calculateActualBeltSpeed(nordRpm, pulleyDia, gmTeeth, driveTeeth, true);
+    const result = calculateActualBeltSpeed(nordRpm, pulleyDia, gmTeeth, driveTeeth, true);
+    const actualFpm = result.actualBeltSpeedFpm!;
     const deltaPct = calculateSpeedDeltaPct(desiredFpm, actualFpm);
 
     // Actual should be around 52.4 FPM
@@ -254,10 +309,20 @@ describe('integration: full speed chain', () => {
     const pulleyDia = 4;
     const desiredFpm = 50;
 
-    const actualFpm = calculateActualBeltSpeed(requiredRpm, pulleyDia, 18, 24, false);
+    const result = calculateActualBeltSpeed(requiredRpm, pulleyDia, 18, 24, false);
+    const actualFpm = result.actualBeltSpeedFpm!;
     const deltaPct = calculateSpeedDeltaPct(desiredFpm, actualFpm);
 
     expect(actualFpm).toBeCloseTo(50, 1);
     expect(deltaPct).toBeCloseTo(0, 1);
+  });
+
+  it('should return warning code when chain math fails', () => {
+    // Bottom mount with missing sprocket config
+    const result = calculateActualBeltSpeed(66.7, 4, null, null, true);
+
+    expect(result.actualBeltSpeedFpm).toBeNull();
+    expect(result.actualDriveShaftRpm).toBeNull();
+    expect(result.warningCode).toBe('SPROCKET_TEETH_MISSING');
   });
 });

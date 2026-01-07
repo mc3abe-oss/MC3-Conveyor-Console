@@ -785,30 +785,77 @@ export function calculateBeltSpeed(
  *   drive_pulley_rpm = gearmotor_output_rpm * drive_ratio
  *   actual_belt_speed_fpm = drive_pulley_rpm * PI * (pulley_diameter_in / 12)
  *
+ * Guards against division-by-zero and invalid inputs with warning codes.
+ *
  * @param gearmotorOutputRpm - Output RPM of the selected gearmotor
  * @param pulleyDiameterIn - Drive pulley diameter in inches
- * @param gmSprocketTeeth - Gearmotor sprocket teeth (driver, default 18)
- * @param driveShaftSprocketTeeth - Drive shaft sprocket teeth (driven, default 24)
+ * @param gmSprocketTeeth - Gearmotor sprocket teeth (driver)
+ * @param driveShaftSprocketTeeth - Drive shaft sprocket teeth (driven)
  * @param isBottomMount - Whether mounting style is bottom_mount (uses chain drive)
- * @returns Actual belt speed in FPM
+ * @returns ActualBeltSpeedResult with computed values and optional warning code
  */
-export function calculateActualBeltSpeed(
-  gearmotorOutputRpm: number,
-  pulleyDiameterIn: number,
-  gmSprocketTeeth: number = 18,
-  driveShaftSprocketTeeth: number = 24,
-  isBottomMount: boolean = false
-): number {
-  // Drive ratio: how gearmotor RPM translates to drive pulley RPM
-  // For shaft_mounted: direct drive, ratio = 1.0
-  // For bottom_mount: drive_ratio = driver/driven = gm_teeth / drive_shaft_teeth
-  const driveRatio = isBottomMount
-    ? (gmSprocketTeeth > 0 ? gmSprocketTeeth / driveShaftSprocketTeeth : 1.0)
-    : 1.0;
+export interface ActualBeltSpeedResult {
+  actualBeltSpeedFpm: number | null;
+  actualDriveShaftRpm: number | null;
+  /** Warning code if calculation couldn't be performed */
+  warningCode: string | null;
+}
 
-  const drivePulleyRpm = gearmotorOutputRpm * driveRatio;
+export function calculateActualBeltSpeed(
+  gearmotorOutputRpm: number | null | undefined,
+  pulleyDiameterIn: number | null | undefined,
+  gmSprocketTeeth: number | null | undefined,
+  driveShaftSprocketTeeth: number | null | undefined,
+  isBottomMount: boolean = false
+): ActualBeltSpeedResult {
+  // Guard: Gearmotor RPM must be positive
+  if (gearmotorOutputRpm === null || gearmotorOutputRpm === undefined || gearmotorOutputRpm <= 0) {
+    return {
+      actualBeltSpeedFpm: null,
+      actualDriveShaftRpm: null,
+      warningCode: gearmotorOutputRpm === 0 ? 'ACTUAL_GM_RPM_INVALID' : null,
+    };
+  }
+
+  // Guard: Pulley diameter must be positive
+  if (pulleyDiameterIn === null || pulleyDiameterIn === undefined || pulleyDiameterIn <= 0) {
+    return {
+      actualBeltSpeedFpm: null,
+      actualDriveShaftRpm: null,
+      warningCode: 'PULLEY_DIAMETER_MISSING',
+    };
+  }
+
+  // Calculate drive ratio based on mounting style
+  let driveRatio = 1.0;
+  if (isBottomMount) {
+    // Guard: Both sprocket teeth must be positive for bottom mount
+    const gmTeeth = gmSprocketTeeth ?? 0;
+    const driveTeeth = driveShaftSprocketTeeth ?? 0;
+
+    if (gmTeeth <= 0 || driveTeeth <= 0) {
+      return {
+        actualBeltSpeedFpm: null,
+        actualDriveShaftRpm: null,
+        warningCode: 'SPROCKET_TEETH_MISSING',
+      };
+    }
+    // drive_ratio = driver/driven = gm_teeth / drive_shaft_teeth
+    driveRatio = gmTeeth / driveTeeth;
+  }
+
+  // Calculate actual drive shaft RPM
+  const actualDriveShaftRpm = gearmotorOutputRpm * driveRatio;
+
+  // Calculate actual belt speed
   const pulleyDiameterFt = pulleyDiameterIn / 12;
-  return drivePulleyRpm * PI * pulleyDiameterFt;
+  const actualBeltSpeedFpm = actualDriveShaftRpm * PI * pulleyDiameterFt;
+
+  return {
+    actualBeltSpeedFpm,
+    actualDriveShaftRpm,
+    warningCode: null,
+  };
 }
 
 /**
@@ -1996,21 +2043,29 @@ export function calculate(
   // Only computed when a gearmotor has been selected (selected_gearmotor_output_rpm_actual is set)
   let actualBeltSpeedFpm: number | null = null;
   let actualBeltSpeedDeltaPct: number | null = null;
+  let actualDriveShaftRpm: number | null = null;
+  let actualSpeedWarningCode: string | null = null;
 
   if (
     inputs.selected_gearmotor_output_rpm_actual !== undefined &&
-    inputs.selected_gearmotor_output_rpm_actual !== null &&
-    inputs.selected_gearmotor_output_rpm_actual > 0
+    inputs.selected_gearmotor_output_rpm_actual !== null
   ) {
-    actualBeltSpeedFpm = calculateActualBeltSpeed(
+    // Calculate actual belt speed - function handles all guards and returns warning codes
+    const actualSpeedResult = calculateActualBeltSpeed(
       inputs.selected_gearmotor_output_rpm_actual,
       drivePulleyDiameterIn,
-      inputs.gm_sprocket_teeth ?? 18,
-      inputs.drive_shaft_sprocket_teeth ?? 24,
+      inputs.gm_sprocket_teeth,
+      inputs.drive_shaft_sprocket_teeth,
       isBottomMount
     );
-    // Calculate delta vs desired belt speed
-    actualBeltSpeedDeltaPct = calculateSpeedDeltaPct(beltSpeedFpm, actualBeltSpeedFpm);
+    actualBeltSpeedFpm = actualSpeedResult.actualBeltSpeedFpm;
+    actualDriveShaftRpm = actualSpeedResult.actualDriveShaftRpm;
+    actualSpeedWarningCode = actualSpeedResult.warningCode;
+
+    // Calculate delta vs desired belt speed (only if actual speed was computed)
+    if (actualBeltSpeedFpm !== null) {
+      actualBeltSpeedDeltaPct = calculateSpeedDeltaPct(beltSpeedFpm, actualBeltSpeedFpm);
+    }
   }
 
   // Step 16: Throughput calculations (optional - only if required_throughput_pph provided)
@@ -2432,6 +2487,8 @@ export function calculate(
     // v1.38: Actual belt speed from selected gearmotor
     actual_belt_speed_fpm: actualBeltSpeedFpm,
     actual_belt_speed_delta_pct: actualBeltSpeedDeltaPct,
+    actual_drive_shaft_rpm: actualDriveShaftRpm,
+    actual_speed_warning_code: actualSpeedWarningCode,
 
     safety_factor_used: safetyFactor,
     starting_belt_pull_lb_used: startingBeltPullLb,

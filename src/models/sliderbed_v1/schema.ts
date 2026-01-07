@@ -2039,6 +2039,25 @@ export interface SliderbedOutputs {
    */
   actual_belt_speed_delta_pct?: number | null;
 
+  /**
+   * Actual drive shaft RPM (v1.38)
+   * = gearmotor_output_rpm * drive_ratio
+   * where drive_ratio = gm_sprocket_teeth / drive_shaft_sprocket_teeth (for bottom mount)
+   * or 1.0 for shaft mounted.
+   * Null when actual_belt_speed_fpm is null.
+   */
+  actual_drive_shaft_rpm?: number | null;
+
+  /**
+   * Warning code from actual speed calculation (v1.38)
+   * Codes:
+   *   ACTUAL_GM_RPM_INVALID - gearmotor RPM was 0
+   *   PULLEY_DIAMETER_MISSING - pulley diameter not configured
+   *   SPROCKET_TEETH_MISSING - sprocket teeth not configured for bottom mount
+   * Null when calculation succeeded.
+   */
+  actual_speed_warning_code?: string | null;
+
   /** Safety factor used */
   safety_factor_used: number;
 
