@@ -6,23 +6,26 @@
  *
  * CANONICAL FORMULAS (single source of truth):
  *
- * SERVICE FACTOR APPLICATION:
- * - required_torque_with_sf = required_output_torque_lb_in * service_factor_applied
- * - candidate_available_torque = catalog_output_torque_lb_in (exact catalog value, NO SF applied)
+ * SERVICE FACTOR:
+ * - SF affects FILTERING ONLY (done in selector.ts)
+ * - Filtering rule: service_factor_catalog >= applied_service_factor
+ * - SF does NOT affect torque capacity calculations
  *
  * PASS/FAIL RULES:
- * - passTorque = candidate_available_torque >= required_torque_with_sf
+ * - passTorque = catalog_torque >= raw_required_torque (no SF adjustment)
  * - passRpm = candidate RPM within tolerance of required RPM
  *
- * MARGIN (only for passing candidates):
- * - marginPct = (candidate_available_torque - required_torque_with_sf) / required_torque_with_sf * 100
+ * MARGIN (uses RAW required torque, no SF multiplier):
+ * - margin = (catalog_output_torque_lb_in / required_output_torque_raw) - 1
+ * - marginPct = margin * 100
  */
 
 export interface EvaluationInputs {
-  requiredTorque: number; // Base required torque (before SF)
+  requiredTorque: number; // Raw required torque (no SF applied)
   requiredRpm: number;
-  serviceFactor: number; // Applied service factor
-  candidateTorque: number; // Raw catalog torque (no SF applied)
+  serviceFactor: number; // Applied service factor (used for SF filtering info only)
+  candidateTorque: number; // Raw catalog torque
+  candidateSF: number; // Catalog service factor
   candidateRpm: number;
   speedTolerancePct?: number; // Default 15%
 }
@@ -31,12 +34,13 @@ export interface EvaluationResult {
   // Pass/fail
   passTorque: boolean;
   passRpm: boolean;
+  passSF: boolean; // catalog SF >= applied SF
   passAll: boolean;
 
   // Computed values
-  requiredTorqueWithSF: number; // requiredTorque * serviceFactor
-  candidateAvailableTorque: number; // Raw catalog torque (no SF)
-  marginPct: number; // ((candidate - required_with_sf) / required_with_sf) * 100
+  requiredTorqueRaw: number; // Raw required torque (no SF)
+  candidateAvailableTorque: number; // Raw catalog torque
+  marginPct: number; // ((catalog_torque / raw_required_torque) - 1) * 100
   rpmDeltaPct: number; // ((candidateRpm - requiredRpm) / requiredRpm) * 100
 }
 
@@ -52,38 +56,42 @@ export function evaluateGearmotorCandidate(inputs: EvaluationInputs): Evaluation
     requiredRpm,
     serviceFactor,
     candidateTorque,
+    candidateSF = 1.0,
     candidateRpm,
     speedTolerancePct = 15,
   } = inputs;
 
-  // SERVICE FACTOR APPLICATION (per canonical formulas)
-  // SF is applied to REQUIREMENT, not to candidate
-  const requiredTorqueWithSF = requiredTorque * serviceFactor;
-  const candidateAvailableTorque = candidateTorque; // Raw catalog value, NO SF
+  // Raw values (no SF adjustment)
+  const requiredTorqueRaw = requiredTorque;
+  const candidateAvailableTorque = candidateTorque;
 
-  // TORQUE PASS: candidate must meet or exceed required torque WITH SF
-  const passTorque = candidateAvailableTorque >= requiredTorqueWithSF;
+  // SF PASS: catalog SF must meet or exceed applied SF
+  const passSF = candidateSF >= serviceFactor;
+
+  // TORQUE PASS: catalog torque >= raw required torque (no SF adjustment)
+  const passTorque = candidateAvailableTorque >= requiredTorqueRaw;
 
   // RPM PASS: candidate RPM must be within tolerance of required RPM
   const rpmDeltaPct =
     requiredRpm > 0 ? ((candidateRpm - requiredRpm) / requiredRpm) * 100 : 0;
   const passRpm = Math.abs(rpmDeltaPct) <= speedTolerancePct;
 
-  // MARGIN: (candidate - required_with_sf) / required_with_sf * 100
-  // Only meaningful for passing candidates, but we compute it regardless
+  // MARGIN: (catalog_torque / raw_required_torque) - 1
+  // Uses RAW required torque, NO SF multiplier
   const marginPct =
-    requiredTorqueWithSF > 0
-      ? ((candidateAvailableTorque - requiredTorqueWithSF) / requiredTorqueWithSF) * 100
+    requiredTorqueRaw > 0
+      ? ((candidateAvailableTorque / requiredTorqueRaw) - 1) * 100
       : 0;
 
-  // Overall pass
-  const passAll = passTorque && passRpm;
+  // Overall pass requires all three conditions
+  const passAll = passTorque && passRpm && passSF;
 
   return {
     passTorque,
     passRpm,
+    passSF,
     passAll,
-    requiredTorqueWithSF,
+    requiredTorqueRaw,
     candidateAvailableTorque,
     marginPct,
     rpmDeltaPct,

@@ -18,3 +18,12 @@ export {
   type EvaluationInputs,
   type EvaluationResult,
 } from './evaluate';
+
+export {
+  parseModelType,
+  resolveBom,
+  resolveBomFromMetadata,
+  type ParsedModelType,
+  type BomComponent,
+  type BomResolution,
+} from './bom';

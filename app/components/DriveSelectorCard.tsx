@@ -75,6 +75,7 @@ export default function DriveSelectorCard({
             output_torque_lb_in: point.output_torque_lb_in,
             service_factor_catalog: point.service_factor_catalog,
             source_ref: point.source_ref ?? '',
+            metadata_json: point.metadata_json ?? null,
             adjusted_capacity: 0,
             oversize_ratio: 1,
             speed_delta: 0,

@@ -43,6 +43,16 @@ export interface GearmotorCandidate {
   output_torque_lb_in: number;
   service_factor_catalog: number;
   source_ref: string | null;
+  metadata_json: {
+    model_type?: string;
+    parsed_model?: {
+      worm_stages?: number;
+      gear_unit_size?: string;
+      adapter_code?: string;
+      motor_frame?: string;
+    };
+    [key: string]: unknown;
+  } | null;
   // Computed fields
   adjusted_capacity: number;
   oversize_ratio: number;
@@ -186,6 +196,7 @@ async function queryCandidates(
       output_torque_lb_in,
       service_factor_catalog,
       source_ref,
+      metadata_json,
       vendor_components!inner (
         id,
         vendor_part_number,
@@ -205,17 +216,23 @@ async function queryCandidates(
     return [];
   }
 
-  // Filter by torque capacity (with SF normalization)
-  // effective_capacity = output_torque_lb_in * (catalog_service_factor / chosen_service_factor)
-  // Higher catalog SF means unit is rated conservatively, giving more effective capacity
+  // Filter by:
+  // 1. Catalog SF >= Applied SF (strict filtering, no capacity adjustment)
+  // 2. Catalog torque >= required torque (raw, no SF multiplier)
   const candidates: GearmotorCandidate[] = [];
 
   for (const row of data) {
     const catalogSF = row.service_factor_catalog || 1.0;
-    const adjustedCapacity = row.output_torque_lb_in * (catalogSF / chosenSF);
 
-    // Torque must meet requirement
-    if (adjustedCapacity < requiredTorque) {
+    // SF FILTERING ONLY: catalog SF must meet or exceed applied SF
+    // If applied SF = 1.0, a catalog SF of 0.9 is INVALID
+    if (catalogSF < chosenSF) {
+      continue;
+    }
+
+    // Torque must meet requirement (raw catalog torque vs raw required torque)
+    // NO SF adjustment to capacity
+    if (row.output_torque_lb_in < requiredTorque) {
       continue;
     }
 
@@ -230,6 +247,10 @@ async function queryCandidates(
       description: string;
     };
 
+    // Margin = (catalog_torque / raw_required_torque) - 1
+    // oversize_ratio is now simply catalog_torque / required_torque (margin + 1)
+    const oversizeRatio = row.output_torque_lb_in / requiredTorque;
+
     candidates.push({
       performance_point_id: row.id,
       gear_unit_component_id: row.gear_unit_component_id,
@@ -243,8 +264,10 @@ async function queryCandidates(
       output_torque_lb_in: row.output_torque_lb_in,
       service_factor_catalog: row.service_factor_catalog,
       source_ref: row.source_ref,
-      adjusted_capacity: adjustedCapacity,
-      oversize_ratio: adjustedCapacity / requiredTorque,
+      metadata_json: row.metadata_json as GearmotorCandidate['metadata_json'],
+      // adjusted_capacity is now just raw catalog torque (no SF adjustment)
+      adjusted_capacity: row.output_torque_lb_in,
+      oversize_ratio: oversizeRatio,
       speed_delta: speedDelta,
       speed_delta_pct: speedDeltaPct,
     });

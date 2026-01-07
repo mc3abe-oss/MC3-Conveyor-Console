@@ -156,9 +156,16 @@ COMMENT ON COLUMN public.pdf_document_versions.storage_path IS 'Path in Supabase
 COMMENT ON COLUMN public.pdf_document_versions.sha256_hash IS 'SHA-256 hash for deduplication and integrity';
 
 -- Add FK from pdf_documents.current_version_id to pdf_document_versions
-ALTER TABLE public.pdf_documents
-  ADD CONSTRAINT fk_pdf_documents_current_version
-  FOREIGN KEY (current_version_id) REFERENCES public.pdf_document_versions(id);
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'fk_pdf_documents_current_version'
+  ) THEN
+    ALTER TABLE public.pdf_documents
+      ADD CONSTRAINT fk_pdf_documents_current_version
+      FOREIGN KEY (current_version_id) REFERENCES public.pdf_document_versions(id);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- TABLE: pdf_document_tags (junction table)

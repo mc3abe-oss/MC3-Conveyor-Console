@@ -1,0 +1,814 @@
+vendor,product_line,component_type,variant,adapter_interface,adapter_code,motor_frame,motor_poles,motor_voltage,motor_efficiency,motor_hp,shaft_key,gear_unit_key,ratio,nord_part_number,description,catalog_page,source_line
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i5p0,5.0,60392050,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=5 60392050 60391050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i5p0,5.0,60391050,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=5 60392050 60391050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i7p0,7.0,60392080,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=7 .5 60392080 60391080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i7p0,7.0,60391080,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=7 .5 60392080 60391080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i10p0,10.0,60392100,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=10 60392100 60391100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i10p0,10.0,60391100,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=10 60392100 60391100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i12p5,12.5,60392130,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=12.5 60392130 60391130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i12p5,12.5,60391130,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=12.5 60392130 60391130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i15p0,15.0,60392150,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=15 60392150 60391150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i15p0,15.0,60391150,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=15 60392150 60391150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i20p0,20.0,60392200,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=20 60392200 60391200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i20p0,20.0,60391200,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=20 60392200 60391200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i25p0,25.0,60392250,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=25 60392250 60391250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i25p0,25.0,60391250,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=25 60392250 60391250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i30p0,30.0,60392300,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=30 60392300 60391300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i30p0,30.0,60391300,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=30 60392300 60391300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i40p0,40.0,60392400,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=40 60392400 60391400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i40p0,40.0,60391400,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=40 60392400 60391400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i50p0,50.0,60392500,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=50 60392500 60391500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i50p0,50.0,60391500,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=50 60392500 60391500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i60p0,60.0,60392600,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=60 60392600 60391600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i60p0,60.0,60391600,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=60 60392600 60391600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i80p0,80.0,60392800,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=80 60392800 60391800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i80p0,80.0,60391800,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=80 60392800 60391800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i100p0,100.0,60392000,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=100 60392000 60391000
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_0p625in_14mm_i100p0,100.0,60391000,Wormgearbox 0.625 Hollow Shaft 14 mm Hollow Shaft,B79,i=100 60392000 60391000
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,230/460V-60Hz,STANDARD,0.16666666666666666,,,,31110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B79,"63S/4-56C 230/460V-60Hz, 1/6 hp 31110012"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,230/460V-60Hz,STANDARD,0.25,,,,31610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B79,"63L/4-56C 230/460V-60Hz, 1/4 hp 31610012"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,230/460V-60Hz,STANDARD,0.3333333333333333,,,,32110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B79,"71S/4-56C 230/460V-60Hz, 1/3 hp 32110012"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,230/460V-60Hz,STANDARD,0.5,,,,32610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B79,"71L/4-56C 230/460V-60Hz, 1/2 hp 32610012"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,230/460V-60Hz,STANDARD,0.75,,,,33110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B79,"80S/4-56C 230/460V-60Hz, 3/4 hp 33110012"
+NORD,FLEXBLOC,motor,STD,,56C,80L/4,4.0,230/460V-60Hz,STANDARD,1.0,,,,33610022,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B79,"80L/4-56C 230/460V-60Hz, 1 hp 33610022"
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,575V-60Hz,STANDARD,0.16666666666666666,,,,31110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B79,"63S/4-56C 575V-60Hz, 1/6 hp 31110013"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,575V-60Hz,STANDARD,0.25,,,,31610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B79,"63L/4-56C 575V-60Hz, 1/4 hp 31610013"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,575V-60Hz,STANDARD,0.3333333333333333,,,,32110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B79,"71S/4-56C 575V-60Hz, 1/3 hp 32110013"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,575V-60Hz,STANDARD,0.5,,,,32610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B79,"71L/4-56C 575V-60Hz, 1/2 hp 32610013"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,575V-60Hz,STANDARD,0.75,,,,33110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B79,"80S/4-56C 575V-60Hz, 3/4 hp 33110013"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610094,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B79,"80LH/4-56C 230/460V-60Hz, 1 hp 33610094"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610095,C-face 575V-60Hz Energy Efficient Motor Part Number,B79,"80LH/4-56C 575V-60Hz, 1 hp 33610095"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,230/460V-60Hz,PREMIUM_EFFICIENT,1.0,,,,33610294,C-face 230/460V-60Hz Premium Efficient Motor Part Number,B79,"80LP/4-56C 230/460V-60Hz, 1 hp 33610294"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,575V-60Hz,PREMIUM_EFFICIENT,1.0,,,,33610295,C-face 575V-60Hz Premium Efficient Motor Part Number,B79,"80LP/4-56C 575V-60Hz, 1 hp 33610295"
+NORD,FLEXBLOC,adapter,ANY,NEMA,48C,,,,,,,,,60395500,NEMA and IEC Adapter  94 & 118 Part Number,B79,NEMA 48C 60395500
+NORD,FLEXBLOC,adapter,ANY,NEMA,56C,,,,,,,,,60395510,NEMA and IEC Adapter  94 & 118 Part Number,B79,NEMA 56C 60395510
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B14_C105,,,,,,,,,60395100,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 56 B14 C105 60395100
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B5_A120,,,,,,,,,60395200,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 56 B5 A120 60395200
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C90,,,,,,,,,60395010,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 63 B14 C90 60395010
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C120,,,,,,,,,60395110,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 63 B14 C120 60395110
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B5_A140,,,,,,,,,60395210,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 63 B5 A140 60395210
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C105,,,,,,,,,60395020,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 71 B14 C105 60395020
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C140,,,,,,,,,60395120,NEMA and IEC Adapter  94 & 118 Part Number,B79,IEC 71 B14 C140 60395120
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_0p625in_x_30mm,,,60393010,Plug in Shaft - Inch  122 Part Number,B79,Shaft 0.625” x 30mm 60393010
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_0p625in_x_30mm,,,60393110,Plug in Shaft - Inch  122 Part Number,B79,Double Shaft 0.625” x 30mm 60393110
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_0p625in_x_30mm,,,60393210,Plug in Shaft - Inch  122 Part Number,B79,Shaft for Output Flange B5 0.625” x 30mm 60393210
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_14mm_x_30mm,,,60393000,Plug in Shaft - Metric   122 Part Number,B79,Shaft 14mm x 30mm 60393000
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_14mm_x_30mm,,,60393100,Plug in Shaft - Metric   122 Part Number,B79,Double Shaft 14mm x 30mm 60393100
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_14mm_x_30mm,,,60393200,Plug in Shaft - Metric   122 Part Number,B79,Shaft for Output Flange B5 14mm x 30mm 60393200
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,,,,60393800,Plug in Shaft - Metric   122 Part Number,B79,I Flange - 105mm 60393800
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,,,,60393810,Plug in Shaft - Metric   122 Part Number,B79,"II Flange - 80mm, Square Flange, Female Pilot 60393810"
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,,,,60393820,Plug in Shaft - Metric   122 Part Number,B79,"III Flange - 80mm, Square Flange, Male Pilot 60393820"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393950,Shaft Cover  95 Part Number,B79,Shaft Cover 60393950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393900,Shaft Cover  95 Part Number,B79,Torque Arm 60393900
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60394600,Shaft Cover  95 Part Number,B79,Foot Plate 0.68” / 3.31” x 4.38” 60394600
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693500,Shaft Cover  95 Part Number,B79,Open Vent 60693500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,22008056,Shaft Cover  95 Part Number,B79,AUTOVENT™ 22008056
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60382910,Shaft Cover  95 Part Number,B79,Fixing Kit (Inch) 60382910
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60382330,Shaft Cover  95 Part Number,B79,Fixing Kit (metric) 60382330
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i5p0,5.0,60492050,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=5 60492050 60491050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i5p0,5.0,60491050,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=5 60492050 60491050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i7p0,7.0,60492080,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=7 .5 60492080 60491080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i7p0,7.0,60491080,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=7 .5 60492080 60491080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i10p0,10.0,60492100,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=10 60492100 60491100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i10p0,10.0,60491100,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=10 60492100 60491100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i12p5,12.5,60492130,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=12.5 60492130 60491130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i12p5,12.5,60491130,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=12.5 60492130 60491130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i15p0,15.0,60492150,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=15 60492150 60491150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i15p0,15.0,60491150,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=15 60492150 60491150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i20p0,20.0,60492200,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=20 60492200 60491200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i20p0,20.0,60491200,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=20 60492200 60491200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i25p0,25.0,60492250,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=25 60492250 60491250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i25p0,25.0,60491250,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=25 60492250 60491250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i30p0,30.0,60492300,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=30 60492300 60491300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i30p0,30.0,60491300,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=30 60492300 60491300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i40p0,40.0,60492400,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=40 60492400 60491400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i40p0,40.0,60491400,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=40 60492400 60491400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i50p0,50.0,60492500,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=50 60492500 60491500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i50p0,50.0,60491500,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=50 60492500 60491500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i60p0,60.0,60492600,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=60 60492600 60491600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i60p0,60.0,60491600,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=60 60492600 60491600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i80p0,80.0,60492800,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=80 60492800 60491800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i80p0,80.0,60491800,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=80 60492800 60491800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i100p0,100.0,60492000,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=100 60492000 60491000
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p000in_18mm_i100p0,100.0,60491000,Gearbox 1.000 hollow shaft 18mm hollow shaft,B81,i=100 60492000 60491000
+NORD,FLEXBLOC,adapter,ANY,NEMA,56C,,,,,,,,,60495500,NEMA and IEC Adapters  98 & 118 Part Number,B81,NEMA 56C 60495500
+NORD,FLEXBLOC,adapter,ANY,NEMA,,,,,,,,,,60595500,NEMA and IEC Adapters  98 & 118 Part Number,B81,NEMA 140TC 60595500
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B14_C105,,,,,,,,,60495100,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 56 B14 C105 60495100
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B5_A120,,,,,,,,,60495200,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 56 B5 A120 60495200
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C90,,,,,,,,,60495010,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 63 B14 C90 60495010
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C120,,,,,,,,,60495110,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 63 B14 C120 60495110
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B5_A140,,,,,,,,,60495210,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 63 B5 A140 60495210
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C105,,,,,,,,,60495020,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 71 B14 C105 60495020
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C140,,,,,,,,,60495120,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 71 B14 C140 60495120
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B5_A160,,,,,,,,,60495220,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 71 B5 A160 60495220
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C120,,,,,,,,,60495030,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 80 B14 C120 60495030
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C160,,,,,,,,,60495130,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 80 B14 C160 60495130
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B5_A200,,,,,,,,,60495230,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 80 B5 A200 60495230
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C140,,,,,,,,,60495040,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 90 B14 C140 60495040
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C160,,,,,,,,,60495140,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 90 B14 C160 60495140
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B5_A200,,,,,,,,,60495240,NEMA and IEC Adapters  98 & 118 Part Number,B81,IEC 90 B5 A200 60495240
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_0p750in_x_40mm,,,60493010,Plug in Shaft - Inch  122 Part Number,B81,Shaft 0.750” x 40mm 60493010
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_0p750in_x_40mm,,,60493110,Plug in Shaft - Inch  122 Part Number,B81,Double Shaft 0.750” x 40mm 60493110
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_0p750in_x_40mm,,,60493210,Plug in Shaft - Inch  122 Part Number,B81,Shaft for Output Flange B5 0.750” x 40mm 60493210
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_18mm_x_40mm,,,60493000,Plug in Shaft - Metric  122 Part Number,B81,Shaft 18mm x 40mm 60493000
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_18mm_x_40mm,,,60493100,Plug in Shaft - Metric  122 Part Number,B81,Double Shaft  18mm x 40mm 60493100
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_18mm_x_40mm,,,60493200,Plug in Shaft - Metric  122 Part Number,B81,Shaft for Output Flange B5 18mm x 40mm 60493200
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,,,,60493800,Plug in Shaft - Metric  122 Part Number,B81,I Flange - 120mm 60493800
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,,,,60493810,Plug in Shaft - Metric  122 Part Number,B81,"II Flange - 110mm, Sqare Flange, Female Pilot 60493810"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493950,Shaft Cover  99 Part Number,B81,Shaft Cover 60493950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493900,Shaft Cover  99 Part Number,B81,130mm Torque Arm I 60493900
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60490770,Shaft Cover  99 Part Number,B81,100mm Torque Arm III 60490770
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494600,Shaft Cover  99 Part Number,B81,Foot Plate 0.53” / 4.31”x 5.25” 60494600
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693500,Shaft Cover  99 Part Number,B81,Open Vent 60693500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,22008056,Shaft Cover  99 Part Number,B81,AUTOVENT™ 22008056
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494000,Shaft Cover  99 Part Number,B81,Helical Input Stage H10 60494000
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60494110,Double Worm Adapter  116 Part Number,B81,Inch 0.625” (requires     ) 60494110
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60494100,Double Worm Adapter  116 Part Number,B81,Metric 14mm (requires     ) 60494100
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494210,Solid Input Shaft  119 Part Number,B81,Solid Input Shaft 0.625” x 1.57” 60494210
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494200,Solid Input Shaft  119 Part Number,B81,Solid Input Shaft 16mm x 40mm 60494200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60282930,Solid Input Shaft  119 Part Number,B81,Fixing Kit (Inch) 60282930
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60482340,Solid Input Shaft  119 Part Number,B81,Fixing (Metric) 60482340
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,230/460V-60Hz,STANDARD,0.16666666666666666,,,,31110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B81,"63S/4-56C 230/460V-60Hz, 1/6 hp 31110012"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,230/460V-60Hz,STANDARD,0.25,,,,31610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B81,"63L/4-56C 230/460V-60Hz, 1/4 hp 31610012"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,230/460V-60Hz,STANDARD,0.3333333333333333,,,,32110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B81,"71S/4-56C 230/460V-60Hz, 1/3 hp 32110012"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,230/460V-60Hz,STANDARD,0.5,,,,32610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B81,"71L/4-56C 230/460V-60Hz, 1/2 hp 32610012"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,230/460V-60Hz,STANDARD,0.75,,,,33110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B81,"80S/4-56C 230/460V-60Hz, 3/4 hp 33110012"
+NORD,FLEXBLOC,motor,STD,,56C,80L/4,4.0,230/460V-60Hz,STANDARD,1.0,,,,33610022,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B81,"80L/4-56C 230/460V-60Hz, 1 hp 33610022"
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,575V-60Hz,STANDARD,0.16666666666666666,,,,31110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B81,"63S/4-56C 575V-60Hz, 1/6 hp 31110013"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,575V-60Hz,STANDARD,0.25,,,,31610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B81,"63L/4-56C 575V-60Hz, 1/4 hp 31610013"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,575V-60Hz,STANDARD,0.3333333333333333,,,,32110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B81,"71S/4-56C 575V-60Hz, 1/3 hp 32110013"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,575V-60Hz,STANDARD,0.5,,,,32610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B81,"71L/4-56C 575V-60Hz, 1/2 hp 32610013"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610094,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B81,"80LH/4-56C 230/460V-60Hz, 1 hp 33610094"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B81,"80LH/4-143TC 230/460V-60Hz, 1 hp 33610092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B81,"90SH/4-145TC 230/460V-60Hz, 1-1/2 hp 34110092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B81,"90LH/4-145TC 230/460V-60Hz, 2 hp 34610092"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610095,C-face 575V-60Hz Energy Efficient Motor Part Number,B81,"80LH/4-56C 575V-60Hz, 1 hp 33610095"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B81,"80LH/4-143TC 575V-60Hz, 1 hp 33610093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B81,"90SH/4-145TC 575V-60Hz, 1-1/2 hp 34110093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B81,"90LH/4-145TC 575V-60Hz, 2 hp 34610093"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,230/460V-60Hz,PREMIUM_EFFICIENT,1.0,,,,33610294,C-face 230/460V-60Hz Premium Efficient Motor Part Number,B81,"80LP/4-56C 230/460V-60Hz, 1 hp 33610294"
+NORD,FLEXBLOC,motor,STD,,,,,,PREMIUM_EFFICIENT,1.0,,,,33610292,C-face 230/460V-60Hz Premium Efficient Motor Part Number,B81,"80LP/4-143TC 230/460V-60Hz, 1 hp 33610292"
+NORD,FLEXBLOC,motor,STD,,,,,,PREMIUM_EFFICIENT,0.5,,,,34110292,C-face 230/460V-60Hz Premium Efficient Motor Part Number,B81,"90SP/4-145TC 230/460V-60Hz, 1-1/2 hp 34110292"
+NORD,FLEXBLOC,motor,STD,,,,,,PREMIUM_EFFICIENT,2.0,,,,34610292,C-face 230/460V-60Hz Premium Efficient Motor Part Number,B81,"90LP/4-145TC 230/460V-60Hz, 2 hp 34610292"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,575V-60Hz,PREMIUM_EFFICIENT,1.0,,,,33610295,C-face 575V-60Hz Premium Efficient Motor Part Number,B81,"80LP/4-56C 575V-60Hz, 1 hp 33610295"
+NORD,FLEXBLOC,motor,STD,,,,,,PREMIUM_EFFICIENT,1.0,,,,33610293,C-face 575V-60Hz Premium Efficient Motor Part Number,B81,"80LP/4-143TC 575V-60Hz, 1 hp 33610293"
+NORD,FLEXBLOC,motor,STD,,,,,,PREMIUM_EFFICIENT,0.5,,,,34110293,C-face 575V-60Hz Premium Efficient Motor Part Number,B81,"90SP/4-145TC 575V-60Hz, 1-1/2 hp 34110293"
+NORD,FLEXBLOC,motor,STD,,,,,,PREMIUM_EFFICIENT,2.0,,,,34610293,C-face 575V-60Hz Premium Efficient Motor Part Number,B81,"90LP/4-145TC 575V-60Hz, 2 hp 34610293"
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i5p0,5.0,60592050,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=5 60592050 60591050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i5p0,5.0,60591050,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=5 60592050 60591050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i7p0,7.0,60592080,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=7 .5 60592080 60591080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i7p0,7.0,60591080,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=7 .5 60592080 60591080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i10p0,10.0,60592100,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=10 60592100 60591100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i10p0,10.0,60591100,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=10 60592100 60591100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i12p5,12.5,60592130,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=12.5 60592130 60591130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i12p5,12.5,60591130,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=12.5 60592130 60591130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i15p0,15.0,60592150,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=15 60592150 60591150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i15p0,15.0,60591150,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=15 60592150 60591150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i20p0,20.0,60592200,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=20 60592200 60591200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i20p0,20.0,60591200,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=20 60592200 60591200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i25p0,25.0,60592250,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=25 60592250 60591250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i25p0,25.0,60591250,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=25 60592250 60591250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i30p0,30.0,60592300,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=30 60592300 60591300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i30p0,30.0,60591300,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=30 60592300 60591300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i40p0,40.0,60592400,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=40 60592400 60591400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i40p0,40.0,60591400,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=40 60592400 60591400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i50p0,50.0,60592500,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=50 60592500 60591500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i50p0,50.0,60591500,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=50 60592500 60591500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i60p0,60.0,60592600,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=60 60592600 60591600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i60p0,60.0,60591600,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=60 60592600 60591600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i80p0,80.0,60592800,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=80 60592800 60591800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i80p0,80.0,60591800,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=80 60592800 60591800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i100p0,100.0,60592000,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=100 60592000 60591000
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p125in_25mm_i100p0,100.0,60591000,Wormgearbox 1.125 hollow shaft 25mm hollow shaft,B83,i=100 60592000 60591000
+NORD,FLEXBLOC,adapter,ANY,NEMA,56C,,,,,,,,,60495500,NEMA and IEC Adapter  102 & 118 Part Number,B83,NEMA 56C 60495500
+NORD,FLEXBLOC,adapter,ANY,NEMA,,,,,,,,,,60595500,NEMA and IEC Adapter  102 & 118 Part Number,B83,NEMA 140TC 60595500
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B14_C105,,,,,,,,,60495100,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 56 B14 C105 60495100
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B5_A120,,,,,,,,,60495200,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 56 B5 A120 60495200
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C90,,,,,,,,,60495010,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 63 B14 C90 60495010
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C120,,,,,,,,,60495110,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 63 B14 C120 60495110
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B5_A140,,,,,,,,,60495210,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 63 B5 A140 60495210
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C105,,,,,,,,,60495020,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 71 B14 C105 60495020
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C140,,,,,,,,,60495120,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 71 B14 C140 60495120
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B5_A160,,,,,,,,,60495220,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 71 B5 A160 60495220
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C120,,,,,,,,,60495030,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 80 B14 C120 60495030
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C160,,,,,,,,,60495130,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 80 B14 C160 60495130
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B5_A200,,,,,,,,,60495230,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 80 B5 A200 60495230
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C140,,,,,,,,,60495040,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 90 B14 C140 60495040
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C160,,,,,,,,,60495140,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 90 B14 C160 60495140
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B5_A200,,,,,,,,,60495240,NEMA and IEC Adapter  102 & 118 Part Number,B83,IEC 90 B5 A200 60495240
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_1p000in_x_50mm,,,60593010,Plug in Shaft - Inch  122 Part Number,B83,Shaft 1.000” x 50mm 60593010
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_1p000in_x_50mm,,,60593110,Plug in Shaft - Inch  122 Part Number,B83,Double Shaft 1.000” x 50mm 60593110
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_1p000in_x_50mm,,,60593210,Plug in Shaft - Inch  122 Part Number,B83,Shaft for Output Flange B5 1.000” x 50mm 60593210
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_25mm_x_50mm,,,60593000,Plug in Shaft - Metric  122 Part Number,B83,Shaft 25mm x 50mm 60593000
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_25mm_x_50mm,,,60593100,Plug in Shaft - Metric  122 Part Number,B83,Double Shaft  25mm x 50mm 60593100
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_25mm_x_50mm,,,60593200,Plug in Shaft - Metric  122 Part Number,B83,Shaft for Output Flange B5 25mm x 50mm 60593200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593400,Hollow Shaft Bushing  103 Part Number,B83,Hollow Shaft Bushing 1.00” 60593400
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593800,Hollow Shaft Bushing  103 Part Number,B83,I Flange - 160mm 60593800
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593810,Hollow Shaft Bushing  103 Part Number,B83,"II Flange - 125mm, Square Flange, Female Pilot 60593810"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593820,Hollow Shaft Bushing  103 Part Number,B83,"III Flange - 125mm, Square Flange, Male Pilot 60593820"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593950,Shaft Cover  103 Part Number,B83,Shaft Cover 60593950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593900,Shaft Cover  103 Part Number,B83,130 mm Torque Arm I 60593900
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593920,Shaft Cover  103 Part Number,B83,110 mm Torque Arm II 60593920
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593910,Shaft Cover  103 Part Number,B83,100 mm Torque Arm III 60593910
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,230/460V-60Hz,STANDARD,0.16666666666666666,,,,31110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B83,"63S/4-56C 230/460V-60Hz, 1/6 hp 31110012"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,230/460V-60Hz,STANDARD,0.25,,,,31610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B83,"63L/4-56C 230/460V-60Hz, 1/4 hp 31610012"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,230/460V-60Hz,STANDARD,0.3333333333333333,,,,32110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B83,"71S/4-56C 230/460V-60Hz, 1/3 hp 32110012"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,230/460V-60Hz,STANDARD,0.5,,,,32610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B83,"71L/4-56C 230/460V-60Hz, 1/2 hp 32610012"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,230/460V-60Hz,STANDARD,0.75,,,,33110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B83,"80S/4-56C 230/460V-60Hz, 3/4 hp 33110012"
+NORD,FLEXBLOC,motor,STD,,56C,80L/4,4.0,230/460V-60Hz,STANDARD,1.0,,,,33610022,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B83,"80L/4-56C 230/460V-60Hz, 1 hp 33610022"
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,575V-60Hz,STANDARD,0.16666666666666666,,,,31110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B83,"63S/4-56C 575V-60Hz, 1/6 hp 31110013"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,575V-60Hz,STANDARD,0.25,,,,31610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B83,"63L/4-56C 575V-60Hz, 1/4 hp 31610013"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,575V-60Hz,STANDARD,0.3333333333333333,,,,32110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B83,"71S/4-56C 575V-60Hz, 1/3 hp 32110013"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,575V-60Hz,STANDARD,0.5,,,,32610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B83,"71L/4-56C 575V-60Hz, 1/2 hp 32610013"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610094,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"80LH/4-56C 230/460V-60Hz, 1 hp 33610094"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"80LH/4-143TC 230/460V-60Hz, 1 hp 33610092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"90SH/4-145TC 230/460V-60Hz, 1-1/2 hp 34110092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"90LH/4-145TC 230/460V-60Hz, 2 hp 34610092"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610095,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"80LH/4-56C 575V-60Hz, 1 hp 33610095"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"80LH/4-143TC 575V-60Hz, 1 hp 33610093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"90SH/4-145TC 575V-60Hz, 1-1/2 hp 34110093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"90LH/4-145TC 575V-60Hz, 2 hp 34610093"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610294,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"80LP/4-56C 230/460V-60Hz, 1 hp 33610294"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"80LP/4-143TC 230/460V-60Hz, 1 hp 33610292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"90SP/4-145TC 230/460V-60Hz, 1-1/2 hp 34110292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B83,"90LP/4-145TC 230/460V-60Hz, 2 hp 34610292"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610295,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"80LP/4-56C 575V-60Hz, 1 hp 33610295"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610293,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"80LP/4-143TC 575V-60Hz, 1 hp 33610293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"90SP/4-145TC 575V-60Hz, 1-1/2 hp 34110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610293,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,"90LP/4-145TC 575V-60Hz, 2 hp 34610293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,60494000,C-face 575V-60Hz Energy Efficient Motor Part Number,B83,Helical Input Stage H10 60494000
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60494110,Double Worm Adapter  116 Part Number,B83,Inch 0.625” (requires     ) 60494110
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60494100,Double Worm Adapter  116 Part Number,B83,Metric 14mm (requires     ) 60494100
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494210,Solid Input Shaft  119 Part Number,B83,Solid Input Shaft 0.625” x 1.57” 60494210
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494200,Solid Input Shaft  119 Part Number,B83,Solid Input Shaft 16mm x 40mm 60494200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60594600,Solid Input Shaft  119 Part Number,B83,Foot Plate 0.64” / 4.69”x 6.38” 60594600
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693500,Solid Input Shaft  119 Part Number,B83,Open Vent 60693500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,22008056,Solid Input Shaft  119 Part Number,B83,AUTOVENT™ 22008056
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60282930,Solid Input Shaft  119 Part Number,B83,Fixing Kit (Inch) 60282930
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60282310,Solid Input Shaft  119 Part Number,B83,Fixing (Metric) 60282310
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494000,CONFIGURATION,B85,Helical Input Stage H10 60494000
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60494110,Double Worm Adapter  116 Part Number,B85,Inch 0.625” (requires     ) 60494110
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60494100,Double Worm Adapter  116 Part Number,B85,Metric 14mm (requires     ) 60494100
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494210,Solid Input Shaft  119 Part Number,B85,Solid Input Shaft 0.625” x 1.57” 60494210
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494200,Solid Input Shaft  119 Part Number,B85,Solid Input Shaft 16mm x 40mm 60494200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693900,Solid Input Shaft  119 Part Number,B85,Torque Arm 60693900
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i5p0,5.0,60692050,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=5 60692050 60691050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i5p0,5.0,60691050,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=5 60692050 60691050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i7p0,7.0,60692080,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=7 .5 60692080 60691080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i7p0,7.0,60691080,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=7 .5 60692080 60691080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i12p5,12.5,60692130,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=12.5 60692130 60691130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i12p5,12.5,60691130,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=12.5 60692130 60691130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i10p0,10.0,60692100,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=10 60692100 60691100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i10p0,10.0,60691100,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=10 60692100 60691100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i15p0,15.0,60692150,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=15 60692150 60691150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i15p0,15.0,60691150,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=15 60692150 60691150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i20p0,20.0,60692200,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=20 60692200 60691200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i20p0,20.0,60691200,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=20 60692200 60691200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i25p0,25.0,60692250,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=25 60692250 60691250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i25p0,25.0,60691250,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=25 60692250 60691250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i30p0,30.0,60692300,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=30 60692300 60691300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i30p0,30.0,60691300,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=30 60692300 60691300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i40p0,40.0,60692400,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=40 60692400 60691400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i40p0,40.0,60691400,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=40 60692400 60691400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i50p0,50.0,60692500,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=50 60692500 60691500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i50p0,50.0,60691500,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=50 60692500 60691500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i60p0,60.0,60692600,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=60 60692600 60691600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i60p0,60.0,60691600,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=60 60692600 60691600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i80p0,80.0,60692800,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=80 60692800 60691800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i80p0,80.0,60691800,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=80 60692800 60691800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i100p0,100.0,60692000,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=100 60692000 60691000
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p438in_25mm_i100p0,100.0,60691000,Wormgearbox 1.4375 Hollow Shaft 25mm Hollow Shaft,B85,i=100 60692000 60691000
+NORD,FLEXBLOC,adapter,ANY,NEMA,56C,,,,,,,,,60495500,NEMA and IEC Adapter 106 & 118 Part Number,B85,NEMA 56C 60495500
+NORD,FLEXBLOC,adapter,ANY,NEMA,,,,,,,,,,60595500,NEMA and IEC Adapter 106 & 118 Part Number,B85,NEMA 140TC 60595500
+NORD,FLEXBLOC,adapter,ANY,NEMA,,,,,,,,,,60695500,NEMA and IEC Adapter 106 & 118 Part Number,B85,NEMA 180TC 60695500
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B14_C105,,,,,,,,,60495100,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 56 B14 C105 60495100
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_56_B5_A120,,,,,,,,,60495200,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 56 B5 A120 60495200
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C90,,,,,,,,,60495010,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 63 B14 C90 60495010
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B14_C120,,,,,,,,,60495110,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 63 B14 C120 60495110
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_63_B5_A140,,,,,,,,,60495210,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 63 B5 A140 60495210
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C105,,,,,,,,,60495020,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 71 B14 C105 60495020
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C140,,,,,,,,,60495120,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 71 B14 C140 60495120
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B5_A160,,,,,,,,,60495220,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 71 B5 A160 60495220
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C120,,,,,,,,,60495030,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 80 B14 C120 60495030
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C160,,,,,,,,,60495130,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 80 B14 C160 60495130
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B5_A200,,,,,,,,,60495230,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 80 B5 A200 60495230
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C140,,,,,,,,,60695040,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 90 B14 C140 60695040
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C160,,,,,,,,,60695140,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 90 B14 C160 60695140
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B5_A200,,,,,,,,,60695240,NEMA and IEC Adapter 106 & 118 Part Number,B85,IEC 90 B5 A200 60695240
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_1p125in_x_60mm,,,60693010,Plug in Shaft - Inch  122 Part Number,B85,Shaft 1.125” x 60mm 60693010
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,double_shaft_1p125in_x_60mm,,,60693110,Plug in Shaft - Inch  122 Part Number,B85,Double Shaft 1.125” x 60mm 60693110
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_1p125in_x_60mm,,,60693210,Plug in Shaft - Inch  122 Part Number,B85,Shaft for Output Flange B5 1.125” x 60mm 60693210
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_25mm_x_50mm,,,60693000,Plug in Shaft - Metric  122 Part Number,B85,Plug-in Shaft 25mm x 50mm 60693000
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_25mm_x_50mm,,,60693100,Plug in Shaft - Metric  122 Part Number,B85,Double Plug-in Shaft 25mm x 50mm 60693100
+NORD,FLEXBLOC,output_shaft_kit,ANY,,,,,,,,shaft_output_flange_25mm_x_50mm,,,60693200,Plug in Shaft - Metric  122 Part Number,B85,Shaft for Output Flange B5 25mm x 50mm 60693200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693400,Hollow Shaft Bushing  107 Part Number,B85,Hollow Shaft Bushing 1.00” 60693400
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693410,Hollow Shaft Bushing  107 Part Number,B85,Hollow Shaft Bushing 1.1875” 60693410
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693420,Hollow Shaft Bushing  107 Part Number,B85,Hollow Shaft Bushing 1.25” 60693420
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693800,Hollow Shaft Bushing  107 Part Number,B85,I Flange - 200mm 60693800
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693810,Hollow Shaft Bushing  107 Part Number,B85,"II Flange - 180mm, Square Flange, Female Pilot 60693810"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693820,Hollow Shaft Bushing  107 Part Number,B85,"IV Flange, 160mm 60693820"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693950,Shaft Cover  107 Part Number,B85,Shaft Cover 60693950
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,230/460V-60Hz,STANDARD,0.16666666666666666,,,,31110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B85,"63S/4-56C 230/460V-60Hz, 1/6 hp 31110012"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,230/460V-60Hz,STANDARD,0.25,,,,31610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B85,"63L/4-56C 230/460V-60Hz, 1/4 hp 31610012"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,230/460V-60Hz,STANDARD,0.3333333333333333,,,,32110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B85,"71S/4-56C 230/460V-60Hz, 1/3 hp 32110012"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,230/460V-60Hz,STANDARD,0.5,,,,32610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B85,"71L/4-56C 230/460V-60Hz, 1/2 hp 32610012"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,230/460V-60Hz,STANDARD,0.75,,,,33110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B85,"80S/4-56C 230/460V-60Hz, 3/4 hp 33110012"
+NORD,FLEXBLOC,motor,STD,,56C,80L/4,4.0,230/460V-60Hz,STANDARD,1.0,,,,33610022,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B85,"80L/4-56C 230/460V-60Hz, 1 hp 33610022"
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,575V-60Hz,STANDARD,0.16666666666666666,,,,31110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B85,"63S/4-56C 575V-60Hz, 1/6 hp 31110013"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,575V-60Hz,STANDARD,0.25,,,,31610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B85,"63L/4-56C 575V-60Hz, 1/4 hp 31610013"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,575V-60Hz,STANDARD,0.3333333333333333,,,,32110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B85,"71S/4-56C 575V-60Hz, 1/3 hp 32110013"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,575V-60Hz,STANDARD,0.5,,,,32610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B85,"71L/4-56C 575V-60Hz, 1/2 hp 32610013"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,575V-60Hz,STANDARD,0.75,,,,33110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B85,"80S/4-56C 575V-60Hz, 3/4 hp 33110013"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610094,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"80LH/4-56C 230/460V-60Hz, 1 hp 33610094"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"80LH/4-143TC 230/460V-60Hz, 1 hp 33610092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"90SH/4-145TC 230/460V-60Hz, 1-1/2 hp 34110092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"90LH/4-145TC 230/460V-60Hz, 2 hp 34610092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"100LH/4-182TC 230/460V-60Hz, 3 hp 35110092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"112MH/4-184TC 230/460V-60Hz, 5 hp 36110092"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610095,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"80LH/4-56C 575V-60Hz, 1 hp 33610095"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"80LH/4-143TC 575V-60Hz, 1 hp 33610093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"90SH/4-145TC 575V-60Hz, 1-1/2 hp 34110093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"90LH/4-145TC 575V-60Hz, 2 hp 34610093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"100LH/4-182TC 575V-60Hz, 3 hp 35110093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"112MH/4-184TC 575V-60Hz, 5 hp 36110093"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610294,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"80LP/4-56C 230/460V-60Hz, 1 hp 33610294"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"80LP/4-143TC 230/460V-60Hz, 1 hp 33610292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"90SP/4-145TC 230/460V-60Hz, 1-1/2 hp 34110292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"90LP/4-145TC 230/460V-60Hz, 2 hp 34610292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"100LP/4-182TC 230/460V-60Hz, 3 hp 35110292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B85,"112MP/4-184TC 230/460V-60Hz, 5 hp 36110292"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610295,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"80LP/4-56C 575V-60Hz, 1 hp 33610295"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610293,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"80LP/4-143TC 575V-60Hz, 1 hp 33610293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"90SP/4-145TC 575V-60Hz, 1-1/2 hp 34110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610293,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"90LP/4-145TC 575V-60Hz, 2 hp 34610293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"100LP/4-182TC 575V-60Hz, 3 hp 35110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,"112MP/4-184TC 575V-60Hz, 5 hp 36110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,60694600,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,Foot Plate 0.86” / 5.25”x 8.00” 60694600
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,60693500,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,Open Vent 60693500
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,22008056,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,AUTOVENT™ 22008056
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,60282930,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,Fixing Kit (Inch) 60282930
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,60282310,C-face 575V-60Hz Energy Efficient Motor Part Number,B85,Fixing (Metric) 60282310
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793900,CONFIGURATION,B87,Torque Arm 60793900
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i5p0,5.0,60792050,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=5 60792050 60791050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i5p0,5.0,60791050,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=5 60792050 60791050
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i7p0,7.0,60792080,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=7 .5 60792080 60791080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i7p0,7.0,60791080,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=7 .5 60792080 60791080
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i10p0,10.0,60792100,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=10 60792100 60791100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i10p0,10.0,60791100,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=10 60792100 60791100
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i12p5,12.5,60792130,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=12.5 60792130 60791130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i12p5,12.5,60791130,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=12.5 60792130 60791130
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i15p0,15.0,60792150,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=15 60792150 60791150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i15p0,15.0,60791150,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=15 60792150 60791150
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i20p0,20.0,60792200,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=20 60792200 60791200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i20p0,20.0,60791200,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=20 60792200 60791200
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i25p0,25.0,60792250,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=25 60792250 60791250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i25p0,25.0,60791250,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=25 60792250 60791250
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i30p0,30.0,60792300,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=30 60792300 60791300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i30p0,30.0,60791300,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=30 60792300 60791300
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i40p0,40.0,60792400,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=40 60792400 60791400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i40p0,40.0,60791400,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=40 60792400 60791400
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i50p0,50.0,60792500,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=50 60792500 60791500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i50p0,50.0,60791500,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=50 60792500 60791500
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i60p0,60.0,60792600,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=60 60792600 60791600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i60p0,60.0,60791600,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=60 60792600 60791600
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i80p0,80.0,60792800,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=80 60792800 60791800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i80p0,80.0,60791800,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=80 60792800 60791800
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i100p0,100.0,60792000,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=100 60792000 60791000
+NORD,FLEXBLOC,gear_unit,ANY,,,,,,,,,worm_1p938in_35mm_i100p0,100.0,60791000,Wormgearbox 1.9375 Hollow Shaft 35mm Hollow Shaft,B87,Ratio i=100 60792000 60791000
+NORD,FLEXBLOC,adapter,ANY,NEMA,56C,,,,,,,,,60795500,NEMA & IEC Adapter 110 & 118 Part Number,B87,NEMA 56C 60795500
+NORD,FLEXBLOC,adapter,ANY,NEMA,,,,,,,,,,60795510,NEMA & IEC Adapter 110 & 118 Part Number,B87,NEMA 140C 60795510
+NORD,FLEXBLOC,adapter,ANY,NEMA,,,,,,,,,,60795520,NEMA & IEC Adapter 110 & 118 Part Number,B87,NEMA 180C 60795520
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C105,,,,,,,,,60795020,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 71 B14 C105 60795020
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B14_C140,,,,,,,,,60795120,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 71 B14 C140 60795120
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_71_B5_A160,,,,,,,,,60795220,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 71 B5 A160 60795220
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C120,,,,,,,,,60795030,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 80 B14 C120 60795030
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B14_C160,,,,,,,,,60795130,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 80 B14 C160 60795130
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_80_B5_A200,,,,,,,,,60795230,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 80 B5 A200 60795230
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C140,,,,,,,,,60795040,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 90 B14 C140 60795040
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B14_C160,,,,,,,,,60795140,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 90 B14 C160 60795140
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_90_B5_A200,,,,,,,,,60795240,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 90 B5 A200 60795240
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_100_B14_C160,,,,,,,,,60795050,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 100 B14 C160 60795050
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_100_B14_C200,,,,,,,,,60795150,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 100 B14 C200 60795150
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_100_B5_A250,,,,,,,,,60795250,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 100 B5 A250 60795250
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_112_B14_C160,,,,,,,,,60795050,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 112 B14 C160 60795050
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_112_B14_C200,,,,,,,,,60795150,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 112 B14 C200 60795150
+NORD,FLEXBLOC,adapter,ANY,IEC,IEC_112_B5_A250,,,,,,,,,60795250,NEMA & IEC Adapter 110 & 118 Part Number,B87,IEC 112 B5 A250 60795250
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793010,Plug in Output Shaft - Inch  122 Part Number,B87,Shaft 1.375” x 70mm 60793010
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793110,Plug in Output Shaft - Inch  122 Part Number,B87,Double Shaft 1.375” x 70mm 60793110
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793210,Plug in Output Shaft - Inch  122 Part Number,B87,Shaft for Output Flange B5 1.375” x 70mm 60793210
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793000,Plug in Output Shaft - Metric  122 Part Number,B87,Plug-in Shaft 35mm x 70mm 60793000
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793100,Plug in Output Shaft - Metric  122 Part Number,B87,Double Plug-in Shaft 35mm x 70mm 60793100
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793200,Plug in Output Shaft - Metric  122 Part Number,B87,Shaft for Output Flange B5 35mm x 70mm 60793200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793430,Hollow Shaft Bushing  111 Part Number,B87,Hollow Shaft Bushing 1.1875” 60793430
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793400,Hollow Shaft Bushing  111 Part Number,B87,Hollow Shaft Bushing 1.250” 60793400
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793420,Hollow Shaft Bushing  111 Part Number,B87,Hollow Shaft Bushing 1.4375” 60793420
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793410,Hollow Shaft Bushing  111 Part Number,B87,Hollow Shaft Bushing 1.500” 60793410
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793800,Hollow Shaft Bushing  111 Part Number,B87,II Flange - 200mm 60793800
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793950,Shaft Cover  107 Part Number,B87,Shaft Cover 60793950
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60794100,Double Worm Adapter  116 Part Number,B87,Inch 1.000“ (requires     ) 60794100
+NORD,FLEXBLOC,adapter,ANY,,,,,,,,,,,60794000,Double Worm Adapter  116 Part Number,B87,Metric 14mm (requires     ) 60794000
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60794210,Solid Input Shaft  119 Part Number,B87,Solid Input Shaft 0.875” x 1.97” 60794210
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60794200,Solid Input Shaft  119 Part Number,B87,Solid Input Shaft 24mm x 50mm 60794200
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,61282910,Solid Input Shaft  119 Part Number,B87,Fixing Kit (Inch) 61282910
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,82282310,Solid Input Shaft  119 Part Number,B87,Fixing Kit (Metric) 82282310
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,230/460V-60Hz,STANDARD,0.16666666666666666,,,,31110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B87,"63S/4-56C 230/460V-60Hz, 1/6 hp 31110012"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,230/460V-60Hz,STANDARD,0.25,,,,31610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B87,"63L/4-56C 230/460V-60Hz, 1/4 hp 31610012"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,230/460V-60Hz,STANDARD,0.3333333333333333,,,,32110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B87,"71S/4-56C 230/460V-60Hz, 1/3 hp 32110012"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,230/460V-60Hz,STANDARD,0.5,,,,32610012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B87,"71L/4-56C 230/460V-60Hz, 1/2 hp 32610012"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,230/460V-60Hz,STANDARD,0.75,,,,33110012,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B87,"80S/4-56C 230/460V-60Hz, 3/4 hp 33110012"
+NORD,FLEXBLOC,motor,STD,,56C,80L/4,4.0,230/460V-60Hz,STANDARD,1.0,,,,33610022,C-face 230/460V-60Hz Standard Efficiency Motor Part Number,B87,"80L/4-56C 230/460V-60Hz, 1 hp 33610022"
+NORD,FLEXBLOC,motor,STD,,56C,63S/4,4.0,575V-60Hz,STANDARD,0.16666666666666666,,,,31110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B87,"63S/4-56C 575V-60Hz, 1/6 hp 31110013"
+NORD,FLEXBLOC,motor,STD,,56C,63L/4,4.0,575V-60Hz,STANDARD,0.25,,,,31610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B87,"63L/4-56C 575V-60Hz, 1/4 hp 31610013"
+NORD,FLEXBLOC,motor,STD,,56C,71S/4,4.0,575V-60Hz,STANDARD,0.3333333333333333,,,,32110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B87,"71S/4-56C 575V-60Hz, 1/3 hp 32110013"
+NORD,FLEXBLOC,motor,STD,,56C,71L/4,4.0,575V-60Hz,STANDARD,0.5,,,,32610013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B87,"71L/4-56C 575V-60Hz, 1/2 hp 32610013"
+NORD,FLEXBLOC,motor,STD,,56C,80S/4,4.0,575V-60Hz,STANDARD,0.75,,,,33110013,C-face 575V-60Hz Standard Efficiency Motor Part Number,B87,"80S/4-56C 575V-60Hz, 3/4 hp 33110013"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610094,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"80LH/4-56C 230/460V-60Hz, 1 hp 33610094"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"80LH/4-143TC 230/460V-60Hz, 1 hp 33610092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"90SH/4-145TC 230/460V-60Hz, 1-1/2 hp 34110092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"90LH/4-145TC 230/460V-60Hz, 2 hp 34610092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"100LH/4-182TC 230/460V-60Hz, 3 hp 35110092"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110092,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"112MH/4-184TC 230/460V-60Hz, 5 hp 36110092"
+NORD,FLEXBLOC,motor,STD,,56C,80LH/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610095,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"80LH/4-56C 575V-60Hz, 1 hp 33610095"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"80LH/4-143TC 575V-60Hz, 1 hp 33610093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"90SH/4-145TC 575V-60Hz, 1-1/2 hp 34110093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610093,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"90LH/4-145TC 575V-60Hz, 2 hp 34610093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"100LH/4-182TC 575V-60Hz, 3 hp 35110093"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110093,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"112MH/4-184TC 575V-60Hz, 5 hp 36110093"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,230/460V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610294,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"80LP/4-56C 230/460V-60Hz, 1 hp 33610294"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"80LP/4-143TC 230/460V-60Hz, 1 hp 33610292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"90SP/4-145TC 230/460V-60Hz, 1-1/2 hp 34110292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"90LP/4-145TC 230/460V-60Hz, 2 hp 34610292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"100LP/4-182TC 230/460V-60Hz, 3 hp 35110292"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110292,C-face 230/460V-60Hz Energy Efficient Motor Part Number,B87,"112MP/4-184TC 230/460V-60Hz, 5 hp 36110292"
+NORD,FLEXBLOC,motor,STD,,56C,80LP/4,4.0,575V-60Hz,ENERGY_EFFICIENT,1.0,,,,33610295,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"80LP/4-56C 575V-60Hz, 1 hp 33610295"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,1.0,,,,33610293,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"80LP/4-143TC 575V-60Hz, 1 hp 33610293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,0.5,,,,34110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"90SP/4-145TC 575V-60Hz, 1-1/2 hp 34110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,2.0,,,,34610293,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"90LP/4-145TC 575V-60Hz, 2 hp 34610293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,3.0,,,,35110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"100LP/4-182TC 575V-60Hz, 3 hp 35110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,5.0,,,,36110293,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,"112MP/4-184TC 575V-60Hz, 5 hp 36110293"
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,60693500,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,Open Vent 60693500
+NORD,FLEXBLOC,motor,STD,,,,,,ENERGY_EFFICIENT,,,,,22008056,C-face 575V-60Hz Energy Efficient Motor Part Number,B87,AUTOVENT™ 22008056
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392050,CONFIGURATION,B88,"60392050, i=5 60492050, i=5 60592050, i=5 60692050, i=5 60792050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492050,CONFIGURATION,B88,"60392050, i=5 60492050, i=5 60592050, i=5 60692050, i=5 60792050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592050,CONFIGURATION,B88,"60392050, i=5 60492050, i=5 60592050, i=5 60692050, i=5 60792050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692050,CONFIGURATION,B88,"60392050, i=5 60492050, i=5 60592050, i=5 60692050, i=5 60792050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792050,CONFIGURATION,B88,"60392050, i=5 60492050, i=5 60592050, i=5 60692050, i=5 60792050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392080,CONFIGURATION,B88,"60392080, i=7.5 60492080, i=7.5 60592080, i=7.5 60692080, i=7.5 60792080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492080,CONFIGURATION,B88,"60392080, i=7.5 60492080, i=7.5 60592080, i=7.5 60692080, i=7.5 60792080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592080,CONFIGURATION,B88,"60392080, i=7.5 60492080, i=7.5 60592080, i=7.5 60692080, i=7.5 60792080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692080,CONFIGURATION,B88,"60392080, i=7.5 60492080, i=7.5 60592080, i=7.5 60692080, i=7.5 60792080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792080,CONFIGURATION,B88,"60392080, i=7.5 60492080, i=7.5 60592080, i=7.5 60692080, i=7.5 60792080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392100,CONFIGURATION,B88,"60392100, i=10 60492100, i=10 60592100, i=10 60692100, i=10 60792100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492100,CONFIGURATION,B88,"60392100, i=10 60492100, i=10 60592100, i=10 60692100, i=10 60792100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592100,CONFIGURATION,B88,"60392100, i=10 60492100, i=10 60592100, i=10 60692100, i=10 60792100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692100,CONFIGURATION,B88,"60392100, i=10 60492100, i=10 60592100, i=10 60692100, i=10 60792100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792100,CONFIGURATION,B88,"60392100, i=10 60492100, i=10 60592100, i=10 60692100, i=10 60792100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392130,CONFIGURATION,B88,"60392130, i=12.5 60492130, i=12.5 60592130, i=12.5 60692130, i=12.5 60792130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492130,CONFIGURATION,B88,"60392130, i=12.5 60492130, i=12.5 60592130, i=12.5 60692130, i=12.5 60792130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592130,CONFIGURATION,B88,"60392130, i=12.5 60492130, i=12.5 60592130, i=12.5 60692130, i=12.5 60792130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692130,CONFIGURATION,B88,"60392130, i=12.5 60492130, i=12.5 60592130, i=12.5 60692130, i=12.5 60792130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792130,CONFIGURATION,B88,"60392130, i=12.5 60492130, i=12.5 60592130, i=12.5 60692130, i=12.5 60792130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392150,CONFIGURATION,B88,"60392150, i=15 60492150, i=15 60592150, i=15 60692150, i=15 60792150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492150,CONFIGURATION,B88,"60392150, i=15 60492150, i=15 60592150, i=15 60692150, i=15 60792150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592150,CONFIGURATION,B88,"60392150, i=15 60492150, i=15 60592150, i=15 60692150, i=15 60792150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692150,CONFIGURATION,B88,"60392150, i=15 60492150, i=15 60592150, i=15 60692150, i=15 60792150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792150,CONFIGURATION,B88,"60392150, i=15 60492150, i=15 60592150, i=15 60692150, i=15 60792150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392200,CONFIGURATION,B88,"60392200, i=20 60492200, i=20 60592200, i=20 60692200, i=20 60792200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492200,CONFIGURATION,B88,"60392200, i=20 60492200, i=20 60592200, i=20 60692200, i=20 60792200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592200,CONFIGURATION,B88,"60392200, i=20 60492200, i=20 60592200, i=20 60692200, i=20 60792200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692200,CONFIGURATION,B88,"60392200, i=20 60492200, i=20 60592200, i=20 60692200, i=20 60792200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792200,CONFIGURATION,B88,"60392200, i=20 60492200, i=20 60592200, i=20 60692200, i=20 60792200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392250,CONFIGURATION,B88,"60392250, i=25 60492250, i=25 60592250, i=25 60692250, i=25 60792250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492250,CONFIGURATION,B88,"60392250, i=25 60492250, i=25 60592250, i=25 60692250, i=25 60792250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592250,CONFIGURATION,B88,"60392250, i=25 60492250, i=25 60592250, i=25 60692250, i=25 60792250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692250,CONFIGURATION,B88,"60392250, i=25 60492250, i=25 60592250, i=25 60692250, i=25 60792250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792250,CONFIGURATION,B88,"60392250, i=25 60492250, i=25 60592250, i=25 60692250, i=25 60792250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392300,CONFIGURATION,B88,"60392300, i=30 60492300, i=30 60592300, i=30 60692300, i=30 60792300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492300,CONFIGURATION,B88,"60392300, i=30 60492300, i=30 60592300, i=30 60692300, i=30 60792300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592300,CONFIGURATION,B88,"60392300, i=30 60492300, i=30 60592300, i=30 60692300, i=30 60792300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692300,CONFIGURATION,B88,"60392300, i=30 60492300, i=30 60592300, i=30 60692300, i=30 60792300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792300,CONFIGURATION,B88,"60392300, i=30 60492300, i=30 60592300, i=30 60692300, i=30 60792300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392400,CONFIGURATION,B88,"60392400, i=40 60492400, i=40 60592400, i=40 60692400, i=40 60792400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492400,CONFIGURATION,B88,"60392400, i=40 60492400, i=40 60592400, i=40 60692400, i=40 60792400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592400,CONFIGURATION,B88,"60392400, i=40 60492400, i=40 60592400, i=40 60692400, i=40 60792400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692400,CONFIGURATION,B88,"60392400, i=40 60492400, i=40 60592400, i=40 60692400, i=40 60792400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792400,CONFIGURATION,B88,"60392400, i=40 60492400, i=40 60592400, i=40 60692400, i=40 60792400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392500,CONFIGURATION,B88,"60392500, i=50 60492500, i=50 60592500, i=50 60692500, i=50 60792500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492500,CONFIGURATION,B88,"60392500, i=50 60492500, i=50 60592500, i=50 60692500, i=50 60792500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592500,CONFIGURATION,B88,"60392500, i=50 60492500, i=50 60592500, i=50 60692500, i=50 60792500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692500,CONFIGURATION,B88,"60392500, i=50 60492500, i=50 60592500, i=50 60692500, i=50 60792500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792500,CONFIGURATION,B88,"60392500, i=50 60492500, i=50 60592500, i=50 60692500, i=50 60792500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392600,CONFIGURATION,B88,"60392600, i=60 60492600, i=60 60592600, i=60 60692600, i=60 60792600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492600,CONFIGURATION,B88,"60392600, i=60 60492600, i=60 60592600, i=60 60692600, i=60 60792600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592600,CONFIGURATION,B88,"60392600, i=60 60492600, i=60 60592600, i=60 60692600, i=60 60792600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692600,CONFIGURATION,B88,"60392600, i=60 60492600, i=60 60592600, i=60 60692600, i=60 60792600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792600,CONFIGURATION,B88,"60392600, i=60 60492600, i=60 60592600, i=60 60692600, i=60 60792600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392800,CONFIGURATION,B88,"60392800, i=80 60492800, i=80 60592800, i=80 60362800, i=80 60792800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492800,CONFIGURATION,B88,"60392800, i=80 60492800, i=80 60592800, i=80 60362800, i=80 60792800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592800,CONFIGURATION,B88,"60392800, i=80 60492800, i=80 60592800, i=80 60362800, i=80 60792800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60362800,CONFIGURATION,B88,"60392800, i=80 60492800, i=80 60592800, i=80 60362800, i=80 60792800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792800,CONFIGURATION,B88,"60392800, i=80 60492800, i=80 60592800, i=80 60362800, i=80 60792800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392000,CONFIGURATION,B88,"60392000, i=100 60492000, i=100 60592000, i=100 60692000, i=100 60792000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60492000,CONFIGURATION,B88,"60392000, i=100 60492000, i=100 60592000, i=100 60692000, i=100 60792000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60592000,CONFIGURATION,B88,"60392000, i=100 60492000, i=100 60592000, i=100 60692000, i=100 60792000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60692000,CONFIGURATION,B88,"60392000, i=100 60492000, i=100 60592000, i=100 60692000, i=100 60792000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60792000,CONFIGURATION,B88,"60392000, i=100 60492000, i=100 60592000, i=100 60692000, i=100 60792000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395500,CONFIGURATION,B88,NEMA 48C 60395500 N/A N/A N/A N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395510,CONFIGURATION,B88,NEMA 56C 60395510 60495500 60495500 60495500 60795500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495500,CONFIGURATION,B88,NEMA 56C 60395510 60495500 60495500 60495500 60795500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795500,CONFIGURATION,B88,NEMA 56C 60395510 60495500 60495500 60495500 60795500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60595500,CONFIGURATION,B88,NEMA 140TC N/A 60595500 60595500 60595500 60795510
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795510,CONFIGURATION,B88,NEMA 140TC N/A 60595500 60595500 60595500 60795510
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60695500,CONFIGURATION,B88,NEMA 180TC N/A N/A N/A 60695500 60795520
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795520,CONFIGURATION,B88,NEMA 180TC N/A N/A N/A 60695500 60795520
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494210,CONFIGURATION,B88,"Solid Input Shaft (W) N/A 60494210, Ø 0.625 60494210, Ø 0.625 60494210, Ø 0.625 60794210, Ø 0.875"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60794210,CONFIGURATION,B88,"Solid Input Shaft (W) N/A 60494210, Ø 0.625 60494210, Ø 0.625 60494210, Ø 0.625 60794210, Ø 0.875"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494000,CONFIGURATION,B88,Helical Input Stage (H10) N/A 60494000 60494000 60494000 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494110,CONFIGURATION,B88,"Double Worm Adapter (/31, /40) N/A 60494110, Ø 0.625 60494110, Ø 0.625 60494110, Ø 0.625 60794100, Ø 0.750"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60794100,CONFIGURATION,B88,"Double Worm Adapter (/31, /40) N/A 60494110, Ø 0.625 60494110, Ø 0.625 60494110, Ø 0.625 60794100, Ø 0.750"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393010,CONFIGURATION,B88,"Plug-in Solid Shaft (V) 60393010, Ø 0.625 60493010, Ø 0.750 60593010, Ø 1.000 60693010, Ø 1.125 60793010, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493010,CONFIGURATION,B88,"Plug-in Solid Shaft (V) 60393010, Ø 0.625 60493010, Ø 0.750 60593010, Ø 1.000 60693010, Ø 1.125 60793010, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593010,CONFIGURATION,B88,"Plug-in Solid Shaft (V) 60393010, Ø 0.625 60493010, Ø 0.750 60593010, Ø 1.000 60693010, Ø 1.125 60793010, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693010,CONFIGURATION,B88,"Plug-in Solid Shaft (V) 60393010, Ø 0.625 60493010, Ø 0.750 60593010, Ø 1.000 60693010, Ø 1.125 60793010, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793010,CONFIGURATION,B88,"Plug-in Solid Shaft (V) 60393010, Ø 0.625 60493010, Ø 0.750 60593010, Ø 1.000 60693010, Ø 1.125 60793010, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393110,CONFIGURATION,B88,"Double Solid Shaft (L) 60393110, Ø 0.625 60493110, Ø 0.750 60593110, Ø 1.000 60693110, Ø 1.125 60793110, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493110,CONFIGURATION,B88,"Double Solid Shaft (L) 60393110, Ø 0.625 60493110, Ø 0.750 60593110, Ø 1.000 60693110, Ø 1.125 60793110, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593110,CONFIGURATION,B88,"Double Solid Shaft (L) 60393110, Ø 0.625 60493110, Ø 0.750 60593110, Ø 1.000 60693110, Ø 1.125 60793110, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693110,CONFIGURATION,B88,"Double Solid Shaft (L) 60393110, Ø 0.625 60493110, Ø 0.750 60593110, Ø 1.000 60693110, Ø 1.125 60793110, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793110,CONFIGURATION,B88,"Double Solid Shaft (L) 60393110, Ø 0.625 60493110, Ø 0.750 60593110, Ø 1.000 60693110, Ø 1.125 60793110, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393210,CONFIGURATION,B88,"Plug-in Shaft with Flange (VF) 60393210, Ø 0.625 60493210, Ø 0.750 60593210, Ø 1.000 60693210, Ø 1.125 60793210, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493210,CONFIGURATION,B88,"Plug-in Shaft with Flange (VF) 60393210, Ø 0.625 60493210, Ø 0.750 60593210, Ø 1.000 60693210, Ø 1.125 60793210, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593210,CONFIGURATION,B88,"Plug-in Shaft with Flange (VF) 60393210, Ø 0.625 60493210, Ø 0.750 60593210, Ø 1.000 60693210, Ø 1.125 60793210, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693210,CONFIGURATION,B88,"Plug-in Shaft with Flange (VF) 60393210, Ø 0.625 60493210, Ø 0.750 60593210, Ø 1.000 60693210, Ø 1.125 60793210, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793210,CONFIGURATION,B88,"Plug-in Shaft with Flange (VF) 60393210, Ø 0.625 60493210, Ø 0.750 60593210, Ø 1.000 60693210, Ø 1.125 60793210, Ø 1.375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393800,CONFIGURATION,B88,"Flange I (F) 60393800, Ø 4.13 60493800, Ø 4.72 60593800, Ø 6.30 60693800, Ø 7.87 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493800,CONFIGURATION,B88,"Flange I (F) 60393800, Ø 4.13 60493800, Ø 4.72 60593800, Ø 6.30 60693800, Ø 7.87 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593800,CONFIGURATION,B88,"Flange I (F) 60393800, Ø 4.13 60493800, Ø 4.72 60593800, Ø 6.30 60693800, Ø 7.87 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693800,CONFIGURATION,B88,"Flange I (F) 60393800, Ø 4.13 60493800, Ø 4.72 60593800, Ø 6.30 60693800, Ø 7.87 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393810,CONFIGURATION,B88,"Flange II (female pilot) (F) 60393810, Ø 3.15 60493810, Ø 4.33 60593810, Ø 4.92 60693810, Ø 7.09 60793800, Ø 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493810,CONFIGURATION,B88,"Flange II (female pilot) (F) 60393810, Ø 3.15 60493810, Ø 4.33 60593810, Ø 4.92 60693810, Ø 7.09 60793800, Ø 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593810,CONFIGURATION,B88,"Flange II (female pilot) (F) 60393810, Ø 3.15 60493810, Ø 4.33 60593810, Ø 4.92 60693810, Ø 7.09 60793800, Ø 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693810,CONFIGURATION,B88,"Flange II (female pilot) (F) 60393810, Ø 3.15 60493810, Ø 4.33 60593810, Ø 4.92 60693810, Ø 7.09 60793800, Ø 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793800,CONFIGURATION,B88,"Flange II (female pilot) (F) 60393810, Ø 3.15 60493810, Ø 4.33 60593810, Ø 4.92 60693810, Ø 7.09 60793800, Ø 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393820,CONFIGURATION,B88,"Flange III (male pilot) (F) 60393820, Ø 3.15 N/A 60593820, Ø 4.92 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593820,CONFIGURATION,B88,"Flange III (male pilot) (F) 60393820, Ø 3.15 N/A 60593820, Ø 4.92 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693820,CONFIGURATION,B88,"Flange IV (F) N/A N/A N/A 60693820, Ø 6.30 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393900,CONFIGURATION,B88,"60393900, 3.54 60493900, 5.12 60593900, 5.12 60693900, 5.91 60793900, 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493900,CONFIGURATION,B88,"60393900, 3.54 60493900, 5.12 60593900, 5.12 60693900, 5.91 60793900, 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593900,CONFIGURATION,B88,"60393900, 3.54 60493900, 5.12 60593900, 5.12 60693900, 5.91 60793900, 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693900,CONFIGURATION,B88,"60393900, 3.54 60493900, 5.12 60593900, 5.12 60693900, 5.91 60793900, 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793900,CONFIGURATION,B88,"60393900, 3.54 60493900, 5.12 60593900, 5.12 60693900, 5.91 60793900, 7.87"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493910,CONFIGURATION,B88,"N/A 60493910, 3.94 60593920, 4.33 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593920,CONFIGURATION,B88,"N/A 60493910, 3.94 60593920, 4.33 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593910,CONFIGURATION,B88,"N/A N/A 60593910, 3.94 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393950,CONFIGURATION,B88,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493950,CONFIGURATION,B88,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593950,CONFIGURATION,B88,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693950,CONFIGURATION,B88,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793950,CONFIGURATION,B88,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593400,Hollow Shaft Bushing (J),B88,"N/A N/A 60593400, Ø 1.000 60693400, Ø 1.000 60793430, Ø 1.1875"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693400,Hollow Shaft Bushing (J),B88,"N/A N/A 60593400, Ø 1.000 60693400, Ø 1.000 60793430, Ø 1.1875"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793430,Hollow Shaft Bushing (J),B88,"N/A N/A 60593400, Ø 1.000 60693400, Ø 1.000 60793430, Ø 1.1875"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693410,Hollow Shaft Bushing (J),B88,"N/A N/A N/A 60693410, Ø 1.1875 60793400, Ø 1.250"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793400,Hollow Shaft Bushing (J),B88,"N/A N/A N/A 60693410, Ø 1.1875 60793400, Ø 1.250"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693420,Hollow Shaft Bushing (J),B88,"N/A N/A N/A 60693420, Ø 1.250 60793420, Ø 1.4375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793420,Hollow Shaft Bushing (J),B88,"N/A N/A N/A 60693420, Ø 1.250 60793420, Ø 1.4375"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793410,Hollow Shaft Bushing (J),B88,"N/A N/A N/A N/A 60793410, Ø 1.500"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60394600,Hollow Shaft Bushing (J),B88,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494600,Hollow Shaft Bushing (J),B88,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60594600,Hollow Shaft Bushing (J),B88,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60694600,Hollow Shaft Bushing (J),B88,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693500,Hollow Shaft Bushing (J),B88,Open vent (OV) 60693500 60693500 60693500 60693500 60693500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60382910,Hollow Shaft Bushing (J),B88,Fixing Kit (B) 60382910 60282930 60282930 82282920 61282910
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60282930,Hollow Shaft Bushing (J),B88,Fixing Kit (B) 60382910 60282930 60282930 82282920 61282910
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,82282920,Hollow Shaft Bushing (J),B88,Fixing Kit (B) 60382910 60282930 60282930 82282920 61282910
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,61282910,Hollow Shaft Bushing (J),B88,Fixing Kit (B) 60382910 60282930 60282930 82282920 61282910
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=5 60491050, i=5 60591050, i=5 60691050, i=5 60791050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=5 60491050, i=5 60591050, i=5 60691050, i=5 60791050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=5 60491050, i=5 60591050, i=5 60691050, i=5 60791050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=5 60491050, i=5 60591050, i=5 60691050, i=5 60791050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=5 60491050, i=5 60591050, i=5 60691050, i=5 60791050, i=5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=7.5 60491080, i=7.5 60591080, i=7.5 60691080, i=7.5 60791080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491080,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=7.5 60491080, i=7.5 60591080, i=7.5 60691080, i=7.5 60791080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591080,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=7.5 60491080, i=7.5 60591080, i=7.5 60691080, i=7.5 60791080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691080,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=7.5 60491080, i=7.5 60591080, i=7.5 60691080, i=7.5 60791080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791080,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391050, i=7.5 60491080, i=7.5 60591080, i=7.5 60691080, i=7.5 60791080, i=7.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391100, i=10 60491100, i=10 60591100, i=10 60691100, i=10 60791100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391100, i=10 60491100, i=10 60591100, i=10 60691100, i=10 60791100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391100, i=10 60491100, i=10 60591100, i=10 60691100, i=10 60791100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391100, i=10 60491100, i=10 60591100, i=10 60691100, i=10 60791100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391100, i=10 60491100, i=10 60591100, i=10 60691100, i=10 60791100, i=10"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391130, i=12.5 60491130, i=12.5 60591130, i=12.5 60691130, i=12.5 60791130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391130, i=12.5 60491130, i=12.5 60591130, i=12.5 60691130, i=12.5 60791130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391130, i=12.5 60491130, i=12.5 60591130, i=12.5 60691130, i=12.5 60791130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391130, i=12.5 60491130, i=12.5 60591130, i=12.5 60691130, i=12.5 60791130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391130, i=12.5 60491130, i=12.5 60591130, i=12.5 60691130, i=12.5 60791130, i=12.5"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60392150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60392150, i=15 60491150, i=15 60591150, i=15 60691150, i=15 60791150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60392150, i=15 60491150, i=15 60591150, i=15 60691150, i=15 60791150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60392150, i=15 60491150, i=15 60591150, i=15 60691150, i=15 60791150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60392150, i=15 60491150, i=15 60591150, i=15 60691150, i=15 60791150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60392150, i=15 60491150, i=15 60591150, i=15 60691150, i=15 60791150, i=15"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391200, i=20 60491200, i=20 60591200, i=20 60691200, i=20 60791200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391200, i=20 60491200, i=20 60591200, i=20 60691200, i=20 60791200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391200, i=20 60491200, i=20 60591200, i=20 60691200, i=20 60791200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391200, i=20 60491200, i=20 60591200, i=20 60691200, i=20 60791200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391200, i=20 60491200, i=20 60591200, i=20 60691200, i=20 60791200, i=20"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391250, i=25 60491250, i=25 60591250, i=25 60691250, i=25 60791250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391250, i=25 60491250, i=25 60591250, i=25 60691250, i=25 60791250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391250, i=25 60491250, i=25 60591250, i=25 60691250, i=25 60791250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391250, i=25 60491250, i=25 60591250, i=25 60691250, i=25 60791250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391250, i=25 60491250, i=25 60591250, i=25 60691250, i=25 60791250, i=25"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391300,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391300, i=30 60491300, i=30 60591300, i=30 60691300, i=30 60791300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491300,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391300, i=30 60491300, i=30 60591300, i=30 60691300, i=30 60791300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591300,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391300, i=30 60491300, i=30 60591300, i=30 60691300, i=30 60791300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691300,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391300, i=30 60491300, i=30 60591300, i=30 60691300, i=30 60791300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791300,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391300, i=30 60491300, i=30 60591300, i=30 60691300, i=30 60791300, i=30"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391400,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391400, i=40 60491400, i=40 60591400, i=40 60691400, i=40 60791400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491400,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391400, i=40 60491400, i=40 60591400, i=40 60691400, i=40 60791400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591400,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391400, i=40 60491400, i=40 60591400, i=40 60691400, i=40 60791400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691400,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391400, i=40 60491400, i=40 60591400, i=40 60691400, i=40 60791400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791400,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391400, i=40 60491400, i=40 60591400, i=40 60691400, i=40 60791400, i=40"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391500,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391500, i=50 60491500, i=50 60591500, i=50 60691500, i=50 60791500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491500,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391500, i=50 60491500, i=50 60591500, i=50 60691500, i=50 60791500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591500,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391500, i=50 60491500, i=50 60591500, i=50 60691500, i=50 60791500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691500,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391500, i=50 60491500, i=50 60591500, i=50 60691500, i=50 60791500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791500,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391500, i=50 60491500, i=50 60591500, i=50 60691500, i=50 60791500, i=50"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391600, i=60 60491600, i=60 60591600, i=60 60691600, i=60 60791600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391600, i=60 60491600, i=60 60591600, i=60 60691600, i=60 60791600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391600, i=60 60491600, i=60 60591600, i=60 60691600, i=60 60791600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391600, i=60 60491600, i=60 60591600, i=60 60691600, i=60 60791600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391600, i=60 60491600, i=60 60591600, i=60 60691600, i=60 60791600, i=60"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391800, i=80 60491800, i=80 60591800, i=80 60691800, i=80 60791800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391800, i=80 60491800, i=80 60591800, i=80 60691800, i=80 60791800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391800, i=80 60491800, i=80 60591800, i=80 60691800, i=80 60791800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391800, i=80 60491800, i=80 60591800, i=80 60691800, i=80 60791800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391800, i=80 60491800, i=80 60591800, i=80 60691800, i=80 60791800, i=80"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60391000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391000, i=100 60491000, i=100 60591000, i=100 60691000, i=100 60791000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60491000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391000, i=100 60491000, i=100 60591000, i=100 60691000, i=100 60791000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60591000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391000, i=100 60491000, i=100 60591000, i=100 60691000, i=100 60791000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60691000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391000, i=100 60491000, i=100 60591000, i=100 60691000, i=100 60791000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60791000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60391000, i=100 60491000, i=100 60591000, i=100 60691000, i=100 60791000, i=100"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 56 B14 C105 60395100 60495100 60495100 60495100 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 56 B14 C105 60395100 60495100 60495100 60495100 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 56 B5 A120 60395200 60495200 60495200 60495200 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 56 B5 A120 60395200 60495200 60495200 60495200 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395010,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 63 B14 C90 60395010* 60495010* 60495010* 60495010* N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495010,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 63 B14 C90 60395010* 60495010* 60495010* 60495010* N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395110,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 63 B14 C120 60395110 60495110 60495110 60495110 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495110,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 63 B14 C120 60395110 60495110 60495110 60495110 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395210,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 63 B5 A140 60395210 60495210 60495210 60495210 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495210,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 63 B5 A140 60395210 60495210 60495210 60495210 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395020,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B14 C105 60395020* 60495020* 60495020* 60495020* 60795020*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495020,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B14 C105 60395020* 60495020* 60495020* 60495020* 60795020*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795020,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B14 C105 60395020* 60495020* 60495020* 60495020* 60795020*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60395120,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B14 C140 60395120 60495120 60495120 60495120 60795120
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495120,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B14 C140 60395120 60495120 60495120 60495120 60795120
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795120,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B14 C140 60395120 60495120 60495120 60495120 60795120
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495220,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B5 A160 N/A 60495220 60495220 60495220 60795220
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795220,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 71 B5 A160 N/A 60495220 60495220 60495220 60795220
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495030,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 80 B14 C120 N/A 60495030* 60495030* 60495030* 60795030*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795030,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 80 B14 C120 N/A 60495030* 60495030* 60495030* 60795030*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 80 B14 C160 N/A 60495130 60495130 60495130 60795130
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795130,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 80 B14 C160 N/A 60495130 60495130 60495130 60795130
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495230,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 80 B5 A200 N/A 60495230 60495230 60495230 60795230
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795230,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 80 B5 A200 N/A 60495230 60495230 60495230 60795230
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495040,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B14 C140 N/A 60495040* 60495040* 60695040* 60795040*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60695040,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B14 C140 N/A 60495040* 60495040* 60695040* 60795040*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795040,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B14 C140 N/A 60495040* 60495040* 60695040* 60795040*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60495140,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B14 C160 N/A 60495140 60495140 60695140 60795140
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60695140,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B14 C160 N/A 60495140 60495140 60695140 60795140
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795140,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B14 C160 N/A 60495140 60495140 60695140 60795140
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60695240,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B5 A200 N/A N/A N/A 60695240 60795240
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795240,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 90 B5 A200 N/A N/A N/A 60695240 60795240
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 100 B14 C160 N/A N/A N/A N/A 60795050
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 100 B14 C200 N/A N/A N/A N/A 60795150
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 100 B5 A250 N/A N/A N/A N/A 60795250*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795050,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 112 B14 C160 N/A N/A N/A N/A 60795050
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795150,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 112 B14 C200 N/A N/A N/A N/A 60795150
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60795250,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,IEC 112 B5 A250 N/A N/A N/A N/A 60795250*
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Solid Input Shaft (W) N/A 60494200, Ø 16 60494200, Ø 16 60494200, Ø 16 60794200, Ø 24"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60794200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Solid Input Shaft (W) N/A 60494200, Ø 16 60494200, Ø 16 60494200, Ø 16 60794200, Ø 24"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Helical Input Stage (H10) N/A 60494000 60494000 60494000 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Worm Adapter (/31, /40) N/A 60494100, Ø 14 60494100, Ø 14 60494100, Ø 14 60794000, Ø 18"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60794000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Worm Adapter (/31, /40) N/A 60494100, Ø 14 60494100, Ø 14 60494100, Ø 14 60794000, Ø 18"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft (V) 60393000, Ø 14 60493000, Ø 18 60593000, Ø 25 60693000, Ø 25 60793000, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft (V) 60393000, Ø 14 60493000, Ø 18 60593000, Ø 25 60693000, Ø 25 60793000, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft (V) 60393000, Ø 14 60493000, Ø 18 60593000, Ø 25 60693000, Ø 25 60793000, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft (V) 60393000, Ø 14 60493000, Ø 18 60593000, Ø 25 60693000, Ø 25 60793000, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793000,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft (V) 60393000, Ø 14 60493000, Ø 18 60593000, Ø 25 60693000, Ø 25 60793000, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Solid Shaft (L) 60393100, Ø 14 60493100, Ø 18 60593100, Ø 25 60693100, Ø 25 60793100, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Solid Shaft (L) 60393100, Ø 14 60493100, Ø 18 60593100, Ø 25 60693100, Ø 25 60793100, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Solid Shaft (L) 60393100, Ø 14 60493100, Ø 18 60593100, Ø 25 60693100, Ø 25 60793100, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Solid Shaft (L) 60393100, Ø 14 60493100, Ø 18 60593100, Ø 25 60693100, Ø 25 60793100, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793100,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Double Solid Shaft (L) 60393100, Ø 14 60493100, Ø 18 60593100, Ø 25 60693100, Ø 25 60793100, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft with Flange (VF) 60393200, Ø 14 60493200, Ø 18 60593200, Ø 25 60693200, Ø 25 60793200, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft with Flange (VF) 60393200, Ø 14 60493200, Ø 18 60593200, Ø 25 60693200, Ø 25 60793200, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft with Flange (VF) 60393200, Ø 14 60493200, Ø 18 60593200, Ø 25 60693200, Ø 25 60793200, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft with Flange (VF) 60393200, Ø 14 60493200, Ø 18 60593200, Ø 25 60693200, Ø 25 60793200, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793200,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Plug-in Solid Shaft with Flange (VF) 60393200, Ø 14 60493200, Ø 18 60593200, Ø 25 60693200, Ø 25 60793200, Ø 35"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange I (F) 60393800, Ø 105 60493800, Ø 120 60593800, Ø 160 60693800, Ø 200 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange I (F) 60393800, Ø 105 60493800, Ø 120 60593800, Ø 160 60693800, Ø 200 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange I (F) 60393800, Ø 105 60493800, Ø 120 60593800, Ø 160 60693800, Ø 200 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange I (F) 60393800, Ø 105 60493800, Ø 120 60593800, Ø 160 60693800, Ø 200 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393810,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange II (female pilot) (F) 60393810, Ø 80 60493810, Ø 110 60593810, Ø 125 60693810, Ø 180 60793800, Ø 200"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493810,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange II (female pilot) (F) 60393810, Ø 80 60493810, Ø 110 60593810, Ø 125 60693810, Ø 180 60793800, Ø 200"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593810,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange II (female pilot) (F) 60393810, Ø 80 60493810, Ø 110 60593810, Ø 125 60693810, Ø 180 60793800, Ø 200"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693810,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange II (female pilot) (F) 60393810, Ø 80 60493810, Ø 110 60593810, Ø 125 60693810, Ø 180 60793800, Ø 200"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793800,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange II (female pilot) (F) 60393810, Ø 80 60493810, Ø 110 60593810, Ø 125 60693810, Ø 180 60793800, Ø 200"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393820,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange III (male pilot) (F) 60393820, Ø 80 N/A 60593820, Ø 125 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593820,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange III (male pilot) (F) 60393820, Ø 80 N/A 60593820, Ø 125 N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693820,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"Flange IV (F) N/A N/A N/A 60693820, Ø 160 N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393900,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60393900, 90mm 60493900, 130mm 60593900, 130mm 60693900, 150mm 60793900, 200mm"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493900,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60393900, 90mm 60493900, 130mm 60593900, 130mm 60693900, 150mm 60793900, 200mm"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593900,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60393900, 90mm 60493900, 130mm 60593900, 130mm 60693900, 150mm 60793900, 200mm"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693900,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60393900, 90mm 60493900, 130mm 60593900, 130mm 60693900, 150mm 60793900, 200mm"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793900,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"60393900, 90mm 60493900, 130mm 60593900, 130mm 60693900, 150mm 60793900, 200mm"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493910,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"N/A 60493910, 100mm 60593920, 110mm N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593920,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"N/A 60493910, 100mm 60593920, 110mm N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593910,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,"N/A N/A 60593910, 100mm N/A N/A"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60393950,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60493950,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60593950,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693950,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60793950,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Shaft Cover (H) 60393950 60493950 60593950 60693950 60793950
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60394600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60494600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60594600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60694600,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Footplate (X) 60394600 60494600 60594600 60694600 N/A
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60693500,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Open vent (OV) 60693500 60693500 60693500 60693500 60693500
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60382330,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Fixing Kit 60382330 60482340 60282310 60282310 82282310
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60482340,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Fixing Kit 60382330 60482340 60282310 60282310 82282310
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,60282310,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Fixing Kit 60382330 60482340 60282310 60282310 82282310
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,82282310,"SK 1SI31, Ø 14 SK 1SI40, Ø 18 SK 1SI50, Ø 25 SK 1SI63, Ø 25 SK 1SI75, Ø 35",B89,Fixing Kit 60382330 60482340 60282310 60282310 82282310
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,31110012,C-Face Motors,B90,"63S/4-56C 230/460V-60Hz, 1/6 hp 31110012"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,31610012,C-Face Motors,B90,"63L/4-56C 230/460V-60Hz, 1/4 hp 31610012"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,32110012,C-Face Motors,B90,"71S/4-56C 230/460V-60Hz, 1/3 hp 32110012"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,32610012,C-Face Motors,B90,"71L/4-56C 230/460V-60Hz, 1/2 hp 32610012"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33110012,C-Face Motors,B90,"80S/4-56C 230/460V-60Hz, 3/4 hp 33110012"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610022,C-Face Motors,B90,"80L/4-56C 230/460V-60Hz, 1 hp 33610022"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610094,C-Face Motors,B90,"80LH/4-56C 230/460V-60Hz, 1 hp 33610094"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610092,C-Face Motors,B90,"80LH/4-143TC 230/460V-60Hz, 1 hp 33610092"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34110092,C-Face Motors,B90,"90SH/4-145TC 230/460V-60Hz, 1-1/2 hp 34110092"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34610092,C-Face Motors,B90,"90LH/4-145TC 230/460V-60Hz, 2 hp 34610092"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,35110092,C-Face Motors,B90,"100LH/4-182TC 230/460V-60Hz, 3 hp 35110092"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,36110082,C-Face Motors,B90,"112MH/4-184TC 230/460V-60Hz, 5 hp 36110082"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610294,C-Face Motors,B90,"80LP/4-56C 230/460V-60Hz, 1 hp 33610294"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610292,C-Face Motors,B90,"80LP/4-143TC 230/460V-60Hz, 1 hp 33610292"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34110292,C-Face Motors,B90,"90SP/4-145TC 230/460V-60Hz, 1-1/2 hp 34110292"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34610292,C-Face Motors,B90,"90LP/4-145TC 230/460V-60Hz, 2 hp 34610292"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,35110292,C-Face Motors,B90,"100LP/4-182TC 230/460V-60Hz, 3 hp 35110292"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,36110292,C-Face Motors,B90,"112MP/4-184TC 230/460V-60Hz, 5 hp 36110292"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,31110013,C-Face Motors,B90,"63S/4-56C 575V-60Hz, 1/6 hp 31110013"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,31610013,C-Face Motors,B90,"63L/4-56C 575V-60Hz, 1/4 hp 31610013"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,32110013,C-Face Motors,B90,"71S/4-56C 575V-60Hz, 1/3 hp 32110013"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,32610013,C-Face Motors,B90,"71L/4-56C 575V-60Hz, 1/2 hp 32610013"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33110013,C-Face Motors,B90,"80S/4-56C 575V-60Hz, 3/4 hp 33110013"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610023,C-Face Motors,B90,"80L/4-56C 575V-60Hz, 1 hp 33610023"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610095,C-Face Motors,B90,"80LH/4-56C 575V-60Hz, 1 hp 33610095"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610093,C-Face Motors,B90,"80LH/4-143TC 575V-60Hz, 1 hp 33610093"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34110093,C-Face Motors,B90,"90SH/4-145TC 575V-60Hz, 1-1/2 hp 34110093"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34610093,C-Face Motors,B90,"90LH/4-145TC 575V-60Hz, 2 hp 34610093"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,35110093,C-Face Motors,B90,"100LH/4-182TC 575V-60Hz, 3 hp 35110093"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,36110083,C-Face Motors,B90,"112MH/4-184TC 575V-60Hz, 5 hp 36110083"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610295,C-Face Motors,B90,"80LP/4-56C 575V-60Hz, 1 hp 33610295"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,33610293,C-Face Motors,B90,"80LP/4-143TC 575V-60Hz, 1 hp 33610293"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34110293,C-Face Motors,B90,"90SP/4-145TC 575V-60Hz, 1-1/2 hp 34110293"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,34610293,C-Face Motors,B90,"90LP/4-145TC 575V-60Hz, 2 hp 34610293"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,35110293,C-Face Motors,B90,"100LP/4-182TC 575V-60Hz, 3 hp 35110293"
+NORD,FLEXBLOC,other,ANY,,,,,,,,,,,36110293,C-Face Motors,B90,"112MP/4-184TC 575V-60Hz, 5 hp 36110293"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.16666666666666666,,,,31110034,C-face 230/460V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"63S/4-56C BRE5 HL 230/460V-60Hz, 1/6 hp, 230VAC brake with hand release lever 31110034"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.25,,,,31610034,C-face 230/460V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"63L/4-56C BRE5 HL 230/460V-60Hz, 1/4 hp, 230VAC brake with hand release lever 31610034"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.3333333333333333,,,,32110034,C-face 230/460V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"71S/4-56C BRE5 HL 230/460V-60Hz, 1/3 hp, 230VAC brake with hand release lever 32110034"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.5,,,,32610034,C-face 230/460V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"71L/4-56C BRE5 HL 230/460V-60Hz, 1/2 hp, 230VAC brake with hand release lever 32610034"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.75,,,,33110034,C-face 230/460V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"80S/4-56C BRE10 HL 230/460V-60Hz, 3/4 hp, 230VAC brake with hand release lever 33110034"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,1.0,,,,33610024,C-face 230/460V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"80L/4-56C BRE10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610024"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,1.0,,,,33610082,C-face 230/460V-60Hz Energy Efficient - Brakemotor Part Number,B91,"80LH/4-56C BRE10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610082"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,1.0,,,,33610084,C-face 230/460V-60Hz Energy Efficient - Brakemotor Part Number,B91,"80LH/4-143TC BRE 10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610084"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,0.5,,,,34110084,C-face 230/460V-60Hz Energy Efficient - Brakemotor Part Number,B91,"90SH/4-145TC BRE 20 HL 230/460V-60Hz, 1-1/2 hp, 230VAC brake with hand release lever 34110084"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,2.0,,,,34610084,C-face 230/460V-60Hz Energy Efficient - Brakemotor Part Number,B91,"90LH/4-145TC BRE 20 HL 230/460V-60Hz, 2 hp, 230VAC brake with hand release lever 34610084"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,3.0,,,,35110084,C-face 230/460V-60Hz Energy Efficient - Brakemotor Part Number,B91,"100LH/4-182TC BRE 40 HL 230/460V-60Hz, 3 hp, 230VAC brake with hand release lever 35110084"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,5.0,,,,36110084,C-face 230/460V-60Hz Energy Efficient - Brakemotor Part Number,B91,"112MH/4-184TC BRE 40 HL 230/460V-60Hz, 5 hp, 230VAC brake with hand release lever 36110084"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,1.0,,,,33610282,C-face 230/460V-60Hz Premium Efficient - Brakemotor Part Number,B91,"80LP/4-56C BRE10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610282"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,1.0,,,,33610284,C-face 230/460V-60Hz Premium Efficient - Brakemotor Part Number,B91,"80LP/4-143TC BRE 10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610284"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,0.5,,,,33610286,C-face 230/460V-60Hz Premium Efficient - Brakemotor Part Number,B91,"90SP/4-145TC BRE 20 HL 230/460V-60Hz, 1-1/2 hp, 230VAC brake with hand release lever 33610286"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,2.0,,,,33610288,C-face 230/460V-60Hz Premium Efficient - Brakemotor Part Number,B91,"90LP/4-145TC BRE 20 HL 230/460V-60Hz, 2 hp, 230VAC brake with hand release lever 33610288"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,3.0,,,,33610290,C-face 230/460V-60Hz Premium Efficient - Brakemotor Part Number,B91,"100LP/4-182TC BRE 40 HL 230/460V-60Hz, 3 hp, 230VAC brake with hand release lever 33610290"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,5.0,,,,33610292,C-face 230/460V-60Hz Premium Efficient - Brakemotor Part Number,B91,"112MP/4-184TC BRE 40 HL 230/460V-60Hz, 5 hp, 230VAC brake with hand release lever 33610292"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.16666666666666666,,,,31110035,C-face 575V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"63S/4-56C BRE5 HL 575V-60Hz, 1/6 hp, 575VAC brake with hand release lever 31110035"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.25,,,,31610035,C-face 575V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"63L/4-56C BRE5 HL 575V-60Hz, 1/4 hp, 575VAC brake with hand release lever 31610035"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.3333333333333333,,,,32110035,C-face 575V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"71S/4-56C BRE5 HL 575V-60Hz, 1/3 hp, 575VAC brake with hand release lever 32110035"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.5,,,,32610035,C-face 575V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"71L/4-56C BRE5 HL 575V-60Hz, 1/2 hp, 575VAC brake with hand release lever 32610035"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,0.75,,,,33110035,C-face 575V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"80S/4-56C BRE10 HL 575V-60Hz, 3/4 hp, 575VAC brake with hand release lever 33110035"
+NORD,FLEXBLOC,motor,BRK,,,,,,STANDARD,1.0,,,,33610025,C-face 575V-60Hz Standard Efficiency - Brakemotor Part Number,B91,"80L/4-56C BRE10 HL 575V-60Hz, 1 hp, 575VAC brake with hand release lever 33610025"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,1.0,,,,33610083,C-face 575V-60Hz Energy Efficient - Brakemotor Part Number,B91,"80LH/4-56C BRE10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610083"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,1.0,,,,33610085,C-face 575V-60Hz Energy Efficient - Brakemotor Part Number,B91,"80LH/4-143TC BRE 10 HL 575V-60Hz, 1 hp, 230VAC brake with hand release lever 33610085"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,0.5,,,,34110085,C-face 575V-60Hz Energy Efficient - Brakemotor Part Number,B91,"90SH/4-145TC BRE 20 HL 575V-60Hz, 1-1/2 hp, 230VAC brake with hand release lever 34110085"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,2.0,,,,34610085,C-face 575V-60Hz Energy Efficient - Brakemotor Part Number,B91,"90LH/4-145TC BRE 20 HL 575V-60Hz, 2 hp, 230VAC brake with hand release lever 34610085"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,3.0,,,,35110085,C-face 575V-60Hz Energy Efficient - Brakemotor Part Number,B91,"100LH/4-182TC BRE 40 HL 575V-60Hz, 3 hp, 230VAC brake with hand release lever 35110085"
+NORD,FLEXBLOC,motor,BRK,,,,,,ENERGY_EFFICIENT,5.0,,,,36110085,C-face 575V-60Hz Energy Efficient - Brakemotor Part Number,B91,"112MH/4-184TC BRE 40 HL 575V-60Hz, 5 hp, 230VAC brake with hand release lever 36110085"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,1.0,,,,33610283,C-face 575V-60Hz Premium Efficient - Brakemotor Part Number,B91,"80LP/4-56C BRE10 HL 230/460V-60Hz, 1 hp, 230VAC brake with hand release lever 33610283"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,1.0,,,,33610285,C-face 575V-60Hz Premium Efficient - Brakemotor Part Number,B91,"80LP/4-143TC BRE 10 HL 575V-60Hz, 1 hp, 230VAC brake with hand release lever 33610285"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,0.5,,,,34110285,C-face 575V-60Hz Premium Efficient - Brakemotor Part Number,B91,"90SP/4-145TC BRE 20 HL 575V-60Hz, 1-1/2 hp, 230VAC brake with hand release lever 34110285"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,2.0,,,,34610285,C-face 575V-60Hz Premium Efficient - Brakemotor Part Number,B91,"90LP/4-145TC BRE 20 HL 575V-60Hz, 2 hp, 230VAC brake with hand release lever 34610285"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,3.0,,,,35110285,C-face 575V-60Hz Premium Efficient - Brakemotor Part Number,B91,"100LP/4-182TC BRE 40 HL 575V-60Hz, 3 hp, 230VAC brake with hand release lever 35110285"
+NORD,FLEXBLOC,motor,BRK,,,,,,PREMIUM_EFFICIENT,5.0,,,,36110285,C-face 575V-60Hz Premium Efficient - Brakemotor Part Number,B91,"112MP/4-184TC BRE 40 HL 575V-60Hz, 5 hp, 230VAC brake with hand release lever 36110285"

@@ -6,6 +6,7 @@ import {
   GearmotorCandidate,
   GearmotorSelectionResult,
   evaluateGearmotorCandidate,
+  parseModelType,
 } from '../../src/lib/gearmotor';
 
 // Formatting helpers for REQUIREMENTS (can round for display)
@@ -83,7 +84,8 @@ const SERVICE_FACTOR_OPTIONS = [
 ];
 
 // SF override validation
-const SF_MIN = 0.5;
+// Per Bob's directive: minimum must be > 0 (e.g., 0.1), keep existing upper bound
+const SF_MIN = 0.1;
 const SF_MAX = 3.0;
 const SF_STEP = 0.05;
 
@@ -512,6 +514,7 @@ export default function DriveSelectorModal({
                     requiredRpm: requiredOutputRpm || 0,
                     serviceFactor: activeSf,
                     candidateTorque: c.output_torque_lb_in,
+                    candidateSF: c.service_factor_catalog,
                     candidateRpm: c.output_rpm,
                     speedTolerancePct: speedTolerance,
                   });
@@ -552,7 +555,7 @@ export default function DriveSelectorModal({
                             <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Service Factor (fᵦ) - vendor published rating">SF (Cat)</th>
                             {/* Calculated columns (derived from selection) */}
                             <th className="px-2 py-2 text-left font-medium text-gray-400 whitespace-nowrap" title="RPM Delta vs Required">Δ RPM</th>
-                            <th className="px-2 py-2 text-left font-medium text-gray-400" title="Capacity Margin: (Torque - Required×SF) / (Required×SF)">Margin</th>
+                            <th className="px-2 py-2 text-left font-medium text-gray-400" title="Capacity Margin: (Catalog Torque / Raw Required Torque) - 1">Margin</th>
                             <th className="px-2 py-2"></th>
                           </tr>
                         </thead>
@@ -567,6 +570,7 @@ export default function DriveSelectorModal({
                               requiredRpm: requiredOutputRpm || 0,
                               serviceFactor: activeSf,
                               candidateTorque: candidate.output_torque_lb_in,
+                              candidateSF: candidate.service_factor_catalog,
                               candidateRpm: candidate.output_rpm,
                               speedTolerancePct: speedTolerance,
                             });
@@ -654,66 +658,123 @@ export default function DriveSelectorModal({
               })()}
             </div>
 
-            {/* E) Vendor Parts */}
-            {selectedCandidate && (
-              <div className="border border-gray-200 rounded-lg overflow-hidden">
-                <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-700">Vendor Parts</span>
-                  <button
-                    onClick={handleCopyVendorParts}
-                    className={clsx(
-                      'px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 transition-colors',
-                      copied
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                    )}
-                  >
-                    {copied ? (
-                      <>
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            {/* E) Vendor Parts / BOM */}
+            {selectedCandidate && (() => {
+              // Get parsed model info from metadata_json (proper storage)
+              // Fall back to parsing description/part_number if metadata not available
+              const metadata = selectedCandidate.metadata_json;
+              const parsed = metadata?.parsed_model ||
+                parseModelType(metadata?.model_type as string) ||
+                parseModelType(selectedCandidate.gear_unit_description) ||
+                parseModelType(selectedCandidate.gear_unit_part_number);
+
+              return (
+                <div className="border border-gray-200 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
+                    <span className="text-sm font-medium text-gray-700">What to Order (BOM)</span>
+                    <button
+                      onClick={handleCopyVendorParts}
+                      className={clsx(
+                        'px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 transition-colors',
+                        copied
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      )}
+                    >
+                      {copied ? (
+                        <>
+                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                          </svg>
+                          Copied
+                        </>
+                      ) : (
+                        <>
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                          </svg>
+                          Copy BOM
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    {/* Gear Unit */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-50 rounded flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
-                        Copied
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                        </svg>
-                        Copy BOM
-                      </>
-                    )}
-                  </button>
-                </div>
-                <div className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-mono text-sm font-medium text-gray-900">
-                          {selectedCandidate.gear_unit_part_number}
-                        </span>
-                        <span className="text-xs text-gray-400 bg-gray-100 px-1.5 py-0.5 rounded">Gear Unit</span>
                       </div>
-                      <p className="text-sm text-gray-500 mt-0.5">{selectedCandidate.gear_unit_description}</p>
-                      <div className="mt-2 flex gap-4 text-xs text-gray-500">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-medium text-gray-900">
+                            {selectedCandidate.gear_unit_part_number}
+                          </span>
+                          <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Gear Unit</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {selectedCandidate.gear_unit_description || `NORD FLEXBLOC ${parsed?.gear_unit_size || selectedCandidate.size_code}`}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Motor */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-amber-50 rounded flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-medium text-gray-900">
+                            {parsed?.motor_frame ? `${parsed.motor_frame}-${parsed.adapter_code}` : '—'}
+                          </span>
+                          <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Motor</span>
+                          {!parsed && <span className="text-xs text-gray-400">(lookup pending)</span>}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {selectedCandidate.motor_hp}HP {parsed?.motor_frame || ''} Motor
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Adapter */}
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-green-50 rounded flex items-center justify-center flex-shrink-0">
+                        <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-medium text-gray-900">
+                            {parsed?.adapter_code || '—'}
+                          </span>
+                          <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Adapter</span>
+                          {!parsed && <span className="text-xs text-gray-400">(lookup pending)</span>}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          NEMA {parsed?.adapter_code || '—'} C-Face Adapter
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Performance Summary */}
+                    <div className="pt-2 mt-2 border-t border-gray-100">
+                      <div className="flex gap-4 text-xs text-gray-500">
                         <span><span className="text-gray-400">HP:</span> {selectedCandidate.motor_hp}</span>
                         <span><span className="text-gray-400">RPM:</span> {selectedCandidate.output_rpm}</span>
                         <span><span className="text-gray-400">Torque:</span> {selectedCandidate.output_torque_lb_in} lb-in</span>
+                        <span><span className="text-gray-400">SF:</span> {formatCatalogSf(selectedCandidate.service_factor_catalog)}</span>
                       </div>
                     </div>
                   </div>
-                  <p className="mt-3 text-xs text-gray-400 text-center border-t border-gray-100 pt-3">
-                    Additional vendor parts (motors, adapters) not yet seeded.
-                  </p>
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
 
           {/* Footer */}
