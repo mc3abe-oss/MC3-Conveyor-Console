@@ -127,9 +127,13 @@ function buildSummary(inputs: SliderbedInputs, outputs: SliderbedOutputs): Summa
     duty: 'continuous', // Default
     environment_tags,
     belt_speed_fpm: outputs.belt_speed_fpm ?? null,
-    // v1.38: Actual belt speed from selected gearmotor
+    // v1.38: Speed chain outputs (required vs actual)
+    required_drive_shaft_rpm: outputs.required_drive_shaft_rpm ?? outputs.drive_shaft_rpm ?? null,
+    required_gearmotor_output_rpm: outputs.required_gearmotor_output_rpm ?? outputs.gearmotor_output_rpm ?? null,
     actual_belt_speed_fpm: outputs.actual_belt_speed_fpm ?? null,
     actual_belt_speed_delta_pct: outputs.actual_belt_speed_delta_pct ?? null,
+    actual_drive_shaft_rpm: outputs.actual_drive_shaft_rpm ?? null,
+    actual_speed_warning_code: outputs.actual_speed_warning_code ?? null,
     center_distance_in: inputs.conveyor_length_cc_in ?? null,
     overall_length_in: outputs.total_belt_length_in ?? null,
     incline_deg: inputs.conveyor_incline_deg ?? 0,

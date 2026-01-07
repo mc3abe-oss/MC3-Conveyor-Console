@@ -65,10 +65,21 @@ export interface SummaryV2 {
   duty: 'continuous' | 'intermittent' | 'surge' | string | null;
   environment_tags: string[];
   belt_speed_fpm: number | null;
+
+  // v1.38: Speed chain outputs (required vs actual)
+  /** Required drive shaft RPM to achieve desired belt speed */
+  required_drive_shaft_rpm?: number | null;
+  /** Required gearmotor output RPM to achieve desired belt speed */
+  required_gearmotor_output_rpm?: number | null;
   /** Actual belt speed from selected gearmotor (v1.38) */
   actual_belt_speed_fpm?: number | null;
   /** Actual belt speed delta percentage vs desired (v1.38) */
   actual_belt_speed_delta_pct?: number | null;
+  /** Actual drive shaft RPM from selected gearmotor */
+  actual_drive_shaft_rpm?: number | null;
+  /** Warning code from speed calculation (if any) */
+  actual_speed_warning_code?: string | null;
+
   center_distance_in: number | null;
   overall_length_in: number | null;
   incline_deg: number | null;
