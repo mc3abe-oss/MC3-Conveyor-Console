@@ -1457,6 +1457,15 @@ export interface SliderbedInputs {
   drive_shaft_sprocket_teeth?: number;
 
   /**
+   * Actual gearmotor source (v1.38)
+   * Indicates how the actual gearmotor values were obtained:
+   * - 'nord_catalogue': Selected from NORD Drive Selector
+   * - 'manual': User entered values manually
+   * Null when no gearmotor is configured.
+   */
+  actual_gearmotor_source?: 'nord_catalogue' | 'manual' | null;
+
+  /**
    * Actual gearmotor output RPM (v1.38)
    * Populated when user selects a NORD gearmotor from the Drive Selector
    * OR enters a manual value.
@@ -1464,6 +1473,20 @@ export interface SliderbedInputs {
    * Null when no gearmotor is selected.
    */
   actual_gearmotor_output_rpm?: number | null;
+
+  /**
+   * Actual gearmotor output torque in inch-lbf (v1.38)
+   * Optional - used for comparison with required torque.
+   * Can be populated from NORD selection or manual entry.
+   */
+  actual_gearmotor_output_torque_inlbf?: number | null;
+
+  /**
+   * Actual gearmotor service factor (v1.38)
+   * Optional - used for verification against required service factor.
+   * Can be populated from NORD selection or manual entry.
+   */
+  actual_gearmotor_service_factor?: number | null;
 
   /** Drive hand (RH/LH) - when facing discharge end */
   drive_hand: DriveHand | string;
@@ -2022,6 +2045,27 @@ export interface SliderbedOutputs {
    * The overall ratio from motor to drive shaft.
    */
   total_drive_ratio?: number;
+
+  // =========================================================================
+  // SPEED CHAIN OUTPUTS (v1.38)
+  // Explicit required vs actual naming for clarity in the speed chain
+  // =========================================================================
+
+  /**
+   * Required drive shaft RPM (v1.38)
+   * = belt_speed_fpm / (PI * pulley_diameter_in / 12)
+   * The RPM needed at the drive shaft to achieve the desired belt speed.
+   * This is an alias of drive_shaft_rpm for explicit naming.
+   */
+  required_drive_shaft_rpm?: number;
+
+  /**
+   * Required gearmotor output RPM (v1.38)
+   * = required_drive_shaft_rpm * chain_ratio
+   * The RPM the gearmotor output shaft must spin at to achieve desired belt speed.
+   * This is an alias of gearmotor_output_rpm for explicit naming.
+   */
+  required_gearmotor_output_rpm?: number;
 
   /**
    * Actual belt speed in FPM (v1.38)

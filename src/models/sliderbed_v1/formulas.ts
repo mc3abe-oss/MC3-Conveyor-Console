@@ -2484,7 +2484,11 @@ export function calculate(
     gearmotor_output_rpm: gearmotorOutputRpm,
     total_drive_ratio: totalDriveRatio,
 
-    // v1.38: Actual belt speed from selected gearmotor
+    // v1.38: Explicit speed chain outputs (required vs actual)
+    // Required: computed from desired belt speed
+    required_drive_shaft_rpm: driveShaftRpm,
+    required_gearmotor_output_rpm: gearmotorOutputRpm,
+    // Actual: computed from selected/configured gearmotor
     actual_belt_speed_fpm: actualBeltSpeedFpm,
     actual_belt_speed_delta_pct: actualBeltSpeedDeltaPct,
     actual_drive_shaft_rpm: actualDriveShaftRpm,
