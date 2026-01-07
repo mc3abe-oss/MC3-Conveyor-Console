@@ -11,3 +11,10 @@ export {
   type GearmotorCandidate,
   type GearmotorSelectionResult,
 } from './selector';
+
+export {
+  evaluateGearmotorCandidate,
+  formatMarginPct,
+  type EvaluationInputs,
+  type EvaluationResult,
+} from './evaluate';

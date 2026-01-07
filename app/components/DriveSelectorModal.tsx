@@ -5,6 +5,7 @@ import clsx from 'clsx';
 import {
   GearmotorCandidate,
   GearmotorSelectionResult,
+  evaluateGearmotorCandidate,
 } from '../../src/lib/gearmotor';
 
 // Formatting helpers for REQUIREMENTS (can round for display)
@@ -42,10 +43,6 @@ const formatCatalogSf = (sf: number): string => {
   }
   // Remove trailing zeros
   return parseFloat(sf.toFixed(2)).toString();
-};
-
-const formatMargin = (ratio: number): number => {
-  return Math.round((ratio - 1) * 100);
 };
 
 // Helper to derive series code (e.g., "SI63" from size_code or part number)
@@ -198,6 +195,7 @@ export default function DriveSelectorModal({
       setResult(data);
 
       // Auto-select first candidate if none selected and candidates exist
+      // Note: Backend already filters to passing candidates only
       if (data.candidates.length > 0 && !selectedCandidate) {
         handleSelectCandidate(data.candidates[0]);
       }
@@ -506,110 +504,154 @@ export default function DriveSelectorModal({
               )}
 
               {/* Candidates table */}
-              {result && result.candidates.length > 0 && !loading && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">
-                    Available Gearmotors ({result.candidates.length})
-                  </h4>
-                  <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          {/* Catalog columns (immutable, exact from vendor) */}
-                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap">Series</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500">Motor HP</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Output RPM (exact)">RPM</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500" title="Catalog Output Torque (exact)">Torque</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Service Factor (fᵦ) - vendor published rating">SF (Cat)</th>
-                          {/* Calculated columns (derived from selection) */}
-                          <th className="px-2 py-2 text-left font-medium text-gray-400 whitespace-nowrap" title="RPM Delta vs Required">Δ RPM</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-400" title="Capacity Margin %">Margin</th>
-                          <th className="px-2 py-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100">
-                        {result.candidates.map((candidate, idx) => {
-                          const isSelected = selectedCandidate?.performance_point_id === candidate.performance_point_id;
-                          const margin = formatMargin(candidate.oversize_ratio);
-                          const seriesCode = getSeriesCode(candidate.size_code, candidate.gear_unit_part_number);
-                          const rpmDeltaPct = candidate.speed_delta_pct;
-                          return (
-                            <tr
-                              key={candidate.performance_point_id}
-                              className={clsx(
-                                'cursor-pointer transition-colors',
-                                isSelected ? 'bg-primary-50' : 'hover:bg-gray-50'
-                              )}
-                              onClick={() => handleSelectCandidate(candidate)}
-                            >
-                              {/* Catalog columns */}
-                              <td className="px-2 py-2.5 font-medium text-gray-900">
-                                <span className="flex items-center gap-1.5">
-                                  {seriesCode}
-                                  {idx === 0 && (
-                                    <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-xs rounded">
-                                      Best
-                                    </span>
-                                  )}
-                                </span>
-                              </td>
-                              <td className="px-2 py-2.5 text-gray-600">{candidate.motor_hp}</td>
-                              <td
-                                className="px-2 py-2.5 font-mono text-gray-600"
-                                title={`Catalog RPM: ${candidate.output_rpm}`}
+              {result && result.candidates.length > 0 && !loading && (() => {
+                // FILTER: Only show candidates that PASS requirements (original UX)
+                const passingCandidates = result.candidates.filter((c) => {
+                  const ev = evaluateGearmotorCandidate({
+                    requiredTorque: requiredOutputTorqueLbIn || 0,
+                    requiredRpm: requiredOutputRpm || 0,
+                    serviceFactor: activeSf,
+                    candidateTorque: c.output_torque_lb_in,
+                    candidateRpm: c.output_rpm,
+                    speedTolerancePct: speedTolerance,
+                  });
+                  return ev.passAll;
+                });
+
+                if (passingCandidates.length === 0) {
+                  // No passing candidates - show empty state
+                  return (
+                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-6 text-center">
+                      <svg className="w-10 h-10 mx-auto text-gray-300 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <p className="text-sm text-gray-600 mb-2">
+                        No NORD gearmotor meets <span className="font-mono">~{formatRequiredRpm(requiredOutputRpm)}</span> RPM and <span className="font-mono">{formatRequiredTorque(requiredOutputTorqueLbIn)}</span> lb-in @ SF {activeSf}.
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Try lowering the service factor or widening speed tolerance.
+                      </p>
+                    </div>
+                  );
+                }
+
+                return (
+                  <div>
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Available Gearmotors ({passingCandidates.length})
+                    </h4>
+                    <div className="border border-gray-200 rounded-lg overflow-hidden overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead className="bg-gray-50">
+                          <tr>
+                            {/* Catalog columns (immutable, exact from vendor) */}
+                            <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap">Series</th>
+                            <th className="px-2 py-2 text-left font-medium text-gray-500">Motor HP</th>
+                            <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Output RPM (exact)">RPM</th>
+                            <th className="px-2 py-2 text-left font-medium text-gray-500" title="Catalog Output Torque (exact)">Torque</th>
+                            <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Service Factor (fᵦ) - vendor published rating">SF (Cat)</th>
+                            {/* Calculated columns (derived from selection) */}
+                            <th className="px-2 py-2 text-left font-medium text-gray-400 whitespace-nowrap" title="RPM Delta vs Required">Δ RPM</th>
+                            <th className="px-2 py-2 text-left font-medium text-gray-400" title="Capacity Margin: (Torque - Required×SF) / (Required×SF)">Margin</th>
+                            <th className="px-2 py-2"></th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-gray-100">
+                          {passingCandidates.map((candidate, idx) => {
+                            const isSelected = selectedCandidate?.performance_point_id === candidate.performance_point_id;
+                            const seriesCode = getSeriesCode(candidate.size_code, candidate.gear_unit_part_number);
+
+                            // Use centralized evaluation helper for margin calculation
+                            const evaluation = evaluateGearmotorCandidate({
+                              requiredTorque: requiredOutputTorqueLbIn || 0,
+                              requiredRpm: requiredOutputRpm || 0,
+                              serviceFactor: activeSf,
+                              candidateTorque: candidate.output_torque_lb_in,
+                              candidateRpm: candidate.output_rpm,
+                              speedTolerancePct: speedTolerance,
+                            });
+
+                            const margin = Math.round(evaluation.marginPct);
+                            const rpmDeltaPct = evaluation.rpmDeltaPct;
+
+                            return (
+                              <tr
+                                key={candidate.performance_point_id}
+                                className={clsx(
+                                  'cursor-pointer transition-colors',
+                                  isSelected ? 'bg-primary-50' : 'hover:bg-gray-50'
+                                )}
+                                onClick={() => handleSelectCandidate(candidate)}
                               >
-                                {formatCatalogRpm(candidate.output_rpm)}
-                              </td>
-                              <td
-                                className="px-2 py-2.5 font-mono text-gray-600"
-                                title={`Catalog torque: ${candidate.output_torque_lb_in} lb-in`}
-                              >
-                                {formatCatalogTorque(candidate.output_torque_lb_in)}
-                              </td>
-                              <td
-                                className="px-2 py-2.5 font-mono text-gray-500"
-                                title={`Catalog Service Factor (fᵦ): ${candidate.service_factor_catalog}`}
-                              >
-                                {formatCatalogSf(candidate.service_factor_catalog)}
-                              </td>
-                              {/* Calculated columns */}
-                              <td className="px-2 py-2.5 font-mono text-gray-400">
-                                {rpmDeltaPct > 0 ? '+' : ''}{rpmDeltaPct.toFixed(0)}%
-                              </td>
-                              <td className="px-2 py-2.5">
-                                <span className={clsx(
-                                  'px-1.5 py-0.5 rounded text-xs font-medium',
-                                  margin >= 50 ? 'bg-yellow-50 text-yellow-600' :
-                                  margin >= 20 ? 'bg-green-50 text-green-600' :
-                                  'bg-blue-50 text-blue-600'
-                                )}>
-                                  +{margin}%
-                                </span>
-                              </td>
-                              <td className="px-2 py-2.5">
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleSelectCandidate(candidate);
-                                  }}
-                                  className={clsx(
-                                    'px-3 py-1 text-xs font-medium rounded transition-colors',
-                                    isSelected
-                                      ? 'bg-primary-600 text-white'
-                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                  )}
+                                {/* Catalog columns */}
+                                <td className="px-2 py-2.5 font-medium text-gray-900">
+                                  <span className="flex items-center gap-1.5">
+                                    {seriesCode}
+                                    {idx === 0 && (
+                                      <span className="px-1.5 py-0.5 bg-green-50 text-green-600 text-xs rounded">
+                                        Best
+                                      </span>
+                                    )}
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2.5 text-gray-600">{candidate.motor_hp}</td>
+                                <td
+                                  className="px-2 py-2.5 font-mono text-gray-600"
+                                  title={`Catalog RPM: ${candidate.output_rpm}`}
                                 >
-                                  {isSelected ? 'Selected' : 'Select'}
-                                </button>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                  {formatCatalogRpm(candidate.output_rpm)}
+                                </td>
+                                <td
+                                  className="px-2 py-2.5 font-mono text-gray-600"
+                                  title={`Catalog torque: ${candidate.output_torque_lb_in} lb-in`}
+                                >
+                                  {formatCatalogTorque(candidate.output_torque_lb_in)}
+                                </td>
+                                <td
+                                  className="px-2 py-2.5 font-mono text-gray-500"
+                                  title={`Catalog Service Factor (fᵦ): ${candidate.service_factor_catalog}`}
+                                >
+                                  {formatCatalogSf(candidate.service_factor_catalog)}
+                                </td>
+                                {/* Calculated columns */}
+                                <td className="px-2 py-2.5 font-mono text-gray-400">
+                                  {rpmDeltaPct > 0 ? '+' : ''}{rpmDeltaPct.toFixed(0)}%
+                                </td>
+                                <td className="px-2 py-2.5">
+                                  <span className={clsx(
+                                    'px-1.5 py-0.5 rounded text-xs font-medium',
+                                    margin >= 50 ? 'bg-yellow-50 text-yellow-600' :
+                                    margin >= 20 ? 'bg-green-50 text-green-600' :
+                                    'bg-blue-50 text-blue-600'
+                                  )}>
+                                    +{margin}%
+                                  </span>
+                                </td>
+                                <td className="px-2 py-2.5">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleSelectCandidate(candidate);
+                                    }}
+                                    className={clsx(
+                                      'px-3 py-1 text-xs font-medium rounded transition-colors',
+                                      isSelected
+                                        ? 'bg-primary-600 text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    )}
+                                  >
+                                    {isSelected ? 'Selected' : 'Select'}
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
             </div>
 
             {/* E) Vendor Parts */}
