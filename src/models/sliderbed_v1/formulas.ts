@@ -2065,6 +2065,14 @@ export function calculate(
     // Calculate delta vs desired belt speed (only if actual speed was computed)
     if (actualBeltSpeedFpm !== null) {
       actualBeltSpeedDeltaPct = calculateSpeedDeltaPct(beltSpeedFpm, actualBeltSpeedFpm);
+      // v1.38: Check for high speed delta (soft warning)
+      if (Math.abs(actualBeltSpeedDeltaPct) > 5) {
+        // If no other warning code is set, set SPEED_DELTA_HIGH
+        // (other warning codes take precedence as they indicate missing data)
+        if (!actualSpeedWarningCode) {
+          actualSpeedWarningCode = 'SPEED_DELTA_HIGH';
+        }
+      }
     }
   }
 

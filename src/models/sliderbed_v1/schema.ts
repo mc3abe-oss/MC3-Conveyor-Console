@@ -2099,7 +2099,8 @@ export interface SliderbedOutputs {
    *   ACTUAL_GM_RPM_INVALID - gearmotor RPM was 0
    *   PULLEY_DIAMETER_MISSING - pulley diameter not configured
    *   SPROCKET_TEETH_MISSING - sprocket teeth not configured for bottom mount
-   * Null when calculation succeeded.
+   *   SPEED_DELTA_HIGH - |actual - desired| > 5% (soft warning, informational)
+   * Null when calculation succeeded with no warnings.
    */
   actual_speed_warning_code?: string | null;
 
