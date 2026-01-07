@@ -247,4 +247,101 @@ function calculateSpeedDelta(desired: number, actual: number): {
 
 ---
 
-*End of Phase 1 Audit*
+## 7. Clarifying Questions (Pre-Phase 2)
+
+### A) Chain Ratio Direction Confirmation
+
+**Question:** Confirm that `chain_ratio = driven_teeth / driver_teeth` (speed reduction)
+
+**Answer: CONFIRMED**
+
+From `formulas.ts:1927-1935`:
+```ts
+// Chain ratio = driven_teeth / driver_teeth
+// driver = gearmotor sprocket, driven = drive shaft sprocket
+const gmTeeth = inputs.gm_sprocket_teeth ?? 18;
+const driveTeeth = inputs.drive_shaft_sprocket_teeth ?? 24;
+chainRatio = gmTeeth > 0 ? driveTeeth / gmTeeth : 1;
+```
+
+- **chain_ratio** = `drive_shaft_sprocket_teeth / gm_sprocket_teeth` (driven/driver)
+- Used to compute: `gearmotor_output_rpm = drive_shaft_rpm * chain_ratio`
+- This is a **speed reduction factor** (e.g., 24/18 = 1.33 means gearmotor spins 33% faster than drive shaft)
+
+**For Actual FPM:** We need the **INVERSE** (driver/driven) to go from gearmotor → pulley:
+```ts
+drive_ratio = gm_sprocket_teeth / drive_shaft_sprocket_teeth  // 18/24 = 0.75
+drive_pulley_rpm = gearmotor_output_rpm * drive_ratio
+```
+
+---
+
+### B) Effective Drive Pulley Diameter Source
+
+**Question:** Confirm the authoritative source for effective drive pulley diameter
+
+**Answer: CONFIRMED**
+
+From `TabDriveControls.tsx:73`:
+```ts
+const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
+```
+
+Same pattern used in:
+- `TabConveyorBuild.tsx:925` — `inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in`
+- `formulas.ts:1895-1896` — main calculation
+
+**Use this pattern.** Do NOT create a second diameter source.
+
+---
+
+### C) Where Selected NORD Gearmotor Lives
+
+**Question:** Where does the selected gearmotor state live? How to access `output_rpm`?
+
+**Answer:**
+
+| Aspect | Location | Details |
+|--------|----------|---------|
+| **Component state** | `DriveSelectorCard.tsx:36` | `const [selectedCandidate, setSelectedCandidate] = useState<GearmotorCandidate \| null>(null);` |
+| **Type definition** | `src/lib/gearmotor/selector.ts` | `GearmotorCandidate` interface with `output_rpm: number` |
+| **Persistence** | Database via API | `/api/gearmotor/config?application_id=...` |
+| **Load on mount** | `DriveSelectorCard.tsx:53-88` | `loadSavedSelection()` fetches and hydrates `selectedCandidate` |
+| **Key field** | `selectedCandidate.output_rpm` | The gearmotor's rated output RPM |
+
+**Architectural note:** The selected gearmotor is **NOT** part of `SliderbedInputs` or `SliderbedOutputs`. It's stored in a separate `gearmotor_configurations` table and accessed via the DriveSelectorCard component.
+
+**Implementation options for Actual FPM:**
+1. **Option A (component-local):** Compute actual FPM in DriveSelectorCard and display there only
+2. **Option B (lift state):** Pass `selectedCandidate` up to parent and compute in calculation engine
+3. **Option C (API hydration):** Add `actual_belt_speed_fpm` to the gearmotor config API response
+
+**Recommendation:** Start with Option A for initial implementation. If Actual FPM needs to appear in exports/outputs, migrate to Option B/C.
+
+---
+
+### D) Complete UI Surface Inventory for Belt Speed
+
+**Question:** List every UI location where belt speed is shown (with line numbers)
+
+| # | Location | File:Line | Display Type | Current Value | Recommendation |
+|---|----------|-----------|--------------|---------------|----------------|
+| 1 | Drive Controls - Speed Definition input | `TabDriveControls.tsx:189-202` | Input field | `inputs.belt_speed_fpm` | Keep as "Desired"; add Actual below |
+| 2 | Drive Controls - Speed & Kinematics display | `TabDriveControls.tsx:249-250` | Computed display | `outputs.belt_speed_fpm` | Add Actual row |
+| 3 | Conveyor Build - Belt Speed input | `TabConveyorBuild.tsx:923-948` | Input field | `inputs.belt_speed_fpm` | Keep as "Desired"; add Actual below |
+| 4 | Conveyor Build - Derived RPM calc | `TabConveyorBuild.tsx:1027-1028` | Internal calc | From belt_speed_fpm | No change |
+| 5 | Calculation Results - Highlighted | `CalculationResults.tsx:159` | Output display | `outputs.belt_speed_fpm` | Add Actual + Delta row |
+| 6 | Calculation Results - Derived (RPM mode) | `CalculationResults.tsx:406` | Output display | `outputs.belt_speed_fpm` | Keep for legacy mode |
+| 7 | Summary Tab | `SummaryTab.tsx:98` | Summary field | `summary.belt_speed_fpm` | Add Actual row |
+| 8 | Overview Tab | `OverviewTab.tsx:31` | Stat card | `summary.belt_speed_fpm` | Show Actual if available |
+| 9 | Input Echo | `InputEcho.tsx:89` | Echo display | `inputs.belt_speed_fpm` | Keep as-is (input echo) |
+| 10 | Revision Detail Drawer | `RevisionDetailDrawer.tsx:242-247` | Historical | `outputs_json.belt_speed_fpm` | Add Actual if present |
+| 11 | Belt Tab (Vendor Specs) | `BeltTab.tsx:95` | Vendor packet | `packet.operating_conditions.speed_fpm` | Keep as designed speed |
+| 12 | Vendor Specs Tab | `VendorSpecsTab.tsx:324` | Vendor packet | `packet.operating_conditions.speed_fpm` | Keep as designed speed |
+| 13 | DriveSelectorCard | `DriveSelectorCard.tsx:138` | Selected info | Shows RPM/torque only | **Add Actual FPM here** |
+
+**Total: 13 locations**
+
+---
+
+*End of Phase 1 Audit — Awaiting "GO" for Phase 2*
