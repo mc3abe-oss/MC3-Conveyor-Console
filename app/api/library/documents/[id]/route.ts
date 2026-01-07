@@ -33,11 +33,12 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     const isAdmin = !adminResult.response;
 
     // Fetch document with versions and tags
+    // Use explicit relationship name to avoid ambiguity (two FKs between tables)
     let query = supabase
       .from('pdf_documents')
       .select(`
         *,
-        pdf_document_versions (
+        pdf_document_versions!pdf_document_versions_document_id_fkey (
           id,
           version_number,
           storage_path,

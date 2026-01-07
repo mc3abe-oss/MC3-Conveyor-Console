@@ -23,6 +23,9 @@ const DEPARTMENT_OPTIONS = [
   { value: 'quality', label: 'Quality' },
 ];
 
+const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250MB
+const MAX_FILE_SIZE_DISPLAY = '250MB';
+
 // ============================================================================
 // LOADING FALLBACK
 // ============================================================================
@@ -62,6 +65,8 @@ function UploadPageInner() {
   // UI state
   const [tags, setTags] = useState<Tag[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadStatus, setUploadStatus] = useState<string>('');
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
@@ -96,34 +101,58 @@ function UploadPageInner() {
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
+    setError(null);
 
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile && droppedFile.type === 'application/pdf') {
-      setFile(droppedFile);
-      if (!title && !isNewVersion) {
-        // Auto-fill title from filename
-        const nameWithoutExt = droppedFile.name.replace(/\.pdf$/i, '');
-        setTitle(nameWithoutExt);
-      }
-    } else {
+    if (!droppedFile) return;
+
+    if (droppedFile.type !== 'application/pdf') {
       setError('Only PDF files are allowed');
+      return;
+    }
+
+    if (droppedFile.size > MAX_FILE_SIZE) {
+      setError(`File too large. Maximum size is ${MAX_FILE_SIZE_DISPLAY}`);
+      return;
+    }
+
+    setFile(droppedFile);
+    if (!title && !isNewVersion) {
+      // Auto-fill title from filename
+      const nameWithoutExt = droppedFile.name.replace(/\.pdf$/i, '');
+      setTitle(nameWithoutExt);
     }
   };
 
   // Handle file select
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        setError('Only PDF files are allowed');
-        return;
-      }
-      setFile(selectedFile);
-      if (!title && !isNewVersion) {
-        const nameWithoutExt = selectedFile.name.replace(/\.pdf$/i, '');
-        setTitle(nameWithoutExt);
-      }
+    setError(null);
+
+    if (!selectedFile) return;
+
+    if (selectedFile.type !== 'application/pdf') {
+      setError('Only PDF files are allowed');
+      return;
     }
+
+    if (selectedFile.size > MAX_FILE_SIZE) {
+      setError(`File too large. Maximum size is ${MAX_FILE_SIZE_DISPLAY}`);
+      return;
+    }
+
+    setFile(selectedFile);
+    if (!title && !isNewVersion) {
+      const nameWithoutExt = selectedFile.name.replace(/\.pdf$/i, '');
+      setTitle(nameWithoutExt);
+    }
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
   // Toggle tag selection
@@ -135,17 +164,12 @@ function UploadPageInner() {
     );
   };
 
-  // Format file size
-  const formatFileSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
-  // Handle upload
+  // Handle upload using direct-to-Supabase flow
   const handleUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
+    setUploadProgress(0);
+    setUploadStatus('');
 
     if (!file) {
       setError('Please select a PDF file');
@@ -157,39 +181,93 @@ function UploadPageInner() {
       return;
     }
 
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      setError(`File too large. Maximum size is ${MAX_FILE_SIZE_DISPLAY}`);
+      return;
+    }
+
     setUploading(true);
 
     try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      if (isNewVersion && documentId) {
-        formData.append('documentId', documentId);
-      } else {
-        formData.append('title', title.trim());
-        if (description.trim()) {
-          formData.append('description', description.trim());
-        }
-        if (department) {
-          formData.append('department', department);
-        }
-      }
-
-      if (changeNote.trim()) {
-        formData.append('changeNote', changeNote.trim());
-      }
-
-      const res = await fetch('/api/library/upload', {
+      // Step 1: Get signed upload URL
+      setUploadStatus('Preparing upload...');
+      const urlRes = await fetch('/api/library/upload-url', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: file.name,
+          contentType: 'application/pdf',
+          documentId: isNewVersion ? documentId : undefined,
+        }),
       });
 
-      if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Upload failed');
+      if (!urlRes.ok) {
+        const urlData = await urlRes.json();
+        throw new Error(urlData.error || 'Failed to prepare upload');
       }
 
-      const result = await res.json();
+      const { signedUrl, storagePath } = await urlRes.json();
+
+      // Step 2: Upload directly to Supabase Storage with progress tracking
+      setUploadStatus('Uploading file...');
+
+      await new Promise<void>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            setUploadProgress(percentComplete);
+          }
+        });
+
+        xhr.addEventListener('load', () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            resolve();
+          } else {
+            reject(new Error(`Upload failed with status ${xhr.status}`));
+          }
+        });
+
+        xhr.addEventListener('error', () => {
+          reject(new Error('Upload failed - network error'));
+        });
+
+        xhr.addEventListener('abort', () => {
+          reject(new Error('Upload was cancelled'));
+        });
+
+        xhr.open('PUT', signedUrl);
+        xhr.setRequestHeader('Content-Type', 'application/pdf');
+        xhr.send(file);
+      });
+
+      // Step 3: Finalize - create document/version metadata
+      setUploadStatus('Finalizing...');
+      setUploadProgress(100);
+
+      const finalizeRes = await fetch('/api/library/upload/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          storagePath,
+          filename: file.name,
+          fileSize: file.size,
+          title: isNewVersion ? undefined : title.trim(),
+          description: isNewVersion ? undefined : description.trim() || undefined,
+          department: isNewVersion ? undefined : department || undefined,
+          documentId: isNewVersion ? documentId : undefined,
+          changeNote: changeNote.trim() || undefined,
+        }),
+      });
+
+      if (!finalizeRes.ok) {
+        const finalizeData = await finalizeRes.json();
+        throw new Error(finalizeData.error || 'Failed to save document');
+      }
+
+      const result = await finalizeRes.json();
 
       // If new document, add tags
       if (!isNewVersion && selectedTags.length > 0 && result.document_id) {
@@ -205,6 +283,8 @@ function UploadPageInner() {
       router.push(`/console/library/${targetId}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
+      setUploadProgress(0);
+      setUploadStatus('');
     } finally {
       setUploading(false);
     }
@@ -303,7 +383,7 @@ function UploadPageInner() {
               <p className="text-gray-600">
                 <span className="font-medium text-blue-600 cursor-pointer">Click to upload</span> or drag and drop
               </p>
-              <p className="text-sm text-gray-500">PDF files only, up to 50MB</p>
+              <p className="text-sm text-gray-500">PDF files only, up to {MAX_FILE_SIZE_DISPLAY}</p>
             </div>
           )}
         </div>
@@ -409,11 +489,27 @@ function UploadPageInner() {
           </div>
         )}
 
+        {/* Upload Progress */}
+        {uploading && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-gray-600">{uploadStatus}</span>
+              <span className="font-medium text-gray-900">{uploadProgress}%</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2.5">
+              <div
+                className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
+                style={{ width: `${uploadProgress}%` }}
+              />
+            </div>
+          </div>
+        )}
+
         {/* Submit Button */}
         <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-200">
           <Link
             href="/console/library"
-            className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
+            className={`px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900 ${uploading ? 'pointer-events-none opacity-50' : ''}`}
           >
             Cancel
           </Link>

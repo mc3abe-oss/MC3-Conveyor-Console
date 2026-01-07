@@ -2,8 +2,14 @@
  * POST /api/library/upload
  * Upload a PDF file to an existing document (admin only)
  *
+ * NOTE: This endpoint buffers files in memory. For files larger than 50MB,
+ * use the direct upload flow instead:
+ *   1. POST /api/library/upload-url to get a signed URL
+ *   2. PUT file directly to Supabase Storage using the signed URL
+ *   3. POST /api/library/upload/finalize to create metadata
+ *
  * Request: multipart/form-data with:
- *   - file: PDF file (required)
+ *   - file: PDF file (required, max 50MB)
  *   - documentId: existing document ID OR...
  *   - title: title for new document (if no documentId)
  *   - description: optional description
@@ -12,7 +18,7 @@
  *
  * Features:
  *   - Validates PDF mime type
- *   - Enforces 50MB size limit
+ *   - Enforces 50MB size limit (use direct upload for larger files)
  *   - Computes SHA-256 hash for deduplication
  *   - Creates new version or returns existing if hash matches
  *   - Sets as current version
