@@ -169,11 +169,11 @@ export async function POST(request: NextRequest) {
         version_number: versionNumber,
         storage_path: storagePath,
         original_filename: filename,
-        file_size: fileSize,
+        file_size_bytes: fileSize,
         mime_type: 'application/pdf',
         sha256_hash: sha256Hash,
         change_note: changeNote?.trim() || null,
-        uploaded_by: userId,
+        created_by: userId,
       })
       .select('id, version_number')
       .single();

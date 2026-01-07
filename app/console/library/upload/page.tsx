@@ -226,7 +226,19 @@ function UploadPageInner() {
           if (xhr.status >= 200 && xhr.status < 300) {
             resolve();
           } else {
-            reject(new Error(`Upload failed with status ${xhr.status}`));
+            // Try to get error details from response
+            let errorMsg = `Upload failed with status ${xhr.status}`;
+            try {
+              const response = JSON.parse(xhr.responseText);
+              if (response.error || response.message) {
+                errorMsg = response.error || response.message;
+              }
+            } catch {
+              if (xhr.responseText) {
+                errorMsg += `: ${xhr.responseText.substring(0, 200)}`;
+              }
+            }
+            reject(new Error(errorMsg));
           }
         });
 
@@ -239,7 +251,7 @@ function UploadPageInner() {
         });
 
         xhr.open('PUT', signedUrl);
-        xhr.setRequestHeader('Content-Type', 'application/pdf');
+        // Don't set Content-Type - let Supabase handle it
         xhr.send(file);
       });
 
