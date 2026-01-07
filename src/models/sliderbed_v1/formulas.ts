@@ -2040,19 +2040,19 @@ export function calculate(
   const totalDriveRatio = gearRatio * chainRatio;
 
   // v1.38: Actual belt speed from selected gearmotor
-  // Only computed when a gearmotor has been selected (selected_gearmotor_output_rpm_actual is set)
+  // Only computed when a gearmotor has been selected (actual_gearmotor_output_rpm is set)
   let actualBeltSpeedFpm: number | null = null;
   let actualBeltSpeedDeltaPct: number | null = null;
   let actualDriveShaftRpm: number | null = null;
   let actualSpeedWarningCode: string | null = null;
 
   if (
-    inputs.selected_gearmotor_output_rpm_actual !== undefined &&
-    inputs.selected_gearmotor_output_rpm_actual !== null
+    inputs.actual_gearmotor_output_rpm !== undefined &&
+    inputs.actual_gearmotor_output_rpm !== null
   ) {
     // Calculate actual belt speed - function handles all guards and returns warning codes
     const actualSpeedResult = calculateActualBeltSpeed(
-      inputs.selected_gearmotor_output_rpm_actual,
+      inputs.actual_gearmotor_output_rpm,
       drivePulleyDiameterIn,
       inputs.gm_sprocket_teeth,
       inputs.drive_shaft_sprocket_teeth,

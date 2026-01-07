@@ -1457,12 +1457,13 @@ export interface SliderbedInputs {
   drive_shaft_sprocket_teeth?: number;
 
   /**
-   * Selected gearmotor output RPM (v1.38)
-   * Populated when user selects a NORD gearmotor from the Drive Selector.
+   * Actual gearmotor output RPM (v1.38)
+   * Populated when user selects a NORD gearmotor from the Drive Selector
+   * OR enters a manual value.
    * Used to compute actual_belt_speed_fpm in outputs.
    * Null when no gearmotor is selected.
    */
-  selected_gearmotor_output_rpm_actual?: number | null;
+  actual_gearmotor_output_rpm?: number | null;
 
   /** Drive hand (RH/LH) - when facing discharge end */
   drive_hand: DriveHand | string;
@@ -2025,7 +2026,7 @@ export interface SliderbedOutputs {
   /**
    * Actual belt speed in FPM (v1.38)
    * Computed from selected gearmotor output RPM, drive ratio, and pulley diameter.
-   * Null when no gearmotor is selected (selected_gearmotor_output_rpm_actual is null).
+   * Null when no gearmotor is selected (actual_gearmotor_output_rpm is null).
    * Formula: (gearmotor_output_rpm * drive_ratio * PI * pulley_diameter_in) / 12
    * where drive_ratio = gm_sprocket_teeth / drive_shaft_sprocket_teeth (inverse of chain_ratio)
    */
