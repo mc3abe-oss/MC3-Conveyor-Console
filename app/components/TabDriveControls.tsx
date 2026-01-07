@@ -33,6 +33,7 @@ import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 import DriveArrangementModal from './DriveArrangementModal';
 import AdvancedParametersModal from './AdvancedParametersModal';
 import DropdownPortal from './DropdownPortal';
+import DriveSelectorCard from './DriveSelectorCard';
 
 interface TabDriveControlsProps {
   inputs: SliderbedInputs;
@@ -40,9 +41,10 @@ interface TabDriveControlsProps {
   sectionCounts: Record<SectionKey, SectionCounts>;
   getIssuesForSection: (sectionKey: SectionKey) => Issue[];
   outputs?: SliderbedOutputs | null;
+  applicationId?: string;
 }
 
-export default function TabDriveControls({ inputs, updateInput, sectionCounts, getIssuesForSection, outputs }: TabDriveControlsProps) {
+export default function TabDriveControls({ inputs, updateInput, sectionCounts, getIssuesForSection, outputs, applicationId }: TabDriveControlsProps) {
   const { handleToggle, isExpanded } = useAccordionState();
 
   // Modal states
@@ -328,6 +330,13 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
               </div>
             </div>
           )}
+
+          {/* Drive Selector Card - Opens modal for gearmotor selection */}
+          <DriveSelectorCard
+            requiredOutputRpm={outputs?.gearmotor_output_rpm ?? outputs?.drive_shaft_rpm ?? null}
+            requiredOutputTorqueLbIn={outputs?.torque_drive_shaft_inlbf ?? null}
+            applicationId={applicationId}
+          />
 
           {/* Drive Arrangement Summary Card - Green "Configured + Edit" pattern, compact grid */}
           <div className="border border-green-200 bg-green-50 rounded-lg p-4">
