@@ -26,7 +26,12 @@ import { buildCsvRows, csvRowsToString } from './export_csv';
  * Convenience function to export OutputsV2 directly to CSV string
  */
 export function exportOutputsV2ToCSV(outputs: OutputsV2): string {
-  const csvRows = buildCsvRows(outputs.components, outputs.warnings_and_notes);
+  // v1.38: Pass actual_belt_speed_fpm for belt component rows
+  const csvRows = buildCsvRows(
+    outputs.components,
+    outputs.warnings_and_notes,
+    outputs.summary.actual_belt_speed_fpm
+  );
   return csvRowsToString(csvRows);
 }
 

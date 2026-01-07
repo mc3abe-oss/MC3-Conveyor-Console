@@ -127,6 +127,9 @@ function buildSummary(inputs: SliderbedInputs, outputs: SliderbedOutputs): Summa
     duty: 'continuous', // Default
     environment_tags,
     belt_speed_fpm: outputs.belt_speed_fpm ?? null,
+    // v1.38: Actual belt speed from selected gearmotor
+    actual_belt_speed_fpm: outputs.actual_belt_speed_fpm ?? null,
+    actual_belt_speed_delta_pct: outputs.actual_belt_speed_delta_pct ?? null,
     center_distance_in: inputs.conveyor_length_cc_in ?? null,
     overall_length_in: outputs.total_belt_length_in ?? null,
     incline_deg: inputs.conveyor_incline_deg ?? 0,
@@ -345,7 +348,8 @@ export function buildOutputsV2({ inputs, outputs_v1 }: BuildOutputsV2Input): Out
   });
 
   // Step 8: Build CSV rows
-  const csv_rows = buildCsvRows(components, warnings);
+  // v1.38: Pass actual_belt_speed_fpm for belt component rows
+  const csv_rows = buildCsvRows(components, warnings, outputs_v1.actual_belt_speed_fpm);
 
   // Step 9: Build exports
   const exports: ExportsV2 = {

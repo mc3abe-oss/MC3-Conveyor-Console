@@ -336,6 +336,10 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             requiredOutputRpm={outputs?.gearmotor_output_rpm ?? outputs?.drive_shaft_rpm ?? null}
             requiredOutputTorqueLbIn={outputs?.torque_drive_shaft_inlbf ?? null}
             applicationId={applicationId}
+            onGearmotorOutputRpmChange={(outputRpm) => {
+              // v1.38: Persist selected gearmotor output RPM to input for actual belt speed calculation
+              updateInput('selected_gearmotor_output_rpm_actual', outputRpm);
+            }}
           />
 
           {/* Drive Arrangement Summary Card - Green "Configured + Edit" pattern, compact grid */}

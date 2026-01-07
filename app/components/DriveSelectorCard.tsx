@@ -20,6 +20,8 @@ interface DriveSelectorCardProps {
   requiredOutputTorqueLbIn: number | null;
   requiredPowerHp?: number | null;
   applicationId?: string;
+  /** Callback when gearmotor selection changes - receives output_rpm or null if cleared */
+  onGearmotorOutputRpmChange?: (outputRpm: number | null) => void;
 }
 
 /**
@@ -31,6 +33,7 @@ export default function DriveSelectorCard({
   requiredOutputTorqueLbIn,
   requiredPowerHp,
   applicationId,
+  onGearmotorOutputRpmChange,
 }: DriveSelectorCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<GearmotorCandidate | null>(null);
@@ -59,7 +62,7 @@ export default function DriveSelectorCard({
         const data = await response.json();
         if (data.config?.vendor_performance_points) {
           const point = data.config.vendor_performance_points;
-          setSelectedCandidate({
+          const candidate: GearmotorCandidate = {
             performance_point_id: point.id,
             gear_unit_component_id: point.vendor_components?.id ?? '',
             vendor: point.vendor,
@@ -76,7 +79,10 @@ export default function DriveSelectorCard({
             oversize_ratio: 1,
             speed_delta: 0,
             speed_delta_pct: 0,
-          });
+          };
+          setSelectedCandidate(candidate);
+          // v1.38: Propagate output_rpm to parent for actual belt speed calculation
+          onGearmotorOutputRpmChange?.(candidate.output_rpm ?? null);
         }
         if (data.config?.chosen_service_factor) {
           setServiceFactor(data.config.chosen_service_factor);
@@ -89,7 +95,9 @@ export default function DriveSelectorCard({
 
   const handleSelect = useCallback((candidate: GearmotorCandidate | null) => {
     setSelectedCandidate(candidate);
-  }, []);
+    // v1.38: Propagate output_rpm to parent for actual belt speed calculation
+    onGearmotorOutputRpmChange?.(candidate?.output_rpm ?? null);
+  }, [onGearmotorOutputRpmChange]);
 
   // Empty state - no valid inputs
   if (!hasValidInputs) {

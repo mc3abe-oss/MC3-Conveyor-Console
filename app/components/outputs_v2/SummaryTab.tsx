@@ -96,6 +96,21 @@ export default function SummaryTab({ outputs }: SummaryTabProps) {
           <SummaryField label="Type" value={summary.conveyor_type} capitalize />
           <SummaryField label="Duty" value={summary.duty} capitalize />
           <SummaryField label="Belt Speed" value={summary.belt_speed_fpm} unit="FPM" decimals={1} />
+          {/* v1.38: Actual Belt Speed from selected gearmotor */}
+          {summary.actual_belt_speed_fpm !== null && summary.actual_belt_speed_fpm !== undefined && (
+            <SummaryField
+              label="Actual Belt Speed"
+              value={summary.actual_belt_speed_fpm}
+              unit="FPM"
+              decimals={1}
+              suffix={
+                summary.actual_belt_speed_delta_pct !== null && summary.actual_belt_speed_delta_pct !== undefined
+                  ? ` (${summary.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${summary.actual_belt_speed_delta_pct.toFixed(1)}%)`
+                  : undefined
+              }
+              warning={Math.abs(summary.actual_belt_speed_delta_pct ?? 0) > 5}
+            />
+          )}
           <SummaryField label="Center Distance" value={summary.center_distance_in} unit="in" decimals={1} />
           <SummaryField label="Overall Length" value={summary.overall_length_in} unit="in" decimals={1} />
           <SummaryField label="Incline" value={summary.incline_deg} unit="°" decimals={1} />
@@ -179,6 +194,8 @@ function SummaryField({
   decimals,
   capitalize,
   highlight,
+  suffix,
+  warning,
 }: {
   label: string;
   value: string | number | null | undefined;
@@ -186,6 +203,10 @@ function SummaryField({
   decimals?: number;
   capitalize?: boolean;
   highlight?: boolean;
+  /** Optional suffix to append after the value (e.g., delta percentage) */
+  suffix?: string;
+  /** Show warning styling when true (e.g., delta exceeds threshold) */
+  warning?: boolean;
 }) {
   let displayValue: string;
   if (value == null) {
@@ -198,10 +219,11 @@ function SummaryField({
   }
 
   return (
-    <div className={clsx(highlight && 'bg-blue-50 rounded-lg p-3 -m-1')}>
+    <div className={clsx(highlight && 'bg-blue-50 rounded-lg p-3 -m-1', warning && 'bg-amber-50 rounded-lg p-3 -m-1')}>
       <dt className="text-xs text-gray-500 uppercase tracking-wide">{label}</dt>
-      <dd className={clsx('mt-1 font-mono text-lg', highlight ? 'font-semibold text-blue-900' : 'text-gray-900')}>
+      <dd className={clsx('mt-1 font-mono text-lg', highlight ? 'font-semibold text-blue-900' : warning ? 'text-amber-600' : 'text-gray-900')}>
         {displayValue}
+        {suffix && <span className={clsx('ml-1 text-sm', warning ? 'text-amber-600' : 'text-gray-500')}>{suffix}</span>}
       </dd>
     </div>
   );

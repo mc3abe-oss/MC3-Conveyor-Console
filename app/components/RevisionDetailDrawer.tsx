@@ -247,6 +247,22 @@ export default function RevisionDetailDrawer({
                     </span>
                   </p>
                 )}
+                {/* v1.38: Actual Belt Speed from selected gearmotor */}
+                {revision.outputs_json.actual_belt_speed_fpm && (
+                  <p>
+                    <span className={`text-gray-500 ${Math.abs(revision.outputs_json.actual_belt_speed_delta_pct ?? 0) > 5 ? 'text-amber-600' : ''}`}>
+                      Actual Belt Speed:
+                    </span>{' '}
+                    <span className={Math.abs(revision.outputs_json.actual_belt_speed_delta_pct ?? 0) > 5 ? 'text-amber-600' : 'text-gray-900'}>
+                      {revision.outputs_json.actual_belt_speed_fpm.toFixed(2)} FPM
+                      {revision.outputs_json.actual_belt_speed_delta_pct !== null && revision.outputs_json.actual_belt_speed_delta_pct !== undefined && (
+                        <span className="ml-1 text-xs">
+                          ({revision.outputs_json.actual_belt_speed_delta_pct >= 0 ? '+' : ''}{revision.outputs_json.actual_belt_speed_delta_pct.toFixed(1)}%)
+                        </span>
+                      )}
+                    </span>
+                  </p>
+                )}
               </div>
             </div>
           )}

@@ -53,7 +53,8 @@ function getWarningCodes(warnings: OutputMessageV2[], componentId: string): stri
 function buildBeltRow(
   component: ComponentV2,
   packet: VendorPacketBeltV2,
-  warnings: OutputMessageV2[]
+  warnings: OutputMessageV2[],
+  actualSpeedFpm?: number | null
 ): (string | number)[] {
   return [
     component.component_type,
@@ -69,6 +70,7 @@ function buildBeltRow(
     packet.splice_type, // type
     '', // load_lbf (N/A for belt)
     toCsvValue(packet.operating_conditions.speed_fpm), // speed_fpm
+    toCsvValue(actualSpeedFpm), // actual_speed_fpm (v1.38)
     '', // torque_inlb (N/A for belt)
     '', // power_hp (N/A for belt)
     toCsvValue(packet.splice_type), // splice_type
@@ -100,6 +102,7 @@ function buildPulleyRow(
     packet.pulley_role, // type
     toCsvValue(packet.loads.belt_tension_lbf), // load_lbf
     '', // speed_fpm (N/A)
+    '', // actual_speed_fpm (N/A)
     toCsvValue(packet.loads.torque_inlb), // torque_inlb
     '', // power_hp (N/A)
     '', // splice_type (N/A)
@@ -131,6 +134,7 @@ function buildRollerRow(
     packet.roller_role, // type
     toCsvValue(packet.required_load_lbf), // load_lbf
     '', // speed_fpm (N/A)
+    '', // actual_speed_fpm (N/A)
     '', // torque_inlb (N/A)
     '', // power_hp (N/A)
     '', // splice_type (N/A)
@@ -162,6 +166,7 @@ function buildDriveRow(
     toCsvValue(packet.mounting), // type
     '', // load_lbf (N/A)
     '', // speed_fpm (N/A)
+    '', // actual_speed_fpm (N/A)
     toCsvValue(packet.required_output_torque_inlb), // torque_inlb
     toCsvValue(packet.required_power_hp), // power_hp
     '', // splice_type (N/A)
@@ -193,6 +198,7 @@ function buildLegsRow(
     toCsvValue(packet.foot_type), // type
     toCsvValue(packet.load_rating_lbf_each), // load_lbf
     '', // speed_fpm (N/A)
+    '', // actual_speed_fpm (N/A)
     '', // torque_inlb (N/A)
     '', // power_hp (N/A)
     '', // splice_type (N/A)
@@ -224,6 +230,7 @@ function buildCastersRow(
     packet.locking ? 'locking' : 'swivel', // type
     toCsvValue(packet.load_rating_lbf_each), // load_lbf
     '', // speed_fpm (N/A)
+    '', // actual_speed_fpm (N/A)
     '', // torque_inlb (N/A)
     '', // power_hp (N/A)
     '', // splice_type (N/A)
@@ -240,7 +247,11 @@ function buildCastersRow(
 // MAIN CSV BUILDER
 // =============================================================================
 
-export function buildCsvRows(components: ComponentV2[], warnings: OutputMessageV2[]): CsvRowsV2 {
+export function buildCsvRows(
+  components: ComponentV2[],
+  warnings: OutputMessageV2[],
+  actualBeltSpeedFpm?: number | null
+): CsvRowsV2 {
   const rows: (string | number)[][] = [];
 
   for (const component of components) {
@@ -249,7 +260,7 @@ export function buildCsvRows(components: ComponentV2[], warnings: OutputMessageV
 
     switch (component.component_type) {
       case 'belt':
-        rows.push(buildBeltRow(component, packet as VendorPacketBeltV2, warnings));
+        rows.push(buildBeltRow(component, packet as VendorPacketBeltV2, warnings, actualBeltSpeedFpm));
         break;
       case 'pulley':
         rows.push(buildPulleyRow(component, packet as VendorPacketPulleyV2, warnings));

@@ -65,6 +65,10 @@ export interface SummaryV2 {
   duty: 'continuous' | 'intermittent' | 'surge' | string | null;
   environment_tags: string[];
   belt_speed_fpm: number | null;
+  /** Actual belt speed from selected gearmotor (v1.38) */
+  actual_belt_speed_fpm?: number | null;
+  /** Actual belt speed delta percentage vs desired (v1.38) */
+  actual_belt_speed_delta_pct?: number | null;
   center_distance_in: number | null;
   overall_length_in: number | null;
   incline_deg: number | null;
@@ -435,6 +439,7 @@ export const CSV_COLUMNS_V2 = [
   'type',
   'load_lbf',
   'speed_fpm',
+  'actual_speed_fpm', // v1.38: Actual belt speed from selected gearmotor
   'torque_inlb',
   'power_hp',
   'splice_type',

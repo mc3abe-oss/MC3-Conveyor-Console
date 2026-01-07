@@ -30,6 +30,22 @@ export default function OverviewTab({ outputs }: OverviewTabProps) {
             <span className="text-gray-600">Belt Speed:</span>
             <span className="font-mono">{summary.belt_speed_fpm?.toFixed(1) ?? '—'} FPM</span>
           </div>
+          {/* v1.38: Actual Belt Speed from selected gearmotor */}
+          {summary.actual_belt_speed_fpm !== null && summary.actual_belt_speed_fpm !== undefined && (
+            <div className="flex justify-between">
+              <span className={Math.abs(summary.actual_belt_speed_delta_pct ?? 0) > 5 ? 'text-amber-600' : 'text-gray-600'}>
+                Actual Speed:
+              </span>
+              <span className={`font-mono ${Math.abs(summary.actual_belt_speed_delta_pct ?? 0) > 5 ? 'text-amber-600' : ''}`}>
+                {summary.actual_belt_speed_fpm.toFixed(1)} FPM
+                {summary.actual_belt_speed_delta_pct !== null && summary.actual_belt_speed_delta_pct !== undefined && (
+                  <span className="ml-1 text-xs">
+                    ({summary.actual_belt_speed_delta_pct >= 0 ? '+' : ''}{summary.actual_belt_speed_delta_pct.toFixed(1)}%)
+                  </span>
+                )}
+              </span>
+            </div>
+          )}
           <div className="flex justify-between">
             <span className="text-gray-600">Center Distance:</span>
             <span className="font-mono">{summary.center_distance_in?.toFixed(1) ?? '—'}"</span>

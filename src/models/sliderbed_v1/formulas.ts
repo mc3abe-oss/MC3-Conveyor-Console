@@ -775,6 +775,58 @@ export function calculateBeltSpeed(
 }
 
 /**
+ * Calculate actual belt speed from selected gearmotor output RPM (v1.38)
+ *
+ * This computes the actual belt speed that will result from a selected gearmotor,
+ * accounting for the drive ratio (chain/sprocket configuration).
+ *
+ * Formula:
+ *   drive_ratio = gm_sprocket_teeth / drive_shaft_sprocket_teeth (inverse of chain_ratio)
+ *   drive_pulley_rpm = gearmotor_output_rpm * drive_ratio
+ *   actual_belt_speed_fpm = drive_pulley_rpm * PI * (pulley_diameter_in / 12)
+ *
+ * @param gearmotorOutputRpm - Output RPM of the selected gearmotor
+ * @param pulleyDiameterIn - Drive pulley diameter in inches
+ * @param gmSprocketTeeth - Gearmotor sprocket teeth (driver, default 18)
+ * @param driveShaftSprocketTeeth - Drive shaft sprocket teeth (driven, default 24)
+ * @param isBottomMount - Whether mounting style is bottom_mount (uses chain drive)
+ * @returns Actual belt speed in FPM
+ */
+export function calculateActualBeltSpeed(
+  gearmotorOutputRpm: number,
+  pulleyDiameterIn: number,
+  gmSprocketTeeth: number = 18,
+  driveShaftSprocketTeeth: number = 24,
+  isBottomMount: boolean = false
+): number {
+  // Drive ratio: how gearmotor RPM translates to drive pulley RPM
+  // For shaft_mounted: direct drive, ratio = 1.0
+  // For bottom_mount: drive_ratio = driver/driven = gm_teeth / drive_shaft_teeth
+  const driveRatio = isBottomMount
+    ? (gmSprocketTeeth > 0 ? gmSprocketTeeth / driveShaftSprocketTeeth : 1.0)
+    : 1.0;
+
+  const drivePulleyRpm = gearmotorOutputRpm * driveRatio;
+  const pulleyDiameterFt = pulleyDiameterIn / 12;
+  return drivePulleyRpm * PI * pulleyDiameterFt;
+}
+
+/**
+ * Calculate speed delta between desired and actual belt speed (v1.38)
+ *
+ * @param desiredFpm - Desired belt speed (user input or calculated)
+ * @param actualFpm - Actual belt speed from selected gearmotor
+ * @returns Delta percentage: positive = faster than desired, negative = slower
+ */
+export function calculateSpeedDeltaPct(
+  desiredFpm: number,
+  actualFpm: number
+): number {
+  if (desiredFpm <= 0) return 0;
+  return ((actualFpm - desiredFpm) / desiredFpm) * 100;
+}
+
+/**
  * Calculate capacity in parts per hour
  *
  * Formula:
@@ -1940,6 +1992,27 @@ export function calculate(
   // Total drive ratio = gear_ratio * chain_ratio
   const totalDriveRatio = gearRatio * chainRatio;
 
+  // v1.38: Actual belt speed from selected gearmotor
+  // Only computed when a gearmotor has been selected (selected_gearmotor_output_rpm_actual is set)
+  let actualBeltSpeedFpm: number | null = null;
+  let actualBeltSpeedDeltaPct: number | null = null;
+
+  if (
+    inputs.selected_gearmotor_output_rpm_actual !== undefined &&
+    inputs.selected_gearmotor_output_rpm_actual !== null &&
+    inputs.selected_gearmotor_output_rpm_actual > 0
+  ) {
+    actualBeltSpeedFpm = calculateActualBeltSpeed(
+      inputs.selected_gearmotor_output_rpm_actual,
+      drivePulleyDiameterIn,
+      inputs.gm_sprocket_teeth ?? 18,
+      inputs.drive_shaft_sprocket_teeth ?? 24,
+      isBottomMount
+    );
+    // Calculate delta vs desired belt speed
+    actualBeltSpeedDeltaPct = calculateSpeedDeltaPct(beltSpeedFpm, actualBeltSpeedFpm);
+  }
+
   // Step 16: Throughput calculations (optional - only if required_throughput_pph provided)
   let targetPph: number | undefined;
   let meetsThroughput: boolean | undefined;
@@ -2355,6 +2428,10 @@ export function calculate(
     chain_ratio: chainRatio,
     gearmotor_output_rpm: gearmotorOutputRpm,
     total_drive_ratio: totalDriveRatio,
+
+    // v1.38: Actual belt speed from selected gearmotor
+    actual_belt_speed_fpm: actualBeltSpeedFpm,
+    actual_belt_speed_delta_pct: actualBeltSpeedDeltaPct,
 
     safety_factor_used: safetyFactor,
     starting_belt_pull_lb_used: startingBeltPullLb,

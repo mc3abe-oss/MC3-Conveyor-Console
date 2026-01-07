@@ -161,6 +161,22 @@ export default function CalculationResults({ result, inputs }: Props) {
                 decimals={2}
                 highlight
               />
+              {/* v1.38: Actual Belt Speed from selected gearmotor */}
+              {outputs.actual_belt_speed_fpm !== null && outputs.actual_belt_speed_fpm !== undefined && (
+                <ResultRow
+                  label="Actual Belt Speed"
+                  value={outputs.actual_belt_speed_fpm}
+                  unit="FPM"
+                  decimals={2}
+                  highlight
+                  suffix={
+                    outputs.actual_belt_speed_delta_pct !== null && outputs.actual_belt_speed_delta_pct !== undefined
+                      ? ` (${outputs.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${outputs.actual_belt_speed_delta_pct.toFixed(1)}%)`
+                      : undefined
+                  }
+                  warning={Math.abs(outputs.actual_belt_speed_delta_pct ?? 0) > 5}
+                />
+              )}
               <ResultRow
                 label="Drive Shaft RPM"
                 value={outputs.drive_shaft_rpm}
@@ -571,20 +587,26 @@ interface ResultRowProps {
   unit?: string;
   decimals?: number;
   highlight?: boolean;
+  /** Optional suffix to append after the value (e.g., delta percentage) */
+  suffix?: string;
+  /** Show warning styling when true (e.g., delta exceeds threshold) */
+  warning?: boolean;
 }
 
-function ResultRow({ label, value, unit, decimals = 2, highlight }: ResultRowProps) {
+function ResultRow({ label, value, unit, decimals = 2, highlight, suffix, warning }: ResultRowProps) {
   return (
     <div
       className={clsx(
         'flex justify-between items-center',
-        highlight ? 'text-primary-900' : 'text-gray-700'
+        highlight ? 'text-primary-900' : 'text-gray-700',
+        warning && 'text-amber-600'
       )}
     >
       <span className={highlight ? 'font-medium' : ''}>{label}:</span>
-      <span className={clsx('font-mono', highlight && 'font-semibold text-lg')}>
+      <span className={clsx('font-mono', highlight && 'font-semibold text-lg', warning && 'text-amber-600')}>
         {value != null ? value.toFixed(decimals) : '—'}
         {unit && <span className="ml-1 text-xs">{unit}</span>}
+        {suffix && <span className={clsx('ml-1 text-xs', warning ? 'text-amber-600' : 'text-gray-500')}>{suffix}</span>}
       </span>
     </div>
   );
