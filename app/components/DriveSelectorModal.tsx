@@ -368,7 +368,7 @@ export default function DriveSelectorModal({
             {/* B) Service Factor selector */}
             <div>
               <label className="text-sm font-medium text-gray-700 block mb-2">
-                Service Factor
+                Service Factor (Applied)
                 {isOverrideActive && (
                   <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">
                     Override
@@ -497,10 +497,10 @@ export default function DriveSelectorModal({
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                   <p className="text-sm text-gray-600 mb-2">
-                    No NORD gearmotor matches <span className="font-mono">~{formatRequiredRpm(requiredOutputRpm)}</span> RPM and <span className="font-mono">~{formatRequiredTorque(requiredOutputTorqueLbIn)}</span> lb-in at SF {activeSf}.
+                    No NORD gearmotor matches <span className="font-mono">~{formatRequiredRpm(requiredOutputRpm)}</span> RPM and <span className="font-mono">~{formatRequiredTorque(requiredOutputTorqueLbIn)}</span> lb-in at Applied SF {activeSf}.
                   </p>
                   <p className="text-xs text-gray-500">
-                    Try increasing speed tolerance or lowering service factor.
+                    Try adjusting service factor or speed tolerance.
                   </p>
                 </div>
               )}
@@ -515,13 +515,15 @@ export default function DriveSelectorModal({
                     <table className="w-full text-sm">
                       <thead className="bg-gray-50">
                         <tr>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap">Series Code</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500">Size</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500">HP</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500">RPM</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500">Torque</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap">Cat SF</th>
-                          <th className="px-2 py-2 text-left font-medium text-gray-500">Margin</th>
+                          {/* Catalog columns (immutable, exact from vendor) */}
+                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap">Series</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-500">Motor HP</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Output RPM (exact)">RPM</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-500" title="Catalog Output Torque (exact)">Torque</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-500 whitespace-nowrap" title="Catalog Service Factor (fᵦ) - vendor published rating">SF (Cat)</th>
+                          {/* Calculated columns (derived from selection) */}
+                          <th className="px-2 py-2 text-left font-medium text-gray-400 whitespace-nowrap" title="RPM Delta vs Required">Δ RPM</th>
+                          <th className="px-2 py-2 text-left font-medium text-gray-400" title="Capacity Margin %">Margin</th>
                           <th className="px-2 py-2"></th>
                         </tr>
                       </thead>
@@ -530,6 +532,7 @@ export default function DriveSelectorModal({
                           const isSelected = selectedCandidate?.performance_point_id === candidate.performance_point_id;
                           const margin = formatMargin(candidate.oversize_ratio);
                           const seriesCode = getSeriesCode(candidate.size_code, candidate.gear_unit_part_number);
+                          const rpmDeltaPct = candidate.speed_delta_pct;
                           return (
                             <tr
                               key={candidate.performance_point_id}
@@ -539,6 +542,7 @@ export default function DriveSelectorModal({
                               )}
                               onClick={() => handleSelectCandidate(candidate)}
                             >
+                              {/* Catalog columns */}
                               <td className="px-2 py-2.5 font-medium text-gray-900">
                                 <span className="flex items-center gap-1.5">
                                   {seriesCode}
@@ -549,16 +553,12 @@ export default function DriveSelectorModal({
                                   )}
                                 </span>
                               </td>
-                              <td className="px-2 py-2.5 text-gray-600">{candidate.size_code}</td>
                               <td className="px-2 py-2.5 text-gray-600">{candidate.motor_hp}</td>
                               <td
                                 className="px-2 py-2.5 font-mono text-gray-600"
                                 title={`Catalog RPM: ${candidate.output_rpm}`}
                               >
                                 {formatCatalogRpm(candidate.output_rpm)}
-                                <span className="text-xs text-gray-400 ml-1">
-                                  ({candidate.speed_delta_pct > 0 ? '+' : ''}{candidate.speed_delta_pct.toFixed(0)}%)
-                                </span>
                               </td>
                               <td
                                 className="px-2 py-2.5 font-mono text-gray-600"
@@ -566,8 +566,15 @@ export default function DriveSelectorModal({
                               >
                                 {formatCatalogTorque(candidate.output_torque_lb_in)}
                               </td>
-                              <td className="px-2 py-2.5 font-mono text-gray-500">
+                              <td
+                                className="px-2 py-2.5 font-mono text-gray-500"
+                                title={`Catalog Service Factor (fᵦ): ${candidate.service_factor_catalog}`}
+                              >
                                 {formatCatalogSf(candidate.service_factor_catalog)}
+                              </td>
+                              {/* Calculated columns */}
+                              <td className="px-2 py-2.5 font-mono text-gray-400">
+                                {rpmDeltaPct > 0 ? '+' : ''}{rpmDeltaPct.toFixed(0)}%
                               </td>
                               <td className="px-2 py-2.5">
                                 <span className={clsx(

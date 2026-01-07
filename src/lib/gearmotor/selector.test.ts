@@ -111,16 +111,17 @@ describe('GearmotorSelector', () => {
   });
 
   describe('Torque normalization with Service Factor', () => {
-    it('should adjust capacity based on chosen SF vs catalog SF', () => {
-      // adjusted_capacity = output_torque_lb_in * (chosen_sf / catalog_sf)
-      const catalogTorque = 720;
-      const catalogSF = 1.0;
-      const chosenSF = 1.5;
+    it('should adjust capacity based on catalog SF vs chosen SF', () => {
+      // effective_capacity = output_torque_lb_in * (catalog_service_factor / chosen_service_factor)
+      // Higher catalog SF = unit is rated conservatively = more effective capacity
+      const catalogTorque = 60;
+      const catalogSF = 7.1;  // Vendor's conservative rating
+      const chosenSF = 1.5;   // User's applied SF
 
-      const adjustedCapacity = catalogTorque * (chosenSF / catalogSF);
+      const adjustedCapacity = catalogTorque * (catalogSF / chosenSF);
 
-      // With SF=1.5 vs catalog SF=1.0, we get 50% more effective capacity
-      expect(adjustedCapacity).toBe(1080);
+      // With catalog SF=7.1 and chosen SF=1.5, effective capacity is much higher
+      expect(adjustedCapacity).toBeCloseTo(284, 0);
     });
 
     it('should filter candidates where adjusted capacity < required torque', () => {
@@ -128,7 +129,7 @@ describe('GearmotorSelector', () => {
       const requiredTorque = 700;
       const candidates = mockFlexblocCandidates.map(c => ({
         ...c,
-        adjusted_capacity: c.output_torque_lb_in * 1.0, // SF ratio = 1.0
+        adjusted_capacity: c.output_torque_lb_in * 1.0, // SF ratio = 1.0 (catalog SF = chosen SF)
       }));
 
       const passing = candidates.filter(c => c.adjusted_capacity >= requiredTorque);
@@ -136,20 +137,33 @@ describe('GearmotorSelector', () => {
       expect(passing[0].output_torque_lb_in).toBe(720);
     });
 
-    it('should allow more candidates with higher service factor', () => {
-      // Higher chosen SF increases adjusted_capacity, allowing more candidates
-      const requiredTorque = 700;
+    it('should allow more candidates with higher catalog service factor', () => {
+      // Higher catalog SF means more effective capacity (unit rated conservatively)
+      const requiredTorque = 200;
       const chosenSF = 1.5;
-      const catalogSF = 1.0;
+      const catalogSF = 5.0;  // High catalog SF means conservative vendor rating
 
       const candidates = mockFlexblocCandidates.map(c => ({
         ...c,
-        adjusted_capacity: c.output_torque_lb_in * (chosenSF / catalogSF),
+        // Use catalog SF from mock data (1.0) for realistic test
+        adjusted_capacity: c.output_torque_lb_in * (catalogSF / chosenSF),
       }));
 
-      // 720 * 1.5 = 1080, 680 * 1.5 = 1020 - both pass now
+      // 720 * (5.0/1.5) = 2400, 680 * (5.0/1.5) = 2267 - both easily pass
       const passing = candidates.filter(c => c.adjusted_capacity >= requiredTorque);
       expect(passing.length).toBe(2);
+    });
+
+    it('should reduce effective capacity with higher chosen SF', () => {
+      // Higher chosen SF = more margin required = less effective capacity
+      const catalogTorque = 720;
+      const catalogSF = 1.0;
+      const chosenSF = 2.0;
+
+      const adjustedCapacity = catalogTorque * (catalogSF / chosenSF);
+
+      // With chosen SF=2.0 and catalog SF=1.0, effective capacity is halved
+      expect(adjustedCapacity).toBe(360);
     });
   });
 
@@ -333,15 +347,15 @@ describe('GearmotorSelector', () => {
     });
 
     it('should compute adjusted capacity correctly with SF < 1.0', () => {
-      // adjusted_capacity = output_torque_lb_in * (chosen_sf / catalog_sf)
-      const catalogTorque = 720;
-      const catalogSF = 1.0;
+      // effective_capacity = output_torque_lb_in * (catalog_service_factor / chosen_service_factor)
+      const catalogTorque = 60;
+      const catalogSF = 7.1;
       const chosenSF = 0.85;
 
-      const adjustedCapacity = catalogTorque * (chosenSF / catalogSF);
+      const adjustedCapacity = catalogTorque * (catalogSF / chosenSF);
 
-      // With SF=0.85 vs catalog SF=1.0, we get 15% less effective capacity
-      expect(adjustedCapacity).toBe(612);
+      // With chosen SF=0.85, we get MORE effective capacity (less margin required)
+      expect(adjustedCapacity).toBeCloseTo(501.2, 0);
     });
 
     it('should pass SF override directly to selector without clamping', () => {

@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 /**
- * Seed NORD FLEXBLOC Gearmotor Performance Data
+ * Seed NORD FLEXBLOC Gearmotor Performance Data (Catalog-Faithful)
  *
- * Reads the authoritative CSV file and populates:
- *   - vendor_components (gear units)
- *   - vendor_performance_points (operating points)
+ * Reads the AUTHORITATIVE catalog CSV and populates:
+ *   - vendor_components (gear units by series + HP)
+ *   - vendor_performance_points (operating points exactly as published)
  *
- * IDEMPOTENT: Safe to run multiple times. Uses upsert via unique constraints.
+ * CATALOG-FAITHFUL:
+ *   - All values come directly from vendor catalog CSV
+ *   - No interpolation, no inference, no invented data
+ *   - catalog_service_factor is vendor-published fᵦ (NOT app safety factor)
+ *
+ * IDEMPOTENT:
+ *   - Deletes existing NORD FLEXBLOC data before inserting
+ *   - Safe to run multiple times
  *
  * Usage:
  *   NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... node scripts/seed-nord-flexbloc.mjs
@@ -28,8 +35,10 @@ const __dirname = path.dirname(__filename);
 // CONFIGURATION
 // ============================================================================
 
-const CSV_PATH = path.resolve(__dirname, '../Reference/Vendor/nord_flexbloc_performance_v1.csv');
+// AUTHORITATIVE source - the ONLY source of NORD FLEXBLOC data
+const CSV_PATH = path.resolve(__dirname, '../Reference/Vendor/nord_flexbloc_0p25_to_1hp_catalog_extract_v1.csv');
 const VENDOR = 'NORD';
+const SERIES = 'FLEXBLOC';
 
 // ============================================================================
 // SUPABASE CLIENT
@@ -49,6 +58,10 @@ const supabase = createClient(supabaseUrl, supabaseServiceKey);
 // CSV PARSING
 // ============================================================================
 
+/**
+ * Parse CSV content into rows.
+ * Expected columns: motor_hp, series_code, output_rpm, output_torque_lb_in, catalog_service_factor
+ */
 function parseCSV(content) {
   const lines = content.trim().split('\n');
   const headers = lines[0].split(',').map(h => h.trim());
@@ -68,6 +81,22 @@ function parseCSV(content) {
   return rows;
 }
 
+/**
+ * Generate a unique part number for a gear unit based on series and HP.
+ * Format: {series_code}-{motor_hp}HP (e.g., "SI50-0.25HP")
+ */
+function generatePartNumber(seriesCode, motorHp) {
+  return `${seriesCode}-${motorHp}HP`;
+}
+
+/**
+ * Extract size code from series code (e.g., "SI50" -> "50")
+ */
+function extractSizeCode(seriesCode) {
+  const match = seriesCode.match(/SI(\d+)/);
+  return match ? match[1] : seriesCode;
+}
+
 // ============================================================================
 // MAIN SEED FUNCTION
 // ============================================================================
@@ -78,10 +107,10 @@ async function seedNordFlexbloc() {
   const verbose = args.includes('--verbose');
 
   console.log('='.repeat(60));
-  console.log('NORD FLEXBLOC Gearmotor Seed Script');
+  console.log('NORD FLEXBLOC Gearmotor Seed Script (Catalog-Faithful)');
   console.log('='.repeat(60));
   if (dryRun) console.log('DRY RUN MODE - no changes will be made');
-  console.log(`CSV Source: ${CSV_PATH}`);
+  console.log(`Authoritative CSV: ${CSV_PATH}`);
   console.log();
 
   // Read and parse CSV
@@ -92,148 +121,183 @@ async function seedNordFlexbloc() {
 
   const csvContent = fs.readFileSync(CSV_PATH, 'utf-8');
   const rows = parseCSV(csvContent);
-  console.log(`Parsed ${rows.length} performance data rows from CSV`);
+  console.log(`Parsed ${rows.length} catalog performance rows from CSV`);
   console.log();
 
-  // Extract unique gear units
+  // Validate CSV columns
+  const requiredColumns = ['motor_hp', 'series_code', 'output_rpm', 'output_torque_lb_in', 'catalog_service_factor'];
+  const firstRow = rows[0];
+  for (const col of requiredColumns) {
+    if (!(col in firstRow)) {
+      console.error(`Error: Missing required column '${col}' in CSV`);
+      process.exit(1);
+    }
+  }
+
+  // ==========================================================================
+  // STEP 0: Delete existing NORD FLEXBLOC data (for clean reseed)
+  // ==========================================================================
+  console.log('Step 0: Removing existing NORD FLEXBLOC data...');
+
+  if (!dryRun) {
+    // Delete performance points first (foreign key constraint)
+    const { error: perfDeleteError, count: perfDeleteCount } = await supabase
+      .from('vendor_performance_points')
+      .delete({ count: 'exact' })
+      .eq('vendor', VENDOR)
+      .eq('series', SERIES);
+
+    if (perfDeleteError) {
+      console.error('  Error deleting performance points:', perfDeleteError.message);
+    } else {
+      console.log(`  Deleted ${perfDeleteCount ?? 0} existing performance points`);
+    }
+
+    // Delete gear unit components
+    const { error: compDeleteError, count: compDeleteCount } = await supabase
+      .from('vendor_components')
+      .delete({ count: 'exact' })
+      .eq('vendor', VENDOR)
+      .eq('component_type', 'GEAR_UNIT')
+      .like('vendor_part_number', 'SI%');
+
+    if (compDeleteError) {
+      console.error('  Error deleting components:', compDeleteError.message);
+    } else {
+      console.log(`  Deleted ${compDeleteCount ?? 0} existing gear unit components`);
+    }
+  } else {
+    console.log('  [DRY RUN] Would delete existing NORD FLEXBLOC data');
+  }
+  console.log();
+
+  // ==========================================================================
+  // STEP 1: Extract and create unique gear unit components
+  // ==========================================================================
+  console.log('Step 1: Creating gear unit components...');
+
+  // Extract unique series_code + motor_hp combinations
   const gearUnitsMap = new Map();
   for (const row of rows) {
-    const partNumber = row.gear_unit_part_number;
+    const partNumber = generatePartNumber(row.series_code, row.motor_hp);
     if (!gearUnitsMap.has(partNumber)) {
       gearUnitsMap.set(partNumber, {
-        vendor: row.vendor || VENDOR,
-        series: row.series,
-        size_code: row.size_code,
-        part_number: partNumber,
+        series_code: row.series_code,
+        motor_hp: parseFloat(row.motor_hp),
+        size_code: extractSizeCode(row.series_code),
       });
     }
   }
 
-  const gearUnits = Array.from(gearUnitsMap.values());
-  console.log(`Found ${gearUnits.length} unique gear unit part numbers`);
-  console.log();
+  const gearUnits = Array.from(gearUnitsMap.entries());
+  console.log(`  Found ${gearUnits.length} unique gear unit configurations`);
 
   // Stats
-  let componentsUpserted = 0;
-  let performancePointsUpserted = 0;
+  let componentsInserted = 0;
+  let performancePointsInserted = 0;
   let errors = 0;
 
-  // Map from part_number to component UUID (needed for FK in performance points)
+  // Map from part_number to component UUID
   const partNumberToId = new Map();
 
-  // ==========================================================================
-  // STEP 1: Upsert vendor_components (gear units)
-  // ==========================================================================
-  console.log('Step 1: Upserting vendor_components (gear units)...');
-
-  for (const gu of gearUnits) {
+  for (const [partNumber, gu] of gearUnits) {
     const componentRow = {
-      vendor: gu.vendor,
+      vendor: VENDOR,
       component_type: 'GEAR_UNIT',
-      vendor_part_number: gu.part_number,
-      description: `NORD ${gu.series} Gear Unit Size ${gu.size_code}`,
-      metadata_json: { series: gu.series, size_code: gu.size_code },
+      vendor_part_number: partNumber,
+      description: `NORD ${SERIES} ${gu.series_code} ${gu.motor_hp}HP Gear Unit`,
+      metadata_json: {
+        series: SERIES,
+        series_code: gu.series_code,
+        size_code: gu.size_code,
+        motor_hp: gu.motor_hp,
+      },
     };
 
     if (verbose) {
-      console.log(`  [COMPONENT] ${gu.part_number} - ${componentRow.description}`);
+      console.log(`  [COMPONENT] ${partNumber} - ${componentRow.description}`);
     }
 
     if (!dryRun) {
-      // Upsert: insert or update on conflict
       const { data, error } = await supabase
         .from('vendor_components')
-        .upsert(componentRow, {
-          onConflict: 'vendor,vendor_part_number',
-          ignoreDuplicates: false,
-        })
+        .insert(componentRow)
         .select('id')
         .single();
 
       if (error) {
-        console.error(`  Error upserting ${gu.part_number}:`, error.message);
+        console.error(`  Error inserting ${partNumber}:`, error.message);
         errors++;
         continue;
       }
 
-      partNumberToId.set(gu.part_number, data.id);
-      componentsUpserted++;
+      partNumberToId.set(partNumber, data.id);
+      componentsInserted++;
     } else {
-      // Dry run - need to look up existing ID if any
-      const { data: existing } = await supabase
-        .from('vendor_components')
-        .select('id')
-        .eq('vendor', gu.vendor)
-        .eq('vendor_part_number', gu.part_number)
-        .single();
-
-      if (existing) {
-        partNumberToId.set(gu.part_number, existing.id);
-      } else {
-        partNumberToId.set(gu.part_number, 'DRY_RUN_PLACEHOLDER');
-      }
-      componentsUpserted++;
+      partNumberToId.set(partNumber, 'DRY_RUN_PLACEHOLDER');
+      componentsInserted++;
     }
   }
 
-  console.log(`  ${componentsUpserted} gear unit(s) processed`);
+  console.log(`  ${componentsInserted} gear unit(s) created`);
   console.log();
 
   // ==========================================================================
-  // STEP 2: Upsert vendor_performance_points
+  // STEP 2: Insert performance points (exactly as published in catalog)
   // ==========================================================================
-  console.log('Step 2: Upserting vendor_performance_points...');
+  console.log('Step 2: Inserting catalog performance points...');
 
   for (const row of rows) {
-    const gearUnitId = partNumberToId.get(row.gear_unit_part_number);
+    const partNumber = generatePartNumber(row.series_code, row.motor_hp);
+    const gearUnitId = partNumberToId.get(partNumber);
 
-    if (!gearUnitId || gearUnitId === 'DRY_RUN_PLACEHOLDER') {
-      if (!dryRun) {
-        console.error(`  Missing gear unit ID for ${row.gear_unit_part_number}`);
-        errors++;
-        continue;
-      }
+    if (!gearUnitId) {
+      console.error(`  Missing gear unit ID for ${partNumber}`);
+      errors++;
+      continue;
     }
 
+    // Parse catalog values EXACTLY as published
+    const motorHp = parseFloat(row.motor_hp);
+    const outputRpm = parseInt(row.output_rpm, 10); // Integer, exact
+    const outputTorque = parseFloat(row.output_torque_lb_in); // Exact value
+    const catalogSf = parseFloat(row.catalog_service_factor); // Vendor fᵦ
+
     const perfRow = {
-      vendor: row.vendor || VENDOR,
-      series: row.series,
-      size_code: row.size_code,
-      gear_unit_component_id: gearUnitId,
-      motor_hp: parseFloat(row.motor_hp),
-      output_rpm: parseFloat(row.output_rpm),
-      output_torque_lb_in: parseFloat(row.output_torque_lb_in),
-      service_factor_catalog: parseFloat(row.service_factor_catalog),
-      source_ref: row.source_ref || null,
+      vendor: VENDOR,
+      series: SERIES,
+      size_code: extractSizeCode(row.series_code),
+      gear_unit_component_id: gearUnitId === 'DRY_RUN_PLACEHOLDER' ? null : gearUnitId,
+      motor_hp: motorHp,
+      output_rpm: outputRpm,
+      output_torque_lb_in: outputTorque,
+      service_factor_catalog: catalogSf,
+      source_ref: `Catalog-${row.series_code}-${motorHp}HP`,
     };
 
     if (verbose) {
       console.log(
-        `  [PERF] ${row.series} ${row.size_code} @ ${row.motor_hp}HP: ` +
-        `${row.output_rpm} RPM, ${row.output_torque_lb_in} lb-in`
+        `  [PERF] ${row.series_code} ${motorHp}HP: ` +
+        `${outputRpm} RPM, ${outputTorque} lb-in, SF=${catalogSf}`
       );
     }
 
     if (!dryRun && gearUnitId !== 'DRY_RUN_PLACEHOLDER') {
-      // Upsert performance point
       const { error } = await supabase
         .from('vendor_performance_points')
-        .upsert(perfRow, {
-          onConflict: 'vendor,series,size_code,gear_unit_component_id,motor_hp,output_rpm,output_torque_lb_in,service_factor_catalog',
-          ignoreDuplicates: false,
-        });
+        .insert(perfRow);
 
       if (error) {
-        console.error(`  Error upserting performance point:`, error.message);
+        console.error(`  Error inserting performance point:`, error.message);
         errors++;
         continue;
       }
     }
 
-    performancePointsUpserted++;
+    performancePointsInserted++;
   }
 
-  console.log(`  ${performancePointsUpserted} performance point(s) processed`);
+  console.log(`  ${performancePointsInserted} performance point(s) inserted`);
   console.log();
 
   // ==========================================================================
@@ -241,8 +305,8 @@ async function seedNordFlexbloc() {
   // ==========================================================================
   console.log('='.repeat(60));
   console.log('Summary:');
-  console.log(`  Gear Units Processed: ${componentsUpserted}`);
-  console.log(`  Performance Points Processed: ${performancePointsUpserted}`);
+  console.log(`  Gear Units Created: ${componentsInserted}`);
+  console.log(`  Performance Points Inserted: ${performancePointsInserted}`);
   console.log(`  Errors: ${errors}`);
   console.log('='.repeat(60));
 
@@ -252,7 +316,7 @@ async function seedNordFlexbloc() {
   }
 
   // Verification (not in dry run)
-  if (!dryRun) {
+  if (!dryRun && errors === 0) {
     console.log();
     console.log('Verification:');
 
@@ -260,16 +324,33 @@ async function seedNordFlexbloc() {
       .from('vendor_components')
       .select('*', { count: 'exact', head: true })
       .eq('vendor', VENDOR)
-      .eq('component_type', 'GEAR_UNIT');
+      .eq('component_type', 'GEAR_UNIT')
+      .like('vendor_part_number', 'SI%');
 
     const { count: perfCount } = await supabase
       .from('vendor_performance_points')
       .select('*', { count: 'exact', head: true })
       .eq('vendor', VENDOR)
-      .eq('series', 'FLEXBLOC');
+      .eq('series', SERIES);
 
-    console.log(`  NORD Gear Units in DB: ${componentCount}`);
+    console.log(`  NORD FLEXBLOC Gear Units in DB: ${componentCount}`);
     console.log(`  FLEXBLOC Performance Points in DB: ${perfCount}`);
+
+    // Sample verification
+    const { data: sample } = await supabase
+      .from('vendor_performance_points')
+      .select('motor_hp, output_rpm, output_torque_lb_in, service_factor_catalog')
+      .eq('vendor', VENDOR)
+      .eq('series', SERIES)
+      .limit(3);
+
+    if (sample && sample.length > 0) {
+      console.log();
+      console.log('Sample data (first 3 rows):');
+      for (const s of sample) {
+        console.log(`  ${s.motor_hp}HP: ${s.output_rpm} RPM, ${s.output_torque_lb_in} lb-in, SF=${s.service_factor_catalog}`);
+      }
+    }
   }
 }
 

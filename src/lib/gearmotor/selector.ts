@@ -171,7 +171,7 @@ async function queryCandidates(
   // Query performance points with gear unit info
   // Speed filter: output_rpm BETWEEN minRpm AND maxRpm
   // Torque filter: adjusted_capacity >= requiredTorque
-  //   where adjusted_capacity = output_torque_lb_in * (chosenSF / service_factor_catalog)
+  //   where adjusted_capacity = output_torque_lb_in * (catalog_service_factor / chosenSF)
 
   const { data, error } = await supabase
     .from('vendor_performance_points')
@@ -206,11 +206,13 @@ async function queryCandidates(
   }
 
   // Filter by torque capacity (with SF normalization)
+  // effective_capacity = output_torque_lb_in * (catalog_service_factor / chosen_service_factor)
+  // Higher catalog SF means unit is rated conservatively, giving more effective capacity
   const candidates: GearmotorCandidate[] = [];
 
   for (const row of data) {
     const catalogSF = row.service_factor_catalog || 1.0;
-    const adjustedCapacity = row.output_torque_lb_in * (chosenSF / catalogSF);
+    const adjustedCapacity = row.output_torque_lb_in * (catalogSF / chosenSF);
 
     // Torque must meet requirement
     if (adjustedCapacity < requiredTorque) {
