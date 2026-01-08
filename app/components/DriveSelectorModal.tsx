@@ -8,8 +8,9 @@ import {
   evaluateGearmotorCandidate,
   buildBomCopyText,
   getMissingHint,
-  resolveBomFromMetadata,
+  resolveBom,
   type BomComponent,
+  type BomResolution,
 } from '../../src/lib/gearmotor';
 
 // Formatting helpers for REQUIREMENTS (can round for display)
@@ -129,6 +130,37 @@ export default function DriveSelectorModal({
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<GearmotorSelectionResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [resolvedBom, setResolvedBom] = useState<BomResolution | null>(null);
+  const [bomLoading, setBomLoading] = useState(false);
+
+  // Resolve BOM when selectedCandidate changes
+  // IMPORTANT: Uses catalog ratio from metadata_json.total_ratio (NOT SF-adjusted)
+  // Applied SF affects filtering/display only, not gear unit PN lookup
+  useEffect(() => {
+    if (!selectedCandidate) {
+      setResolvedBom(null);
+      return;
+    }
+
+    const metadata = selectedCandidate.metadata_json;
+    const modelType = metadata?.model_type as string | undefined;
+    // Catalog ratio from CSV - this is the key for gear unit PN lookup
+    const catalogRatio = metadata?.total_ratio as number | undefined;
+
+    setBomLoading(true);
+    resolveBom(modelType, selectedCandidate.motor_hp, {
+      totalRatio: catalogRatio, // Always catalog ratio, never SF-adjusted
+    })
+      .then((bom) => {
+        setResolvedBom(bom);
+      })
+      .catch(() => {
+        setResolvedBom(null);
+      })
+      .finally(() => {
+        setBomLoading(false);
+      });
+  }, [selectedCandidate]);
 
   // Compute active SF: override takes precedence if valid
   const sfOverrideValidation = validateSfOverride(sfOverrideInput);
@@ -284,19 +316,16 @@ export default function DriveSelectorModal({
   // State for copy error
   const [copyError, setCopyError] = useState<string | null>(null);
 
-  // Copy vendor parts - builds proper BOM text
+  // Copy vendor parts - builds proper BOM text using resolved BOM
   const handleCopyVendorParts = useCallback(async () => {
-    if (!selectedCandidate) return;
-
-    // Build BOM from metadata
-    const metadata = selectedCandidate.metadata_json;
-    const bom = resolveBomFromMetadata(metadata, selectedCandidate.motor_hp);
+    if (!selectedCandidate || !resolvedBom) return;
 
     // Get catalog page from metadata
+    const metadata = selectedCandidate.metadata_json;
     const catalogPage = (metadata?.catalog_page as string) || null;
 
-    // Build the copy text
-    const copyText = buildBomCopyText(bom, {
+    // Build the copy text using the async-resolved BOM (which has real PNs)
+    const copyText = buildBomCopyText(resolvedBom, {
       appliedSf: activeSf,
       catalogSf: selectedCandidate.service_factor_catalog,
       catalogPage,
@@ -313,7 +342,7 @@ export default function DriveSelectorModal({
       setCopyError('Copy failed. Please select and copy manually.');
       setTimeout(() => setCopyError(null), 3000);
     }
-  }, [selectedCandidate, activeSf]);
+  }, [selectedCandidate, resolvedBom, activeSf]);
 
   // Clear selection
   const handleClearSelection = () => {
@@ -676,10 +705,17 @@ export default function DriveSelectorModal({
             </div>
 
             {/* E) Vendor Parts / BOM */}
-            {selectedCandidate && (() => {
-              // Build BOM from metadata
-              const metadata = selectedCandidate.metadata_json;
-              const bom = resolveBomFromMetadata(metadata, selectedCandidate.motor_hp);
+            {selectedCandidate && bomLoading && (
+              <div className="border border-gray-200 rounded-lg p-4">
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <div className="animate-spin w-4 h-4 border-2 border-primary-500 border-t-transparent rounded-full" />
+                  Resolving part numbers...
+                </div>
+              </div>
+            )}
+            {selectedCandidate && resolvedBom && !bomLoading && (() => {
+              // Use the async-resolved BOM (which has real gear unit PNs from DB lookup)
+              const bom = resolvedBom;
               const parsed = bom.parsed;
 
               // Helper to get component by type

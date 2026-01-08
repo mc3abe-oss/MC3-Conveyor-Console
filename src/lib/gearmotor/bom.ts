@@ -190,6 +190,10 @@ export async function resolveBom(
   if (options?.totalRatio !== undefined) {
     // Query gear units by metadata fields
     const mountingVariant = options.mountingVariant || DEFAULT_MOUNTING_VARIANT;
+    // Normalize total_ratio to integer for lookup (catalog ratios are whole numbers)
+    // IMPORTANT: totalRatio comes from catalog CSV (metadata_json.total_ratio), NOT SF-adjusted
+    const normalizedRatio = Math.round(options.totalRatio);
+
     const { data: gearUnits } = await supabase
       .from('vendor_components')
       .select('vendor_part_number, description, metadata_json')
@@ -197,13 +201,15 @@ export async function resolveBom(
       .eq('component_type', 'GEAR_UNIT');
 
     // Find matching gear unit by metadata
+    // Key: (gear_unit_size, total_ratio, mounting_variant)
     if (gearUnits) {
       for (const gu of gearUnits) {
         const meta = gu.metadata_json as Record<string, unknown> | null;
         if (!meta) continue;
 
         const sizeMatch = meta.gear_unit_size === parsed.gear_unit_size;
-        const ratioMatch = Math.abs((meta.total_ratio as number) - options.totalRatio) < 0.01;
+        // Use normalized (rounded) ratio for comparison - catalog ratios are integers
+        const ratioMatch = (meta.total_ratio as number) === normalizedRatio;
         const variantMatch = meta.mounting_variant === mountingVariant;
 
         if (sizeMatch && ratioMatch && variantMatch) {

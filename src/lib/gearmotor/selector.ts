@@ -251,6 +251,11 @@ async function queryCandidates(
     // oversize_ratio is now simply catalog_torque / required_torque (margin + 1)
     const oversizeRatio = row.output_torque_lb_in / requiredTorque;
 
+    // Include metadata_json for BOM resolution
+    // IMPORTANT: metadata_json.total_ratio is the catalog ratio from CSV
+    // This ratio is used for gear unit PN lookup, NOT adjusted by applied SF
+    const metadata = row.metadata_json as GearmotorCandidate['metadata_json'];
+
     candidates.push({
       performance_point_id: row.id,
       gear_unit_component_id: row.gear_unit_component_id,
@@ -264,7 +269,7 @@ async function queryCandidates(
       output_torque_lb_in: row.output_torque_lb_in,
       service_factor_catalog: row.service_factor_catalog,
       source_ref: row.source_ref,
-      metadata_json: row.metadata_json as GearmotorCandidate['metadata_json'],
+      metadata_json: metadata,
       // adjusted_capacity is now just raw catalog torque (no SF adjustment)
       adjusted_capacity: row.output_torque_lb_in,
       oversize_ratio: oversizeRatio,

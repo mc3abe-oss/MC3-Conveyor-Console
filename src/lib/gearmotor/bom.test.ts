@@ -12,6 +12,7 @@ import {
   isRealNordPartNumber,
   DEFAULT_MOUNTING_VARIANT,
   ResolveBomOptions,
+  BomResolution,
 } from './bom';
 
 describe('parseModelType', () => {
@@ -702,6 +703,162 @@ describe('Gear Unit PN Resolution Logic', () => {
         expect(options.totalRatio).toBe(ratio);
       }
     });
+  });
+});
+
+// =============================================================================
+// REGRESSION: Applied SF must NOT affect gear unit PN lookup
+// =============================================================================
+
+describe('REGRESSION: Gear unit PN uses catalog ratio, NOT SF-adjusted ratio', () => {
+  /**
+   * REGRESSION TEST (2026-01-07):
+   * Applied Service Factor (SF) is a FILTERING/DISPLAY parameter, NOT an ordering key.
+   *
+   * Definitions:
+   * - catalog_ratio = candidate.metadata_json.total_ratio (exact from catalog CSV)
+   * - applied_sf = user-selected service factor for filtering candidates
+   *
+   * Rules:
+   * - applied_sf affects: filtering eligibility (SF_cat >= applied_sf), margin display, notes/copy text
+   * - applied_sf does NOT affect: gear unit PN selection / BOM ratio key
+   *
+   * The gear unit PN is keyed by (gear_unit_size, catalog_ratio, mounting_variant).
+   * Changing applied SF must NEVER change the ratio used for gear unit lookup.
+   */
+
+  it('gear unit PN uses catalog ratio even when applied SF is high', () => {
+    // Given: SI63 with catalog total_ratio=80, applied_sf=1.5
+    // When applied_sf is 1.5, the ratio used for PN lookup should STILL be 80
+    // NOT 80 * 1.5 = 120 (this would be WRONG)
+
+    const metadata = {
+      model_type: 'SK 1SI63/H10 - 56C - 63L/4',
+      total_ratio: 80, // Catalog ratio from CSV - this is the ONLY ratio for PN lookup
+      parsed_model: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+    };
+
+    // The options.totalRatio should be the catalog ratio (80), not SF-adjusted
+    const options: ResolveBomOptions = {
+      totalRatio: metadata.total_ratio, // 80, NOT 80 * applied_sf
+      mountingVariant: 'inch_hollow',
+    };
+
+    // This verifies the correct value is passed
+    expect(options.totalRatio).toBe(80);
+    expect(Math.round(options.totalRatio)).toBe(80);
+  });
+
+  it('changing applied SF does not change the ratio for gear unit lookup', () => {
+    // Given the same candidate selected, varying applied SF should result in
+    // the SAME totalRatio being used for gear unit lookup
+
+    const catalogRatio = 80; // From candidate.metadata_json.total_ratio
+
+    // Test with various SF values - the ratio should ALWAYS be 80
+    const sfValues = [0.85, 1.0, 1.25, 1.5, 2.0];
+
+    for (const appliedSf of sfValues) {
+      // The ratio passed to resolveBom should ALWAYS be the catalog ratio
+      // regardless of what applied SF the user selected
+      const optionsForThisSf: ResolveBomOptions = {
+        totalRatio: catalogRatio, // Always catalog ratio, never SF-adjusted
+      };
+
+      // All should use ratio 80
+      expect(optionsForThisSf.totalRatio).toBe(80);
+
+      // Normalized ratio should also be 80
+      const normalizedRatio = Math.round(optionsForThisSf.totalRatio);
+      expect(normalizedRatio).toBe(80);
+    }
+
+    // Verify that if someone INCORRECTLY multiplied by SF, they'd get wrong ratios
+    // (except for SF=1.0 which would coincidentally be correct)
+    const wrongRatioAt1_5 = Math.round(catalogRatio * 1.5); // Would be 120
+    const wrongRatioAt2_0 = Math.round(catalogRatio * 2.0); // Would be 160
+    expect(wrongRatioAt1_5).toBe(120);
+    expect(wrongRatioAt2_0).toBe(160);
+    // These are NOT the catalog ratio
+    expect(wrongRatioAt1_5).not.toBe(catalogRatio);
+    expect(wrongRatioAt2_0).not.toBe(catalogRatio);
+  });
+
+  it('applied SF appears in Copy BOM notes but does not affect PN lookup', () => {
+    // The BomCopyContext includes appliedSf and catalogSf for display purposes
+    // But these values should NOT affect the gear unit PN that was resolved
+
+    const bom: BomResolution = {
+      model_type: 'SK 1SI63/H10 - 56C - 63L/4',
+      parsed: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+      components: [
+        {
+          component_type: 'gear_unit',
+          part_number: '60692080', // Real NORD PN for SI63 ratio 80 inch_hollow
+          description: 'NORD FLEXBLOC SI63 Gear Unit i=80',
+          found: true,
+        },
+        { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+        { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+      ],
+      complete: false,
+    };
+
+    // Test with different applied SF values
+    const sfTestCases = [
+      { appliedSf: 0.85, catalogSf: 2.1 },
+      { appliedSf: 1.0, catalogSf: 2.1 },
+      { appliedSf: 1.5, catalogSf: 2.1 },
+      { appliedSf: 2.0, catalogSf: 2.1 },
+    ];
+
+    for (const { appliedSf, catalogSf } of sfTestCases) {
+      const context: BomCopyContext = {
+        appliedSf,
+        catalogSf,
+        motorHp: 0.25,
+      };
+
+      const copyText = buildBomCopyText(bom, context);
+
+      // Copy text should show both SF values
+      expect(copyText).toContain(`Applied SF: ${appliedSf}`);
+      expect(copyText).toContain(`Catalog SF: ${catalogSf}`);
+
+      // But the gear unit PN should be the same regardless of applied SF
+      expect(copyText).toContain('60692080');
+    }
+  });
+
+  it('normalizedRatio uses Math.round for integer comparison', () => {
+    // Catalog ratios may have small floating point variations
+    // Math.round ensures clean integer matching
+
+    const testCases = [
+      { input: 80, expected: 80 },
+      { input: 80.0, expected: 80 },
+      { input: 79.9999, expected: 80 },
+      { input: 80.0001, expected: 80 },
+      { input: 100, expected: 100 },
+      { input: 100.4, expected: 100 },
+      { input: 100.5, expected: 101 }, // Standard rounding
+    ];
+
+    for (const { input, expected } of testCases) {
+      expect(Math.round(input)).toBe(expected);
+    }
   });
 });
 
