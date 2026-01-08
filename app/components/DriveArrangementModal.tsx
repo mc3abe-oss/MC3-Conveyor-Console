@@ -27,6 +27,15 @@ import {
   DirectionMode,
 } from '../../src/models/sliderbed_v1/schema';
 
+// Output shaft options for chain drive configuration
+const OUTPUT_SHAFT_OPTIONS = [
+  { value: '', label: 'Not selected' },
+  { value: 'inch_keyed', label: 'Inch keyed bore (default)' },
+  { value: 'metric_keyed', label: 'Metric keyed bore' },
+  { value: 'inch_hollow', label: 'Inch hollow' },
+  { value: 'metric_hollow', label: 'Metric hollow' },
+] as const;
+
 // Fields managed by this modal
 type DraftFields = Pick<
   SliderbedInputs,
@@ -37,6 +46,7 @@ type DraftFields = Pick<
   | 'gearmotor_mounting_style'
   | 'gm_sprocket_teeth'
   | 'drive_shaft_sprocket_teeth'
+  | 'output_shaft_option'
   | 'gearmotor_orientation'
   | 'drive_hand'
   | 'motor_rpm'
@@ -69,6 +79,7 @@ export default function DriveArrangementModal({
         gearmotor_mounting_style: inputs.gearmotor_mounting_style,
         gm_sprocket_teeth: inputs.gm_sprocket_teeth,
         drive_shaft_sprocket_teeth: inputs.drive_shaft_sprocket_teeth,
+        output_shaft_option: inputs.output_shaft_option,
         gearmotor_orientation: inputs.gearmotor_orientation,
         drive_hand: inputs.drive_hand,
         motor_rpm: inputs.motor_rpm,
@@ -277,11 +288,12 @@ export default function DriveArrangementModal({
               </div>
             </div>
 
-            {/* Sprocket Configuration - only shown for bottom mount */}
+            {/* Chain Drive Configuration - only shown for bottom mount */}
             {draft.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount && (
               <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 space-y-4">
-                <h4 className="text-sm font-medium text-gray-700">Sprocket Configuration</h4>
+                <h4 className="text-sm font-medium text-gray-700">Chain Drive Configuration</h4>
 
+                {/* Sprocket Configuration */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label htmlFor="modal_gm_sprocket" className="label">
@@ -336,6 +348,28 @@ export default function DriveArrangementModal({
                       })()}
                     </span>
                   </div>
+                </div>
+
+                {/* Output Shaft Option */}
+                <div className="pt-2 border-t border-gray-200">
+                  <label htmlFor="modal_output_shaft" className="label">
+                    Output Shaft (Chain Drive)
+                  </label>
+                  <select
+                    id="modal_output_shaft"
+                    className="input"
+                    value={draft.output_shaft_option ?? ''}
+                    onChange={(e) => updateDraft('output_shaft_option', e.target.value || null)}
+                  >
+                    {OUTPUT_SHAFT_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Required for chain drive. Used to choose the correct NORD output shaft kit.
+                  </p>
                 </div>
               </div>
             )}

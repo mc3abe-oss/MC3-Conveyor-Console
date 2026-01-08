@@ -39,6 +39,7 @@ const __dirname = path.dirname(__filename);
 const SELECTION_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_B46_B61_selection_extract_v2_fullhp.csv');
 const COMPONENT_MAP_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_component_map_v2_keyed.csv');
 const GEAR_UNIT_PN_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_gear_unit_part_numbers_v1.csv');
+const OUTPUT_SHAFT_KIT_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_output_shaft_kits_v1.csv');
 
 const VENDOR = 'NORD';
 const SERIES = 'FLEXBLOC';
@@ -181,6 +182,7 @@ async function seedNordFlexblocV2() {
   console.log(`Selection CSV: ${SELECTION_CSV_PATH}`);
   console.log(`Component Map CSV: ${COMPONENT_MAP_CSV_PATH}`);
   console.log(`Gear Unit PN CSV: ${GEAR_UNIT_PN_CSV_PATH}`);
+  console.log(`Output Shaft Kit CSV: ${OUTPUT_SHAFT_KIT_CSV_PATH}`);
   console.log();
 
   // ==========================================================================
@@ -203,13 +205,20 @@ async function seedNordFlexblocV2() {
     process.exit(1);
   }
 
+  if (!fs.existsSync(OUTPUT_SHAFT_KIT_CSV_PATH)) {
+    console.error(`Error: Output Shaft Kit CSV not found at ${OUTPUT_SHAFT_KIT_CSV_PATH}`);
+    process.exit(1);
+  }
+
   const selectionRows = parseCSV(fs.readFileSync(SELECTION_CSV_PATH, 'utf-8'));
   const componentMapRows = parseCSV(fs.readFileSync(COMPONENT_MAP_CSV_PATH, 'utf-8'));
   const gearUnitPnRows = parseCSV(fs.readFileSync(GEAR_UNIT_PN_CSV_PATH, 'utf-8'));
+  const outputShaftKitRows = parseCSV(fs.readFileSync(OUTPUT_SHAFT_KIT_CSV_PATH, 'utf-8'));
 
   console.log(`  Parsed ${selectionRows.length} selection/performance rows`);
   console.log(`  Parsed ${componentMapRows.length} component map rows`);
   console.log(`  Parsed ${gearUnitPnRows.length} gear unit PN rows`);
+  console.log(`  Parsed ${outputShaftKitRows.length} output shaft kit rows`);
 
   // Filter component map to allowed types only
   const filteredComponentMap = componentMapRows.filter(row =>
@@ -517,6 +526,88 @@ async function seedNordFlexblocV2() {
   console.log();
 
   // ==========================================================================
+  // STEP 4.6: Insert output shaft kit part numbers from catalog
+  // ==========================================================================
+  console.log('Step 4.6: Inserting output shaft kit part numbers...');
+
+  // These are REAL NORD 8-digit orderable part numbers keyed by:
+  // (gear_unit_size, mounting_variant, output_shaft_option_key)
+  let outputShaftKitsInserted = 0;
+  let outputShaftKitErrors = 0;
+  let outputShaftKitSkipped = 0;
+
+  for (const row of outputShaftKitRows) {
+    const partNumber = row.nord_part_number?.trim();
+    const gearUnitSize = row.gear_unit_size?.trim();
+    const mountingVariant = row.mounting_variant?.trim();
+    const outputShaftOptionKey = row.output_shaft_option_key?.trim();
+
+    // Validate required fields
+    if (!partNumber || !gearUnitSize || !mountingVariant || !outputShaftOptionKey) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid row: ${JSON.stringify(row)}`);
+      }
+      outputShaftKitSkipped++;
+      continue;
+    }
+
+    // Validate part number format (8-digit, starts with 3 or 6)
+    if (!/^[36]\d{7}$/.test(partNumber)) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid PN format: ${partNumber}`);
+      }
+      outputShaftKitSkipped++;
+      continue;
+    }
+
+    const componentRow = {
+      vendor: VENDOR,
+      component_type: 'OUTPUT_KIT',
+      vendor_part_number: partNumber,
+      description: row.description || `NORD ${SERIES} Output Shaft Kit ${gearUnitSize} ${outputShaftOptionKey}`,
+      metadata_json: {
+        product_line: SERIES,
+        component_type_csv: 'output_shaft_kit',
+        gear_unit_size: gearUnitSize,
+        mounting_variant: mountingVariant,
+        output_shaft_option_key: outputShaftOptionKey,
+        bore_mm: row.bore_mm ? parseFloat(row.bore_mm) : null,
+        bore_in: row.bore_in ? parseFloat(row.bore_in) : null,
+        catalog_page: row.catalog_page || null,
+      },
+    };
+
+    if (verbose) {
+      console.log(`  [OUTPUT_SHAFT_KIT] ${partNumber}: ${gearUnitSize} ${mountingVariant} ${outputShaftOptionKey}`);
+    }
+
+    if (!dryRun) {
+      const { data, error } = await supabase
+        .from('vendor_components')
+        .upsert(componentRow, { onConflict: 'vendor,vendor_part_number' })
+        .select('id')
+        .single();
+
+      if (error) {
+        if (verbose) console.error(`    Error: ${error.message}`);
+        outputShaftKitErrors++;
+        continue;
+      }
+
+      partNumberToId.set(partNumber, data.id);
+      outputShaftKitsInserted++;
+    } else {
+      partNumberToId.set(partNumber, `DRY_RUN_${partNumber}`);
+      outputShaftKitsInserted++;
+    }
+  }
+
+  console.log(`  ${outputShaftKitsInserted} output shaft kit PNs inserted/updated`);
+  if (outputShaftKitSkipped > 0) console.log(`  ${outputShaftKitSkipped} rows skipped`);
+  if (outputShaftKitErrors > 0) console.log(`  ${outputShaftKitErrors} errors`);
+  console.log();
+
+  // ==========================================================================
   // STEP 5: Insert performance points
   // ==========================================================================
   console.log('Step 5: Inserting performance points...');
@@ -611,8 +702,9 @@ async function seedNordFlexblocV2() {
   console.log(`  Components (from component map): ${componentsInserted}`);
   console.log(`  Gear Units (synthetic keys): ${gearUnitsCreated}`);
   console.log(`  Gear Units (REAL PNs): ${realGearUnitsInserted}`);
+  console.log(`  Output Shaft Kits (REAL PNs): ${outputShaftKitsInserted}`);
   console.log(`  Performance Points: ${performancePointsInserted}`);
-  console.log(`  Total Errors: ${componentErrors + performanceErrors + realGearUnitErrors}`);
+  console.log(`  Total Errors: ${componentErrors + performanceErrors + realGearUnitErrors + outputShaftKitErrors}`);
   console.log('='.repeat(70));
 
   if (dryRun) {

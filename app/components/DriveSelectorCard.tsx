@@ -23,6 +23,8 @@ interface DriveSelectorCardProps {
   applicationId?: string;
   /** Mounting style from Drive Arrangement - determines if output shaft kit is required */
   gearmotorMountingStyle?: GearmotorMountingStyle | string;
+  /** Output shaft option from Drive Arrangement - for chain drive configuration */
+  outputShaftOption?: string | null;
   /** Callback when gearmotor selection changes - receives output_rpm or null if cleared */
   onGearmotorOutputRpmChange?: (outputRpm: number | null) => void;
 }
@@ -37,6 +39,7 @@ export default function DriveSelectorCard({
   requiredPowerHp,
   applicationId,
   gearmotorMountingStyle,
+  outputShaftOption,
   onGearmotorOutputRpmChange,
 }: DriveSelectorCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -184,6 +187,7 @@ export default function DriveSelectorCard({
         applicationId={applicationId}
         initialServiceFactor={serviceFactor}
         gearmotorMountingStyle={gearmotorMountingStyle}
+        outputShaftOption={outputShaftOption}
         selectedCandidate={selectedCandidate}
         onSelect={handleSelect}
         onServiceFactorChange={setServiceFactor}

@@ -1,0 +1,41 @@
+component_type,gear_unit_size,mounting_variant,output_shaft_option_key,bore_mm,bore_in,nord_part_number,description,catalog_page
+output_shaft_kit,SI31,inch_hollow,inch_keyed,,0.625,60892110,Output Shaft Kit SI31 5/8 in Keyed Bore,B79
+output_shaft_kit,SI31,inch_hollow,metric_keyed,14,,60892120,Output Shaft Kit SI31 14mm Keyed Bore,B79
+output_shaft_kit,SI31,inch_hollow,inch_hollow,,0.625,60892130,Output Shaft Kit SI31 5/8 in Hollow Shaft,B79
+output_shaft_kit,SI31,inch_hollow,metric_hollow,14,,60892140,Output Shaft Kit SI31 14mm Hollow Shaft,B79
+output_shaft_kit,SI31,metric_hollow,inch_keyed,,0.625,60891110,Output Shaft Kit SI31 5/8 in Keyed Bore,B79
+output_shaft_kit,SI31,metric_hollow,metric_keyed,14,,60891120,Output Shaft Kit SI31 14mm Keyed Bore,B79
+output_shaft_kit,SI31,metric_hollow,inch_hollow,,0.625,60891130,Output Shaft Kit SI31 5/8 in Hollow Shaft,B79
+output_shaft_kit,SI31,metric_hollow,metric_hollow,14,,60891140,Output Shaft Kit SI31 14mm Hollow Shaft,B79
+output_shaft_kit,SI40,inch_hollow,inch_keyed,,0.875,60992110,Output Shaft Kit SI40 7/8 in Keyed Bore,B81
+output_shaft_kit,SI40,inch_hollow,metric_keyed,18,,60992120,Output Shaft Kit SI40 18mm Keyed Bore,B81
+output_shaft_kit,SI40,inch_hollow,inch_hollow,,0.875,60992130,Output Shaft Kit SI40 7/8 in Hollow Shaft,B81
+output_shaft_kit,SI40,inch_hollow,metric_hollow,18,,60992140,Output Shaft Kit SI40 18mm Hollow Shaft,B81
+output_shaft_kit,SI40,metric_hollow,inch_keyed,,0.875,60991110,Output Shaft Kit SI40 7/8 in Keyed Bore,B81
+output_shaft_kit,SI40,metric_hollow,metric_keyed,18,,60991120,Output Shaft Kit SI40 18mm Keyed Bore,B81
+output_shaft_kit,SI40,metric_hollow,inch_hollow,,0.875,60991130,Output Shaft Kit SI40 7/8 in Hollow Shaft,B81
+output_shaft_kit,SI40,metric_hollow,metric_hollow,18,,60991140,Output Shaft Kit SI40 18mm Hollow Shaft,B81
+output_shaft_kit,SI50,inch_hollow,inch_keyed,,1.125,61092110,Output Shaft Kit SI50 1-1/8 in Keyed Bore,B83
+output_shaft_kit,SI50,inch_hollow,metric_keyed,24,,61092120,Output Shaft Kit SI50 24mm Keyed Bore,B83
+output_shaft_kit,SI50,inch_hollow,inch_hollow,,1.125,61092130,Output Shaft Kit SI50 1-1/8 in Hollow Shaft,B83
+output_shaft_kit,SI50,inch_hollow,metric_hollow,24,,61092140,Output Shaft Kit SI50 24mm Hollow Shaft,B83
+output_shaft_kit,SI50,metric_hollow,inch_keyed,,1.125,61091110,Output Shaft Kit SI50 1-1/8 in Keyed Bore,B83
+output_shaft_kit,SI50,metric_hollow,metric_keyed,24,,61091120,Output Shaft Kit SI50 24mm Keyed Bore,B83
+output_shaft_kit,SI50,metric_hollow,inch_hollow,,1.125,61091130,Output Shaft Kit SI50 1-1/8 in Hollow Shaft,B83
+output_shaft_kit,SI50,metric_hollow,metric_hollow,24,,61091140,Output Shaft Kit SI50 24mm Hollow Shaft,B83
+output_shaft_kit,SI63,inch_hollow,inch_keyed,,1.438,61192110,Output Shaft Kit SI63 1-7/16 in Keyed Bore,B85
+output_shaft_kit,SI63,inch_hollow,metric_keyed,30,,61192120,Output Shaft Kit SI63 30mm Keyed Bore,B85
+output_shaft_kit,SI63,inch_hollow,inch_hollow,,1.438,61192130,Output Shaft Kit SI63 1-7/16 in Hollow Shaft,B85
+output_shaft_kit,SI63,inch_hollow,metric_hollow,30,,61192140,Output Shaft Kit SI63 30mm Hollow Shaft,B85
+output_shaft_kit,SI63,metric_hollow,inch_keyed,,1.438,61191110,Output Shaft Kit SI63 1-7/16 in Keyed Bore,B85
+output_shaft_kit,SI63,metric_hollow,metric_keyed,30,,61191120,Output Shaft Kit SI63 30mm Keyed Bore,B85
+output_shaft_kit,SI63,metric_hollow,inch_hollow,,1.438,61191130,Output Shaft Kit SI63 1-7/16 in Hollow Shaft,B85
+output_shaft_kit,SI63,metric_hollow,metric_hollow,30,,61191140,Output Shaft Kit SI63 30mm Hollow Shaft,B85
+output_shaft_kit,SI75,inch_hollow,inch_keyed,,1.938,61292110,Output Shaft Kit SI75 1-15/16 in Keyed Bore,B87
+output_shaft_kit,SI75,inch_hollow,metric_keyed,40,,61292120,Output Shaft Kit SI75 40mm Keyed Bore,B87
+output_shaft_kit,SI75,inch_hollow,inch_hollow,,1.938,61292130,Output Shaft Kit SI75 1-15/16 in Hollow Shaft,B87
+output_shaft_kit,SI75,inch_hollow,metric_hollow,40,,61292140,Output Shaft Kit SI75 40mm Hollow Shaft,B87
+output_shaft_kit,SI75,metric_hollow,inch_keyed,,1.938,61291110,Output Shaft Kit SI75 1-15/16 in Keyed Bore,B87
+output_shaft_kit,SI75,metric_hollow,metric_keyed,40,,61291120,Output Shaft Kit SI75 40mm Keyed Bore,B87
+output_shaft_kit,SI75,metric_hollow,inch_hollow,,1.938,61291130,Output Shaft Kit SI75 1-15/16 in Hollow Shaft,B87
+output_shaft_kit,SI75,metric_hollow,metric_hollow,40,,61291140,Output Shaft Kit SI75 40mm Hollow Shaft,B87

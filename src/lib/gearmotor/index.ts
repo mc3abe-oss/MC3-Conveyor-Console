@@ -29,6 +29,7 @@ export {
   needsOutputShaftKit,
   DEFAULT_MOUNTING_VARIANT,
   GEARMOTOR_MOUNTING_STYLE,
+  OUTPUT_SHAFT_OPTION_LABELS,
   type ParsedModelType,
   type BomComponent,
   type BomResolution,

@@ -79,6 +79,8 @@ interface DriveSelectorModalProps {
   initialSpeedTolerance?: number;
   /** Mounting style from Drive Arrangement - determines if output shaft kit is required */
   gearmotorMountingStyle?: GearmotorMountingStyle | string;
+  /** Output shaft option from Drive Arrangement - for chain drive configuration */
+  outputShaftOption?: string | null;
   selectedCandidate: GearmotorCandidate | null;
   onSelect: (candidate: GearmotorCandidate | null) => void;
   onServiceFactorChange?: (sf: number) => void;
@@ -121,6 +123,7 @@ export default function DriveSelectorModal({
   initialServiceFactor = 1.5,
   initialSpeedTolerance = 15,
   gearmotorMountingStyle,
+  outputShaftOption,
   selectedCandidate,
   onSelect,
   onServiceFactorChange,
@@ -160,6 +163,7 @@ export default function DriveSelectorModal({
     resolveBom(modelType, selectedCandidate.motor_hp, {
       totalRatio: gearUnitRatio, // Worm ratio for gear unit PN lookup
       gearmotorMountingStyle, // For output shaft kit requirement logic
+      outputShaftOption, // For output shaft kit configuration status
     })
       .then((bom) => {
         setResolvedBom(bom);
@@ -170,7 +174,7 @@ export default function DriveSelectorModal({
       .finally(() => {
         setBomLoading(false);
       });
-  }, [selectedCandidate, gearmotorMountingStyle]);
+  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption]);
 
   // Compute active SF: override takes precedence if valid
   const sfOverrideValidation = validateSfOverride(sfOverrideInput);
@@ -734,17 +738,39 @@ export default function DriveSelectorModal({
 
               // Determine if output shaft kit is required based on mounting style
               const shaftKitRequired = needsOutputShaftKit(gearmotorMountingStyle);
+              // Check if user has configured an output shaft option
+              const shaftKitConfigured = shaftKitRequired && !!outputShaftOption;
 
               // Status badge component - handles different states for output shaft kit
               const StatusBadge = ({ found, type, description: _description }: { found: boolean; type: BomComponent['component_type']; description?: string | null }) => {
-                // Special case: Output shaft kit "not required" (found=true but no PN needed)
-                if (type === 'output_shaft_kit' && found && !shaftKitRequired) {
-                  return (
-                    <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Not required</span>
-                  );
+                // Special case: Output shaft kit states
+                if (type === 'output_shaft_kit') {
+                  // Not required (shaft mount)
+                  if (!shaftKitRequired) {
+                    return (
+                      <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Not required</span>
+                    );
+                  }
+                  // Configured but PN pending (bottom mount + option selected)
+                  if (shaftKitConfigured && found) {
+                    return (
+                      <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Configured</span>
+                    );
+                  }
+                  // Missing (bottom mount + no option selected)
+                  if (!found) {
+                    return (
+                      <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                        <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        Missing
+                      </span>
+                    );
+                  }
                 }
 
-                // Normal cases
+                // Normal cases for other components
                 return found ? (
                   <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Resolved</span>
                 ) : (
@@ -882,11 +908,11 @@ export default function DriveSelectorModal({
                     <div className="flex items-start gap-3">
                       <div className={clsx(
                         "w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5",
-                        shaftKitRequired ? "bg-purple-50" : "bg-gray-50"
+                        shaftKitConfigured ? "bg-blue-50" : shaftKitRequired ? "bg-purple-50" : "bg-gray-50"
                       )}>
                         <svg className={clsx(
                           "w-4 h-4",
-                          shaftKitRequired ? "text-purple-500" : "text-gray-400"
+                          shaftKitConfigured ? "text-blue-500" : shaftKitRequired ? "text-purple-500" : "text-gray-400"
                         )} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
@@ -901,15 +927,19 @@ export default function DriveSelectorModal({
                           </span>
                           <span className={clsx(
                             "text-xs px-1.5 py-0.5 rounded",
-                            shaftKitRequired ? "text-purple-600 bg-purple-50" : "text-gray-500 bg-gray-100"
+                            shaftKitConfigured ? "text-blue-600 bg-blue-50" : shaftKitRequired ? "text-purple-600 bg-purple-50" : "text-gray-500 bg-gray-100"
                           )}>Output Shaft Kit</span>
                           <StatusBadge found={shaftKit?.found ?? false} type="output_shaft_kit" description={shaftKit?.description} />
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {shaftKit?.description || (shaftKitRequired ? 'Required for chain drive' : 'Not required for shaft mount')}
                         </p>
+                        {/* Hint messages based on state */}
                         {!shaftKit?.found && shaftKitRequired && (
-                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('output_shaft_kit', true)}</p>
+                          <p className="text-xs text-amber-600 mt-1">Select an output shaft option in Drive Arrangement to resolve this.</p>
+                        )}
+                        {shaftKitConfigured && shaftKit?.found && (
+                          <p className="text-xs text-blue-600 mt-1">PN mapping pending.</p>
                         )}
                       </div>
                     </div>

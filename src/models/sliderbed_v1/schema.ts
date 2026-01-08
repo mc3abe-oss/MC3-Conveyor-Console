@@ -1457,6 +1457,19 @@ export interface SliderbedInputs {
   drive_shaft_sprocket_teeth?: number;
 
   /**
+   * Output shaft option for chain drive configuration (v1.39)
+   * Required when gearmotor_mounting_style = 'bottom_mount'.
+   * Determines the NORD output shaft kit to order.
+   * Values:
+   * - 'inch_keyed': Inch keyed bore (default for US)
+   * - 'metric_keyed': Metric keyed bore
+   * - 'inch_hollow': Inch hollow shaft
+   * - 'metric_hollow': Metric hollow shaft
+   * - null: Not selected (will show as "Missing" in BOM)
+   */
+  output_shaft_option?: string | null;
+
+  /**
    * Actual gearmotor source (v1.38)
    * Indicates how the actual gearmotor values were obtained:
    * - 'nord_catalogue': Selected from NORD Drive Selector
@@ -2760,6 +2773,7 @@ export const DEFAULT_INPUT_VALUES = {
   gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
   gm_sprocket_teeth: 18,
   drive_shaft_sprocket_teeth: 24,
+  output_shaft_option: null, // v1.39: Output shaft option for chain drive
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,
@@ -2902,6 +2916,7 @@ export function buildDefaultInputs(): SliderbedInputs {
     gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
     gm_sprocket_teeth: 18,
     drive_shaft_sprocket_teeth: 24,
+    output_shaft_option: null, // v1.39: Output shaft option for chain drive
 
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,

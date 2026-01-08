@@ -182,6 +182,95 @@ export interface ResolveBomOptions {
    * - 'bottom_mount': REQUIRED (chain drive)
    */
   gearmotorMountingStyle?: string;
+  /**
+   * Output shaft option selected in Drive Arrangement.
+   * Only relevant when gearmotor_mounting_style = 'bottom_mount'.
+   * Values: 'inch_keyed', 'metric_keyed', 'inch_hollow', 'metric_hollow'
+   * If null/undefined and required, status = MISSING.
+   * If set and required, attempt DB lookup for real NORD PN.
+   */
+  outputShaftOption?: string | null;
+  /**
+   * Gear unit size from selected gearmotor (e.g., 'SI31', 'SI40', 'SI63').
+   * Required for output shaft kit PN lookup.
+   */
+  gearUnitSize?: string | null;
+}
+
+/**
+ * Output shaft option labels for display.
+ */
+export const OUTPUT_SHAFT_OPTION_LABELS: Record<string, string> = {
+  inch_keyed: 'Inch keyed bore',
+  metric_keyed: 'Metric keyed bore',
+  inch_hollow: 'Inch hollow',
+  metric_hollow: 'Metric hollow',
+};
+
+/**
+ * Map UI output shaft option values to CSV option keys.
+ * UI uses simpler keys, CSV may use more descriptive keys.
+ */
+const OUTPUT_SHAFT_OPTION_KEY_MAP: Record<string, string> = {
+  inch_keyed: 'inch_keyed',
+  metric_keyed: 'metric_keyed',
+  inch_hollow: 'inch_hollow',
+  metric_hollow: 'metric_hollow',
+};
+
+/**
+ * Look up output shaft kit PN from vendor_components table.
+ *
+ * @param gearUnitSize - Gear unit size (e.g., 'SI31', 'SI40')
+ * @param mountingVariant - Mounting variant ('inch_hollow' or 'metric_hollow')
+ * @param outputShaftOptionKey - Output shaft option key from UI
+ * @returns Component match with part number, or null if not found
+ */
+async function lookupOutputShaftKitPN(
+  gearUnitSize: string,
+  mountingVariant: string,
+  outputShaftOptionKey: string
+): Promise<{ vendor_part_number: string; description: string } | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  // Use the already imported supabase client
+  const optionKey = OUTPUT_SHAFT_OPTION_KEY_MAP[outputShaftOptionKey] || outputShaftOptionKey;
+
+  try {
+    // Query vendor_components for OUTPUT_KIT matching the keys
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, description, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'OUTPUT_KIT')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>mounting_variant', 'eq', mountingVariant)
+      .filter('metadata_json->>output_shaft_option_key', 'eq', optionKey)
+      .limit(1);
+
+    if (error) {
+      console.error('Output shaft kit lookup error:', error.message);
+      return null;
+    }
+
+    if (data && data.length > 0) {
+      const match = data[0];
+      // Validate it's a real NORD PN (8-digit, starts with 3 or 6)
+      if (isRealNordPartNumber(match.vendor_part_number)) {
+        return {
+          vendor_part_number: match.vendor_part_number,
+          description: match.description,
+        };
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Output shaft kit lookup failed:', err);
+    return null;
+  }
 }
 
 /**
@@ -346,19 +435,18 @@ export async function resolveBom(
     found: !!adapterMatch,
   });
 
-  // 4. Output Shaft Kit - conditional based on mounting style
-  // Rule: Only required for bottom_mount (chain drive); not required for shaft_mounted
+  // 4. Output Shaft Kit - conditional based on mounting style and user selection
+  // States:
+  // - NOT_REQUIRED: shaft_mounted (found=true, description="Not required...")
+  // - MISSING: bottom_mount + no outputShaftOption (found=false, description="Required...")
+  // - RESOLVED: bottom_mount + outputShaftOption + PN found in DB (found=true, has PN)
+  // - CONFIGURED: bottom_mount + outputShaftOption + no PN in DB (found=true, no PN, pending)
   const shaftKitRequired = needsOutputShaftKit(options?.gearmotorMountingStyle);
+  const outputShaftOption = options?.outputShaftOption;
+  const gearUnitSize = parsed?.gear_unit_size || options?.gearUnitSize;
+  const mountingVariant = options?.mountingVariant || DEFAULT_MOUNTING_VARIANT;
 
-  if (shaftKitRequired) {
-    // Bottom mount + chain drive: Output shaft kit IS required, show as Missing until configured
-    components.push({
-      component_type: 'output_shaft_kit',
-      part_number: null, // User must select/configure
-      description: 'Required for chain drive configuration',
-      found: false,
-    });
-  } else {
+  if (!shaftKitRequired) {
     // Shaft mount or other: Output shaft kit NOT required
     components.push({
       component_type: 'output_shaft_kit',
@@ -366,6 +454,41 @@ export async function resolveBom(
       description: 'Not required for shaft mount',
       found: true, // Mark as "found" so it doesn't show as Missing
     });
+  } else if (!outputShaftOption) {
+    // Bottom mount + chain drive: Required but not yet selected
+    components.push({
+      component_type: 'output_shaft_kit',
+      part_number: null,
+      description: 'Required for chain drive configuration',
+      found: false,
+    });
+  } else {
+    // Bottom mount + option selected: Try to look up real NORD PN
+    const optionLabel = OUTPUT_SHAFT_OPTION_LABELS[outputShaftOption] || outputShaftOption;
+
+    // Attempt DB lookup if we have the gear unit size
+    let shaftKitMatch: { vendor_part_number: string; description: string } | null = null;
+    if (gearUnitSize) {
+      shaftKitMatch = await lookupOutputShaftKitPN(gearUnitSize, mountingVariant, outputShaftOption);
+    }
+
+    if (shaftKitMatch) {
+      // Found real NORD PN - mark as Resolved
+      components.push({
+        component_type: 'output_shaft_kit',
+        part_number: shaftKitMatch.vendor_part_number,
+        description: shaftKitMatch.description,
+        found: true,
+      });
+    } else {
+      // Option selected but no PN mapping found - mark as Configured (pending)
+      components.push({
+        component_type: 'output_shaft_kit',
+        part_number: null,
+        description: `Configured: ${optionLabel}`,
+        found: true, // Mark as configured (not Missing)
+      });
+    }
   }
 
   result.components = components;
@@ -493,33 +616,53 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
   componentOrder.forEach((item, index) => {
     const component = bom.components.find(c => c.component_type === item.type);
 
-    // Special handling for output shaft kit "not required" case
-    // When found=true but no part_number, it means "not required for this mounting style"
-    const isNotRequiredShaftKit = item.type === 'output_shaft_kit' &&
-      component?.found === true &&
-      !component?.part_number;
+    // Special handling for output shaft kit states
+    if (item.type === 'output_shaft_kit') {
+      const desc = component?.description || '';
+      const partNumber = component?.part_number;
 
-    if (isNotRequiredShaftKit) {
-      // Show "— (not required)" for output shaft kit when not needed
-      lines.push(`${index + 1}) ${item.label}: — (not required)  | ${component?.description || 'Not required for shaft mount'}`);
-      // Don't add to missingComponents - it's intentionally not required
-    } else {
-      const partNumber = component?.part_number || '—';
-      const description = component?.description || '—';
-
-      lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${description}`);
-
-      // Track missing for notes section
-      if (!component?.part_number || !component?.found) {
-        let reason = 'No matching component found in component map.';
-        if (item.type === 'output_shaft_kit') {
-          reason = 'Select an output shaft option to resolve this.';
-        } else if (item.type === 'gear_unit' && component?.part_number) {
-          // Has synthetic PN but not found in DB
-          reason = 'Gear unit PN mapping not keyed for this model yet.';
-        }
-        missingComponents.push({ label: `${item.label} PN`, reason });
+      // State 1: Not required (shaft mount) - description starts with "Not required"
+      if (desc.startsWith('Not required')) {
+        lines.push(`${index + 1}) ${item.label}: — (not required)  | ${desc}`);
+        // Don't add to missingComponents - it's intentionally not required
+        return;
       }
+
+      // State 2: Resolved (bottom mount + option selected + PN found) - has real part_number
+      if (partNumber && isRealNordPartNumber(partNumber)) {
+        lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${desc}`);
+        // Don't add to missingComponents - fully resolved
+        return;
+      }
+
+      // State 3: Configured (bottom mount + option selected + no PN) - description starts with "Configured:"
+      if (desc.startsWith('Configured:')) {
+        const optionLabel = desc.replace('Configured: ', '');
+        lines.push(`${index + 1}) ${item.label}: ${optionLabel} (PN pending)  | ${desc}`);
+        // Don't add to missingComponents - user has made a selection, PN mapping pending
+        return;
+      }
+
+      // State 4: Missing (bottom mount + no option) - found=false
+      lines.push(`${index + 1}) ${item.label}: — (select in Drive Arrangement)  | ${desc}`);
+      missingComponents.push({ label: `${item.label} PN`, reason: 'Select an output shaft option in Drive Arrangement.' });
+      return;
+    }
+
+    // Normal handling for other components
+    const partNumber = component?.part_number || '—';
+    const description = component?.description || '—';
+
+    lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${description}`);
+
+    // Track missing for notes section
+    if (!component?.part_number || !component?.found) {
+      let reason = 'No matching component found in component map.';
+      if (item.type === 'gear_unit' && component?.part_number) {
+        // Has synthetic PN but not found in DB
+        reason = 'Gear unit PN mapping not keyed for this model yet.';
+      }
+      missingComponents.push({ label: `${item.label} PN`, reason });
     }
   });
 

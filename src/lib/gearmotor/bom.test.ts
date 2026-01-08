@@ -1339,3 +1339,370 @@ describe('getMissingHint for output_shaft_kit', () => {
     expect(getMissingHint('output_shaft_kit', false)).toBe('Not required for shaft mount configuration.');
   });
 });
+
+// =============================================================================
+// OUTPUT SHAFT KIT CONFIGURED STATE TESTS
+// =============================================================================
+
+describe('Output Shaft Kit with outputShaftOption', () => {
+  describe('shows "Configured" when user selects option in Drive Arrangement', () => {
+    it('does not show MISSING for output shaft kit when configured', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI63',
+          size_code: '63',
+          adapter_code: '56C',
+          motor_frame: '63L/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          // Output shaft kit: found=true with "Configured:" description means user selected option
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Configured: Inch keyed bore', found: true },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 2.1,
+      };
+
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should show option label with (PN pending)
+      expect(copyText).toContain('4) Output Shaft Kit: Inch keyed bore (PN pending)');
+
+      // Should NOT show MISSING for output shaft kit
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit PN');
+    });
+  });
+
+  describe('copy text format for all three states', () => {
+    it('formats correctly for shaft mount (not required)', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: '123456', description: 'Motor', found: true },
+          { component_type: 'adapter', part_number: '789012', description: 'Adapter', found: true },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required for shaft mount', found: true },
+        ],
+        complete: true,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+      expect(copyText).toContain('4) Output Shaft Kit: — (not required)');
+    });
+
+    it('formats correctly for bottom mount with no selection (missing)', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: '123456', description: 'Motor', found: true },
+          { component_type: 'adapter', part_number: '789012', description: 'Adapter', found: true },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Required for chain drive configuration', found: false },
+        ],
+        complete: false,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+      expect(copyText).toContain('4) Output Shaft Kit: — (select in Drive Arrangement)');
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+    });
+
+    it('formats correctly for bottom mount with selection (configured)', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: '123456', description: 'Motor', found: true },
+          { component_type: 'adapter', part_number: '789012', description: 'Adapter', found: true },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Configured: Metric hollow', found: true },
+        ],
+        complete: true,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+      expect(copyText).toContain('4) Output Shaft Kit: Metric hollow (PN pending)');
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit PN');
+    });
+  });
+});
+
+describe('OUTPUT_SHAFT_OPTION_LABELS', () => {
+  it('has labels for all output shaft options', () => {
+    const { OUTPUT_SHAFT_OPTION_LABELS } = require('./bom');
+    expect(OUTPUT_SHAFT_OPTION_LABELS.inch_keyed).toBe('Inch keyed bore');
+    expect(OUTPUT_SHAFT_OPTION_LABELS.metric_keyed).toBe('Metric keyed bore');
+    expect(OUTPUT_SHAFT_OPTION_LABELS.inch_hollow).toBe('Inch hollow');
+    expect(OUTPUT_SHAFT_OPTION_LABELS.metric_hollow).toBe('Metric hollow');
+  });
+});
+
+// =============================================================================
+// OUTPUT SHAFT KIT PN RESOLUTION TESTS
+// =============================================================================
+
+describe('Output Shaft Kit PN Resolution', () => {
+  /**
+   * Tests for the three states of output shaft kit in BOM:
+   * 1. RESOLVED: bottom_mount + option selected + real NORD PN found
+   * 2. CONFIGURED: bottom_mount + option selected + no PN mapping yet
+   * 3. NOT_REQUIRED: shaft_mounted (no output shaft kit needed)
+   */
+
+  describe('State 1: Resolved (real NORD PN)', () => {
+    it('shows real 8-digit NORD PN when mapping exists', () => {
+      // SI31 inch_hollow inch_keyed => 60892110 (from CSV)
+      const bom: BomResolution = {
+        model_type: 'SK 1SI31 - 56C - 63S/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI31',
+          size_code: '31',
+          adapter_code: '56C',
+          motor_frame: '63S/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60392050', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: '31610012', description: 'Motor', found: true },
+          { component_type: 'adapter', part_number: '60295510', description: 'Adapter', found: true },
+          // Resolved state: has real NORD PN from DB lookup
+          { component_type: 'output_shaft_kit', part_number: '60892110', description: 'Output Shaft Kit SI31 5/8" Keyed Bore', found: true },
+        ],
+        complete: true,
+      };
+
+      const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should show real PN in the output
+      expect(copyText).toContain('4) Output Shaft Kit: 60892110');
+      expect(copyText).toContain('Output Shaft Kit SI31 5/8" Keyed Bore');
+      // Should NOT show as missing or pending
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+      expect(copyText).not.toContain('(PN pending)');
+      expect(copyText).not.toContain('(not required)');
+    });
+
+    it('validates PN is real NORD format (8-digit starting with 6)', () => {
+      const realPNs = ['60892110', '60992120', '61092130', '61192140', '61292110'];
+      for (const pn of realPNs) {
+        expect(isRealNordPartNumber(pn)).toBe(true);
+      }
+    });
+
+    it('validates SI40 output shaft kit PN 60992110', () => {
+      // SI40 inch_hollow inch_keyed => 60992110
+      expect(isRealNordPartNumber('60992110')).toBe(true);
+    });
+
+    it('validates SI63 output shaft kit PN 61192110', () => {
+      // SI63 inch_hollow inch_keyed => 61192110
+      expect(isRealNordPartNumber('61192110')).toBe(true);
+    });
+  });
+
+  describe('State 2: Configured (PN pending)', () => {
+    it('shows option label with (PN pending) when mapping not found', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI31 - 56C - 63S/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI31',
+          size_code: '31',
+          adapter_code: '56C',
+          motor_frame: '63S/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60392050', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          // Configured state: option selected but no PN in DB
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Configured: Inch keyed bore', found: true },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should show option label with "(PN pending)"
+      expect(copyText).toContain('4) Output Shaft Kit: Inch keyed bore (PN pending)');
+      // Should NOT show as MISSING (user made a selection)
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+    });
+
+    it('handles all four output shaft option types', () => {
+      const optionTypes = [
+        { key: 'inch_keyed', label: 'Inch keyed bore' },
+        { key: 'metric_keyed', label: 'Metric keyed bore' },
+        { key: 'inch_hollow', label: 'Inch hollow' },
+        { key: 'metric_hollow', label: 'Metric hollow' },
+      ];
+
+      for (const { label } of optionTypes) {
+        const bom: BomResolution = {
+          model_type: 'SK 1SI63 - 56C - 63L/4',
+          parsed: null,
+          components: [
+            { component_type: 'gear_unit', part_number: null, description: 'Gear unit', found: false },
+            { component_type: 'output_shaft_kit', part_number: null, description: `Configured: ${label}`, found: true },
+          ],
+          complete: false,
+        };
+
+        const copyText = buildBomCopyText(bom, { appliedSf: 1.0, catalogSf: 1.5 });
+        expect(copyText).toContain(`${label} (PN pending)`);
+      }
+    });
+  });
+
+  describe('State 3: Not Required (shaft mount)', () => {
+    it('shows "(not required)" for shaft mounted configuration', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI63',
+          size_code: '63',
+          adapter_code: '56C',
+          motor_frame: '63L/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: '31610012', description: 'Motor', found: true },
+          { component_type: 'adapter', part_number: '60395510', description: 'Adapter', found: true },
+          // Not required state: shaft mount (direct coupling)
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required for shaft mount', found: true },
+        ],
+        complete: true,
+      };
+
+      const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should show "(not required)" and dash for PN
+      expect(copyText).toContain('4) Output Shaft Kit: — (not required)');
+      // Should NOT show as MISSING
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+    });
+
+    it('needsOutputShaftKit returns false for shaft_mounted', () => {
+      expect(needsOutputShaftKit('shaft_mounted')).toBe(false);
+      expect(needsOutputShaftKit(GEARMOTOR_MOUNTING_STYLE.ShaftMounted)).toBe(false);
+    });
+  });
+
+  describe('State 4: Missing (bottom mount, no selection)', () => {
+    it('shows "(select in Drive Arrangement)" and MISSING note', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          // Missing state: bottom mount but no output shaft option selected
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Required for chain drive configuration', found: false },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should prompt user to select
+      expect(copyText).toContain('4) Output Shaft Kit: — (select in Drive Arrangement)');
+      // Should show as MISSING
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+    });
+
+    it('needsOutputShaftKit returns true for bottom_mount', () => {
+      expect(needsOutputShaftKit('bottom_mount')).toBe(true);
+      expect(needsOutputShaftKit(GEARMOTOR_MOUNTING_STYLE.BottomMount)).toBe(true);
+    });
+  });
+});
+
+// =============================================================================
+// OUTPUT SHAFT KIT CSV DATA VALIDATION
+// =============================================================================
+
+describe('Output Shaft Kit CSV Part Numbers', () => {
+  /**
+   * These tests document the expected part numbers from the CSV:
+   * nord_flexbloc_output_shaft_kits_v1.csv
+   *
+   * Each gear unit size (SI31, SI40, SI50, SI63, SI75) has 8 variants:
+   * - 2 mounting variants × 4 output shaft options = 8 PNs per size
+   */
+
+  describe('validates expected PN patterns', () => {
+    it('SI31 output shaft kit PNs start with 608', () => {
+      const si31PNs = ['60892110', '60892120', '60892130', '60892140', '60891110', '60891120', '60891130', '60891140'];
+      for (const pn of si31PNs) {
+        expect(pn.startsWith('608')).toBe(true);
+        expect(isRealNordPartNumber(pn)).toBe(true);
+      }
+    });
+
+    it('SI40 output shaft kit PNs start with 609', () => {
+      const si40PNs = ['60992110', '60992120', '60992130', '60992140', '60991110', '60991120', '60991130', '60991140'];
+      for (const pn of si40PNs) {
+        expect(pn.startsWith('609')).toBe(true);
+        expect(isRealNordPartNumber(pn)).toBe(true);
+      }
+    });
+
+    it('SI50 output shaft kit PNs start with 610', () => {
+      const si50PNs = ['61092110', '61092120', '61092130', '61092140', '61091110', '61091120', '61091130', '61091140'];
+      for (const pn of si50PNs) {
+        expect(pn.startsWith('610')).toBe(true);
+        expect(isRealNordPartNumber(pn)).toBe(true);
+      }
+    });
+
+    it('SI63 output shaft kit PNs start with 611', () => {
+      const si63PNs = ['61192110', '61192120', '61192130', '61192140', '61191110', '61191120', '61191130', '61191140'];
+      for (const pn of si63PNs) {
+        expect(pn.startsWith('611')).toBe(true);
+        expect(isRealNordPartNumber(pn)).toBe(true);
+      }
+    });
+
+    it('SI75 output shaft kit PNs start with 612', () => {
+      const si75PNs = ['61292110', '61292120', '61292130', '61292140', '61291110', '61291120', '61291130', '61291140'];
+      for (const pn of si75PNs) {
+        expect(pn.startsWith('612')).toBe(true);
+        expect(isRealNordPartNumber(pn)).toBe(true);
+      }
+    });
+  });
+
+  describe('mounting variant indicator in PN', () => {
+    it('inch_hollow variants have "2" in 5th position (60x9211x)', () => {
+      // Pattern: 6xy92zzz where y = size indicator, 2 = inch_hollow
+      const inchHollowPNs = ['60892110', '60992110', '61092110', '61192110', '61292110'];
+      for (const pn of inchHollowPNs) {
+        expect(pn[4]).toBe('2'); // 5th digit (0-indexed position 4)
+      }
+    });
+
+    it('metric_hollow variants have "1" in 5th position (60x9111x)', () => {
+      // Pattern: 6xy91zzz where y = size indicator, 1 = metric_hollow
+      const metricHollowPNs = ['60891110', '60991110', '61091110', '61191110', '61291110'];
+      for (const pn of metricHollowPNs) {
+        expect(pn[4]).toBe('1'); // 5th digit (0-indexed position 4)
+      }
+    });
+  });
+});
