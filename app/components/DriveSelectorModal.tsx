@@ -9,9 +9,11 @@ import {
   buildBomCopyText,
   getMissingHint,
   resolveBom,
+  needsOutputShaftKit,
   type BomComponent,
   type BomResolution,
 } from '../../src/lib/gearmotor';
+import { GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
 
 // Formatting helpers for REQUIREMENTS (can round for display)
 const formatRequiredRpm = (rpm: number | null | undefined): string => {
@@ -75,6 +77,8 @@ interface DriveSelectorModalProps {
   applicationId?: string;
   initialServiceFactor?: number;
   initialSpeedTolerance?: number;
+  /** Mounting style from Drive Arrangement - determines if output shaft kit is required */
+  gearmotorMountingStyle?: GearmotorMountingStyle | string;
   selectedCandidate: GearmotorCandidate | null;
   onSelect: (candidate: GearmotorCandidate | null) => void;
   onServiceFactorChange?: (sf: number) => void;
@@ -116,6 +120,7 @@ export default function DriveSelectorModal({
   applicationId,
   initialServiceFactor = 1.5,
   initialSpeedTolerance = 15,
+  gearmotorMountingStyle,
   selectedCandidate,
   onSelect,
   onServiceFactorChange,
@@ -133,7 +138,7 @@ export default function DriveSelectorModal({
   const [resolvedBom, setResolvedBom] = useState<BomResolution | null>(null);
   const [bomLoading, setBomLoading] = useState(false);
 
-  // Resolve BOM when selectedCandidate changes
+  // Resolve BOM when selectedCandidate or gearmotorMountingStyle changes
   // IMPORTANT: Gear unit PNs are keyed by WORM ratio (from catalog), NOT total ratio.
   // The gear_unit_part_numbers CSV stores worm ratios in the total_ratio column.
   // Performance points have: total_ratio (worm × helical), worm_ratio, second_ratio.
@@ -154,6 +159,7 @@ export default function DriveSelectorModal({
     setBomLoading(true);
     resolveBom(modelType, selectedCandidate.motor_hp, {
       totalRatio: gearUnitRatio, // Worm ratio for gear unit PN lookup
+      gearmotorMountingStyle, // For output shaft kit requirement logic
     })
       .then((bom) => {
         setResolvedBom(bom);
@@ -164,7 +170,7 @@ export default function DriveSelectorModal({
       .finally(() => {
         setBomLoading(false);
       });
-  }, [selectedCandidate]);
+  }, [selectedCandidate, gearmotorMountingStyle]);
 
   // Compute active SF: override takes precedence if valid
   const sfOverrideValidation = validateSfOverride(sfOverrideInput);
@@ -726,9 +732,20 @@ export default function DriveSelectorModal({
               const getComponent = (type: BomComponent['component_type']) =>
                 bom.components.find(c => c.component_type === type);
 
-              // Status badge component
-              const StatusBadge = ({ found, type: _type }: { found: boolean; type: BomComponent['component_type'] }) => (
-                found ? (
+              // Determine if output shaft kit is required based on mounting style
+              const shaftKitRequired = needsOutputShaftKit(gearmotorMountingStyle);
+
+              // Status badge component - handles different states for output shaft kit
+              const StatusBadge = ({ found, type, description: _description }: { found: boolean; type: BomComponent['component_type']; description?: string | null }) => {
+                // Special case: Output shaft kit "not required" (found=true but no PN needed)
+                if (type === 'output_shaft_kit' && found && !shaftKitRequired) {
+                  return (
+                    <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Not required</span>
+                  );
+                }
+
+                // Normal cases
+                return found ? (
                   <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Resolved</span>
                 ) : (
                   <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-1">
@@ -737,8 +754,8 @@ export default function DriveSelectorModal({
                     </svg>
                     Missing
                   </span>
-                )
-              );
+                );
+              };
 
               const gearUnit = getComponent('gear_unit');
               const motor = getComponent('motor');
@@ -863,24 +880,36 @@ export default function DriveSelectorModal({
 
                     {/* 4) Output Shaft Kit */}
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-purple-50 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
-                        <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className={clsx(
+                        "w-8 h-8 rounded flex items-center justify-center flex-shrink-0 mt-0.5",
+                        shaftKitRequired ? "bg-purple-50" : "bg-gray-50"
+                      )}>
+                        <svg className={clsx(
+                          "w-4 h-4",
+                          shaftKitRequired ? "text-purple-500" : "text-gray-400"
+                        )} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-mono text-sm font-medium text-gray-900">
-                            {shaftKit?.part_number || '—'}
+                          <span className={clsx(
+                            "font-mono text-sm font-medium",
+                            shaftKitRequired ? "text-gray-900" : "text-gray-500"
+                          )}>
+                            {shaftKitRequired ? (shaftKit?.part_number || '—') : '—'}
                           </span>
-                          <span className="text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">Output Shaft Kit</span>
-                          <StatusBadge found={shaftKit?.found ?? false} type="output_shaft_kit" />
+                          <span className={clsx(
+                            "text-xs px-1.5 py-0.5 rounded",
+                            shaftKitRequired ? "text-purple-600 bg-purple-50" : "text-gray-500 bg-gray-100"
+                          )}>Output Shaft Kit</span>
+                          <StatusBadge found={shaftKit?.found ?? false} type="output_shaft_kit" description={shaftKit?.description} />
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {shaftKit?.description || 'Output shaft configuration'}
+                          {shaftKit?.description || (shaftKitRequired ? 'Required for chain drive' : 'Not required for shaft mount')}
                         </p>
-                        {!shaftKit?.found && (
-                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('output_shaft_kit')}</p>
+                        {!shaftKit?.found && shaftKitRequired && (
+                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('output_shaft_kit', true)}</p>
                         )}
                       </div>
                     </div>

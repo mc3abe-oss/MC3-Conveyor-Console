@@ -25,6 +25,8 @@ import {
   ParsedModelType,
   isRealNordPartNumber,
   DEFAULT_MOUNTING_VARIANT,
+  GEARMOTOR_MOUNTING_STYLE,
+  needsOutputShaftKit,
   ResolveBomOptions,
   BomResolution,
   buildBomCopyText,
@@ -1198,5 +1200,142 @@ describe("REGRESSION: Gear unit PN lookup uses worm_ratio, not total_ratio", () 
     const expectedPn = "60692800";
     expect(isRealNordPartNumber(expectedPn)).toBe(true);
     expect(expectedPn.startsWith("6")).toBe(true);
+  });
+});
+
+// =============================================================================
+// OUTPUT SHAFT KIT REQUIREMENT LOGIC TESTS
+// =============================================================================
+
+describe('needsOutputShaftKit', () => {
+  /**
+   * Output Shaft Kit Requirement Rule:
+   * - Shaft mount (direct coupling): NOT required
+   * - Bottom mount (chain drive): REQUIRED
+   * - Undefined/null/other: NOT required (safe default)
+   */
+
+  describe('determines requirement based on mounting style', () => {
+    it('returns false for shaft_mounted (direct coupling, no chain)', () => {
+      expect(needsOutputShaftKit(GEARMOTOR_MOUNTING_STYLE.ShaftMounted)).toBe(false);
+      expect(needsOutputShaftKit('shaft_mounted')).toBe(false);
+    });
+
+    it('returns true for bottom_mount (chain drive)', () => {
+      expect(needsOutputShaftKit(GEARMOTOR_MOUNTING_STYLE.BottomMount)).toBe(true);
+      expect(needsOutputShaftKit('bottom_mount')).toBe(true);
+    });
+  });
+
+  describe('handles edge cases safely', () => {
+    it('returns false for null', () => {
+      expect(needsOutputShaftKit(null)).toBe(false);
+    });
+
+    it('returns false for undefined', () => {
+      expect(needsOutputShaftKit(undefined)).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(needsOutputShaftKit('')).toBe(false);
+    });
+
+    it('returns false for unknown mounting style', () => {
+      expect(needsOutputShaftKit('unknown_style')).toBe(false);
+      expect(needsOutputShaftKit('direct_mount')).toBe(false);
+    });
+  });
+});
+
+describe('GEARMOTOR_MOUNTING_STYLE constants', () => {
+  it('matches expected enum values', () => {
+    expect(GEARMOTOR_MOUNTING_STYLE.ShaftMounted).toBe('shaft_mounted');
+    expect(GEARMOTOR_MOUNTING_STYLE.BottomMount).toBe('bottom_mount');
+  });
+});
+
+describe('Output Shaft Kit in BOM copy text', () => {
+  describe('shows "not required" when mounting is shaft mount', () => {
+    it('does not show MISSING for output shaft kit when found=true', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI63',
+          size_code: '63',
+          adapter_code: '56C',
+          motor_frame: '63L/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          // Output shaft kit: found=true means "not required", no PN needed
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required for shaft mount', found: true },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 2.1,
+      };
+
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should show "(not required)" for output shaft kit
+      expect(copyText).toContain('4) Output Shaft Kit: — (not required)');
+
+      // Should NOT show MISSING for output shaft kit
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit PN');
+    });
+  });
+
+  describe('shows "Missing" when mounting is bottom mount (chain drive)', () => {
+    it('shows MISSING for output shaft kit when found=false', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI63',
+          size_code: '63',
+          adapter_code: '56C',
+          motor_frame: '63L/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          // Output shaft kit: found=false means required but missing
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Required for chain drive', found: false },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 2.1,
+      };
+
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should show dash for missing PN
+      expect(copyText).toContain('4) Output Shaft Kit: —');
+
+      // Should show MISSING for output shaft kit
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+    });
+  });
+});
+
+describe('getMissingHint for output_shaft_kit', () => {
+  it('returns selection hint when required', () => {
+    const { getMissingHint } = require('./bom');
+    expect(getMissingHint('output_shaft_kit', true)).toBe('Select an output shaft option to resolve this.');
+  });
+
+  it('returns not required message when not required', () => {
+    const { getMissingHint } = require('./bom');
+    expect(getMissingHint('output_shaft_kit', false)).toBe('Not required for shaft mount configuration.');
   });
 });

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { GearmotorCandidate } from '../../src/lib/gearmotor';
+import { GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
 import DriveSelectorModal from './DriveSelectorModal';
 
 // Formatting helpers
@@ -20,6 +21,8 @@ interface DriveSelectorCardProps {
   requiredOutputTorqueLbIn: number | null;
   requiredPowerHp?: number | null;
   applicationId?: string;
+  /** Mounting style from Drive Arrangement - determines if output shaft kit is required */
+  gearmotorMountingStyle?: GearmotorMountingStyle | string;
   /** Callback when gearmotor selection changes - receives output_rpm or null if cleared */
   onGearmotorOutputRpmChange?: (outputRpm: number | null) => void;
 }
@@ -33,6 +36,7 @@ export default function DriveSelectorCard({
   requiredOutputTorqueLbIn,
   requiredPowerHp,
   applicationId,
+  gearmotorMountingStyle,
   onGearmotorOutputRpmChange,
 }: DriveSelectorCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -179,6 +183,7 @@ export default function DriveSelectorCard({
         requiredPowerHp={requiredPowerHp}
         applicationId={applicationId}
         initialServiceFactor={serviceFactor}
+        gearmotorMountingStyle={gearmotorMountingStyle}
         selectedCandidate={selectedCandidate}
         onSelect={handleSelect}
         onServiceFactorChange={setServiceFactor}

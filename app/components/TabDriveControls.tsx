@@ -331,18 +331,8 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             </div>
           )}
 
-          {/* Drive Selector Card - Opens modal for gearmotor selection */}
-          <DriveSelectorCard
-            requiredOutputRpm={outputs?.gearmotor_output_rpm ?? outputs?.drive_shaft_rpm ?? null}
-            requiredOutputTorqueLbIn={outputs?.torque_drive_shaft_inlbf ?? null}
-            applicationId={applicationId}
-            onGearmotorOutputRpmChange={(outputRpm) => {
-              // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
-              updateInput('actual_gearmotor_output_rpm', outputRpm);
-            }}
-          />
-
           {/* Drive Arrangement Summary Card - Green "Configured + Edit" pattern, compact grid */}
+          {/* NOTE: Moved ABOVE Drive Selector so users define mounting method first */}
           <div className="border border-green-200 bg-green-50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <h5 className="font-medium text-gray-900">Drive Arrangement</h5>
@@ -397,6 +387,18 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
               </div>
             )}
           </div>
+
+          {/* Drive Selector Card - Opens modal for gearmotor selection */}
+          <DriveSelectorCard
+            requiredOutputRpm={outputs?.gearmotor_output_rpm ?? outputs?.drive_shaft_rpm ?? null}
+            requiredOutputTorqueLbIn={outputs?.torque_drive_shaft_inlbf ?? null}
+            applicationId={applicationId}
+            gearmotorMountingStyle={inputs.gearmotor_mounting_style}
+            onGearmotorOutputRpmChange={(outputRpm) => {
+              // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
+              updateInput('actual_gearmotor_output_rpm', outputRpm);
+            }}
+          />
 
           {/* Advanced Parameters Card - Always show fields + values */}
           <div className="border border-gray-200 bg-gray-50 rounded-lg p-4">

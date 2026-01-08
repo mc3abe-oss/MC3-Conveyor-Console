@@ -28,6 +28,39 @@ import { supabase, isSupabaseConfigured } from '../supabase/client';
 export const DEFAULT_MOUNTING_VARIANT = 'inch_hollow';
 
 // ============================================================================
+// OUTPUT SHAFT KIT REQUIREMENT LOGIC
+// ============================================================================
+
+/**
+ * Gearmotor mounting style values (matches GearmotorMountingStyle enum).
+ * Re-declared here to avoid circular dependency with schema.
+ */
+export const GEARMOTOR_MOUNTING_STYLE = {
+  ShaftMounted: 'shaft_mounted',
+  BottomMount: 'bottom_mount',
+} as const;
+
+/**
+ * Determine if an Output Shaft Kit is required based on Drive Arrangement.
+ *
+ * Rule:
+ * - Shaft mount (direct coupling): Output Shaft Kit NOT required
+ * - Bottom mount (chain drive): Output Shaft Kit IS required
+ *
+ * The bottom_mount option implies chain drive coupling, which requires
+ * an output shaft kit to connect the gearmotor to the drive shaft via chain.
+ *
+ * @param gearmotorMountingStyle - The mounting style from Drive Arrangement
+ * @returns true if output shaft kit is required, false otherwise
+ */
+export function needsOutputShaftKit(
+  gearmotorMountingStyle: string | null | undefined
+): boolean {
+  // Only bottom mount (chain drive) requires an output shaft kit
+  return gearmotorMountingStyle === GEARMOTOR_MOUNTING_STYLE.BottomMount;
+}
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -142,6 +175,13 @@ export interface ResolveBomOptions {
   totalRatio?: number;
   /** Mounting variant for gear unit PN lookup (defaults to inch_hollow for US market) */
   mountingVariant?: 'inch_hollow' | 'metric_hollow';
+  /**
+   * Gearmotor mounting style from Drive Arrangement.
+   * Determines if output shaft kit is required:
+   * - 'shaft_mounted': NOT required (direct coupling)
+   * - 'bottom_mount': REQUIRED (chain drive)
+   */
+  gearmotorMountingStyle?: string;
 }
 
 /**
@@ -306,7 +346,30 @@ export async function resolveBom(
     found: !!adapterMatch,
   });
 
+  // 4. Output Shaft Kit - conditional based on mounting style
+  // Rule: Only required for bottom_mount (chain drive); not required for shaft_mounted
+  const shaftKitRequired = needsOutputShaftKit(options?.gearmotorMountingStyle);
+
+  if (shaftKitRequired) {
+    // Bottom mount + chain drive: Output shaft kit IS required, show as Missing until configured
+    components.push({
+      component_type: 'output_shaft_kit',
+      part_number: null, // User must select/configure
+      description: 'Required for chain drive configuration',
+      found: false,
+    });
+  } else {
+    // Shaft mount or other: Output shaft kit NOT required
+    components.push({
+      component_type: 'output_shaft_kit',
+      part_number: null,
+      description: 'Not required for shaft mount',
+      found: true, // Mark as "found" so it doesn't show as Missing
+    });
+  }
+
   result.components = components;
+  // Complete = all required components found (output shaft kit is "found" if not required)
   result.complete = components.every(c => c.found);
 
   return result;
@@ -429,21 +492,34 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
 
   componentOrder.forEach((item, index) => {
     const component = bom.components.find(c => c.component_type === item.type);
-    const partNumber = component?.part_number || '—';
-    const description = component?.description || '—';
 
-    lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${description}`);
+    // Special handling for output shaft kit "not required" case
+    // When found=true but no part_number, it means "not required for this mounting style"
+    const isNotRequiredShaftKit = item.type === 'output_shaft_kit' &&
+      component?.found === true &&
+      !component?.part_number;
 
-    // Track missing for notes section
-    if (!component?.part_number || !component?.found) {
-      let reason = 'No matching component found in component map.';
-      if (item.type === 'output_shaft_kit') {
-        reason = 'Select an output shaft option to resolve this.';
-      } else if (item.type === 'gear_unit' && component?.part_number) {
-        // Has synthetic PN but not found in DB
-        reason = 'Gear unit PN mapping not keyed for this model yet.';
+    if (isNotRequiredShaftKit) {
+      // Show "— (not required)" for output shaft kit when not needed
+      lines.push(`${index + 1}) ${item.label}: — (not required)  | ${component?.description || 'Not required for shaft mount'}`);
+      // Don't add to missingComponents - it's intentionally not required
+    } else {
+      const partNumber = component?.part_number || '—';
+      const description = component?.description || '—';
+
+      lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${description}`);
+
+      // Track missing for notes section
+      if (!component?.part_number || !component?.found) {
+        let reason = 'No matching component found in component map.';
+        if (item.type === 'output_shaft_kit') {
+          reason = 'Select an output shaft option to resolve this.';
+        } else if (item.type === 'gear_unit' && component?.part_number) {
+          // Has synthetic PN but not found in DB
+          reason = 'Gear unit PN mapping not keyed for this model yet.';
+        }
+        missingComponents.push({ label: `${item.label} PN`, reason });
       }
-      missingComponents.push({ label: `${item.label} PN`, reason });
     }
   });
 
@@ -471,10 +547,21 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
 
 /**
  * Get a human-readable hint for why a component is missing.
+ *
+ * @param componentType - The type of BOM component
+ * @param isRequired - For output_shaft_kit, whether it's actually required (based on mounting style)
+ * @returns Human-readable hint string
  */
-export function getMissingHint(componentType: BomComponent['component_type']): string {
+export function getMissingHint(
+  componentType: BomComponent['component_type'],
+  isRequired: boolean = true
+): string {
   switch (componentType) {
     case 'output_shaft_kit':
+      // If not required, no hint needed (but caller should check found status first)
+      if (!isRequired) {
+        return 'Not required for shaft mount configuration.';
+      }
       return 'Select an output shaft option to resolve this.';
     case 'gear_unit':
       return 'Gear unit PN mapping not keyed for this model yet.';
