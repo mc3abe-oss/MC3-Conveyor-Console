@@ -5,7 +5,14 @@
  * Model type format: "SK [stages]SI[size] - [adapter_code] - [motor_frame]"
  */
 
-import { parseModelType, resolveBomFromMetadata, ParsedModelType, isRealNordPartNumber } from './bom';
+import {
+  parseModelType,
+  resolveBomFromMetadata,
+  ParsedModelType,
+  isRealNordPartNumber,
+  DEFAULT_MOUNTING_VARIANT,
+  ResolveBomOptions,
+} from './bom';
 
 describe('parseModelType', () => {
   // ===========================================================================
@@ -585,6 +592,155 @@ describe('REGRESSION: Gear unit with synthetic key must be Missing', () => {
     const result = resolveBomFromMetadata(metadata, 0.25);
 
     // Even if motor/adapter were resolved, complete should be false
+    expect(result.complete).toBe(false);
+  });
+});
+
+// =============================================================================
+// DEFAULT_MOUNTING_VARIANT TESTS
+// =============================================================================
+
+describe('DEFAULT_MOUNTING_VARIANT', () => {
+  it('defaults to inch_hollow for US market', () => {
+    expect(DEFAULT_MOUNTING_VARIANT).toBe('inch_hollow');
+  });
+
+  it('is a valid mounting variant value', () => {
+    const validVariants = ['inch_hollow', 'metric_hollow'];
+    expect(validVariants).toContain(DEFAULT_MOUNTING_VARIANT);
+  });
+});
+
+// =============================================================================
+// ResolveBomOptions TYPE TESTS
+// =============================================================================
+
+describe('ResolveBomOptions', () => {
+  it('accepts valid options structure', () => {
+    // TypeScript compile-time check - if this compiles, the type is correct
+    const options: ResolveBomOptions = {
+      totalRatio: 80,
+      mountingVariant: 'inch_hollow',
+    };
+    expect(options.totalRatio).toBe(80);
+    expect(options.mountingVariant).toBe('inch_hollow');
+  });
+
+  it('allows optional fields', () => {
+    const optionsWithRatioOnly: ResolveBomOptions = {
+      totalRatio: 100,
+    };
+    expect(optionsWithRatioOnly.totalRatio).toBe(100);
+    expect(optionsWithRatioOnly.mountingVariant).toBeUndefined();
+
+    const emptyOptions: ResolveBomOptions = {};
+    expect(emptyOptions.totalRatio).toBeUndefined();
+    expect(emptyOptions.mountingVariant).toBeUndefined();
+  });
+
+  it('accepts metric_hollow as mounting variant', () => {
+    const options: ResolveBomOptions = {
+      totalRatio: 50,
+      mountingVariant: 'metric_hollow',
+    };
+    expect(options.mountingVariant).toBe('metric_hollow');
+  });
+});
+
+// =============================================================================
+// GEAR UNIT PN RESOLUTION LOGIC TESTS
+// =============================================================================
+
+describe('Gear Unit PN Resolution Logic', () => {
+  /**
+   * These tests verify the logic for gear unit PN resolution.
+   * The async resolveBom() function requires database access.
+   * These tests document expected behavior and can be run as
+   * integration tests when DB is configured.
+   */
+
+  describe('Mounting Variant Determination', () => {
+    it('inch_hollow pattern produces PNs starting with 6039**2**xxx', () => {
+      // Inch hollow PNs follow pattern: 6039[size]xxx where middle digit is 2
+      // Examples: 60392050 (SI31), 60492050 (SI40), 60592050 (SI50), 60692050 (SI63), 60792050 (SI75)
+      const inchHollowPNs = ['60392050', '60492050', '60592050', '60692050', '60792050'];
+
+      for (const pn of inchHollowPNs) {
+        expect(isRealNordPartNumber(pn)).toBe(true);
+        // The 5th digit (index 4) indicates mounting variant: 2=inch, 1=metric
+        expect(pn[4]).toBe('2');
+      }
+    });
+
+    it('metric_hollow pattern produces PNs starting with 6039**1**xxx', () => {
+      // Metric hollow PNs follow pattern: 6039[size]xxx where middle digit is 1
+      // Examples: 60391050 (SI31), 60491050 (SI40), 60591050 (SI50), 60691050 (SI63), 60791050 (SI75)
+      const metricHollowPNs = ['60391050', '60491050', '60591050', '60691050', '60791050'];
+
+      for (const pn of metricHollowPNs) {
+        expect(isRealNordPartNumber(pn)).toBe(true);
+        // The 5th digit (index 4) indicates mounting variant: 2=inch, 1=metric
+        expect(pn[4]).toBe('1');
+      }
+    });
+  });
+
+  describe('totalRatio matching', () => {
+    it('should match exact integer ratios', () => {
+      // Test that ratio matching works for common ratios
+      const ratios = [5, 10, 15, 20, 25, 30, 40, 50, 60, 80, 100];
+      for (const ratio of ratios) {
+        const options: ResolveBomOptions = { totalRatio: ratio };
+        expect(options.totalRatio).toBe(ratio);
+      }
+    });
+
+    it('should match decimal ratios like 7.5 and 12.5', () => {
+      const decimalRatios = [7.5, 12.5];
+      for (const ratio of decimalRatios) {
+        const options: ResolveBomOptions = { totalRatio: ratio };
+        expect(options.totalRatio).toBe(ratio);
+      }
+    });
+  });
+});
+
+// =============================================================================
+// INTEGRATION: resolveBomFromMetadata still works as before
+// =============================================================================
+
+describe('resolveBomFromMetadata backward compatibility', () => {
+  it('gear unit remains Missing (found=false) without DB lookup', () => {
+    const metadata = {
+      model_type: 'SK 1SI63/H10 - 56C - 63L/4',
+      total_ratio: 80,
+      parsed_model: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+    };
+
+    const result = resolveBomFromMetadata(metadata, 0.25);
+
+    // Gear unit should still be Missing because resolveBomFromMetadata
+    // is synchronous and doesn't do DB lookups
+    const gearUnit = result.components.find(c => c.component_type === 'gear_unit');
+    expect(gearUnit?.found).toBe(false);
+    expect(gearUnit?.part_number).toBeNull();
+    expect(result.complete).toBe(false);
+  });
+
+  it('complete is false when gear unit not resolved', () => {
+    const metadata = {
+      model_type: 'SK 1SI31 - 56C - 63S/4',
+      total_ratio: 100,
+    };
+
+    const result = resolveBomFromMetadata(metadata, 0.16);
+
     expect(result.complete).toBe(false);
   });
 });

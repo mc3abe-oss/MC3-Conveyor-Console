@@ -13,6 +13,21 @@
 import { supabase, isSupabaseConfigured } from '../supabase/client';
 
 // ============================================================================
+// MOUNTING VARIANT CONFIGURATION
+// ============================================================================
+
+/**
+ * Default mounting variant for gear unit PN lookup.
+ *
+ * US market standard is inch hollow shaft (6039**2**xxx pattern).
+ * This is used when no explicit shaft system selection has been made.
+ *
+ * Future: When user shaft selection is implemented, derive this from
+ * the selected output shaft kit or a region/units setting.
+ */
+export const DEFAULT_MOUNTING_VARIANT = 'inch_hollow';
+
+// ============================================================================
 // TYPES
 // ============================================================================
 
@@ -110,15 +125,27 @@ export function parseModelType(modelType: string | null | undefined): ParsedMode
 // ============================================================================
 
 /**
+ * Options for BOM resolution with gear unit lookup.
+ */
+export interface ResolveBomOptions {
+  /** Total gear ratio for gear unit PN lookup */
+  totalRatio?: number;
+  /** Mounting variant for gear unit PN lookup (defaults to inch_hollow for US market) */
+  mountingVariant?: 'inch_hollow' | 'metric_hollow';
+}
+
+/**
  * Resolve BOM components for a given model type and motor HP.
  *
  * @param modelType - Model type string (e.g., "SK 1SI31 - 56C - 63S/4")
  * @param motorHp - Motor horsepower rating
+ * @param options - Optional parameters for gear unit PN lookup
  * @returns BOM resolution with component part numbers
  */
 export async function resolveBom(
   modelType: string | null | undefined,
-  motorHp: number
+  motorHp: number,
+  options?: ResolveBomOptions
 ): Promise<BomResolution> {
   const result: BomResolution = {
     model_type: modelType || '',
@@ -153,28 +180,51 @@ export async function resolveBom(
   // Query components from database
   const components: BomComponent[] = [];
 
-  // 1. Gear Unit - look up by size and HP
-  // NOTE: Synthetic keys like "SI63-0.25HP" may exist in DB but are NOT real
-  // NORD orderable part numbers. Only mark as "found" if we have a real PN.
-  const gearUnitSyntheticKey = `${parsed.gear_unit_size}-${motorHp}HP`;
-  const { data: gearUnit } = await supabase
-    .from('vendor_components')
-    .select('vendor_part_number, description')
-    .eq('vendor', 'NORD')
-    .eq('component_type', 'GEAR_UNIT')
-    .eq('vendor_part_number', gearUnitSyntheticKey)
-    .single();
+  // 1. Gear Unit - look up by (gear_unit_size, total_ratio, mounting_variant)
+  // Real NORD gear unit PNs are keyed by these three fields in metadata_json.
+  // If totalRatio is not provided, gear unit cannot be resolved.
+  let gearUnitPn: string | null = null;
+  let gearUnitDescription: string | null = null;
+  let gearUnitFound = false;
 
-  // A gear unit is only "found" if it has a real NORD orderable part number
-  const gearUnitPn = gearUnit?.vendor_part_number || null;
-  const hasRealGearUnitPn = isRealNordPartNumber(gearUnitPn);
+  if (options?.totalRatio !== undefined) {
+    // Query gear units by metadata fields
+    const mountingVariant = options.mountingVariant || DEFAULT_MOUNTING_VARIANT;
+    const { data: gearUnits } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, description, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'GEAR_UNIT');
 
+    // Find matching gear unit by metadata
+    if (gearUnits) {
+      for (const gu of gearUnits) {
+        const meta = gu.metadata_json as Record<string, unknown> | null;
+        if (!meta) continue;
+
+        const sizeMatch = meta.gear_unit_size === parsed.gear_unit_size;
+        const ratioMatch = Math.abs((meta.total_ratio as number) - options.totalRatio) < 0.01;
+        const variantMatch = meta.mounting_variant === mountingVariant;
+
+        if (sizeMatch && ratioMatch && variantMatch) {
+          const pn = gu.vendor_part_number;
+          if (isRealNordPartNumber(pn)) {
+            gearUnitPn = pn;
+            gearUnitDescription = gu.description;
+            gearUnitFound = true;
+            break;
+          }
+        }
+      }
+    }
+  }
+
+  // Build gear unit component entry
   components.push({
     component_type: 'gear_unit',
-    // Show synthetic key for reference, but it's not an orderable PN
-    part_number: hasRealGearUnitPn ? gearUnitPn : null,
-    description: gearUnit?.description || `NORD FLEXBLOC ${parsed.gear_unit_size} ${motorHp}HP`,
-    found: hasRealGearUnitPn,
+    part_number: gearUnitFound ? gearUnitPn : null,
+    description: gearUnitDescription || `NORD FLEXBLOC ${parsed.gear_unit_size} ${motorHp}HP`,
+    found: gearUnitFound,
   });
 
   // 2. Motor - look up by adapter code, motor frame, and HP

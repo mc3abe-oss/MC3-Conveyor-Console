@@ -26,8 +26,10 @@ export {
   buildBomCopyText,
   getMissingHint,
   isRealNordPartNumber,
+  DEFAULT_MOUNTING_VARIANT,
   type ParsedModelType,
   type BomComponent,
   type BomResolution,
   type BomCopyContext,
+  type ResolveBomOptions,
 } from './bom';

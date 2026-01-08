@@ -38,6 +38,7 @@ const __dirname = path.dirname(__filename);
 // AUTHORITATIVE sources - the ONLY sources of NORD FLEXBLOC data
 const SELECTION_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_B46_B61_selection_extract_v2_fullhp.csv');
 const COMPONENT_MAP_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_component_map_v2_keyed.csv');
+const GEAR_UNIT_PN_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_gear_unit_part_numbers_v1.csv');
 
 const VENDOR = 'NORD';
 const SERIES = 'FLEXBLOC';
@@ -179,6 +180,7 @@ async function seedNordFlexblocV2() {
   if (dryRun) console.log('DRY RUN MODE - no changes will be made');
   console.log(`Selection CSV: ${SELECTION_CSV_PATH}`);
   console.log(`Component Map CSV: ${COMPONENT_MAP_CSV_PATH}`);
+  console.log(`Gear Unit PN CSV: ${GEAR_UNIT_PN_CSV_PATH}`);
   console.log();
 
   // ==========================================================================
@@ -196,11 +198,18 @@ async function seedNordFlexblocV2() {
     process.exit(1);
   }
 
+  if (!fs.existsSync(GEAR_UNIT_PN_CSV_PATH)) {
+    console.error(`Error: Gear Unit PN CSV not found at ${GEAR_UNIT_PN_CSV_PATH}`);
+    process.exit(1);
+  }
+
   const selectionRows = parseCSV(fs.readFileSync(SELECTION_CSV_PATH, 'utf-8'));
   const componentMapRows = parseCSV(fs.readFileSync(COMPONENT_MAP_CSV_PATH, 'utf-8'));
+  const gearUnitPnRows = parseCSV(fs.readFileSync(GEAR_UNIT_PN_CSV_PATH, 'utf-8'));
 
   console.log(`  Parsed ${selectionRows.length} selection/performance rows`);
   console.log(`  Parsed ${componentMapRows.length} component map rows`);
+  console.log(`  Parsed ${gearUnitPnRows.length} gear unit PN rows`);
 
   // Filter component map to allowed types only
   const filteredComponentMap = componentMapRows.filter(row =>
@@ -421,7 +430,90 @@ async function seedNordFlexblocV2() {
     }
   }
 
-  console.log(`  ${gearUnitsCreated} gear unit components created`);
+  console.log(`  ${gearUnitsCreated} gear unit components created (synthetic keys)`);
+  console.log();
+
+  // ==========================================================================
+  // STEP 4.5: Insert REAL gear unit part numbers from catalog
+  // ==========================================================================
+  console.log('Step 4.5: Inserting REAL gear unit part numbers from catalog...');
+
+  // These are REAL NORD 8-digit orderable part numbers keyed by:
+  // (gear_unit_size, total_ratio, mounting_variant)
+  let realGearUnitsInserted = 0;
+  let realGearUnitErrors = 0;
+  let realGearUnitSkipped = 0;
+
+  for (const row of gearUnitPnRows) {
+    const partNumber = row.nord_part_number?.trim();
+    const gearUnitSize = row.gear_unit_size?.trim();
+    const totalRatio = parseFloat(row.total_ratio);
+    const mountingVariant = row.mounting_variant?.trim();
+
+    // Validate required fields
+    if (!partNumber || !gearUnitSize || isNaN(totalRatio) || !mountingVariant) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid row: ${JSON.stringify(row)}`);
+      }
+      realGearUnitSkipped++;
+      continue;
+    }
+
+    // Validate part number format (8-digit, starts with 3 or 6)
+    if (!/^[36]\d{7}$/.test(partNumber)) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid PN format: ${partNumber}`);
+      }
+      realGearUnitSkipped++;
+      continue;
+    }
+
+    const componentRow = {
+      vendor: VENDOR,
+      component_type: 'GEAR_UNIT',
+      vendor_part_number: partNumber,
+      description: row.description || `NORD ${SERIES} ${gearUnitSize} Ratio ${totalRatio} ${mountingVariant}`,
+      metadata_json: {
+        product_line: row.product_line || SERIES,
+        gear_unit_size: gearUnitSize,
+        total_ratio: totalRatio,
+        worm_ratio: row.worm_ratio ? parseFloat(row.worm_ratio) : totalRatio,
+        second_ratio: row.second_ratio ? parseFloat(row.second_ratio) : null,
+        mounting_variant: mountingVariant,
+        adapter_interface: row.adapter_interface || null,
+        brake: row.brake === 'true',
+        catalog_page: row.catalog_page || null,
+      },
+    };
+
+    if (verbose) {
+      console.log(`  [REAL_GEAR_UNIT] ${partNumber}: ${gearUnitSize} i=${totalRatio} ${mountingVariant}`);
+    }
+
+    if (!dryRun) {
+      const { data, error } = await supabase
+        .from('vendor_components')
+        .upsert(componentRow, { onConflict: 'vendor,vendor_part_number' })
+        .select('id')
+        .single();
+
+      if (error) {
+        if (verbose) console.error(`    Error: ${error.message}`);
+        realGearUnitErrors++;
+        continue;
+      }
+
+      partNumberToId.set(partNumber, data.id);
+      realGearUnitsInserted++;
+    } else {
+      partNumberToId.set(partNumber, `DRY_RUN_${partNumber}`);
+      realGearUnitsInserted++;
+    }
+  }
+
+  console.log(`  ${realGearUnitsInserted} REAL gear unit PNs inserted/updated`);
+  if (realGearUnitSkipped > 0) console.log(`  ${realGearUnitSkipped} rows skipped`);
+  if (realGearUnitErrors > 0) console.log(`  ${realGearUnitErrors} errors`);
   console.log();
 
   // ==========================================================================
@@ -516,9 +608,11 @@ async function seedNordFlexblocV2() {
   // ==========================================================================
   console.log('='.repeat(70));
   console.log('Summary:');
-  console.log(`  Components Created: ${componentsInserted + gearUnitsCreated}`);
-  console.log(`  Performance Points Inserted: ${performancePointsInserted}`);
-  console.log(`  Total Errors: ${componentErrors + performanceErrors}`);
+  console.log(`  Components (from component map): ${componentsInserted}`);
+  console.log(`  Gear Units (synthetic keys): ${gearUnitsCreated}`);
+  console.log(`  Gear Units (REAL PNs): ${realGearUnitsInserted}`);
+  console.log(`  Performance Points: ${performancePointsInserted}`);
+  console.log(`  Total Errors: ${componentErrors + performanceErrors + realGearUnitErrors}`);
   console.log('='.repeat(70));
 
   if (dryRun) {
