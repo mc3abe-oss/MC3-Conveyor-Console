@@ -395,6 +395,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             applicationId={applicationId}
             gearmotorMountingStyle={inputs.gearmotor_mounting_style}
             outputShaftOption={inputs.output_shaft_option}
+            outputShaftBoreIn={inputs.output_shaft_bore_in}
             onGearmotorOutputRpmChange={(outputRpm) => {
               // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
               updateInput('actual_gearmotor_output_rpm', outputRpm);

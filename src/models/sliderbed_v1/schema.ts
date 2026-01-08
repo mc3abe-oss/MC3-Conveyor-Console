@@ -1470,6 +1470,15 @@ export interface SliderbedInputs {
   output_shaft_option?: string | null;
 
   /**
+   * Output shaft bore size in inches for inch keyed option (v1.40)
+   * Required when output_shaft_option = 'inch_keyed'.
+   * Used to look up the specific NORD output shaft kit part number.
+   * Available bore sizes: 1.000, 1.125, 1.250, 1.375
+   * - null: Not selected (will show as "Missing" hint: "Select bore")
+   */
+  output_shaft_bore_in?: number | null;
+
+  /**
    * Actual gearmotor source (v1.38)
    * Indicates how the actual gearmotor values were obtained:
    * - 'nord_catalogue': Selected from NORD Drive Selector
@@ -2774,6 +2783,7 @@ export const DEFAULT_INPUT_VALUES = {
   gm_sprocket_teeth: 18,
   drive_shaft_sprocket_teeth: 24,
   output_shaft_option: null, // v1.39: Output shaft option for chain drive
+  output_shaft_bore_in: null, // v1.40: Bore size for inch keyed output shaft
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,
@@ -2917,6 +2927,7 @@ export function buildDefaultInputs(): SliderbedInputs {
     gm_sprocket_teeth: 18,
     drive_shaft_sprocket_teeth: 24,
     output_shaft_option: null, // v1.39: Output shaft option for chain drive
+    output_shaft_bore_in: null, // v1.40: Bore size for inch keyed output shaft
 
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,

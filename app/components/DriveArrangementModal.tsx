@@ -36,6 +36,15 @@ const OUTPUT_SHAFT_OPTIONS = [
   { value: 'metric_hollow', label: 'Metric hollow' },
 ] as const;
 
+// Bore options for inch keyed output shaft (v1)
+// These match the seeded data in nord_flexbloc_output_shaft_kits_inch_keyed_v1.csv
+const INCH_KEYED_BORE_OPTIONS = [
+  { value: 1.0, label: '1"' },
+  { value: 1.125, label: '1-1/8"' },
+  { value: 1.25, label: '1-1/4"' },
+  { value: 1.375, label: '1-3/8"' },
+] as const;
+
 // Fields managed by this modal
 type DraftFields = Pick<
   SliderbedInputs,
@@ -47,6 +56,7 @@ type DraftFields = Pick<
   | 'gm_sprocket_teeth'
   | 'drive_shaft_sprocket_teeth'
   | 'output_shaft_option'
+  | 'output_shaft_bore_in'
   | 'gearmotor_orientation'
   | 'drive_hand'
   | 'motor_rpm'
@@ -80,6 +90,7 @@ export default function DriveArrangementModal({
         gm_sprocket_teeth: inputs.gm_sprocket_teeth,
         drive_shaft_sprocket_teeth: inputs.drive_shaft_sprocket_teeth,
         output_shaft_option: inputs.output_shaft_option,
+        output_shaft_bore_in: inputs.output_shaft_bore_in,
         gearmotor_orientation: inputs.gearmotor_orientation,
         drive_hand: inputs.drive_hand,
         motor_rpm: inputs.motor_rpm,
@@ -359,7 +370,14 @@ export default function DriveArrangementModal({
                     id="modal_output_shaft"
                     className="input"
                     value={draft.output_shaft_option ?? ''}
-                    onChange={(e) => updateDraft('output_shaft_option', e.target.value || null)}
+                    onChange={(e) => {
+                      const newValue = e.target.value || null;
+                      updateDraft('output_shaft_option', newValue);
+                      // Clear bore when changing output shaft option
+                      if (newValue !== 'inch_keyed') {
+                        updateDraft('output_shaft_bore_in', null);
+                      }
+                    }}
                   >
                     {OUTPUT_SHAFT_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -371,6 +389,31 @@ export default function DriveArrangementModal({
                     Required for chain drive. Used to choose the correct NORD output shaft kit.
                   </p>
                 </div>
+
+                {/* Bore Selection - only shown for inch_keyed */}
+                {draft.output_shaft_option === 'inch_keyed' && (
+                  <div className="pt-2">
+                    <label htmlFor="modal_output_bore" className="label">
+                      Output Shaft Bore
+                    </label>
+                    <select
+                      id="modal_output_bore"
+                      className="input"
+                      value={draft.output_shaft_bore_in ?? ''}
+                      onChange={(e) => updateDraft('output_shaft_bore_in', e.target.value ? parseFloat(e.target.value) : null)}
+                    >
+                      <option value="">Select bore</option>
+                      {INCH_KEYED_BORE_OPTIONS.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Required to resolve the output shaft kit part number.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

@@ -195,6 +195,12 @@ export interface ResolveBomOptions {
    * Required for output shaft kit PN lookup.
    */
   gearUnitSize?: string | null;
+  /**
+   * Output shaft bore size in inches for inch keyed option.
+   * Required when outputShaftOption = 'inch_keyed'.
+   * If null/undefined when required, status = MISSING with hint "Select bore".
+   */
+  outputShaftBoreIn?: number | null;
 }
 
 /**
@@ -208,46 +214,48 @@ export const OUTPUT_SHAFT_OPTION_LABELS: Record<string, string> = {
 };
 
 // =============================================================================
-// DISABLED: Output Shaft Kit PN Lookup
-// PR: fix/nord-output-shaft-kit-no-fake-pn
-//
-// This function and its helper are commented out until the full catalog mapping
-// is verified. The CSV contains PNs but they should not be displayed until validated.
-//
-// When ready to enable:
-// 1. Uncomment OUTPUT_SHAFT_OPTION_KEY_MAP and lookupOutputShaftKitPN below
-// 2. Uncomment the call in resolveBom()
-// 3. Add back the conditional logic to return "Resolved" state when PN found
+// Output Shaft Kit PN Lookup (inch_keyed with bore)
 // =============================================================================
-/*
-const OUTPUT_SHAFT_OPTION_KEY_MAP: Record<string, string> = {
-  inch_keyed: 'inch_keyed',
-  metric_keyed: 'metric_keyed',
-  inch_hollow: 'inch_hollow',
-  metric_hollow: 'metric_hollow',
-};
 
+/**
+ * Look up output shaft kit PN from vendor_components table.
+ *
+ * For inch_keyed option, requires bore_in to find the specific kit.
+ * Key: (gear_unit_size, mounting_variant, output_shaft_option_key, bore_in)
+ *
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param mountingVariant - e.g., 'inch_hollow', 'metric_hollow'
+ * @param outputShaftOptionKey - e.g., 'inch_keyed', 'metric_keyed'
+ * @param boreIn - Bore size in inches (required for inch_keyed)
+ * @returns Part number and description if found, null otherwise
+ */
 async function lookupOutputShaftKitPN(
   gearUnitSize: string,
   mountingVariant: string,
-  outputShaftOptionKey: string
+  outputShaftOptionKey: string,
+  boreIn?: number | null
 ): Promise<{ vendor_part_number: string; description: string } | null> {
   if (!isSupabaseConfigured()) {
     return null;
   }
 
-  const optionKey = OUTPUT_SHAFT_OPTION_KEY_MAP[outputShaftOptionKey] || outputShaftOptionKey;
-
   try {
-    const { data, error } = await supabase
+    // Build the query
+    let query = supabase
       .from('vendor_components')
       .select('vendor_part_number, description, metadata_json')
       .eq('vendor', 'NORD')
       .eq('component_type', 'OUTPUT_KIT')
       .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
       .filter('metadata_json->>mounting_variant', 'eq', mountingVariant)
-      .filter('metadata_json->>output_shaft_option_key', 'eq', optionKey)
-      .limit(1);
+      .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
+
+    // For inch_keyed, also filter by bore_in
+    if (outputShaftOptionKey === 'inch_keyed' && boreIn !== null && boreIn !== undefined) {
+      query = query.filter('metadata_json->>bore_in', 'eq', String(boreIn));
+    }
+
+    const { data, error } = await query.limit(1);
 
     if (error) {
       console.error('Output shaft kit lookup error:', error.message);
@@ -270,7 +278,6 @@ async function lookupOutputShaftKitPN(
     return null;
   }
 }
-*/
 
 /**
  * Resolve BOM components for a given model type and motor HP.
@@ -438,15 +445,14 @@ export async function resolveBom(
   // States:
   // - NOT_REQUIRED: shaft_mounted (found=true, description="Not required...")
   // - MISSING: bottom_mount + no outputShaftOption (found=false, description="Required...")
-  // - CONFIGURED: bottom_mount + outputShaftOption (found=true, no PN, pending catalog mapping)
-  //
-  // NOTE: RESOLVED state is disabled until catalog mapping is verified.
-  // When ready: uncomment gearUnitSize/mountingVariant and call lookupOutputShaftKitPN
+  // - MISSING_BORE: bottom_mount + inch_keyed + no bore (found=false, hint="Select bore")
+  // - RESOLVED: bottom_mount + option + bore (if inch_keyed) + PN found
+  // - CONFIGURED: bottom_mount + option + bore but no PN found (PN pending)
   const shaftKitRequired = needsOutputShaftKit(options?.gearmotorMountingStyle);
   const outputShaftOption = options?.outputShaftOption;
-  // DISABLED: These are needed for PN lookup, which is currently disabled
-  // const gearUnitSize = parsed?.gear_unit_size || options?.gearUnitSize;
-  // const mountingVariant = options?.mountingVariant || DEFAULT_MOUNTING_VARIANT;
+  const outputShaftBoreIn = options?.outputShaftBoreIn;
+  const gearUnitSize = parsed?.gear_unit_size || options?.gearUnitSize;
+  const mountingVariant = options?.mountingVariant || DEFAULT_MOUNTING_VARIANT;
 
   if (!shaftKitRequired) {
     // Shaft mount or other: Output shaft kit NOT required
@@ -464,25 +470,47 @@ export async function resolveBom(
       description: 'Required for chain drive configuration',
       found: false,
     });
-  } else {
-    // Bottom mount + option selected: Mark as Configured (pending catalog mapping)
-    //
-    // NOTE: Output shaft kit PN lookup is DISABLED until full catalog mapping is verified.
-    // Even though nord_flexbloc_output_shaft_kits_v1.csv contains PNs, they should not be
-    // displayed in the UI/BOM until the mapping is fully validated.
-    //
-    // When ready to enable: uncomment the lookupOutputShaftKitPN call and add the
-    // conditional logic back to return "Resolved" state when a real PN is found.
-    //
-    // For now: Always return Configured state with part_number: null
+  } else if (outputShaftOption === 'inch_keyed' && (outputShaftBoreIn === null || outputShaftBoreIn === undefined)) {
+    // Bottom mount + inch_keyed but no bore selected: Missing with hint
     const optionLabel = OUTPUT_SHAFT_OPTION_LABELS[outputShaftOption] || outputShaftOption;
-
     components.push({
       component_type: 'output_shaft_kit',
       part_number: null,
-      description: `Configured: ${optionLabel}`,
-      found: true, // Mark as configured (not Missing)
+      description: `${optionLabel} - Select bore in Drive Arrangement`,
+      found: false,
     });
+  } else {
+    // Bottom mount + option selected (and bore if inch_keyed): Attempt PN lookup
+    const optionLabel = OUTPUT_SHAFT_OPTION_LABELS[outputShaftOption] || outputShaftOption;
+
+    // Try to look up the real PN
+    let shaftKitMatch: { vendor_part_number: string; description: string } | null = null;
+    if (gearUnitSize) {
+      shaftKitMatch = await lookupOutputShaftKitPN(
+        gearUnitSize,
+        mountingVariant,
+        outputShaftOption,
+        outputShaftBoreIn
+      );
+    }
+
+    if (shaftKitMatch) {
+      // RESOLVED: Real PN found
+      components.push({
+        component_type: 'output_shaft_kit',
+        part_number: shaftKitMatch.vendor_part_number,
+        description: shaftKitMatch.description,
+        found: true,
+      });
+    } else {
+      // CONFIGURED: Option selected but no PN mapping found (PN pending)
+      components.push({
+        component_type: 'output_shaft_kit',
+        part_number: null,
+        description: `Configured: ${optionLabel}`,
+        found: true, // Mark as configured (not Missing)
+      });
+    }
   }
 
   result.components = components;

@@ -81,6 +81,8 @@ interface DriveSelectorModalProps {
   gearmotorMountingStyle?: GearmotorMountingStyle | string;
   /** Output shaft option from Drive Arrangement - for chain drive configuration */
   outputShaftOption?: string | null;
+  /** Output shaft bore size in inches - required for inch_keyed option */
+  outputShaftBoreIn?: number | null;
   selectedCandidate: GearmotorCandidate | null;
   onSelect: (candidate: GearmotorCandidate | null) => void;
   onServiceFactorChange?: (sf: number) => void;
@@ -124,6 +126,7 @@ export default function DriveSelectorModal({
   initialSpeedTolerance = 15,
   gearmotorMountingStyle,
   outputShaftOption,
+  outputShaftBoreIn,
   selectedCandidate,
   onSelect,
   onServiceFactorChange,
@@ -164,6 +167,7 @@ export default function DriveSelectorModal({
       totalRatio: gearUnitRatio, // Worm ratio for gear unit PN lookup
       gearmotorMountingStyle, // For output shaft kit requirement logic
       outputShaftOption, // For output shaft kit configuration status
+      outputShaftBoreIn, // For inch keyed bore-specific PN lookup (v1.40)
     })
       .then((bom) => {
         setResolvedBom(bom);
@@ -174,7 +178,7 @@ export default function DriveSelectorModal({
       .finally(() => {
         setBomLoading(false);
       });
-  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption]);
+  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption, outputShaftBoreIn]);
 
   // Compute active SF: override takes precedence if valid
   const sfOverrideValidation = validateSfOverride(sfOverrideInput);
