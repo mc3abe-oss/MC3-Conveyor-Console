@@ -39,6 +39,25 @@ export interface BomResolution {
 }
 
 // ============================================================================
+// PART NUMBER VALIDATION
+// ============================================================================
+
+/**
+ * Check if a part number is a real NORD orderable part number.
+ *
+ * Real NORD part numbers are numeric (e.g., 60691130, 31610012, 60395510).
+ * Synthetic internal keys like "SI63-0.25HP" are NOT orderable part numbers.
+ *
+ * @param partNumber - The part number to check
+ * @returns true if it's a real NORD orderable part number
+ */
+export function isRealNordPartNumber(partNumber: string | null | undefined): boolean {
+  if (!partNumber) return false;
+  // Real NORD part numbers are 8-digit numbers starting with 3 or 6
+  return /^[36]\d{7}$/.test(partNumber);
+}
+
+// ============================================================================
 // MODEL TYPE PARSER
 // ============================================================================
 
@@ -135,20 +154,27 @@ export async function resolveBom(
   const components: BomComponent[] = [];
 
   // 1. Gear Unit - look up by size and HP
-  const gearUnitPartNumber = `${parsed.gear_unit_size}-${motorHp}HP`;
+  // NOTE: Synthetic keys like "SI63-0.25HP" may exist in DB but are NOT real
+  // NORD orderable part numbers. Only mark as "found" if we have a real PN.
+  const gearUnitSyntheticKey = `${parsed.gear_unit_size}-${motorHp}HP`;
   const { data: gearUnit } = await supabase
     .from('vendor_components')
     .select('vendor_part_number, description')
     .eq('vendor', 'NORD')
     .eq('component_type', 'GEAR_UNIT')
-    .eq('vendor_part_number', gearUnitPartNumber)
+    .eq('vendor_part_number', gearUnitSyntheticKey)
     .single();
+
+  // A gear unit is only "found" if it has a real NORD orderable part number
+  const gearUnitPn = gearUnit?.vendor_part_number || null;
+  const hasRealGearUnitPn = isRealNordPartNumber(gearUnitPn);
 
   components.push({
     component_type: 'gear_unit',
-    part_number: gearUnit?.vendor_part_number || gearUnitPartNumber,
+    // Show synthetic key for reference, but it's not an orderable PN
+    part_number: hasRealGearUnitPn ? gearUnitPn : null,
     description: gearUnit?.description || `NORD FLEXBLOC ${parsed.gear_unit_size} ${motorHp}HP`,
-    found: !!gearUnit,
+    found: hasRealGearUnitPn,
   });
 
   // 2. Motor - look up by adapter code, motor frame, and HP
@@ -247,12 +273,14 @@ export function resolveBomFromMetadata(
   }
 
   // Build components from parsed info (without DB lookup)
+  // NOTE: Synthetic keys like "SI63-0.25HP" are NOT real NORD orderable part numbers.
+  // Gear units are marked as NOT found until real PNs are added to component map.
   result.components = [
     {
       component_type: 'gear_unit',
-      part_number: `${parsed.gear_unit_size}-${motorHp}HP`,
+      part_number: null, // Synthetic key is not an orderable PN
       description: `NORD FLEXBLOC ${parsed.gear_unit_size} ${motorHp}HP`,
-      found: true, // Synthetic, always "found"
+      found: false, // No real NORD PN available
     },
     {
       component_type: 'motor',
@@ -269,6 +297,123 @@ export function resolveBomFromMetadata(
   ];
 
   return result;
+}
+
+// ============================================================================
+// BOM COPY TEXT BUILDER
+// ============================================================================
+
+/**
+ * Context for building BOM copy text
+ */
+export interface BomCopyContext {
+  appliedSf: number;
+  catalogSf: number;
+  catalogPage?: string | null;
+  motorHp?: number;
+  hadMultipleMatches?: boolean; // Set if resolver had to pick deterministically from multiple
+}
+
+/**
+ * Build a clean, order-friendly BOM text block for clipboard copy.
+ *
+ * Format:
+ * NORD FLEXBLOC Gearmotor BOM
+ * Selected Model: <model_type>
+ * Catalog Page: <catalog_page if known>
+ *
+ * 1) Gear Unit: <part_number or —>  | <description>
+ * 2) Motor (STD or BRK): <part_number or —> | <description>
+ * 3) Adapter: <part_number or —> | <description>
+ * 4) Output Shaft Kit: <part_number or —> | <description>
+ *
+ * Notes:
+ * - Applied SF: <value>
+ * - Catalog SF: <value>
+ * - Any missing mappings listed
+ *
+ * @param bom - BOM resolution result
+ * @param context - Additional context (SF values, catalog page)
+ * @returns Formatted text string ready for clipboard
+ */
+export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): string {
+  const lines: string[] = [];
+
+  // Header
+  lines.push('NORD FLEXBLOC Gearmotor BOM');
+  lines.push(`Selected Model: ${bom.model_type || '—'}`);
+  if (context.catalogPage) {
+    lines.push(`Catalog Page: ${context.catalogPage}`);
+  }
+  lines.push('');
+
+  // Component labels in order
+  const componentOrder: Array<{ type: BomComponent['component_type']; label: string }> = [
+    { type: 'gear_unit', label: 'Gear Unit' },
+    { type: 'motor', label: 'Motor (STD or BRK)' },
+    { type: 'adapter', label: 'Adapter' },
+    { type: 'output_shaft_kit', label: 'Output Shaft Kit' },
+  ];
+
+  // Track missing components
+  const missingComponents: Array<{ label: string; reason: string }> = [];
+
+  componentOrder.forEach((item, index) => {
+    const component = bom.components.find(c => c.component_type === item.type);
+    const partNumber = component?.part_number || '—';
+    const description = component?.description || '—';
+
+    lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${description}`);
+
+    // Track missing for notes section
+    if (!component?.part_number || !component?.found) {
+      let reason = 'No matching component found in component map.';
+      if (item.type === 'output_shaft_kit') {
+        reason = 'Select an output shaft option to resolve this.';
+      } else if (item.type === 'gear_unit' && component?.part_number) {
+        // Has synthetic PN but not found in DB
+        reason = 'Gear unit PN mapping not keyed for this model yet.';
+      }
+      missingComponents.push({ label: `${item.label} PN`, reason });
+    }
+  });
+
+  lines.push('');
+
+  // Notes section
+  lines.push('Notes:');
+  lines.push(`- Applied SF: ${context.appliedSf}`);
+  lines.push(`- Catalog SF: ${context.catalogSf}`);
+
+  // Multiple matches note (if applicable)
+  if (context.hadMultipleMatches) {
+    lines.push('- NOTE: Multiple matches existed; selected first deterministic match.');
+  }
+
+  // Missing mappings
+  if (missingComponents.length > 0) {
+    missingComponents.forEach(m => {
+      lines.push(`- MISSING: ${m.label} (${m.reason})`);
+    });
+  }
+
+  return lines.join('\n');
+}
+
+/**
+ * Get a human-readable hint for why a component is missing.
+ */
+export function getMissingHint(componentType: BomComponent['component_type']): string {
+  switch (componentType) {
+    case 'output_shaft_kit':
+      return 'Select an output shaft option to resolve this.';
+    case 'gear_unit':
+      return 'Gear unit PN mapping not keyed for this model yet.';
+    case 'motor':
+    case 'adapter':
+    default:
+      return 'No matching component found in component map.';
+  }
 }
 
 // ============================================================================

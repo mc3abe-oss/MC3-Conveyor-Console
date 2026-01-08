@@ -6,7 +6,10 @@ import {
   GearmotorCandidate,
   GearmotorSelectionResult,
   evaluateGearmotorCandidate,
-  parseModelType,
+  buildBomCopyText,
+  getMissingHint,
+  resolveBomFromMetadata,
+  type BomComponent,
 } from '../../src/lib/gearmotor';
 
 // Formatting helpers for REQUIREMENTS (can round for display)
@@ -278,25 +281,39 @@ export default function DriveSelectorModal({
     }
   };
 
-  // Copy vendor parts
+  // State for copy error
+  const [copyError, setCopyError] = useState<string | null>(null);
+
+  // Copy vendor parts - builds proper BOM text
   const handleCopyVendorParts = useCallback(async () => {
     if (!selectedCandidate) return;
 
-    const lines = [
-      `NORD ${selectedCandidate.series} Gearmotor`,
-      `Part: ${selectedCandidate.gear_unit_part_number}`,
-      `${selectedCandidate.motor_hp}HP | ${selectedCandidate.output_rpm} RPM | ${selectedCandidate.output_torque_lb_in} lb-in`,
-      ``,
-      `Application Requirements:`,
-      `  Required RPM: ${formatRequiredRpm(requiredOutputRpm)}`,
-      `  Required Torque: ${formatRequiredTorque(requiredOutputTorqueLbIn)} lb-in`,
-      `  Service Factor: ${activeSf}`,
-    ];
+    // Build BOM from metadata
+    const metadata = selectedCandidate.metadata_json;
+    const bom = resolveBomFromMetadata(metadata, selectedCandidate.motor_hp);
 
-    await navigator.clipboard.writeText(lines.join('\n'));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }, [selectedCandidate, requiredOutputRpm, requiredOutputTorqueLbIn, activeSf]);
+    // Get catalog page from metadata
+    const catalogPage = (metadata?.catalog_page as string) || null;
+
+    // Build the copy text
+    const copyText = buildBomCopyText(bom, {
+      appliedSf: activeSf,
+      catalogSf: selectedCandidate.service_factor_catalog,
+      catalogPage,
+      motorHp: selectedCandidate.motor_hp,
+    });
+
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopied(true);
+      setCopyError(null);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy BOM:', err);
+      setCopyError('Copy failed. Please select and copy manually.');
+      setTimeout(() => setCopyError(null), 3000);
+    }
+  }, [selectedCandidate, activeSf]);
 
   // Clear selection
   const handleClearSelection = () => {
@@ -660,115 +677,182 @@ export default function DriveSelectorModal({
 
             {/* E) Vendor Parts / BOM */}
             {selectedCandidate && (() => {
-              // Get parsed model info from metadata_json (proper storage)
-              // Fall back to parsing description/part_number if metadata not available
+              // Build BOM from metadata
               const metadata = selectedCandidate.metadata_json;
-              const parsed = metadata?.parsed_model ||
-                parseModelType(metadata?.model_type as string) ||
-                parseModelType(selectedCandidate.gear_unit_description) ||
-                parseModelType(selectedCandidate.gear_unit_part_number);
+              const bom = resolveBomFromMetadata(metadata, selectedCandidate.motor_hp);
+              const parsed = bom.parsed;
+
+              // Helper to get component by type
+              const getComponent = (type: BomComponent['component_type']) =>
+                bom.components.find(c => c.component_type === type);
+
+              // Status badge component
+              const StatusBadge = ({ found, type: _type }: { found: boolean; type: BomComponent['component_type'] }) => (
+                found ? (
+                  <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Resolved</span>
+                ) : (
+                  <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded flex items-center gap-1">
+                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    Missing
+                  </span>
+                )
+              );
+
+              const gearUnit = getComponent('gear_unit');
+              const motor = getComponent('motor');
+              const adapter = getComponent('adapter');
+              const shaftKit = getComponent('output_shaft_kit');
 
               return (
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
                   <div className="px-4 py-3 bg-gray-50 border-b border-gray-200 flex items-center justify-between">
                     <span className="text-sm font-medium text-gray-700">What to Order (BOM)</span>
-                    <button
-                      onClick={handleCopyVendorParts}
-                      className={clsx(
-                        'px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 transition-colors',
-                        copied
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    <div className="flex items-center gap-2">
+                      {copyError && (
+                        <span className="text-xs text-red-600">{copyError}</span>
                       )}
-                    >
-                      {copied ? (
-                        <>
-                          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                          Copied
-                        </>
-                      ) : (
-                        <>
-                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                          </svg>
-                          Copy BOM
-                        </>
-                      )}
-                    </button>
+                      <button
+                        onClick={handleCopyVendorParts}
+                        className={clsx(
+                          'px-3 py-1.5 text-sm rounded-lg flex items-center gap-1.5 transition-colors',
+                          copied
+                            ? 'bg-green-100 text-green-700'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        )}
+                      >
+                        {copied ? (
+                          <>
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            Copy BOM
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
                   <div className="p-4 space-y-3">
-                    {/* Gear Unit */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-50 rounded flex items-center justify-center flex-shrink-0">
+                    {/* Model Type Header */}
+                    {bom.model_type && (
+                      <div className="text-xs text-gray-500 font-mono bg-gray-50 px-2 py-1 rounded">
+                        Model: {bom.model_type}
+                      </div>
+                    )}
+
+                    {/* 1) Gear Unit */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-blue-50 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
                         <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-sm font-medium text-gray-900">
-                            {selectedCandidate.gear_unit_part_number}
+                            {gearUnit?.part_number || '—'}
                           </span>
                           <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Gear Unit</span>
+                          <StatusBadge found={gearUnit?.found ?? false} type="gear_unit" />
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {selectedCandidate.gear_unit_description || `NORD FLEXBLOC ${parsed?.gear_unit_size || selectedCandidate.size_code}`}
+                          {gearUnit?.description || `NORD FLEXBLOC ${parsed?.gear_unit_size || selectedCandidate.size_code}`}
                         </p>
+                        {!gearUnit?.found && (
+                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('gear_unit')}</p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Motor */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-amber-50 rounded flex items-center justify-center flex-shrink-0">
+                    {/* 2) Motor */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-amber-50 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
                         <svg className="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-sm font-medium text-gray-900">
-                            {parsed?.motor_frame ? `${parsed.motor_frame}-${parsed.adapter_code}` : '—'}
+                            {motor?.part_number || '—'}
                           </span>
                           <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Motor</span>
-                          {!parsed && <span className="text-xs text-gray-400">(lookup pending)</span>}
+                          <StatusBadge found={motor?.found ?? false} type="motor" />
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          {selectedCandidate.motor_hp}HP {parsed?.motor_frame || ''} Motor
+                          {motor?.description || `${selectedCandidate.motor_hp}HP ${parsed?.motor_frame || ''} Motor`}
                         </p>
+                        {!motor?.found && (
+                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('motor')}</p>
+                        )}
                       </div>
                     </div>
 
-                    {/* Adapter */}
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-green-50 rounded flex items-center justify-center flex-shrink-0">
+                    {/* 3) Adapter */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-green-50 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
                         <svg className="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6z" />
                         </svg>
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="font-mono text-sm font-medium text-gray-900">
-                            {parsed?.adapter_code || '—'}
+                            {adapter?.part_number || '—'}
                           </span>
                           <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Adapter</span>
-                          {!parsed && <span className="text-xs text-gray-400">(lookup pending)</span>}
+                          <StatusBadge found={adapter?.found ?? false} type="adapter" />
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
-                          NEMA {parsed?.adapter_code || '—'} C-Face Adapter
+                          {adapter?.description || `NEMA ${parsed?.adapter_code || '—'} Adapter`}
                         </p>
+                        {!adapter?.found && (
+                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('adapter')}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* 4) Output Shaft Kit */}
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 bg-purple-50 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                        <svg className="w-4 h-4 text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-mono text-sm font-medium text-gray-900">
+                            {shaftKit?.part_number || '—'}
+                          </span>
+                          <span className="text-xs text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded">Output Shaft Kit</span>
+                          <StatusBadge found={shaftKit?.found ?? false} type="output_shaft_kit" />
+                        </div>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {shaftKit?.description || 'Output shaft configuration'}
+                        </p>
+                        {!shaftKit?.found && (
+                          <p className="text-xs text-amber-600 mt-1">{getMissingHint('output_shaft_kit')}</p>
+                        )}
                       </div>
                     </div>
 
                     {/* Performance Summary */}
                     <div className="pt-2 mt-2 border-t border-gray-100">
-                      <div className="flex gap-4 text-xs text-gray-500">
+                      <div className="flex gap-4 text-xs text-gray-500 flex-wrap">
                         <span><span className="text-gray-400">HP:</span> {selectedCandidate.motor_hp}</span>
                         <span><span className="text-gray-400">RPM:</span> {selectedCandidate.output_rpm}</span>
                         <span><span className="text-gray-400">Torque:</span> {selectedCandidate.output_torque_lb_in} lb-in</span>
-                        <span><span className="text-gray-400">SF:</span> {formatCatalogSf(selectedCandidate.service_factor_catalog)}</span>
+                        <span><span className="text-gray-400">Catalog SF:</span> {formatCatalogSf(selectedCandidate.service_factor_catalog)}</span>
+                        <span><span className="text-gray-400">Applied SF:</span> {activeSf}</span>
                       </div>
                     </div>
                   </div>

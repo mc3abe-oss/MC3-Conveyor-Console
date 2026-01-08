@@ -5,7 +5,7 @@
  * Model type format: "SK [stages]SI[size] - [adapter_code] - [motor_frame]"
  */
 
-import { parseModelType, resolveBomFromMetadata, ParsedModelType } from './bom';
+import { parseModelType, resolveBomFromMetadata, ParsedModelType, isRealNordPartNumber } from './bom';
 
 describe('parseModelType', () => {
   // ===========================================================================
@@ -142,10 +142,10 @@ describe('resolveBomFromMetadata', () => {
       expect(result.parsed).not.toBeNull();
       expect(result.components).toHaveLength(3);
 
-      // Gear unit
+      // Gear unit - NO real NORD PN, so found=false
       const gearUnit = result.components.find(c => c.component_type === 'gear_unit');
-      expect(gearUnit?.part_number).toBe('SI31-0.16HP');
-      expect(gearUnit?.found).toBe(true); // Synthetic
+      expect(gearUnit?.part_number).toBeNull(); // No synthetic key shown
+      expect(gearUnit?.found).toBe(false); // No real NORD PN
 
       // Motor (needs DB lookup, so found=false)
       const motor = result.components.find(c => c.component_type === 'motor');
@@ -200,7 +200,7 @@ describe('resolveBomFromMetadata', () => {
   // ===========================================================================
 
   describe('gear unit part number format', () => {
-    it('formats gear unit part number as SIZE-HP', () => {
+    it('returns null part_number for gear unit (no real NORD PN)', () => {
       const metadata = {
         model_type: 'SK 1SI63 - 56C - 80S/4',
         parsed_model: {
@@ -215,17 +215,20 @@ describe('resolveBomFromMetadata', () => {
       const result = resolveBomFromMetadata(metadata, 0.5);
 
       const gearUnit = result.components.find(c => c.component_type === 'gear_unit');
-      expect(gearUnit?.part_number).toBe('SI63-0.5HP');
+      // Synthetic keys like "SI63-0.5HP" are NOT real NORD PNs
+      expect(gearUnit?.part_number).toBeNull();
+      expect(gearUnit?.found).toBe(false);
     });
 
-    it('handles various HP values in part number', () => {
+    it('includes gear unit size and HP in description', () => {
       const metadata = {
         parsed_model: { gear_unit_size: 'SI31' } as ParsedModelType,
       };
 
-      expect(resolveBomFromMetadata(metadata, 0.16).components[0].part_number).toBe('SI31-0.16HP');
-      expect(resolveBomFromMetadata(metadata, 1.0).components[0].part_number).toBe('SI31-1HP');
-      expect(resolveBomFromMetadata(metadata, 2.5).components[0].part_number).toBe('SI31-2.5HP');
+      // part_number is null (no real NORD PN), but description shows size/HP
+      expect(resolveBomFromMetadata(metadata, 0.16).components[0].part_number).toBeNull();
+      expect(resolveBomFromMetadata(metadata, 0.16).components[0].description).toContain('SI31');
+      expect(resolveBomFromMetadata(metadata, 0.16).components[0].description).toContain('0.16HP');
     });
   });
 
@@ -294,5 +297,294 @@ describe('resolveBomFromMetadata', () => {
 
       expect(adapter?.description).toBe('NEMA 56C Adapter');
     });
+  });
+});
+
+// =============================================================================
+// buildBomCopyText TESTS
+// =============================================================================
+
+import { buildBomCopyText, getMissingHint, BomCopyContext } from './bom';
+
+describe('buildBomCopyText', () => {
+  describe('formats complete BOM correctly', () => {
+    it('returns expected multiline string with all components', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI31 - 56C - 63S/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI31',
+          size_code: '31',
+          adapter_code: '56C',
+          motor_frame: '63S/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: 'SI31-0.16HP', description: 'NORD FLEXBLOC SI31 0.16HP', found: true },
+          { component_type: 'motor', part_number: 'MOT-63S-0.16', description: '63S/4 Motor 0.16HP', found: true },
+          { component_type: 'adapter', part_number: 'ADP-56C', description: 'NEMA 56C Adapter', found: true },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Output shaft configuration', found: false },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 1.6,
+        catalogPage: 'B46',
+        motorHp: 0.16,
+      };
+
+      const result = buildBomCopyText(bom, context);
+
+      // Check header
+      expect(result).toContain('NORD FLEXBLOC Gearmotor BOM');
+      expect(result).toContain('Selected Model: SK 1SI31 - 56C - 63S/4');
+      expect(result).toContain('Catalog Page: B46');
+
+      // Check components
+      expect(result).toContain('1) Gear Unit: SI31-0.16HP');
+      expect(result).toContain('2) Motor (STD or BRK): MOT-63S-0.16');
+      expect(result).toContain('3) Adapter: ADP-56C');
+      expect(result).toContain('4) Output Shaft Kit: —');
+
+      // Check notes
+      expect(result).toContain('Applied SF: 1.5');
+      expect(result).toContain('Catalog SF: 1.6');
+
+      // Check missing notation
+      expect(result).toContain('MISSING: Output Shaft Kit PN');
+    });
+
+    it('includes MISSING lines when part numbers are null', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI50 - 140TC - 182T/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI50',
+          size_code: '50',
+          adapter_code: '140TC',
+          motor_frame: '182T/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: 'SI50-1HP', description: 'NORD FLEXBLOC SI50 1HP', found: false },
+          { component_type: 'motor', part_number: null, description: '182T/4 Motor 1HP', found: false },
+          { component_type: 'adapter', part_number: null, description: 'NEMA 140TC Adapter', found: false },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.0,
+        catalogSf: 1.0,
+      };
+
+      const result = buildBomCopyText(bom, context);
+
+      // Should show dashes for null part numbers
+      expect(result).toContain('2) Motor (STD or BRK): —');
+      expect(result).toContain('3) Adapter: —');
+
+      // Should include MISSING notes
+      expect(result).toContain('MISSING: Gear Unit PN');
+      expect(result).toContain('MISSING: Motor (STD or BRK) PN');
+      expect(result).toContain('MISSING: Adapter PN');
+    });
+  });
+
+  describe('handles edge cases', () => {
+    it('handles empty model_type', () => {
+      const bom: BomResolution = {
+        model_type: '',
+        parsed: null,
+        components: [],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 1.0,
+      };
+
+      const result = buildBomCopyText(bom, context);
+
+      expect(result).toContain('Selected Model: —');
+    });
+
+    it('omits catalog page when not provided', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI31 - 56C - 63S/4',
+        parsed: null,
+        components: [],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 1.0,
+        catalogPage: null,
+      };
+
+      const result = buildBomCopyText(bom, context);
+
+      expect(result).not.toContain('Catalog Page:');
+    });
+
+    it('includes multiple matches note when flag is set', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI31 - 56C - 63S/4',
+        parsed: null,
+        components: [],
+        complete: false,
+      };
+
+      const context: BomCopyContext = {
+        appliedSf: 1.5,
+        catalogSf: 1.0,
+        hadMultipleMatches: true,
+      };
+
+      const result = buildBomCopyText(bom, context);
+
+      expect(result).toContain('NOTE: Multiple matches existed; selected first deterministic match.');
+    });
+  });
+});
+
+describe('getMissingHint', () => {
+  it('returns correct hint for output_shaft_kit', () => {
+    expect(getMissingHint('output_shaft_kit')).toBe('Select an output shaft option to resolve this.');
+  });
+
+  it('returns correct hint for gear_unit', () => {
+    expect(getMissingHint('gear_unit')).toBe('Gear unit PN mapping not keyed for this model yet.');
+  });
+
+  it('returns correct hint for motor', () => {
+    expect(getMissingHint('motor')).toBe('No matching component found in component map.');
+  });
+
+  it('returns correct hint for adapter', () => {
+    expect(getMissingHint('adapter')).toBe('No matching component found in component map.');
+  });
+});
+
+// =============================================================================
+// isRealNordPartNumber TESTS
+// =============================================================================
+
+describe('isRealNordPartNumber', () => {
+  describe('identifies real NORD part numbers', () => {
+    it('returns true for 8-digit numbers starting with 6', () => {
+      expect(isRealNordPartNumber('60691130')).toBe(true);
+      expect(isRealNordPartNumber('60395510')).toBe(true);
+      expect(isRealNordPartNumber('60392050')).toBe(true);
+    });
+
+    it('returns true for 8-digit numbers starting with 3', () => {
+      expect(isRealNordPartNumber('31610012')).toBe(true);
+      expect(isRealNordPartNumber('33610022')).toBe(true);
+      expect(isRealNordPartNumber('32110013')).toBe(true);
+    });
+  });
+
+  describe('rejects synthetic keys and invalid inputs', () => {
+    it('returns false for synthetic gear unit keys like SI63-0.25HP', () => {
+      expect(isRealNordPartNumber('SI63-0.25HP')).toBe(false);
+      expect(isRealNordPartNumber('SI31-0.16HP')).toBe(false);
+      expect(isRealNordPartNumber('SI50-1HP')).toBe(false);
+    });
+
+    it('returns false for null/undefined', () => {
+      expect(isRealNordPartNumber(null)).toBe(false);
+      expect(isRealNordPartNumber(undefined)).toBe(false);
+    });
+
+    it('returns false for empty string', () => {
+      expect(isRealNordPartNumber('')).toBe(false);
+    });
+
+    it('returns false for numbers not starting with 3 or 6', () => {
+      expect(isRealNordPartNumber('12345678')).toBe(false);
+      expect(isRealNordPartNumber('99999999')).toBe(false);
+    });
+
+    it('returns false for wrong length', () => {
+      expect(isRealNordPartNumber('606911')).toBe(false); // Too short
+      expect(isRealNordPartNumber('606911301')).toBe(false); // Too long
+    });
+  });
+});
+
+// =============================================================================
+// REGRESSION TESTS - Gear Unit "Resolved" False Positive
+// =============================================================================
+
+describe('REGRESSION: Gear unit with synthetic key must be Missing', () => {
+  /**
+   * REGRESSION TEST (2026-01-07):
+   * Previously, gear units with synthetic keys like "SI63-0.25HP" were incorrectly
+   * marked as "Resolved" because the key existed in the database (created by seeder
+   * from selection data). This is WRONG because synthetic keys are NOT real NORD
+   * orderable part numbers.
+   *
+   * Rule: A BOM component is ONLY "Resolved" if it has a real NORD orderable
+   * part number (8-digit numeric starting with 3 or 6).
+   */
+
+  it('gear unit with synthetic key must have found=false', () => {
+    const metadata = {
+      model_type: 'SK 1SI63/H10 - 56C - 63L/4',
+      parsed_model: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+    };
+
+    const result = resolveBomFromMetadata(metadata, 0.25);
+    const gearUnit = result.components.find(c => c.component_type === 'gear_unit');
+
+    // CRITICAL: Gear unit must NOT be "found" with just a synthetic key
+    expect(gearUnit?.found).toBe(false);
+    expect(gearUnit?.part_number).toBeNull();
+  });
+
+  it('gear unit description should still show size and HP for reference', () => {
+    const metadata = {
+      model_type: 'SK 1SI63/H10 - 56C - 63L/4',
+      parsed_model: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+    };
+
+    const result = resolveBomFromMetadata(metadata, 0.25);
+    const gearUnit = result.components.find(c => c.component_type === 'gear_unit');
+
+    // Description should still be useful for ordering guidance
+    expect(gearUnit?.description).toContain('SI63');
+    expect(gearUnit?.description).toContain('0.25HP');
+  });
+
+  it('BOM complete flag must be false when gear unit has no real PN', () => {
+    const metadata = {
+      parsed_model: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+    };
+
+    const result = resolveBomFromMetadata(metadata, 0.25);
+
+    // Even if motor/adapter were resolved, complete should be false
+    expect(result.complete).toBe(false);
   });
 });

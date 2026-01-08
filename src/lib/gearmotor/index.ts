@@ -23,7 +23,11 @@ export {
   parseModelType,
   resolveBom,
   resolveBomFromMetadata,
+  buildBomCopyText,
+  getMissingHint,
+  isRealNordPartNumber,
   type ParsedModelType,
   type BomComponent,
   type BomResolution,
+  type BomCopyContext,
 } from './bom';
