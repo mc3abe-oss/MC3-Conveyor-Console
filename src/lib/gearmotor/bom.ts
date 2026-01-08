@@ -128,7 +128,17 @@ export function parseModelType(modelType: string | null | undefined): ParsedMode
  * Options for BOM resolution with gear unit lookup.
  */
 export interface ResolveBomOptions {
-  /** Total gear ratio for gear unit PN lookup */
+  /**
+   * Gear ratio for gear unit PN lookup.
+   *
+   * IMPORTANT: This should be the WORM gear ratio (5, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 80, 100),
+   * NOT the total ratio (which includes helical stage).
+   *
+   * The gear_unit_part_numbers CSV stores worm ratios in the "total_ratio" column,
+   * which is how gear unit PNs are keyed: (gear_unit_size, worm_ratio, mounting_variant).
+   *
+   * When calling from UI, use metadata_json.worm_ratio from the performance point.
+   */
   totalRatio?: number;
   /** Mounting variant for gear unit PN lookup (defaults to inch_hollow for US market) */
   mountingVariant?: 'inch_hollow' | 'metric_hollow';
@@ -190,9 +200,11 @@ export async function resolveBom(
   if (options?.totalRatio !== undefined) {
     // Query gear units by metadata fields
     const mountingVariant = options.mountingVariant || DEFAULT_MOUNTING_VARIANT;
-    // Normalize total_ratio to integer for lookup (catalog ratios are whole numbers)
+    // Normalize total_ratio for comparison:
+    // - Catalog ratios can be integers (5, 10, 80, 100) or decimals (7.5, 12.5)
+    // - Round to 1 decimal place to handle floating point precision issues
     // IMPORTANT: totalRatio comes from catalog CSV (metadata_json.total_ratio), NOT SF-adjusted
-    const normalizedRatio = Math.round(options.totalRatio);
+    const normalizedRatio = Math.round(options.totalRatio * 10) / 10;
 
     const { data: gearUnits } = await supabase
       .from('vendor_components')
@@ -208,8 +220,9 @@ export async function resolveBom(
         if (!meta) continue;
 
         const sizeMatch = meta.gear_unit_size === parsed.gear_unit_size;
-        // Use normalized (rounded) ratio for comparison - catalog ratios are integers
-        const ratioMatch = (meta.total_ratio as number) === normalizedRatio;
+        // Compare ratios with tolerance for floating point precision
+        const dbRatio = Math.round((meta.total_ratio as number) * 10) / 10;
+        const ratioMatch = dbRatio === normalizedRatio;
         const variantMatch = meta.mounting_variant === mountingVariant;
 
         if (sizeMatch && ratioMatch && variantMatch) {

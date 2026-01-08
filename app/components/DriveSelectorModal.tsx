@@ -134,8 +134,10 @@ export default function DriveSelectorModal({
   const [bomLoading, setBomLoading] = useState(false);
 
   // Resolve BOM when selectedCandidate changes
-  // IMPORTANT: Uses catalog ratio from metadata_json.total_ratio (NOT SF-adjusted)
-  // Applied SF affects filtering/display only, not gear unit PN lookup
+  // IMPORTANT: Gear unit PNs are keyed by WORM ratio (from catalog), NOT total ratio.
+  // The gear_unit_part_numbers CSV stores worm ratios in the total_ratio column.
+  // Performance points have: total_ratio (worm × helical), worm_ratio, second_ratio.
+  // Applied SF affects filtering/display only, not gear unit PN lookup.
   useEffect(() => {
     if (!selectedCandidate) {
       setResolvedBom(null);
@@ -144,12 +146,14 @@ export default function DriveSelectorModal({
 
     const metadata = selectedCandidate.metadata_json;
     const modelType = metadata?.model_type as string | undefined;
-    // Catalog ratio from CSV - this is the key for gear unit PN lookup
-    const catalogRatio = metadata?.total_ratio as number | undefined;
+    // CRITICAL: Use worm_ratio for gear unit PN lookup, NOT total_ratio.
+    // Gear unit PNs are keyed by the worm gear ratio (5, 7.5, 10, 12.5, etc.),
+    // which is stored as "total_ratio" in the gear unit PN CSV.
+    const gearUnitRatio = metadata?.worm_ratio as number | undefined;
 
     setBomLoading(true);
     resolveBom(modelType, selectedCandidate.motor_hp, {
-      totalRatio: catalogRatio, // Always catalog ratio, never SF-adjusted
+      totalRatio: gearUnitRatio, // Worm ratio for gear unit PN lookup
     })
       .then((bom) => {
         setResolvedBom(bom);

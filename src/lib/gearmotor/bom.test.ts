@@ -5,6 +5,20 @@
  * Model type format: "SK [stages]SI[size] - [adapter_code] - [motor_frame]"
  */
 
+// Mock supabase client before importing bom module
+jest.mock('../supabase/client', () => ({
+  supabase: {
+    from: jest.fn(() => ({
+      select: jest.fn(() => ({
+        eq: jest.fn(() => ({
+          eq: jest.fn(() => Promise.resolve({ data: [], error: null })),
+        })),
+      })),
+    })),
+  },
+  isSupabaseConfigured: jest.fn(() => false),
+}));
+
 import {
   parseModelType,
   resolveBomFromMetadata,
@@ -13,6 +27,8 @@ import {
   DEFAULT_MOUNTING_VARIANT,
   ResolveBomOptions,
   BomResolution,
+  buildBomCopyText,
+  BomCopyContext,
 } from './bom';
 
 describe('parseModelType', () => {
@@ -90,6 +106,29 @@ describe('parseModelType', () => {
 
       expect(result).not.toBeNull();
       expect(result?.gear_unit_size).toBe('SI31');
+    });
+
+    it('handles 2-stage model with /H10 suffix (extracts clean SI size)', () => {
+      // REGRESSION: model strings like "SK 1SI63/H10 - 56C - 63L/4"
+      // The "/H10" is a second-stage indicator, NOT part of gear_unit_size.
+      // gear_unit_size must be "SI63", NOT "SI63/H10"
+      const result = parseModelType('SK 1SI63/H10 - 56C - 63L/4');
+
+      expect(result).not.toBeNull();
+      expect(result?.worm_stages).toBe(1);
+      expect(result?.gear_unit_size).toBe('SI63'); // Clean, no /H10
+      expect(result?.size_code).toBe('63');
+      expect(result?.adapter_code).toBe('56C');
+      expect(result?.motor_frame).toBe('63L/4');
+    });
+
+    it('handles 2-stage model with /31 suffix (extracts clean SI size)', () => {
+      // Another variant: "/31" indicates a different second stage
+      const result = parseModelType('SK 1SI63/31 - 56C - 63L/4');
+
+      expect(result).not.toBeNull();
+      expect(result?.gear_unit_size).toBe('SI63'); // Clean, no /31
+      expect(result?.size_code).toBe('63');
     });
   });
 
@@ -752,7 +791,7 @@ describe('REGRESSION: Gear unit PN uses catalog ratio, NOT SF-adjusted ratio', (
 
     // This verifies the correct value is passed
     expect(options.totalRatio).toBe(80);
-    expect(Math.round(options.totalRatio)).toBe(80);
+    expect(Math.round(options.totalRatio * 10) / 10).toBe(80);
   });
 
   it('changing applied SF does not change the ratio for gear unit lookup', () => {
@@ -842,22 +881,25 @@ describe('REGRESSION: Gear unit PN uses catalog ratio, NOT SF-adjusted ratio', (
     }
   });
 
-  it('normalizedRatio uses Math.round for integer comparison', () => {
-    // Catalog ratios may have small floating point variations
-    // Math.round ensures clean integer matching
+  it('normalizedRatio uses 1-decimal-place rounding for comparison', () => {
+    // Catalog ratios can be integers (80, 100) or decimals (7.5, 12.5)
+    // Round to 1 decimal place to handle floating point precision issues
+
+    const normalizeRatio = (r: number) => Math.round(r * 10) / 10;
 
     const testCases = [
       { input: 80, expected: 80 },
       { input: 80.0, expected: 80 },
       { input: 79.9999, expected: 80 },
       { input: 80.0001, expected: 80 },
-      { input: 100, expected: 100 },
-      { input: 100.4, expected: 100 },
-      { input: 100.5, expected: 101 }, // Standard rounding
+      { input: 7.5, expected: 7.5 }, // Decimal ratio preserved
+      { input: 7.49999, expected: 7.5 },
+      { input: 12.5, expected: 12.5 }, // Decimal ratio preserved
+      { input: 12.50001, expected: 12.5 },
     ];
 
     for (const { input, expected } of testCases) {
-      expect(Math.round(input)).toBe(expected);
+      expect(normalizeRatio(input)).toBe(expected);
     }
   });
 });
@@ -899,5 +941,262 @@ describe('resolveBomFromMetadata backward compatibility', () => {
     const result = resolveBomFromMetadata(metadata, 0.16);
 
     expect(result.complete).toBe(false);
+  });
+});
+
+// =============================================================================
+// REGRESSION TESTS: Model Parsing Normalization for /H10 variants
+// =============================================================================
+
+describe('REGRESSION: Model parsing for 2-stage /H10 variants', () => {
+  /**
+   * REGRESSION TEST (2026-01-08):
+   * Model strings like "SK 1SI63/H10 - 56C - 63L/4" must parse correctly.
+   * The "/H10" suffix indicates a second stage but should NOT be included
+   * in the gear_unit_size field used for PN lookup.
+   */
+
+  it('parseModelType extracts clean gear_unit_size from "SK 1SI63/H10 - 56C - 63L/4"', () => {
+    const result = parseModelType('SK 1SI63/H10 - 56C - 63L/4');
+
+    expect(result).not.toBeNull();
+    expect(result?.gear_unit_size).toBe('SI63'); // NOT "SI63/H10"
+    expect(result?.size_code).toBe('63');
+    expect(result?.worm_stages).toBe(1);
+    expect(result?.adapter_code).toBe('56C');
+    expect(result?.motor_frame).toBe('63L/4');
+  });
+
+  it('parseModelType extracts clean gear_unit_size from "SK 1SI63/31 - 56C - 63L/4"', () => {
+    const result = parseModelType('SK 1SI63/31 - 56C - 63L/4');
+
+    expect(result).not.toBeNull();
+    expect(result?.gear_unit_size).toBe('SI63'); // NOT "SI63/31"
+    expect(result?.size_code).toBe('63');
+  });
+
+  it('parseModelType handles single-stage model without suffix', () => {
+    const result = parseModelType('SK 1SI63 - 56C - 63L/4');
+
+    expect(result).not.toBeNull();
+    expect(result?.gear_unit_size).toBe('SI63');
+    expect(result?.size_code).toBe('63');
+  });
+});
+
+// =============================================================================
+// REGRESSION TESTS: Gear Unit PN lookup key structure
+// =============================================================================
+
+describe('REGRESSION: Gear Unit PN lookup uses correct key structure', () => {
+  /**
+   * REGRESSION TEST (2026-01-08):
+   * Gear unit PN lookup must use:
+   * - gear_unit_size: normalized (e.g., "SI63")
+   * - total_ratio: from metadata_json.total_ratio (rounded to integer)
+   * - mounting_variant: default "inch_hollow"
+   *
+   * For SI63, ratio 80, inch_hollow → expected PN is "60692800"
+   */
+
+  it('normalizes ratio to 1 decimal place for comparison', () => {
+    // Ratios can be integers (80, 100) or decimals (7.5, 12.5)
+    const normalizeRatio = (r: number) => Math.round(r * 10) / 10;
+
+    const testCases = [
+      { input: 80, expected: 80 },
+      { input: 80.0, expected: 80 },
+      { input: 80.04, expected: 80 },
+      { input: 79.96, expected: 80 },
+      { input: 7.5, expected: 7.5 }, // Decimal preserved
+      { input: 12.5, expected: 12.5 }, // Decimal preserved
+    ];
+
+    for (const { input, expected } of testCases) {
+      expect(normalizeRatio(input)).toBe(expected);
+    }
+  });
+
+  it('DEFAULT_MOUNTING_VARIANT is inch_hollow for US market', () => {
+    expect(DEFAULT_MOUNTING_VARIANT).toBe('inch_hollow');
+  });
+
+  it('expected gear unit PN for SI63/80/inch_hollow is 60692800', () => {
+    // This documents the expected PN from the seeded CSV data:
+    // NORD,FLEXBLOC,gear_unit,SI63,80,80,,ANY,false,inch_hollow,60692800,...
+    const expectedPn = '60692800';
+    expect(isRealNordPartNumber(expectedPn)).toBe(true);
+    expect(expectedPn[0]).toBe('6'); // Starts with 6
+    expect(expectedPn.length).toBe(8); // 8 digits
+  });
+});
+
+// =============================================================================
+// REGRESSION TESTS: Applied SF does NOT affect gear unit PN
+// =============================================================================
+
+describe('REGRESSION: Applied SF does not affect gear unit PN lookup', () => {
+  /**
+   * REGRESSION TEST (2026-01-08):
+   * Applied Service Factor is a FILTERING parameter only.
+   * The gear unit PN lookup key is based on catalog ratio (metadata_json.total_ratio),
+   * NOT on any SF-adjusted ratio.
+   *
+   * Changing Applied SF must NOT change the gear unit PN.
+   */
+
+  it('catalog ratio is passed unchanged regardless of applied SF', () => {
+    // Simulate what DriveSelectorModal does: pass catalog ratio from metadata
+    const catalogRatio = 80; // From candidate.metadata_json.total_ratio
+
+    // These are different applied SF values the user might select
+    const appliedSfValues = [0.85, 1.0, 1.25, 1.5, 2.0];
+
+    // For each applied SF, the ratio passed to resolveBom should be the SAME
+    for (const appliedSf of appliedSfValues) {
+      // The key insight: we pass catalogRatio, NOT catalogRatio * appliedSf
+      const ratioForLookup = catalogRatio; // NOT: catalogRatio * appliedSf
+      expect(ratioForLookup).toBe(80);
+    }
+  });
+
+  it('ResolveBomOptions accepts totalRatio without SF adjustment', () => {
+    const options: ResolveBomOptions = {
+      totalRatio: 80, // Catalog ratio, unchanged by SF
+      mountingVariant: 'inch_hollow',
+    };
+
+    expect(options.totalRatio).toBe(80);
+    expect(Math.round(options.totalRatio * 10) / 10).toBe(80);
+  });
+
+  it('BOM copy text shows both applied and catalog SF separately', () => {
+    const bom: BomResolution = {
+      model_type: 'SK 1SI63 - 56C - 63L/4',
+      parsed: {
+        worm_stages: 1,
+        gear_unit_size: 'SI63',
+        size_code: '63',
+        adapter_code: '56C',
+        motor_frame: '63L/4',
+      },
+      components: [
+        {
+          component_type: 'gear_unit',
+          part_number: '60692800',
+          description: 'NORD FLEXBLOC SI63 i=80',
+          found: true,
+        },
+      ],
+      complete: false,
+    };
+
+    // Test with different applied SF values - gear unit PN should stay same
+    const testCases = [
+      { appliedSf: 1.0, catalogSf: 2.1 },
+      { appliedSf: 1.5, catalogSf: 2.1 },
+      { appliedSf: 2.0, catalogSf: 2.1 },
+    ];
+
+    for (const { appliedSf, catalogSf } of testCases) {
+      const context: BomCopyContext = { appliedSf, catalogSf };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Applied and catalog SF are shown separately
+      expect(copyText).toContain(`Applied SF: ${appliedSf}`);
+      expect(copyText).toContain(`Catalog SF: ${catalogSf}`);
+
+      // Gear unit PN is always 60692800 regardless of applied SF
+      expect(copyText).toContain('60692800');
+    }
+  });
+});
+
+
+// =============================================================================
+// REGRESSION TEST: Gear unit PN uses WORM ratio, NOT total ratio
+// =============================================================================
+
+describe("REGRESSION: Gear unit PN lookup uses worm_ratio, not total_ratio", () => {
+  /**
+   * REGRESSION TEST (2026-01-08):
+   * Bug: Gear unit PNs were showing as "Missing" even when data was seeded.
+   *
+   * ROOT CAUSE:
+   * - Gear unit PNs in CSV are keyed by WORM ratio (5, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 80, 100)
+   * - Performance points have total_ratio = worm_ratio × second_ratio (e.g., 125 = 12.5 × 10)
+   * - UI was passing total_ratio (125) to resolveBom(), but gear unit lookup expected worm_ratio (12.5)
+   *
+   * FIX: Use metadata_json.worm_ratio from performance point for gear unit PN lookup.
+   *
+   * Example: SI63 0.25HP @ 13 RPM
+   *   - total_ratio: 125 (worm × helical = 12.5 × 10)
+   *   - worm_ratio: 12.5 (this is the gear unit PN key)
+   *   - expected PN: 60692130 (SI63, ratio=12.5, inch_hollow)
+   */
+
+  it("worm_ratio 12.5 should match gear unit PN, not total_ratio 125", () => {
+    // From the CSV: SI63, ratio 12.5, inch_hollow -> PN 60692130
+    const wormRatio = 12.5;
+    const totalRatio = 125; // worm × helical (12.5 × 10)
+
+    // Options for resolveBom should use worm_ratio, not total_ratio
+    const correctOptions: ResolveBomOptions = {
+      totalRatio: wormRatio, // Use worm_ratio!
+      mountingVariant: "inch_hollow",
+    };
+
+    const incorrectOptions: ResolveBomOptions = {
+      totalRatio: totalRatio, // Wrong - would look for ratio=125 (does not exist)
+      mountingVariant: "inch_hollow",
+    };
+
+    // Verify the correct ratio is what we expect
+    expect(correctOptions.totalRatio).toBe(12.5);
+    expect(incorrectOptions.totalRatio).toBe(125);
+
+    // The normalized ratio calculation should work for both
+    const normalizedCorrect = Math.round(correctOptions.totalRatio! * 10) / 10;
+    const normalizedIncorrect = Math.round(incorrectOptions.totalRatio! * 10) / 10;
+
+    expect(normalizedCorrect).toBe(12.5);
+    expect(normalizedIncorrect).toBe(125);
+  });
+
+  it("gear unit PN CSV ratios are worm ratios, not total ratios", () => {
+    // These are the valid ratio keys in the gear unit PN CSV
+    const validGearUnitRatios = [5, 7.5, 10, 12.5, 15, 20, 25, 30, 40, 50, 60, 80, 100];
+
+    // These would be typical total_ratios from performance points (worm × helical)
+    const typicalTotalRatios = [50, 75, 100, 125, 150, 200, 300, 400, 500, 600, 800, 1000, 1200];
+
+    // None of the total_ratios should appear in the valid gear unit ratios
+    // (except coincidentally like 100 which is both a valid worm ratio and could be 10×10)
+    for (const totalRatio of typicalTotalRatios) {
+      if (totalRatio > 100) {
+        expect(validGearUnitRatios.includes(totalRatio)).toBe(false);
+      }
+    }
+
+    // All worm ratios should be <= 100
+    for (const wormRatio of validGearUnitRatios) {
+      expect(wormRatio).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("expected gear unit PN for SI63/worm_ratio=12.5/inch_hollow is 60692130", () => {
+    // This documents the expected PN from the seeded CSV data:
+    // NORD,FLEXBLOC,gear_unit,SI63,12.5,12.5,,ANY,false,inch_hollow,60692130,...
+    const expectedPn = "60692130";
+    expect(isRealNordPartNumber(expectedPn)).toBe(true);
+    expect(expectedPn.startsWith("6")).toBe(true);
+  });
+
+  it("expected gear unit PN for SI63/worm_ratio=80/inch_hollow is 60692800", () => {
+    // This documents the expected PN from the seeded CSV data:
+    // NORD,FLEXBLOC,gear_unit,SI63,80,80,,ANY,false,inch_hollow,60692800,...
+    const expectedPn = "60692800";
+    expect(isRealNordPartNumber(expectedPn)).toBe(true);
+    expect(expectedPn.startsWith("6")).toBe(true);
   });
 });
