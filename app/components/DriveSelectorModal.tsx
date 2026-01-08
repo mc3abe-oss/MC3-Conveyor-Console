@@ -939,7 +939,7 @@ export default function DriveSelectorModal({
                           <p className="text-xs text-amber-600 mt-1">Select an output shaft option in Drive Arrangement to resolve this.</p>
                         )}
                         {shaftKitConfigured && shaftKit?.found && (
-                          <p className="text-xs text-blue-600 mt-1">PN mapping pending.</p>
+                          <p className="text-xs text-blue-600 mt-1">PN pending (catalog mapping required)</p>
                         )}
                       </div>
                     </div>

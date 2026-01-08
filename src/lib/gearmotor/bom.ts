@@ -207,10 +207,19 @@ export const OUTPUT_SHAFT_OPTION_LABELS: Record<string, string> = {
   metric_hollow: 'Metric hollow',
 };
 
-/**
- * Map UI output shaft option values to CSV option keys.
- * UI uses simpler keys, CSV may use more descriptive keys.
- */
+// =============================================================================
+// DISABLED: Output Shaft Kit PN Lookup
+// PR: fix/nord-output-shaft-kit-no-fake-pn
+//
+// This function and its helper are commented out until the full catalog mapping
+// is verified. The CSV contains PNs but they should not be displayed until validated.
+//
+// When ready to enable:
+// 1. Uncomment OUTPUT_SHAFT_OPTION_KEY_MAP and lookupOutputShaftKitPN below
+// 2. Uncomment the call in resolveBom()
+// 3. Add back the conditional logic to return "Resolved" state when PN found
+// =============================================================================
+/*
 const OUTPUT_SHAFT_OPTION_KEY_MAP: Record<string, string> = {
   inch_keyed: 'inch_keyed',
   metric_keyed: 'metric_keyed',
@@ -218,14 +227,6 @@ const OUTPUT_SHAFT_OPTION_KEY_MAP: Record<string, string> = {
   metric_hollow: 'metric_hollow',
 };
 
-/**
- * Look up output shaft kit PN from vendor_components table.
- *
- * @param gearUnitSize - Gear unit size (e.g., 'SI31', 'SI40')
- * @param mountingVariant - Mounting variant ('inch_hollow' or 'metric_hollow')
- * @param outputShaftOptionKey - Output shaft option key from UI
- * @returns Component match with part number, or null if not found
- */
 async function lookupOutputShaftKitPN(
   gearUnitSize: string,
   mountingVariant: string,
@@ -235,11 +236,9 @@ async function lookupOutputShaftKitPN(
     return null;
   }
 
-  // Use the already imported supabase client
   const optionKey = OUTPUT_SHAFT_OPTION_KEY_MAP[outputShaftOptionKey] || outputShaftOptionKey;
 
   try {
-    // Query vendor_components for OUTPUT_KIT matching the keys
     const { data, error } = await supabase
       .from('vendor_components')
       .select('vendor_part_number, description, metadata_json')
@@ -257,7 +256,6 @@ async function lookupOutputShaftKitPN(
 
     if (data && data.length > 0) {
       const match = data[0];
-      // Validate it's a real NORD PN (8-digit, starts with 3 or 6)
       if (isRealNordPartNumber(match.vendor_part_number)) {
         return {
           vendor_part_number: match.vendor_part_number,
@@ -272,6 +270,7 @@ async function lookupOutputShaftKitPN(
     return null;
   }
 }
+*/
 
 /**
  * Resolve BOM components for a given model type and motor HP.
@@ -439,12 +438,15 @@ export async function resolveBom(
   // States:
   // - NOT_REQUIRED: shaft_mounted (found=true, description="Not required...")
   // - MISSING: bottom_mount + no outputShaftOption (found=false, description="Required...")
-  // - RESOLVED: bottom_mount + outputShaftOption + PN found in DB (found=true, has PN)
-  // - CONFIGURED: bottom_mount + outputShaftOption + no PN in DB (found=true, no PN, pending)
+  // - CONFIGURED: bottom_mount + outputShaftOption (found=true, no PN, pending catalog mapping)
+  //
+  // NOTE: RESOLVED state is disabled until catalog mapping is verified.
+  // When ready: uncomment gearUnitSize/mountingVariant and call lookupOutputShaftKitPN
   const shaftKitRequired = needsOutputShaftKit(options?.gearmotorMountingStyle);
   const outputShaftOption = options?.outputShaftOption;
-  const gearUnitSize = parsed?.gear_unit_size || options?.gearUnitSize;
-  const mountingVariant = options?.mountingVariant || DEFAULT_MOUNTING_VARIANT;
+  // DISABLED: These are needed for PN lookup, which is currently disabled
+  // const gearUnitSize = parsed?.gear_unit_size || options?.gearUnitSize;
+  // const mountingVariant = options?.mountingVariant || DEFAULT_MOUNTING_VARIANT;
 
   if (!shaftKitRequired) {
     // Shaft mount or other: Output shaft kit NOT required
@@ -463,32 +465,24 @@ export async function resolveBom(
       found: false,
     });
   } else {
-    // Bottom mount + option selected: Try to look up real NORD PN
+    // Bottom mount + option selected: Mark as Configured (pending catalog mapping)
+    //
+    // NOTE: Output shaft kit PN lookup is DISABLED until full catalog mapping is verified.
+    // Even though nord_flexbloc_output_shaft_kits_v1.csv contains PNs, they should not be
+    // displayed in the UI/BOM until the mapping is fully validated.
+    //
+    // When ready to enable: uncomment the lookupOutputShaftKitPN call and add the
+    // conditional logic back to return "Resolved" state when a real PN is found.
+    //
+    // For now: Always return Configured state with part_number: null
     const optionLabel = OUTPUT_SHAFT_OPTION_LABELS[outputShaftOption] || outputShaftOption;
 
-    // Attempt DB lookup if we have the gear unit size
-    let shaftKitMatch: { vendor_part_number: string; description: string } | null = null;
-    if (gearUnitSize) {
-      shaftKitMatch = await lookupOutputShaftKitPN(gearUnitSize, mountingVariant, outputShaftOption);
-    }
-
-    if (shaftKitMatch) {
-      // Found real NORD PN - mark as Resolved
-      components.push({
-        component_type: 'output_shaft_kit',
-        part_number: shaftKitMatch.vendor_part_number,
-        description: shaftKitMatch.description,
-        found: true,
-      });
-    } else {
-      // Option selected but no PN mapping found - mark as Configured (pending)
-      components.push({
-        component_type: 'output_shaft_kit',
-        part_number: null,
-        description: `Configured: ${optionLabel}`,
-        found: true, // Mark as configured (not Missing)
-      });
-    }
+    components.push({
+      component_type: 'output_shaft_kit',
+      part_number: null,
+      description: `Configured: ${optionLabel}`,
+      found: true, // Mark as configured (not Missing)
+    });
   }
 
   result.components = components;

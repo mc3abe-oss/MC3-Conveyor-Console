@@ -1448,6 +1448,190 @@ describe('OUTPUT_SHAFT_OPTION_LABELS', () => {
 });
 
 // =============================================================================
+// PR: fix/nord-output-shaft-kit-no-fake-pn
+// Tests for output shaft kit PN suppression until catalog mapping is ready
+// =============================================================================
+
+describe('REGRESSION: Output shaft kit PN is always null until catalog mapping is ready', () => {
+  /**
+   * PR: fix/nord-output-shaft-kit-no-fake-pn
+   *
+   * Requirements:
+   * 1. Output shaft kit part_number must be null even when user selects an option
+   * 2. Status should be "Configured" (not "Resolved") when option is selected
+   * 3. Copy BOM must NOT contain any 8-digit PN for output shaft kit
+   * 4. Copy BOM should show "PN pending" text for configured state
+   *
+   * This is intentional until the full catalog mapping is verified.
+   */
+
+  describe('bottom_mount + output shaft option selected', () => {
+    it('part_number is null when user selects inch_keyed', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          // Key assertion: part_number MUST be null, description shows "Configured: ..."
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Configured: Inch keyed bore', found: true },
+        ],
+        complete: false,
+      };
+
+      const shaftKit = bom.components.find(c => c.component_type === 'output_shaft_kit');
+
+      // CRITICAL: part_number must be null (no 8-digit PN)
+      expect(shaftKit?.part_number).toBeNull();
+      // Status is "configured" (found=true) but not resolved (no PN)
+      expect(shaftKit?.found).toBe(true);
+      // Description shows the configured option
+      expect(shaftKit?.description).toContain('Configured:');
+      expect(shaftKit?.description).toContain('Inch keyed bore');
+    });
+
+    it('part_number is null for all output shaft option types', () => {
+      const optionTypes = ['inch_keyed', 'metric_keyed', 'inch_hollow', 'metric_hollow'];
+
+      for (const optionKey of optionTypes) {
+        // When user selects any option, PN must still be null
+        const bom: BomResolution = {
+          model_type: 'SK 1SI63 - 56C - 63L/4',
+          parsed: null,
+          components: [
+            { component_type: 'output_shaft_kit', part_number: null, description: `Configured: ${optionKey}`, found: true },
+          ],
+          complete: false,
+        };
+
+        const shaftKit = bom.components.find(c => c.component_type === 'output_shaft_kit');
+        expect(shaftKit?.part_number).toBeNull();
+      }
+    });
+  });
+
+  describe('bottom_mount + no output shaft option selected', () => {
+    it('status is Missing (found=false)', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Required for chain drive configuration', found: false },
+        ],
+        complete: false,
+      };
+
+      const shaftKit = bom.components.find(c => c.component_type === 'output_shaft_kit');
+
+      expect(shaftKit?.part_number).toBeNull();
+      expect(shaftKit?.found).toBe(false); // Missing state
+    });
+  });
+
+  describe('shaft_mounted', () => {
+    it('status is Not Required (found=true, no PN needed)', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required for shaft mount', found: true },
+        ],
+        complete: true,
+      };
+
+      const shaftKit = bom.components.find(c => c.component_type === 'output_shaft_kit');
+
+      expect(shaftKit?.part_number).toBeNull();
+      expect(shaftKit?.found).toBe(true);
+      expect(shaftKit?.description).toContain('Not required');
+    });
+  });
+
+  describe('Copy BOM output', () => {
+    it('does NOT contain any 8-digit PN for configured output shaft kit', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: '31610012', description: 'Motor', found: true },
+          { component_type: 'adapter', part_number: '60395510', description: 'Adapter', found: true },
+          // Configured but NO PN
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Configured: Metric keyed bore', found: true },
+        ],
+        complete: true,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+
+      // Should NOT contain any 8-digit PN for output shaft kit line
+      // The line should show the option label with "(PN pending)"
+      expect(copyText).toContain('Output Shaft Kit: Metric keyed bore (PN pending)');
+
+      // Verify no fake 8-digit PN appears on the output shaft kit line
+      // Real PNs like 60892110, 61191120, etc. should NOT appear for output shaft kit
+      const shaftKitLine = copyText.split('\n').find(line => line.includes('Output Shaft Kit'));
+      expect(shaftKitLine).toBeDefined();
+      // The line should NOT match any 8-digit number pattern after "Output Shaft Kit:"
+      const pnMatch = shaftKitLine?.match(/Output Shaft Kit:\s*(\d{8})/);
+      expect(pnMatch).toBeNull();
+    });
+
+    it('shows "PN pending" text for configured output shaft kit', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Configured: Inch hollow', found: true },
+        ],
+        complete: false,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+
+      // Should contain "(PN pending)" indicator
+      expect(copyText).toContain('(PN pending)');
+      expect(copyText).toContain('Inch hollow');
+    });
+
+    it('shows "(not required)" for shaft mount configuration', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required for shaft mount', found: true },
+        ],
+        complete: true,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+
+      expect(copyText).toContain('Output Shaft Kit: — (not required)');
+      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+    });
+
+    it('shows MISSING for bottom mount with no selection', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Required for chain drive configuration', found: false },
+        ],
+        complete: false,
+      };
+
+      const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
+
+      expect(copyText).toContain('(select in Drive Arrangement)');
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+    });
+  });
+});
+
+// =============================================================================
 // OUTPUT SHAFT KIT PN RESOLUTION TESTS
 // =============================================================================
 
