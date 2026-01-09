@@ -46,6 +46,7 @@ const INCH_KEYED_BORE_OPTIONS = [
 ] as const;
 
 // Fields managed by this modal
+// NOTE: output_shaft_diameter_in is managed in the NORD Gearmotor modal, not here
 type DraftFields = Pick<
   SliderbedInputs,
   | 'direction_mode'
@@ -373,10 +374,9 @@ export default function DriveArrangementModal({
                     onChange={(e) => {
                       const newValue = e.target.value || null;
                       updateDraft('output_shaft_option', newValue);
-                      // Clear bore when changing output shaft option
-                      if (newValue !== 'inch_keyed') {
-                        updateDraft('output_shaft_bore_in', null);
-                      }
+                      // Clear bore field when changing output shaft option
+                      // Note: output_shaft_diameter_in is managed in NORD Gearmotor modal
+                      updateDraft('output_shaft_bore_in', null);
                     }}
                   >
                     {OUTPUT_SHAFT_OPTIONS.map((option) => (
@@ -390,11 +390,11 @@ export default function DriveArrangementModal({
                   </p>
                 </div>
 
-                {/* Bore Selection - only shown for inch_keyed */}
-                {draft.output_shaft_option === 'inch_keyed' && (
+                {/* Output Hollow Bore - shown for hollow shaft options */}
+                {(draft.output_shaft_option === 'inch_hollow' || draft.output_shaft_option === 'metric_hollow') && (
                   <div className="pt-2">
                     <label htmlFor="modal_output_bore" className="label">
-                      Output Shaft Bore
+                      Output Hollow Bore
                     </label>
                     <select
                       id="modal_output_bore"
@@ -410,7 +410,23 @@ export default function DriveArrangementModal({
                       ))}
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Required to resolve the output shaft kit part number.
+                      Inner diameter of the hollow shaft. Used for bushing selection (future).
+                    </p>
+                  </div>
+                )}
+
+                {/* Output Shaft Diameter - read-only display for solid shaft (keyed) options */}
+                {/* Editing is done in the NORD Gearmotor modal */}
+                {(draft.output_shaft_option === 'inch_keyed' || draft.output_shaft_option === 'metric_keyed') && (
+                  <div className="pt-2">
+                    <label className="label">Output Shaft Diameter</label>
+                    <div className="input bg-gray-50 text-gray-600 cursor-not-allowed">
+                      {inputs.output_shaft_diameter_in
+                        ? INCH_KEYED_BORE_OPTIONS.find(o => o.value === inputs.output_shaft_diameter_in)?.label || `${inputs.output_shaft_diameter_in}"`
+                        : '—'}
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Set in Gearmotor selection (depends on gear unit size).
                     </p>
                   </div>
                 )}

@@ -396,9 +396,19 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             gearmotorMountingStyle={inputs.gearmotor_mounting_style}
             outputShaftOption={inputs.output_shaft_option}
             outputShaftBoreIn={inputs.output_shaft_bore_in}
+            sprocketShaftDiameterIn={inputs.sprocket_shaft_diameter_in}
+            plugInShaftStyle={inputs.plug_in_shaft_style}
             onGearmotorOutputRpmChange={(outputRpm) => {
               // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
               updateInput('actual_gearmotor_output_rpm', outputRpm);
+            }}
+            onSprocketShaftDiameterChange={(diameter) => {
+              // v1.42: Sprocket shaft diameter for output shaft kit PN lookup (deprecated)
+              updateInput('sprocket_shaft_diameter_in', diameter);
+            }}
+            onPlugInShaftStyleChange={(style) => {
+              // v1.43: Plug-in shaft style for output shaft kit PN lookup
+              updateInput('plug_in_shaft_style', style);
             }}
           />
 

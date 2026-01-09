@@ -25,10 +25,19 @@ interface DriveSelectorCardProps {
   gearmotorMountingStyle?: GearmotorMountingStyle | string;
   /** Output shaft option from Drive Arrangement - for chain drive configuration */
   outputShaftOption?: string | null;
-  /** Output shaft bore size in inches - required for inch_keyed option */
+  /** Output shaft bore size in inches - for hollow shaft options */
   outputShaftBoreIn?: number | null;
+  /** @deprecated Use plugInShaftStyle instead. Sprocket shaft diameter in inches. */
+  sprocketShaftDiameterIn?: number | null;
+  /** Plug-in shaft style for solid shaft (keyed) options.
+   * The OD is FIXED by gear unit size; only style varies. */
+  plugInShaftStyle?: string | null;
   /** Callback when gearmotor selection changes - receives output_rpm or null if cleared */
   onGearmotorOutputRpmChange?: (outputRpm: number | null) => void;
+  /** @deprecated Use onPlugInShaftStyleChange instead */
+  onSprocketShaftDiameterChange?: (diameter: number | null) => void;
+  /** Callback when plug-in shaft style changes */
+  onPlugInShaftStyleChange?: (style: string | null) => void;
 }
 
 /**
@@ -43,7 +52,11 @@ export default function DriveSelectorCard({
   gearmotorMountingStyle,
   outputShaftOption,
   outputShaftBoreIn,
+  sprocketShaftDiameterIn,
+  plugInShaftStyle,
   onGearmotorOutputRpmChange,
+  onSprocketShaftDiameterChange,
+  onPlugInShaftStyleChange,
 }: DriveSelectorCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<GearmotorCandidate | null>(null);
@@ -192,9 +205,13 @@ export default function DriveSelectorCard({
         gearmotorMountingStyle={gearmotorMountingStyle}
         outputShaftOption={outputShaftOption}
         outputShaftBoreIn={outputShaftBoreIn}
+        sprocketShaftDiameterIn={sprocketShaftDiameterIn}
+        plugInShaftStyle={plugInShaftStyle}
         selectedCandidate={selectedCandidate}
         onSelect={handleSelect}
         onServiceFactorChange={setServiceFactor}
+        onSprocketShaftDiameterChange={onSprocketShaftDiameterChange}
+        onPlugInShaftStyleChange={onPlugInShaftStyleChange}
       />
     </>
   );
