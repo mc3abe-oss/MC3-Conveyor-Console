@@ -240,11 +240,95 @@ export enum FluidType {
   ConsiderableOilLiquid = 'Considerable Oil / Liquid',
 }
 
+/**
+ * @deprecated Use part_temperature_value + part_temperature_unit instead.
+ * Kept for backward compatibility.
+ */
 export enum PartTemperatureClass {
   Ambient = 'Ambient',
   Hot = 'Hot',
   RedHot = 'Red Hot',
 }
+
+/**
+ * Temperature unit for part temperature (v1.36)
+ */
+export enum TemperatureUnit {
+  Fahrenheit = 'F',
+  Celsius = 'C',
+}
+
+/**
+ * Display labels for TemperatureUnit
+ */
+export const TEMPERATURE_UNIT_LABELS: Record<TemperatureUnit, string> = {
+  [TemperatureUnit.Fahrenheit]: '°F',
+  [TemperatureUnit.Celsius]: '°C',
+};
+
+/**
+ * Fluids on material presence (v1.36)
+ */
+export enum FluidsOnMaterial {
+  No = 'NO',
+  Yes = 'YES',
+  Unknown = 'UNKNOWN',
+}
+
+/**
+ * Display labels for FluidsOnMaterial
+ */
+export const FLUIDS_ON_MATERIAL_LABELS: Record<FluidsOnMaterial, string> = {
+  [FluidsOnMaterial.No]: 'No',
+  [FluidsOnMaterial.Yes]: 'Yes',
+  [FluidsOnMaterial.Unknown]: 'Unknown',
+};
+
+/**
+ * Fluid type when fluids are present on material (v1.36)
+ */
+export enum MaterialFluidType {
+  Water = 'WATER',
+  Coolant = 'COOLANT',
+  Oil = 'OIL',
+  Mixed = 'MIXED',
+  Other = 'OTHER',
+  Unknown = 'UNKNOWN',
+}
+
+/**
+ * Display labels for MaterialFluidType
+ */
+export const MATERIAL_FLUID_TYPE_LABELS: Record<MaterialFluidType, string> = {
+  [MaterialFluidType.Water]: 'Water',
+  [MaterialFluidType.Coolant]: 'Coolant',
+  [MaterialFluidType.Oil]: 'Oil',
+  [MaterialFluidType.Mixed]: 'Mixed',
+  [MaterialFluidType.Other]: 'Other',
+  [MaterialFluidType.Unknown]: 'Unknown',
+};
+
+/**
+ * Fluid amount when fluids are present on material (v1.36)
+ */
+export enum FluidAmount {
+  LightFilm = 'LIGHT_FILM',
+  Dripping = 'DRIPPING',
+  SoakedPooled = 'SOAKED_POOLED',
+  SubmergedSlurry = 'SUBMERGED_SLURRY',
+  Unknown = 'UNKNOWN',
+}
+
+/**
+ * Display labels for FluidAmount
+ */
+export const FLUID_AMOUNT_LABELS: Record<FluidAmount, string> = {
+  [FluidAmount.LightFilm]: 'Light film',
+  [FluidAmount.Dripping]: 'Dripping',
+  [FluidAmount.SoakedPooled]: 'Soaked / pooled',
+  [FluidAmount.SubmergedSlurry]: 'Submerged / slurry',
+  [FluidAmount.Unknown]: 'Unknown',
+};
 
 /**
  * @deprecated Use AmbientTemperatureClass instead.
@@ -1105,10 +1189,46 @@ export interface SliderbedInputs {
   /** Drop height in inches (vertical distance from part release to belt surface) */
   drop_height_in: number;
 
-  /** Part Temperature Class */
+  /**
+   * @deprecated Use part_temperature_value + part_temperature_unit instead.
+   * Kept for backward compatibility.
+   */
   part_temperature_class: PartTemperatureClass | string;
 
-  /** Fluid Type */
+  /**
+   * Part temperature numeric value (v1.36)
+   * User-entered temperature of the material being conveyed.
+   */
+  part_temperature_value?: number;
+
+  /**
+   * Part temperature unit (v1.36)
+   * F = Fahrenheit, C = Celsius. Defaults to F.
+   */
+  part_temperature_unit?: TemperatureUnit | string;
+
+  /**
+   * Fluids present on material? (v1.36)
+   * First-level question before fluid details.
+   */
+  fluids_on_material?: FluidsOnMaterial | string;
+
+  /**
+   * Type of fluid on material (v1.36)
+   * Only applicable when fluids_on_material = YES.
+   */
+  material_fluid_type?: MaterialFluidType | string;
+
+  /**
+   * Amount of fluid on material (v1.36)
+   * Only applicable when fluids_on_material = YES.
+   */
+  fluid_amount?: FluidAmount | string;
+
+  /**
+   * @deprecated Use fluids_on_material + material_fluid_type + fluid_amount instead.
+   * Kept for backward compatibility.
+   */
   fluid_type: FluidType | string;
 
   /** Part Orientation on belt */
@@ -2981,8 +3101,13 @@ export function buildDefaultInputs(): SliderbedInputs {
     // part_weight_lbs, part_length_in, part_width_in: NOT SET - user must enter
     // These are only set after material_form is selected
     drop_height_in: 0,
-    part_temperature_class: 'AMBIENT',
-    fluid_type: 'NONE',
+    part_temperature_class: 'AMBIENT', // deprecated
+    part_temperature_value: undefined,
+    part_temperature_unit: TemperatureUnit.Fahrenheit,
+    fluids_on_material: FluidsOnMaterial.No,
+    material_fluid_type: undefined,
+    fluid_amount: undefined,
+    fluid_type: 'NONE', // deprecated
     orientation: Orientation.Lengthwise,
     part_spacing_in: 0, // Changed from 6 to 0 - user must set explicitly
     throughput_margin_pct: 0,

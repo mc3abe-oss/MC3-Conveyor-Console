@@ -1,18 +1,15 @@
 /**
- * Tab 1: Application (v1.35)
+ * Tab 1: Application (v1.36)
  *
  * Two peer sections:
- * 1) Material to Be Conveyed - material context, form, presentation, material notes
- * 2) Operating Environment - environment factors, fluid type, ambient temp, application notes
+ * 1) Material to Be Conveyed - material context, form, presentation, fluids, material notes
+ * 2) Operating Environment - environment factors, ambient temp, application notes
  *
- * v1.35: Split Operating Environment into its Own Section
- * - Operating Environment is now a separate AccordionSection (peer to Material)
- * - Application notes moved to Operating Environment (makes more sense contextually)
- * - Material notes stays in Material to Be Conveyed
- *
- * v1.34: Explicit Mode Selection (No Defaults)
- * - Material form is NOT a default - it's a required explicit choice
- * - Modal-based configuration for both modes
+ * v1.36: One-Pass Cleanup
+ * - Part Temperature: numeric input + °F/°C toggle (replaces dropdown)
+ * - Bulk Material: either/or flow input with derived field + min/max lump sizes
+ * - Fluids: conditional pattern (fluids present? -> type + amount)
+ * - Fluid Type removed from Operating Environment
  */
 
 'use client';
@@ -26,6 +23,14 @@ import {
   MaterialForm,
   BulkInputMethod,
   Orientation,
+  TemperatureUnit,
+  TEMPERATURE_UNIT_LABELS,
+  FluidsOnMaterial,
+  FLUIDS_ON_MATERIAL_LABELS,
+  MaterialFluidType,
+  MATERIAL_FLUID_TYPE_LABELS,
+  FluidAmount,
+  FLUID_AMOUNT_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
 import EnvironmentFactorsSelect from './EnvironmentFactorsSelect';
@@ -45,6 +50,21 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
   // Determine current material mode (if any)
   const isDiscreteMode = inputs.material_form === MaterialForm.Parts || inputs.material_form === 'PARTS';
   const isBulkMode = inputs.material_form === MaterialForm.Bulk || inputs.material_form === 'BULK';
+
+  // Bulk flow mode
+  const isWeightFlowMode = inputs.bulk_input_method === BulkInputMethod.WeightFlow || inputs.bulk_input_method === 'WEIGHT_FLOW';
+  const isVolumeFlowMode = inputs.bulk_input_method === BulkInputMethod.VolumeFlow || inputs.bulk_input_method === 'VOLUME_FLOW';
+
+  // Derived flow calculations
+  const derivedVolumeFlow = (inputs.mass_flow_lbs_per_hr && inputs.density_lbs_per_ft3)
+    ? Math.round((inputs.mass_flow_lbs_per_hr / inputs.density_lbs_per_ft3) * 100) / 100
+    : null;
+  const derivedMassFlow = (inputs.volume_flow_ft3_per_hr && inputs.density_lbs_per_ft3)
+    ? Math.round((inputs.volume_flow_ft3_per_hr * inputs.density_lbs_per_ft3) * 100) / 100
+    : null;
+
+  // Fluids conditional
+  const showFluidDetails = inputs.fluids_on_material === FluidsOnMaterial.Yes || inputs.fluids_on_material === 'YES';
 
   // Issue counts for Material section (product + throughput)
   const materialIssueCounts: SectionCounts = {
@@ -103,17 +123,102 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                   required
                 />
               </div>
+              {/* Part Temperature - numeric + unit toggle */}
               <div>
-                <label htmlFor="part_temperature_class" className="label">Part Temperature</label>
-                <CatalogSelect
-                  catalogKey="part_temperature_class"
-                  value={inputs.part_temperature_class}
-                  onChange={(value) => updateInput('part_temperature_class', value)}
-                  id="part_temperature_class"
-                  required
-                />
+                <label htmlFor="part_temperature_value" className="label">Part Temperature</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    id="part_temperature_value"
+                    className="input flex-1"
+                    value={inputs.part_temperature_value ?? ''}
+                    onChange={(e) => updateInput('part_temperature_value', e.target.value ? parseFloat(e.target.value) : undefined)}
+                    placeholder="e.g., 70"
+                  />
+                  <div className="flex rounded-lg border border-gray-200 overflow-hidden">
+                    {Object.values(TemperatureUnit).map((unit) => (
+                      <button
+                        key={unit}
+                        type="button"
+                        className={`px-3 py-2 text-sm font-medium transition-colors ${
+                          (inputs.part_temperature_unit ?? TemperatureUnit.Fahrenheit) === unit
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-white text-gray-700 hover:bg-gray-50'
+                        }`}
+                        onClick={() => updateInput('part_temperature_unit', unit)}
+                      >
+                        {TEMPERATURE_UNIT_LABELS[unit]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="hidden md:block" />
+            </div>
+          </div>
+
+          {/* Fluids on Material - conditional pattern */}
+          <div>
+            <p className="text-xs font-medium text-gray-400 mb-2">Fluids on Material</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <label htmlFor="fluids_on_material" className="label">Fluids present?</label>
+                <select
+                  id="fluids_on_material"
+                  className="input"
+                  value={inputs.fluids_on_material ?? FluidsOnMaterial.No}
+                  onChange={(e) => {
+                    updateInput('fluids_on_material', e.target.value);
+                    // Clear fluid details if "No" selected
+                    if (e.target.value === FluidsOnMaterial.No) {
+                      updateInput('material_fluid_type', undefined);
+                      updateInput('fluid_amount', undefined);
+                    }
+                  }}
+                >
+                  {Object.values(FluidsOnMaterial).map((value) => (
+                    <option key={value} value={value}>
+                      {FLUIDS_ON_MATERIAL_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {showFluidDetails && (
+                <>
+                  <div>
+                    <label htmlFor="material_fluid_type" className="label">Fluid type</label>
+                    <select
+                      id="material_fluid_type"
+                      className="input"
+                      value={inputs.material_fluid_type ?? ''}
+                      onChange={(e) => updateInput('material_fluid_type', e.target.value || undefined)}
+                    >
+                      <option value="">Select...</option>
+                      {Object.values(MaterialFluidType).map((value) => (
+                        <option key={value} value={value}>
+                          {MATERIAL_FLUID_TYPE_LABELS[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="fluid_amount" className="label">Amount</label>
+                    <select
+                      id="fluid_amount"
+                      className="input"
+                      value={inputs.fluid_amount ?? ''}
+                      onChange={(e) => updateInput('fluid_amount', e.target.value || undefined)}
+                    >
+                      <option value="">Select...</option>
+                      {Object.values(FluidAmount).map((value) => (
+                        <option key={value} value={value}>
+                          {FLUID_AMOUNT_LABELS[value]}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -316,17 +421,17 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                       <input
                         type="radio"
                         name="bulk_input_method"
-                        checked={inputs.bulk_input_method === BulkInputMethod.WeightFlow}
+                        checked={isWeightFlowMode}
                         onChange={() => updateInput('bulk_input_method', BulkInputMethod.WeightFlow)}
                         className="mr-2"
                       />
-                      Weight Flow Rate
+                      Mass Flow Rate
                     </label>
                     <label className="inline-flex items-center">
                       <input
                         type="radio"
                         name="bulk_input_method"
-                        checked={inputs.bulk_input_method === BulkInputMethod.VolumeFlow}
+                        checked={isVolumeFlowMode}
                         onChange={() => updateInput('bulk_input_method', BulkInputMethod.VolumeFlow)}
                         className="mr-2"
                       />
@@ -334,66 +439,112 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                     </label>
                   </div>
                 </div>
-                {/* Flow Rate Inputs - based on method */}
+
+                {/* Flow Rates */}
                 <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-3">Material Properties</h4>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Flow Rate</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {inputs.bulk_input_method === BulkInputMethod.WeightFlow && (
-                      <div>
-                        <label htmlFor="mass_flow_lbs_per_hr" className="label">Mass Flow (lb/hr)</label>
+                    {/* Mass Flow - editable when WeightFlow, derived when VolumeFlow */}
+                    <div>
+                      <label htmlFor="mass_flow_lbs_per_hr" className="label">
+                        Mass Flow (lb/hr)
+                        {isVolumeFlowMode && <span className="text-gray-400 font-normal ml-1">(derived)</span>}
+                      </label>
+                      {isWeightFlowMode ? (
                         <input
                           type="number"
                           id="mass_flow_lbs_per_hr"
                           className="input"
-                          value={inputs.mass_flow_lbs_per_hr || ''}
+                          value={inputs.mass_flow_lbs_per_hr ?? ''}
                           onChange={(e) => updateInput('mass_flow_lbs_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
                           step="1"
                           min="0"
                           placeholder="e.g., 1000"
                         />
-                      </div>
-                    )}
-                    {inputs.bulk_input_method === BulkInputMethod.VolumeFlow && (
-                      <>
-                        <div>
-                          <label htmlFor="volume_flow_ft3_per_hr" className="label">Volume Flow (ft³/hr)</label>
-                          <input
-                            type="number"
-                            id="volume_flow_ft3_per_hr"
-                            className="input"
-                            value={inputs.volume_flow_ft3_per_hr || ''}
-                            onChange={(e) => updateInput('volume_flow_ft3_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
-                            step="0.1"
-                            min="0"
-                            placeholder="e.g., 20"
-                          />
-                        </div>
-                        <div>
-                          <label htmlFor="density_lbs_per_ft3" className="label">Density (lb/ft³)</label>
-                          <input
-                            type="number"
-                            id="density_lbs_per_ft3"
-                            className="input"
-                            value={inputs.density_lbs_per_ft3 || ''}
-                            onChange={(e) => updateInput('density_lbs_per_ft3', e.target.value ? parseFloat(e.target.value) : undefined)}
-                            step="0.1"
-                            min="0"
-                            placeholder="e.g., 50"
-                          />
-                        </div>
-                      </>
-                    )}
+                      ) : (
+                        <input
+                          type="text"
+                          className="input bg-gray-100 text-gray-600"
+                          value={derivedMassFlow !== null ? derivedMassFlow.toLocaleString() : '—'}
+                          readOnly
+                          disabled
+                        />
+                      )}
+                    </div>
+
+                    {/* Volume Flow - editable when VolumeFlow, derived when WeightFlow */}
                     <div>
-                      <label htmlFor="max_lump_size_in" className="label">Max Lump Size (in)</label>
+                      <label htmlFor="volume_flow_ft3_per_hr" className="label">
+                        Volume Flow (ft³/hr)
+                        {isWeightFlowMode && <span className="text-gray-400 font-normal ml-1">(derived)</span>}
+                      </label>
+                      {isVolumeFlowMode ? (
+                        <input
+                          type="number"
+                          id="volume_flow_ft3_per_hr"
+                          className="input"
+                          value={inputs.volume_flow_ft3_per_hr ?? ''}
+                          onChange={(e) => updateInput('volume_flow_ft3_per_hr', e.target.value ? parseFloat(e.target.value) : undefined)}
+                          step="0.1"
+                          min="0"
+                          placeholder="e.g., 20"
+                        />
+                      ) : (
+                        <input
+                          type="text"
+                          className="input bg-gray-100 text-gray-600"
+                          value={derivedVolumeFlow !== null ? derivedVolumeFlow.toLocaleString() : '—'}
+                          readOnly
+                          disabled
+                        />
+                      )}
+                    </div>
+
+                    {/* Bulk Density - always editable */}
+                    <div>
+                      <label htmlFor="density_lbs_per_ft3" className="label">Bulk Density (lb/ft³)</label>
                       <input
                         type="number"
-                        id="max_lump_size_in"
+                        id="density_lbs_per_ft3"
                         className="input"
-                        value={inputs.max_lump_size_in || ''}
-                        onChange={(e) => updateInput('max_lump_size_in', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        value={inputs.density_lbs_per_ft3 ?? ''}
+                        onChange={(e) => updateInput('density_lbs_per_ft3', e.target.value ? parseFloat(e.target.value) : undefined)}
                         step="0.1"
                         min="0"
-                        placeholder="e.g., 2"
+                        placeholder="e.g., 50"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Lump Sizes */}
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-3">Lump Size</h4>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div>
+                      <label htmlFor="smallest_lump_size_in" className="label">Min Lump Size (in)</label>
+                      <input
+                        type="number"
+                        id="smallest_lump_size_in"
+                        className="input"
+                        value={inputs.smallest_lump_size_in ?? ''}
+                        onChange={(e) => updateInput('smallest_lump_size_in', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 0.5"
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="largest_lump_size_in" className="label">Max Lump Size (in)</label>
+                      <input
+                        type="number"
+                        id="largest_lump_size_in"
+                        className="input"
+                        value={inputs.largest_lump_size_in ?? ''}
+                        onChange={(e) => updateInput('largest_lump_size_in', e.target.value ? parseFloat(e.target.value) : undefined)}
+                        step="0.1"
+                        min="0"
+                        placeholder="e.g., 4"
                       />
                     </div>
                   </div>
@@ -485,23 +636,13 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
           {/* Environment Factors */}
           <div>
             <p className="text-xs font-medium text-gray-400 mb-2">Conditions</p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="md:col-span-2">
                 <label htmlFor="environment_factors" className="label">Environment Factors</label>
                 <EnvironmentFactorsSelect
                   value={inputs.environment_factors}
                   onChange={(value) => updateInput('environment_factors', value)}
                   id="environment_factors"
-                />
-              </div>
-              <div>
-                <label htmlFor="fluid_type" className="label">Fluid Type</label>
-                <CatalogSelect
-                  catalogKey="fluid_type"
-                  value={inputs.fluid_type}
-                  onChange={(value) => updateInput('fluid_type', value)}
-                  id="fluid_type"
-                  required
                 />
               </div>
               <div>
