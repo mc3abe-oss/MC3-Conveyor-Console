@@ -1506,12 +1506,34 @@ export interface SliderbedInputs {
 
   /**
    * Output shaft diameter in inches for solid shaft options (v1.41)
-   * Used when output_shaft_option is 'inch_keyed' or 'metric_keyed'.
-   * Represents the shaft OD when using a plug-in shaft kit.
-   * v1: Not required for PN resolution. Reserved for future mapping.
-   * - null: Not selected
+   * @deprecated Use sprocket_shaft_diameter_in instead. This field had
+   * ambiguous semantics (interface bore vs sprocket shaft). Kept for
+   * backward compatibility but no longer written by UI.
    */
   output_shaft_diameter_in?: number | null;
+
+  /**
+   * Sprocket shaft diameter in inches (v1.42)
+   * @deprecated Use plug_in_shaft_style instead. The OD is fixed by gear unit
+   * size, not selectable. Kept for backward compatibility but no longer written.
+   */
+  sprocket_shaft_diameter_in?: number | null;
+
+  /**
+   * Plug-in shaft style for solid shaft (keyed) options (v1.43)
+   * Used when output_shaft_option is 'inch_keyed' or 'metric_keyed'.
+   *
+   * For NORD FLEXBLOC, the plug-in shaft OD is FIXED by gear unit size.
+   * What varies is the STYLE:
+   * - 'single': Standard single shaft
+   * - 'double': Double shaft (output on both sides)
+   * - 'flange_b5': Shaft for output flange B5
+   *
+   * The OD is derived from catalog rows (plug_in_shaft_od_in in vendor_components).
+   *
+   * - null: Not selected (defaults to 'single' if style rows exist)
+   */
+  plug_in_shaft_style?: 'single' | 'double' | 'flange_b5' | null;
 
   /**
    * Actual gearmotor source (v1.38)
@@ -2819,7 +2841,9 @@ export const DEFAULT_INPUT_VALUES = {
   drive_shaft_sprocket_teeth: 24,
   output_shaft_option: null, // v1.39: Output shaft option for chain drive
   output_shaft_bore_in: null, // v1.40: Bore size for hollow shaft
-  output_shaft_diameter_in: null, // v1.41: Shaft diameter for solid shaft (keyed)
+  output_shaft_diameter_in: null, // v1.41: DEPRECATED
+  sprocket_shaft_diameter_in: null, // v1.42: DEPRECATED - use plug_in_shaft_style
+  plug_in_shaft_style: null, // v1.43: Plug-in shaft style (single/double/flange_b5)
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,
@@ -2964,7 +2988,9 @@ export function buildDefaultInputs(): SliderbedInputs {
     drive_shaft_sprocket_teeth: 24,
     output_shaft_option: null, // v1.39: Output shaft option for chain drive
     output_shaft_bore_in: null, // v1.40: Bore size for hollow shaft
-    output_shaft_diameter_in: null, // v1.41: Shaft diameter for solid shaft (keyed)
+    output_shaft_diameter_in: null, // v1.41: DEPRECATED
+    sprocket_shaft_diameter_in: null, // v1.42: DEPRECATED - use plug_in_shaft_style
+    plug_in_shaft_style: null, // v1.43: Plug-in shaft style (single/double/flange_b5)
 
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,

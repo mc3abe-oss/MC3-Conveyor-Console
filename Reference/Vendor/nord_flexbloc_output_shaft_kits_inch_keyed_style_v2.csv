@@ -1,0 +1,4 @@
+vendor,series,component_type,gear_unit_size,output_shaft_option_key,plug_in_shaft_style,plug_in_shaft_od_in,nord_part_number,catalog_ref,description
+NORD,FLEXBLOC,output_shaft_kit,SI63,inch_keyed,single,1.125,60693010,C122,Plug-in Shaft (Inch) 1.125 x 60mm
+NORD,FLEXBLOC,output_shaft_kit,SI63,inch_keyed,double,1.125,60693110,C122,Double Shaft (Inch) 1.125 x 60mm
+NORD,FLEXBLOC,output_shaft_kit,SI63,inch_keyed,flange_b5,1.125,60693210,C122,Shaft for Output Flange B5 (Inch) 1.125 x 60mm

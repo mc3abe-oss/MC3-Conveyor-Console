@@ -196,10 +196,35 @@ export interface ResolveBomOptions {
    */
   gearUnitSize?: string | null;
   /**
-   * Output shaft bore size in inches for inch keyed option.
-   * v1: NOT required for PN resolution. Reserved for future mapping.
+   * Output shaft bore size in inches for hollow shaft options.
+   * Used for future bushing selection.
    */
   outputShaftBoreIn?: number | null;
+  /**
+   * Sprocket shaft diameter in inches for solid shaft (keyed) options.
+   *
+   * This is the diameter of the solid output shaft (journal) where the
+   * drive sprocket mounts. This is the USER-SELECTABLE dimension.
+   *
+   * v2: When provided, resolver uses diameter-specific mapping.
+   * If diameter selected but no mapping found -> Configured + PN pending (no fallback to v1).
+   * If diameter NOT selected -> v1 fallback (size-only mapping).
+   *
+   * @deprecated Use plugInShaftStyle instead for style-based selection
+   */
+  sprocketShaftDiameterIn?: number | null;
+  /**
+   * Plug-in shaft style for solid shaft (keyed) options.
+   *
+   * For NORD FLEXBLOC, the plug-in shaft OD is FIXED by gear unit size.
+   * What varies is the STYLE of the shaft kit:
+   * - 'single': Standard single shaft
+   * - 'double': Double shaft (output on both sides)
+   * - 'flange_b5': Shaft for output flange B5
+   *
+   * When provided, resolver uses style-based mapping (preferred over diameter-based).
+   */
+  plugInShaftStyle?: string | null;
 }
 
 /**
@@ -213,23 +238,82 @@ export const OUTPUT_SHAFT_OPTION_LABELS: Record<string, string> = {
 };
 
 // =============================================================================
-// Output Shaft Kit PN Lookup (v1: gear_unit_size only)
+// Output Shaft Kit PN Lookup (v1: size-only, v2: diameter-specific)
 // =============================================================================
 
-// v1: output shaft kits resolve by gear_unit_size only.
-// Bore-based resolution is deferred to v2.
+/**
+ * Look up output shaft kit PN using v2 sprocket shaft diameter-specific mapping.
+ *
+ * v2 key: (vendor=NORD, component_type=OUTPUT_KIT, gear_unit_size, output_shaft_option_key, sprocket_shaft_diameter_in)
+ *
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param outputShaftOptionKey - e.g., 'inch_keyed', 'metric_keyed'
+ * @param sprocketShaftDiameterIn - Sprocket shaft diameter in inches (e.g., 1.125)
+ * @returns Part number and description if found, null otherwise
+ */
+async function lookupOutputShaftKitPNv2(
+  gearUnitSize: string,
+  outputShaftOptionKey: string,
+  sprocketShaftDiameterIn: number
+): Promise<{ vendor_part_number: string; description: string } | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  try {
+    // v2 lookup: gear_unit_size + output_shaft_option_key + sprocket_shaft_diameter_in
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, description, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'OUTPUT_KIT')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
+
+    if (error) {
+      console.error('Output shaft kit v2 lookup error:', error.message);
+      return null;
+    }
+
+    // Find matching sprocket shaft diameter with tolerance
+    if (data && data.length > 0) {
+      for (const row of data) {
+        const meta = row.metadata_json as Record<string, unknown> | null;
+        if (!meta) continue;
+
+        const dbDiameter = meta.sprocket_shaft_diameter_in as number | null;
+        if (dbDiameter === null || dbDiameter === undefined) continue;
+
+        // Compare with tolerance (0.01 inches)
+        if (Math.abs(dbDiameter - sprocketShaftDiameterIn) < 0.01) {
+          if (isRealNordPartNumber(row.vendor_part_number)) {
+            return {
+              vendor_part_number: row.vendor_part_number,
+              description: row.description,
+            };
+          }
+        }
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Output shaft kit v2 lookup failed:', err);
+    return null;
+  }
+}
 
 /**
- * Look up output shaft kit PN from vendor_components table.
+ * Look up output shaft kit PN using v1 size-only mapping.
  *
  * v1 key: (vendor=NORD, component_type=OUTPUT_KIT, gear_unit_size, output_shaft_option_key)
- * No bore or mounting_variant required in v1.
+ * No sprocket_shaft_diameter_in in v1 rows (or sprocket_shaft_diameter_in is null).
  *
  * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
  * @param outputShaftOptionKey - e.g., 'inch_keyed', 'metric_keyed'
  * @returns Part number and description if found, null otherwise
  */
-async function lookupOutputShaftKitPN(
+async function lookupOutputShaftKitPNv1(
   gearUnitSize: string,
   outputShaftOptionKey: string
 ): Promise<{ vendor_part_number: string; description: string } | null> {
@@ -238,7 +322,128 @@ async function lookupOutputShaftKitPN(
   }
 
   try {
-    // v1 lookup: gear_unit_size + output_shaft_option_key only
+    // v1 lookup: gear_unit_size + output_shaft_option_key, no sprocket_shaft_diameter_in
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, description, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'OUTPUT_KIT')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
+
+    if (error) {
+      console.error('Output shaft kit v1 lookup error:', error.message);
+      return null;
+    }
+
+    // Find v1 row (no sprocket_shaft_diameter_in or null)
+    if (data && data.length > 0) {
+      for (const row of data) {
+        const meta = row.metadata_json as Record<string, unknown> | null;
+        // v1 rows have no sprocket_shaft_diameter_in or it's null
+        if (meta?.sprocket_shaft_diameter_in === undefined || meta?.sprocket_shaft_diameter_in === null) {
+          if (isRealNordPartNumber(row.vendor_part_number)) {
+            return {
+              vendor_part_number: row.vendor_part_number,
+              description: row.description,
+            };
+          }
+        }
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Output shaft kit v1 lookup failed:', err);
+    return null;
+  }
+}
+
+/**
+ * Get available plug-in shaft styles for a given gear unit size and output shaft option.
+ *
+ * Used by UI to populate style dropdown. Returns distinct plug_in_shaft_style
+ * values that have real NORD PNs in the database.
+ *
+ * Style values: 'single', 'double', 'flange_b5'
+ *
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param outputShaftOptionKey - e.g., 'inch_keyed'
+ * @returns Array of available styles with their associated OD (fixed per gear unit)
+ */
+export async function getAvailableShaftStyles(
+  gearUnitSize: string,
+  outputShaftOptionKey: string
+): Promise<Array<{ style: string; od_in: number | null }>> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'OUTPUT_KIT')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
+
+    if (error) {
+      console.error('Available shaft styles lookup error:', error.message);
+      return [];
+    }
+
+    // Extract distinct plug_in_shaft_style values that have real PNs
+    const stylesMap = new Map<string, number | null>();
+    if (data) {
+      for (const row of data) {
+        const meta = row.metadata_json as Record<string, unknown> | null;
+        const style = meta?.plug_in_shaft_style as string | null;
+        const od = meta?.plug_in_shaft_od_in as number | null;
+
+        if (style && isRealNordPartNumber(row.vendor_part_number)) {
+          // Store style with its OD (OD is fixed per gear unit size)
+          if (!stylesMap.has(style)) {
+            stylesMap.set(style, od);
+          }
+        }
+      }
+    }
+
+    // Return as array of objects
+    return Array.from(stylesMap.entries())
+      .map(([style, od_in]) => ({ style, od_in }))
+      .sort((a, b) => {
+        // Sort order: single, double, flange_b5
+        const order = ['single', 'double', 'flange_b5'];
+        return order.indexOf(a.style) - order.indexOf(b.style);
+      });
+  } catch (err) {
+    console.error('Available shaft styles lookup failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Look up output shaft kit PN using style-based mapping.
+ *
+ * Key: (vendor=NORD, component_type=OUTPUT_KIT, gear_unit_size, output_shaft_option_key, plug_in_shaft_style)
+ *
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param outputShaftOptionKey - e.g., 'inch_keyed', 'metric_keyed'
+ * @param plugInShaftStyle - Style: 'single', 'double', 'flange_b5'
+ * @returns Part number, description, and OD if found, null otherwise
+ */
+export async function lookupOutputShaftKitByStyle(
+  gearUnitSize: string,
+  outputShaftOptionKey: string,
+  plugInShaftStyle: string
+): Promise<{ vendor_part_number: string; description: string; plug_in_shaft_od_in: number | null } | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  try {
     const { data, error } = await supabase
       .from('vendor_components')
       .select('vendor_part_number, description, metadata_json')
@@ -246,27 +451,83 @@ async function lookupOutputShaftKitPN(
       .eq('component_type', 'OUTPUT_KIT')
       .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
       .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey)
-      .limit(1);
+      .filter('metadata_json->>plug_in_shaft_style', 'eq', plugInShaftStyle);
 
     if (error) {
-      console.error('Output shaft kit lookup error:', error.message);
+      console.error('Output shaft kit style lookup error:', error.message);
       return null;
     }
 
+    // Find matching row with real PN
     if (data && data.length > 0) {
-      const match = data[0];
-      if (isRealNordPartNumber(match.vendor_part_number)) {
-        return {
-          vendor_part_number: match.vendor_part_number,
-          description: match.description,
-        };
+      for (const row of data) {
+        if (isRealNordPartNumber(row.vendor_part_number)) {
+          const meta = row.metadata_json as Record<string, unknown> | null;
+          return {
+            vendor_part_number: row.vendor_part_number,
+            description: row.description,
+            plug_in_shaft_od_in: (meta?.plug_in_shaft_od_in as number) ?? null,
+          };
+        }
       }
     }
 
     return null;
   } catch (err) {
-    console.error('Output shaft kit lookup failed:', err);
+    console.error('Output shaft kit style lookup failed:', err);
     return null;
+  }
+}
+
+/**
+ * Get available sprocket shaft diameters for a given gear unit size and output shaft option.
+ *
+ * Used by UI to populate diameter dropdown. Returns distinct sprocket shaft diameter
+ * values that have real NORD PNs in the database.
+ *
+ * @deprecated Use getAvailableShaftStyles instead for style-based selection
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param outputShaftOptionKey - e.g., 'inch_keyed'
+ * @returns Array of available sprocket shaft diameter values in inches
+ */
+export async function getAvailableShaftDiameters(
+  gearUnitSize: string,
+  outputShaftOptionKey: string
+): Promise<number[]> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'OUTPUT_KIT')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
+
+    if (error) {
+      console.error('Available sprocket shaft diameters lookup error:', error.message);
+      return [];
+    }
+
+    // Extract distinct sprocket_shaft_diameter_in values that have real PNs
+    const diameters = new Set<number>();
+    if (data) {
+      for (const row of data) {
+        const meta = row.metadata_json as Record<string, unknown> | null;
+        const diameter = meta?.sprocket_shaft_diameter_in as number | null;
+        if (diameter !== null && diameter !== undefined && isRealNordPartNumber(row.vendor_part_number)) {
+          diameters.add(diameter);
+        }
+      }
+    }
+
+    return Array.from(diameters).sort((a, b) => a - b);
+  } catch (err) {
+    console.error('Available sprocket shaft diameters lookup failed:', err);
+    return [];
   }
 }
 
@@ -433,14 +694,21 @@ export async function resolveBom(
   });
 
   // 4. Output Shaft Kit - conditional based on mounting style and user selection
-  // v1 States (no bore dependency):
+  // States:
   // - NOT_REQUIRED: shaft_mounted (found=true, description="Not required...")
   // - MISSING: bottom_mount + no outputShaftOption (found=false, description="Required...")
-  // - RESOLVED: bottom_mount + option selected + PN found (gear_unit_size lookup)
+  // - RESOLVED: bottom_mount + option selected + PN found
   // - CONFIGURED: bottom_mount + option selected but no PN found (PN pending)
+  //
+  // Lookup Precedence:
+  // 1) If plug_in_shaft_style is selected -> use style-based lookup (preferred)
+  // 2) If sprocket_shaft_diameter is selected -> use diameter-based lookup (v2, deprecated)
+  // 3) If neither selected -> use size-only lookup (v1, fallback)
   const shaftKitRequired = needsOutputShaftKit(options?.gearmotorMountingStyle);
   const outputShaftOption = options?.outputShaftOption;
   const gearUnitSize = parsed?.gear_unit_size || options?.gearUnitSize;
+  const plugInShaftStyle = options?.plugInShaftStyle;
+  const sprocketShaftDiameterIn = options?.sprocketShaftDiameterIn;
 
   if (!shaftKitRequired) {
     // Shaft mount or other: Output shaft kit NOT required
@@ -459,13 +727,21 @@ export async function resolveBom(
       found: false,
     });
   } else {
-    // Bottom mount + option selected: v1 lookup by gear_unit_size + output_shaft_option_key only
+    // Bottom mount + option selected: resolve PN
     const optionLabel = OUTPUT_SHAFT_OPTION_LABELS[outputShaftOption] || outputShaftOption;
+    let shaftKitMatch: { vendor_part_number: string; description: string; plug_in_shaft_od_in?: number | null } | null = null;
 
-    // v1 lookup - no bore required
-    let shaftKitMatch: { vendor_part_number: string; description: string } | null = null;
     if (gearUnitSize) {
-      shaftKitMatch = await lookupOutputShaftKitPN(gearUnitSize, outputShaftOption);
+      // Style-based lookup (preferred) - takes precedence over diameter-based
+      if (plugInShaftStyle) {
+        shaftKitMatch = await lookupOutputShaftKitByStyle(gearUnitSize, outputShaftOption, plugInShaftStyle);
+      } else if (sprocketShaftDiameterIn !== null && sprocketShaftDiameterIn !== undefined) {
+        // v2 (deprecated): Sprocket shaft diameter selected -> use diameter-specific lookup
+        shaftKitMatch = await lookupOutputShaftKitPNv2(gearUnitSize, outputShaftOption, sprocketShaftDiameterIn);
+      } else {
+        // v1: No style or diameter selected -> use size-only lookup
+        shaftKitMatch = await lookupOutputShaftKitPNv1(gearUnitSize, outputShaftOption);
+      }
     }
 
     if (shaftKitMatch) {
@@ -478,10 +754,15 @@ export async function resolveBom(
       });
     } else {
       // CONFIGURED: Option selected but no PN mapping found (PN pending)
+      const styleNote = plugInShaftStyle
+        ? ` ${plugInShaftStyle}`
+        : sprocketShaftDiameterIn !== null && sprocketShaftDiameterIn !== undefined
+          ? ` ${sprocketShaftDiameterIn}"`
+          : '';
       components.push({
         component_type: 'output_shaft_kit',
         part_number: null,
-        description: `Configured: ${optionLabel} (PN pending)`,
+        description: `Configured: ${optionLabel}${styleNote} (PN pending)`,
         found: true, // Mark as configured (not Missing)
       });
     }

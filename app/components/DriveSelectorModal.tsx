@@ -10,6 +10,7 @@ import {
   getMissingHint,
   resolveBom,
   needsOutputShaftKit,
+  getAvailableShaftStyles,
   type BomComponent,
   type BomResolution,
 } from '../../src/lib/gearmotor';
@@ -83,13 +84,18 @@ interface DriveSelectorModalProps {
   outputShaftOption?: string | null;
   /** Output shaft bore size in inches - for hollow shaft options */
   outputShaftBoreIn?: number | null;
-  /** Output shaft diameter in inches - for solid shaft (keyed) options */
-  outputShaftDiameterIn?: number | null;
+  /** @deprecated Use plugInShaftStyle instead. Sprocket shaft diameter in inches. */
+  sprocketShaftDiameterIn?: number | null;
+  /** Plug-in shaft style for solid shaft (keyed) options.
+   * The OD is FIXED by gear unit size; only style varies. */
+  plugInShaftStyle?: string | null;
   selectedCandidate: GearmotorCandidate | null;
   onSelect: (candidate: GearmotorCandidate | null) => void;
   onServiceFactorChange?: (sf: number) => void;
-  /** Callback when output shaft diameter changes */
-  onOutputShaftDiameterChange?: (diameter: number | null) => void;
+  /** @deprecated Use onPlugInShaftStyleChange instead */
+  onSprocketShaftDiameterChange?: (diameter: number | null) => void;
+  /** Callback when plug-in shaft style changes */
+  onPlugInShaftStyleChange?: (style: string | null) => void;
 }
 
 const SERVICE_FACTOR_OPTIONS = [
@@ -99,14 +105,41 @@ const SERVICE_FACTOR_OPTIONS = [
   { value: 2.0, label: 'Heavy' },
 ];
 
-// Diameter options for inch keyed output shaft
-// v1: Not yet linked to gear_unit_size-specific mapping (future v2)
-const OUTPUT_SHAFT_DIAMETER_OPTIONS = [
-  { value: 1.0, label: '1"' },
-  { value: 1.125, label: '1-1/8"' },
-  { value: 1.25, label: '1-1/4"' },
-  { value: 1.375, label: '1-3/8"' },
-] as const;
+// Format plug-in shaft style for display
+function formatStyleLabel(style: string): string {
+  const styleMap: Record<string, string> = {
+    'single': 'Single Shaft',
+    'double': 'Double Shaft',
+    'flange_b5': 'Flange B5 Shaft',
+  };
+  return styleMap[style] || style;
+}
+
+// Format decimal diameter to fractional inch display
+// Maps common shaft diameters from DB to readable labels
+function formatDiameterLabel(diameterIn: number): string {
+  const fractionMap: Record<number, string> = {
+    0.625: '5/8"',
+    0.875: '7/8"',
+    1.0: '1"',
+    1.125: '1-1/8"',
+    1.25: '1-1/4"',
+    1.375: '1-3/8"',
+    1.438: '1-7/16"',
+    1.5: '1-1/2"',
+    1.75: '1-3/4"',
+    1.938: '1-15/16"',
+    2.0: '2"',
+  };
+  // Find matching fraction with small tolerance
+  for (const [key, label] of Object.entries(fractionMap)) {
+    if (Math.abs(parseFloat(key) - diameterIn) < 0.01) {
+      return label;
+    }
+  }
+  // Fallback: show decimal
+  return `${diameterIn}"`;
+}
 
 // SF override validation
 // Per Bob's directive: minimum must be > 0 (e.g., 0.1), keep existing upper bound
@@ -140,11 +173,13 @@ export default function DriveSelectorModal({
   gearmotorMountingStyle,
   outputShaftOption,
   outputShaftBoreIn,
-  outputShaftDiameterIn,
+  sprocketShaftDiameterIn: _sprocketShaftDiameterIn, // deprecated
+  plugInShaftStyle,
   selectedCandidate,
   onSelect,
   onServiceFactorChange,
-  onOutputShaftDiameterChange,
+  onSprocketShaftDiameterChange: _onSprocketShaftDiameterChange, // deprecated
+  onPlugInShaftStyleChange,
 }: DriveSelectorModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [serviceFactor, setServiceFactor] = useState(initialServiceFactor);
@@ -159,29 +194,45 @@ export default function DriveSelectorModal({
   const [resolvedBom, setResolvedBom] = useState<BomResolution | null>(null);
   const [bomLoading, setBomLoading] = useState(false);
   const [diameterWarning, setDiameterWarning] = useState<string | null>(null);
+  const [availableStyles, setAvailableStyles] = useState<Array<{ style: string; od_in: number | null }>>([]);
+  const [stylesLoading, setStylesLoading] = useState(false);
   const prevGearUnitSizeRef = useRef<string | null>(null);
 
-  // Track gear unit size changes and clear diameter if it becomes invalid
-  // For v1, we don't have diameter-specific mapping, so we just track for future use
+  // Fetch available styles when gear unit changes
   useEffect(() => {
     const currentGearUnitSize = selectedCandidate
       ? getSeriesCode(selectedCandidate.size_code, selectedCandidate.gear_unit_part_number)
       : null;
 
-    // Check if gear unit changed
+    // Fetch available styles for style-based mapping
+    if (currentGearUnitSize && outputShaftOption === 'inch_keyed') {
+      setStylesLoading(true);
+      getAvailableShaftStyles(currentGearUnitSize, 'inch_keyed')
+        .then(styles => {
+          setAvailableStyles(styles);
+          setStylesLoading(false);
+        })
+        .catch(() => {
+          setAvailableStyles([]);
+          setStylesLoading(false);
+        });
+    } else {
+      setAvailableStyles([]);
+    }
+
+    // Track gear unit size changes and clear style if gear unit changes
     if (prevGearUnitSizeRef.current !== null && currentGearUnitSize !== null &&
         prevGearUnitSizeRef.current !== currentGearUnitSize) {
-      // Gear unit changed - clear diameter and show warning
-      if (outputShaftDiameterIn !== null && outputShaftDiameterIn !== undefined) {
-        onOutputShaftDiameterChange?.(null);
-        setDiameterWarning(`Output shaft diameter cleared (gear unit changed to ${currentGearUnitSize})`);
-        // Clear warning after 5 seconds
+      // Gear unit changed - clear style selection and show warning
+      if (plugInShaftStyle) {
+        onPlugInShaftStyleChange?.(null);
+        setDiameterWarning(`Plug-in shaft style cleared (gear unit changed to ${currentGearUnitSize})`);
         setTimeout(() => setDiameterWarning(null), 5000);
       }
     }
 
     prevGearUnitSizeRef.current = currentGearUnitSize;
-  }, [selectedCandidate, outputShaftDiameterIn, onOutputShaftDiameterChange]);
+  }, [selectedCandidate, outputShaftOption, plugInShaftStyle, onPlugInShaftStyleChange]);
 
   // Resolve BOM when selectedCandidate or gearmotorMountingStyle changes
   // IMPORTANT: Gear unit PNs are keyed by WORM ratio (from catalog), NOT total ratio.
@@ -206,7 +257,8 @@ export default function DriveSelectorModal({
       totalRatio: gearUnitRatio, // Worm ratio for gear unit PN lookup
       gearmotorMountingStyle, // For output shaft kit requirement logic
       outputShaftOption, // For output shaft kit configuration status
-      outputShaftBoreIn, // For inch keyed bore-specific PN lookup (v1.40)
+      outputShaftBoreIn, // For hollow shaft bore-specific lookup
+      plugInShaftStyle, // Style-based lookup (preferred)
     })
       .then((bom) => {
         setResolvedBom(bom);
@@ -217,7 +269,7 @@ export default function DriveSelectorModal({
       .finally(() => {
         setBomLoading(false);
       });
-  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption, outputShaftBoreIn]);
+  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption, outputShaftBoreIn, plugInShaftStyle]);
 
   // Compute active SF: override takes precedence if valid
   const sfOverrideValidation = validateSfOverride(sfOverrideInput);
@@ -999,34 +1051,69 @@ export default function DriveSelectorModal({
                       </div>
                     </div>
 
-                    {/* 5) Output Shaft Diameter - Only for inch_keyed */}
+                    {/* 5) Shaft Configuration - Only for inch_keyed */}
                     {shaftKitRequired && outputShaftOption === 'inch_keyed' && (
-                      <div className="pt-3 mt-3 border-t border-gray-100">
-                        <div className="flex items-center justify-between">
-                          <label className="text-xs font-medium text-gray-600">
-                            Output Shaft Diameter
+                      <div className="pt-3 mt-3 border-t border-gray-100 space-y-3">
+                        {/* 5a) Plug-in Shaft OD (fixed) - read-only */}
+                        <div>
+                          <label className="text-xs font-medium text-gray-500">
+                            Plug-in Shaft OD (fixed)
                           </label>
-                          {diameterWarning && (
-                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
-                              {diameterWarning}
-                            </span>
-                          )}
-                        </div>
-                        <div className="mt-1">
-                          {/* v1: Diameter-specific mapping not yet available - disabled dropdown */}
-                          <select
-                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
-                            value={outputShaftDiameterIn ?? ''}
-                            disabled
-                          >
-                            <option value="">Not applied in v1</option>
-                            {OUTPUT_SHAFT_DIAMETER_OPTIONS.map((opt) => (
-                              <option key={opt.value} value={opt.value}>{opt.label}</option>
-                            ))}
-                          </select>
+                          <div className="mt-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500">
+                            {availableStyles.length > 0 && availableStyles[0].od_in
+                              ? formatDiameterLabel(availableStyles[0].od_in)
+                              : `Determined by ${selectedCandidate?.size_code ? `SI${selectedCandidate.size_code}` : 'gear unit'}`}
+                          </div>
                           <p className="text-xs text-gray-400 mt-1">
-                            Diameter-specific kits not mapped yet. Kit resolves by gear unit size only.
+                            The plug-in shaft OD is fixed by the selected gear unit size
                           </p>
+                        </div>
+
+                        {/* 5b) Plug-in Shaft Style (selectable) */}
+                        <div>
+                          <div className="flex items-center justify-between">
+                            <label className="text-xs font-medium text-gray-600">
+                              Plug-in Shaft Style
+                            </label>
+                            {diameterWarning && (
+                              <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                                {diameterWarning}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1">
+                            {/* Style-based dropdown when style options exist in DB */}
+                            <select
+                              className={clsx(
+                                "w-full px-3 py-1.5 text-sm border rounded-lg",
+                                availableStyles.length > 0
+                                  ? "border-gray-300 bg-white text-gray-900 cursor-pointer"
+                                  : "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
+                              )}
+                              value={plugInShaftStyle ?? ''}
+                              disabled={stylesLoading || availableStyles.length === 0}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                onPlugInShaftStyleChange?.(val || null);
+                              }}
+                            >
+                              <option value="">
+                                {stylesLoading
+                                  ? 'Loading...'
+                                  : availableStyles.length > 0
+                                    ? 'Select plug-in shaft style'
+                                    : 'Style options not mapped yet'}
+                              </option>
+                              {availableStyles.map((s) => (
+                                <option key={s.style} value={s.style}>{formatStyleLabel(s.style)}</option>
+                              ))}
+                            </select>
+                            <p className="text-xs text-gray-400 mt-1">
+                              {availableStyles.length > 0
+                                ? 'Select the shaft style: single (standard), double (both sides), or flange B5'
+                                : 'Kit resolves by gear unit size only (no style mapping for this unit yet)'}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     )}
