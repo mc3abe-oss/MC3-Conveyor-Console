@@ -23,6 +23,7 @@ import {
   MaterialForm,
   BulkInputMethod,
   Orientation,
+  ORIENTATION_LABELS,
   TemperatureUnit,
   TEMPERATURE_UNIT_LABELS,
   FluidsOnMaterial,
@@ -329,8 +330,8 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                         value={inputs.orientation ?? Orientation.Lengthwise}
                         onChange={(e) => updateInput('orientation', e.target.value as Orientation)}
                       >
-                        <option value={Orientation.Lengthwise}>Lengthwise</option>
-                        <option value={Orientation.Crosswise}>Crosswise</option>
+                        <option value={Orientation.Lengthwise}>{ORIENTATION_LABELS[Orientation.Lengthwise]}</option>
+                        <option value={Orientation.Crosswise}>{ORIENTATION_LABELS[Orientation.Crosswise]}</option>
                       </select>
                     </div>
                   </div>
@@ -644,6 +645,7 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                   onChange={(value) => updateInput('environment_factors', value)}
                   id="environment_factors"
                 />
+                <p className="text-xs text-gray-500 mt-1">Select any applicable conditions. Leave blank if none apply.</p>
               </div>
               <div>
                 <label htmlFor="ambient_temperature_class" className="label">Ambient Temperature</label>

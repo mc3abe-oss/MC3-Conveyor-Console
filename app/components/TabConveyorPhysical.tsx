@@ -34,10 +34,7 @@ import {
   getEffectiveCleatHeight,
   FRAME_HEIGHT_CONSTANTS,
 } from '../../src/models/sliderbed_v1/formulas';
-import {
-  normalizeGeometry,
-  centerlineToTob,
-} from '../../src/models/sliderbed_v1/geometry';
+import { normalizeGeometry } from '../../src/models/sliderbed_v1/geometry';
 import { BedType } from '../../src/models/belt_conveyor_v1/schema';
 import BeltSelect from './BeltSelect';
 import { BeltCatalogItem } from '../api/belts/route';
@@ -417,25 +414,8 @@ export default function TabConveyorPhysical({
       // Switching to H_ANGLE: use current H_cc and theta
       updateInput('horizontal_run_in', currentH_cc);
       updateInput('conveyor_incline_deg', currentTheta);
-    } else if (newMode === GeometryMode.HorizontalTob) {
-      // Switching to H_TOB: use current H_cc and derive TOBs if possible
-      updateInput('horizontal_run_in', currentH_cc);
-      // If TOBs aren't set, compute reasonable defaults from current geometry
-      if (inputs.tail_tob_in === undefined) {
-        // Use a default tail centerline height of 36" and add pulley radius
-        const defaultTailCl = 36;
-        const tailTob = centerlineToTob(defaultTailCl, safeTailPulleyDia);
-        updateInput('tail_tob_in', tailTob);
-      }
-      if (inputs.drive_tob_in === undefined) {
-        // Compute drive TOB from current geometry
-        const rise = derivedGeometry.rise_in;
-        const defaultTailCl = 36;
-        const driveCl = defaultTailCl + rise;
-        const driveTob = centerlineToTob(driveCl, safeDrivePulleyDia);
-        updateInput('drive_tob_in', driveTob);
-      }
     }
+    // Note: H_TOB mode removed in User Feedback 2 - legacy apps migrated to H_ANGLE on load
   };
 
   const { handleToggle, isExpanded } = useAccordionState();
@@ -534,21 +514,10 @@ export default function TabConveyorPhysical({
                 />
                 <span className="text-sm">Horizontal + Angle</span>
               </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="geometry_mode"
-                  checked={geometryMode === GeometryMode.HorizontalTob}
-                  onChange={() => handleGeometryModeChange(GeometryMode.HorizontalTob)}
-                  className="mr-2"
-                />
-                <span className="text-sm">Horizontal + TOBs</span>
-              </label>
-            </div>
+              </div>
             <p className="text-xs text-gray-500 mt-1">
               {geometryMode === GeometryMode.LengthAngle && 'Enter conveyor axis length (C-C) and incline angle.'}
               {geometryMode === GeometryMode.HorizontalAngle && 'Enter horizontal run and incline angle.'}
-              {geometryMode === GeometryMode.HorizontalTob && 'Enter horizontal run and both Top of Belt heights.'}
             </p>
           </div>
 
@@ -646,70 +615,6 @@ export default function TabConveyorPhysical({
                 />
                 <p className="text-xs text-gray-500 mt-1">0° = horizontal. Positive = incline toward drive.</p>
               </div>
-            </>
-          )}
-
-          {/* H_TOB mode: Horizontal Run + both TOBs editable */}
-          {geometryMode === GeometryMode.HorizontalTob && (
-            <>
-              <div>
-                <label htmlFor="horizontal_run_in" className="label">
-                  Horizontal Run (in)
-                </label>
-                <input
-                  type="number"
-                  id="horizontal_run_in"
-                  className="input"
-                  value={inputs.horizontal_run_in ?? inputs.conveyor_length_cc_in}
-                  onChange={(e) => updateInput('horizontal_run_in', parseFloat(e.target.value) || 0)}
-                  step="1"
-                  min="0"
-                  required
-                />
-                <p className="text-xs text-gray-500 mt-1">Horizontal distance between pulley centers.</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="tail_tob_in_geo" className="label">
-                    Tail TOB (in)
-                  </label>
-                  <input
-                    type="number"
-                    id="tail_tob_in_geo"
-                    className="input"
-                    value={inputs.tail_tob_in ?? ''}
-                    onChange={(e) =>
-                      updateInput('tail_tob_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                    }
-                    step="0.25"
-                    min="0"
-                    placeholder="e.g., 36"
-                    required
-                  />
-                </div>
-                <div>
-                  <label htmlFor="drive_tob_in_geo" className="label">
-                    Drive TOB (in)
-                  </label>
-                  <input
-                    type="number"
-                    id="drive_tob_in_geo"
-                    className="input"
-                    value={inputs.drive_tob_in ?? ''}
-                    onChange={(e) =>
-                      updateInput('drive_tob_in', e.target.value ? parseFloat(e.target.value) : undefined)
-                    }
-                    step="0.25"
-                    min="0"
-                    placeholder="e.g., 42"
-                    required
-                  />
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                Top of Belt heights from floor. Incline angle will be calculated from these values.
-              </p>
             </>
           )}
 

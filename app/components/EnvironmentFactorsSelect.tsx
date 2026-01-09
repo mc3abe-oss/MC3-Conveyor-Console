@@ -19,14 +19,27 @@ import { CATALOG_KEYS } from '../../src/lib/catalogs';
 /**
  * Legacy/blocked keys that should be automatically removed.
  * These are normalized out on load to clean up old saved configs.
+ *
+ * Includes:
+ * - "Indoor" variants: Indoor is implicit, not selectable
+ * - "No concern" variants (User Feedback 2): Empty selection = no concern
  */
 const LEGACY_BLOCKLIST = new Set([
+  // Indoor variants
   'indoor',
   'Indoor',
   'indoors',
   'Indoors',
   'indoor_inactive',
   'Indoor_Inactive',
+  // No concern variants (User Feedback 2)
+  'no_concern',
+  'No_Concern',
+  'NO_CONCERN',
+  'No concern',
+  'no concern',
+  'NoConcern',
+  'noconcern',
 ]);
 
 interface EnvironmentFactorsSelectProps {
@@ -188,7 +201,7 @@ export default function EnvironmentFactorsSelect({
         >
           <div className="flex-1 flex items-center gap-1 overflow-hidden">
             {selectedValues.length === 0 ? (
-              <span className="text-gray-500">Select environmental factors...</span>
+              <span className="text-gray-500">None (leave blank if no concerns)</span>
             ) : selectedValues.length <= 2 ? (
               /* Show chips inline if 2 or fewer */
               <div className="flex flex-wrap gap-1 items-center">

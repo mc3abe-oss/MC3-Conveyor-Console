@@ -209,13 +209,41 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
   }
 
   // =========================================================================
-  // GEOMETRY MODE MIGRATION (v1.10)
+  // GEOMETRY MODE MIGRATION (v1.10 + User Feedback 2)
   // =========================================================================
 
   // If geometry_mode is missing, default to L_ANGLE (Length + Angle mode)
   // This preserves existing behavior where conveyor_length_cc_in was the primary input
   if (migrated.geometry_mode === undefined) {
     migrated.geometry_mode = GeometryMode.LengthAngle;
+  }
+
+  // User Feedback 2: H_TOB mode removed from UI - migrate to H_ANGLE
+  // Legacy apps using H_TOB will be normalized to H_ANGLE on load
+  // The horizontal_run_in is preserved (it's the primary input in both modes)
+  // The angle will need to be derived from the geometry on first calculation
+  if (migrated.geometry_mode === GeometryMode.HorizontalTob) {
+    migrated.geometry_mode = GeometryMode.HorizontalAngle;
+    // If we have TOB values but no explicit angle, try to derive it
+    if (
+      migrated.conveyor_incline_deg === undefined &&
+      migrated.tail_tob_in !== undefined &&
+      migrated.drive_tob_in !== undefined &&
+      migrated.horizontal_run_in !== undefined &&
+      migrated.horizontal_run_in > 0
+    ) {
+      // Calculate rise from TOB difference (accounting for pulley diameters)
+      const tailTob = migrated.tail_tob_in;
+      const driveTob = migrated.drive_tob_in;
+      const tailRadius = (migrated.tail_pulley_diameter_in ?? 4) / 2;
+      const driveRadius = (migrated.drive_pulley_diameter_in ?? 4) / 2;
+      const tailCenter = tailTob - tailRadius;
+      const driveCenter = driveTob - driveRadius;
+      const rise = driveCenter - tailCenter;
+      // Derive angle from rise and horizontal run
+      const angleRad = Math.atan2(rise, migrated.horizontal_run_in);
+      migrated.conveyor_incline_deg = angleRad * (180 / Math.PI);
+    }
   }
 
   // If horizontal_run_in is missing, derive it from L_cc and angle

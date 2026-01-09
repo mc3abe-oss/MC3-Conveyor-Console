@@ -14,6 +14,7 @@
 import {
   SliderbedInputs,
   Orientation,
+  ORIENTATION_LABELS,
 } from '../../src/models/sliderbed_v1/schema';
 
 interface Props {
@@ -129,8 +130,8 @@ export default function DiscretePartsConfigModal({
                   value={inputs.orientation ?? Orientation.Lengthwise}
                   onChange={(e) => updateInput('orientation', e.target.value as Orientation)}
                 >
-                  <option value={Orientation.Lengthwise}>Lengthwise</option>
-                  <option value={Orientation.Crosswise}>Crosswise</option>
+                  <option value={Orientation.Lengthwise}>{ORIENTATION_LABELS[Orientation.Lengthwise]}</option>
+                  <option value={Orientation.Crosswise}>{ORIENTATION_LABELS[Orientation.Crosswise]}</option>
                 </select>
               </div>
             </div>

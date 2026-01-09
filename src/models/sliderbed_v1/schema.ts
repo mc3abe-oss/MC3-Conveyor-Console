@@ -439,6 +439,15 @@ export enum Orientation {
   Crosswise = 'Crosswise',
 }
 
+/**
+ * Display labels for Orientation enum values
+ * Note: "Crosswise" stored value displays as "Widthwise" in UI (User Feedback 2)
+ */
+export const ORIENTATION_LABELS: Record<Orientation, string> = {
+  [Orientation.Lengthwise]: 'Lengthwise',
+  [Orientation.Crosswise]: 'Widthwise',
+};
+
 // ============================================================================
 // FEATURES & OPTIONS ENUMS
 // ============================================================================
@@ -3219,14 +3228,27 @@ export function buildDefaultInputs(): SliderbedInputs {
 /**
  * Legacy environment factor keys to remove from inputs.
  * These are stripped on load and never included in saved configurations.
+ *
+ * Includes:
+ * - "Indoor" variants (v1.9): Indoor is implicit, not selectable
+ * - "No concern" variants (User Feedback 2): Empty selection = no concern
  */
 export const ENVIRONMENT_FACTOR_BLOCKLIST = new Set([
+  // Indoor variants (v1.9)
   'indoor',
   'Indoor',
   'indoors',
   'Indoors',
   'indoor_inactive',
   'Indoor_Inactive',
+  // No concern variants (User Feedback 2)
+  'no_concern',
+  'No_Concern',
+  'NO_CONCERN',
+  'No concern',
+  'no concern',
+  'NoConcern',
+  'noconcern',
 ]);
 
 /**
