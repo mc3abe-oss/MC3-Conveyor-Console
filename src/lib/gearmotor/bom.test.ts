@@ -31,6 +31,8 @@ import {
   BomResolution,
   buildBomCopyText,
   BomCopyContext,
+  parseHollowShaftBore,
+  ParsedHollowShaftBore,
 } from './bom';
 
 describe('parseModelType', () => {
@@ -1897,6 +1899,182 @@ describe('Output Shaft Kit CSV Part Numbers', () => {
       const metricHollowPNs = ['60891110', '60991110', '61091110', '61191110', '61291110'];
       for (const pn of metricHollowPNs) {
         expect(pn[4]).toBe('1'); // 5th digit (0-indexed position 4)
+      }
+    });
+  });
+});
+
+// =============================================================================
+// HOLLOW SHAFT BUSHING TESTS
+// =============================================================================
+
+describe('parseHollowShaftBore', () => {
+  /**
+   * Tests for parsing hollow shaft bore from gear unit description.
+   * The native bore is FIXED by the gear unit and encoded in its description.
+   * An optional bushing can REDUCE the bore for smaller shaft applications.
+   *
+   * Pattern: "X.XXX" or "X.XXX in" hollow shaft in gear unit description
+   */
+
+  describe('parses inch hollow shaft bore from description', () => {
+    it('extracts 1.4375" bore from SI63 INCH hollow description', () => {
+      const description = 'NORD FLEXBLOC SI63 Gear Unit i=80 1.4375 in Hollow Shaft';
+      const result = parseHollowShaftBore(description);
+
+      expect(result.isHollowShaft).toBe(true);
+      expect(result.primaryUnit).toBe('inch');
+      expect(result.inchBore).toBeCloseTo(1.4375, 4);
+      expect(result.metricBore).toBeNull();
+    });
+
+    it('extracts bore from description with "inch" spelled out', () => {
+      const description = 'SI63 1.4375 inch Hollow Shaft Gear Unit';
+      const result = parseHollowShaftBore(description);
+
+      expect(result.isHollowShaft).toBe(true);
+      expect(result.primaryUnit).toBe('inch');
+      expect(result.inchBore).toBeCloseTo(1.4375, 4);
+    });
+
+    it('extracts bore from description with "Hollow Shaft" keyword', () => {
+      const description = '1.4375 in. Hollow Shaft';
+      const result = parseHollowShaftBore(description);
+
+      expect(result.isHollowShaft).toBe(true);
+      expect(result.inchBore).toBeCloseTo(1.4375, 4);
+    });
+  });
+
+  describe('handles edge cases gracefully', () => {
+    it('returns isHollowShaft=false for null input', () => {
+      const result = parseHollowShaftBore(null);
+
+      expect(result.isHollowShaft).toBe(false);
+      expect(result.primaryUnit).toBeNull();
+      expect(result.inchBore).toBeNull();
+      expect(result.metricBore).toBeNull();
+    });
+
+    it('returns isHollowShaft=false for undefined input', () => {
+      const result = parseHollowShaftBore(undefined);
+
+      expect(result.isHollowShaft).toBe(false);
+    });
+
+    it('returns isHollowShaft=false for empty string', () => {
+      const result = parseHollowShaftBore('');
+
+      expect(result.isHollowShaft).toBe(false);
+    });
+
+    it('returns isHollowShaft=false for non-hollow description', () => {
+      const description = 'NORD FLEXBLOC SI63 Gear Unit i=80 Solid Shaft';
+      const result = parseHollowShaftBore(description);
+
+      expect(result.isHollowShaft).toBe(false);
+    });
+  });
+
+  describe('ParsedHollowShaftBore interface', () => {
+    it('has correct shape', () => {
+      const result: ParsedHollowShaftBore = {
+        inchBore: 1.4375,
+        metricBore: null,
+        isHollowShaft: true,
+        primaryUnit: 'inch',
+      };
+
+      expect(result.inchBore).toBe(1.4375);
+      expect(result.metricBore).toBeNull();
+      expect(result.isHollowShaft).toBe(true);
+      expect(result.primaryUnit).toBe('inch');
+    });
+  });
+});
+
+describe('Hollow Shaft Bushing in BOM', () => {
+  /**
+   * Tests for hollow shaft bushing resolution and copy text.
+   *
+   * Bushings are OPTIONAL components that REDUCE the native hollow bore.
+   * Example: SI63 has native 1.4375" bore, bushing can reduce to 1", 1.1875", or 1.25"
+   */
+
+  describe('bushing component in BOM copy text', () => {
+    it('includes bushing in copy text when resolved', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: {
+          worm_stages: 1,
+          gear_unit_size: 'SI63',
+          size_code: '63',
+          adapter_code: '56C',
+          motor_frame: '63L/4',
+        },
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'NORD FLEXBLOC SI63 i=80', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required for shaft mount', found: true },
+          // Hollow shaft bushing with real PN
+          { component_type: 'hollow_shaft_bushing', part_number: '60693400', description: 'Hollow Shaft Bushing 1.00 in', found: true },
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should include bushing in the BOM
+      expect(copyText).toContain('Hollow Shaft Bushing');
+      expect(copyText).toContain('60693400');
+    });
+
+    it('does not include bushing when not selected (null)', () => {
+      const bom: BomResolution = {
+        model_type: 'SK 1SI63 - 56C - 63L/4',
+        parsed: null,
+        components: [
+          { component_type: 'gear_unit', part_number: '60692800', description: 'Gear unit', found: true },
+          { component_type: 'motor', part_number: null, description: 'Motor', found: false },
+          { component_type: 'adapter', part_number: null, description: 'Adapter', found: false },
+          { component_type: 'output_shaft_kit', part_number: null, description: 'Not required', found: true },
+          // No hollow_shaft_bushing component when not selected
+        ],
+        complete: false,
+      };
+
+      const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
+      const copyText = buildBomCopyText(bom, context);
+
+      // Should NOT include bushing line
+      expect(copyText).not.toContain('Hollow Shaft Bushing');
+    });
+  });
+
+  describe('bushing PN validation', () => {
+    it('SI63 bushing PNs are valid NORD format', () => {
+      const si63BushingPNs = ['60693400', '60693410', '60693420'];
+
+      for (const pn of si63BushingPNs) {
+        expect(isRealNordPartNumber(pn)).toBe(true);
+        expect(pn.startsWith('606')).toBe(true); // SI63 prefix
+      }
+    });
+
+    it('bushing PNs encode bore size in last digits', () => {
+      // 60693400 = 1.00" bore
+      // 60693410 = 1.1875" bore
+      // 60693420 = 1.25" bore
+      const bushingPNs = [
+        { pn: '60693400', bore: 1.0 },
+        { pn: '60693410', bore: 1.1875 },
+        { pn: '60693420', bore: 1.25 },
+      ];
+
+      for (const { pn } of bushingPNs) {
+        expect(isRealNordPartNumber(pn)).toBe(true);
       }
     });
   });

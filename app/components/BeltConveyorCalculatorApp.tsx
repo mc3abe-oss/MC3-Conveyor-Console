@@ -12,7 +12,7 @@ import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
 import MobileBottomActionBar from './MobileBottomActionBar';
 import SaveRecipeModal from './SaveRecipeModal';
-import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs } from '../../src/models/sliderbed_v1/schema';
+import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs, normalizeOutputShaftOption, GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
 import { buildOutputsV2, OutputsV2 } from '../../src/models/sliderbed_v1/outputs_v2';
 import { OutputsV2Tabs } from './outputs_v2';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
@@ -149,8 +149,20 @@ export default function BeltConveyorCalculatorApp() {
     // Extract inputs from the application (stored in inputs field, minus _config)
     const { _config, ...inputsData } = application.inputs || {};
 
+    // Normalize output_shaft_option to inch-only based on mounting style (v1.45)
+    // This coerces any legacy metric selections or null values to the correct inch-only value
+    const mountingStyle = inputsData.gearmotor_mounting_style as GearmotorMountingStyle | undefined;
+    const normalizedOutputShaft = normalizeOutputShaftOption(
+      mountingStyle,
+      inputsData.output_shaft_option
+    );
+    const normalizedInputs = {
+      ...inputsData,
+      output_shaft_option: normalizedOutputShaft,
+    };
+
     // Set inputs
-    setInputs(inputsData as SliderbedInputs);
+    setInputs(normalizedInputs as SliderbedInputs);
 
     // Set context from loaded data
     if (loadedContext) {

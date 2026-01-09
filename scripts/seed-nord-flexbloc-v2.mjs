@@ -43,6 +43,7 @@ const OUTPUT_SHAFT_KIT_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/n
 const INCH_KEYED_KIT_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_output_shaft_kits_inch_keyed_v1.csv');
 const INCH_KEYED_KIT_V2_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_output_shaft_kits_inch_keyed_v2.csv');
 const INCH_KEYED_STYLE_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_output_shaft_kits_inch_keyed_style_v2.csv');
+const HOLLOW_SHAFT_BUSHINGS_CSV_PATH = path.resolve(__dirname, '../reference/Vendor/nord_flexbloc_hollow_shaft_bushings_v1.csv');
 
 const VENDOR = 'NORD';
 const SERIES = 'FLEXBLOC';
@@ -232,6 +233,12 @@ async function seedNordFlexblocV2() {
     console.log('  Note: Style CSV not found - style-based mappings will not be seeded');
   }
 
+  // Hollow shaft bushings CSV is optional
+  const hasBushingsCsv = fs.existsSync(HOLLOW_SHAFT_BUSHINGS_CSV_PATH);
+  if (!hasBushingsCsv) {
+    console.log('  Note: Hollow shaft bushings CSV not found - bushing mappings will not be seeded');
+  }
+
   const selectionRows = parseCSV(fs.readFileSync(SELECTION_CSV_PATH, 'utf-8'));
   const componentMapRows = parseCSV(fs.readFileSync(COMPONENT_MAP_CSV_PATH, 'utf-8'));
   const gearUnitPnRows = parseCSV(fs.readFileSync(GEAR_UNIT_PN_CSV_PATH, 'utf-8'));
@@ -243,6 +250,9 @@ async function seedNordFlexblocV2() {
   const inchKeyedStyleRows = hasStyleCsv
     ? parseCSV(fs.readFileSync(INCH_KEYED_STYLE_CSV_PATH, 'utf-8'))
     : [];
+  const hollowShaftBushingRows = hasBushingsCsv
+    ? parseCSV(fs.readFileSync(HOLLOW_SHAFT_BUSHINGS_CSV_PATH, 'utf-8'))
+    : [];
 
   console.log(`  Parsed ${selectionRows.length} selection/performance rows`);
   console.log(`  Parsed ${componentMapRows.length} component map rows`);
@@ -251,6 +261,7 @@ async function seedNordFlexblocV2() {
   console.log(`  Parsed ${inchKeyedKitRows.length} inch keyed kit v1 rows`);
   console.log(`  Parsed ${inchKeyedKitV2Rows.length} inch keyed kit v2 rows (diameter-specific)`);
   console.log(`  Parsed ${inchKeyedStyleRows.length} inch keyed style rows (style-based)`);
+  console.log(`  Parsed ${hollowShaftBushingRows.length} hollow shaft bushing rows`);
 
   // Filter component map to allowed types only
   const filteredComponentMap = componentMapRows.filter(row =>
@@ -930,6 +941,109 @@ async function seedNordFlexblocV2() {
   console.log();
 
   // ==========================================================================
+  // STEP 4.10: Insert hollow shaft bushings
+  // ==========================================================================
+  console.log('Step 4.10: Inserting hollow shaft bushing PNs...');
+
+  // Hollow shaft bushing PNs are keyed by:
+  // (vendor, series, component_type, gear_unit_size, shaft_interface_type, bushing_bore_in)
+  let hollowShaftBushingsInserted = 0;
+  let hollowShaftBushingsErrors = 0;
+  let hollowShaftBushingsSkipped = 0;
+
+  // Track unique keys to ensure no duplicates
+  const seenBushingKeys = new Set();
+
+  for (const row of hollowShaftBushingRows) {
+    const partNumber = row.nord_part_number?.trim();
+    const gearUnitSize = row.gear_unit_size?.trim();
+    const shaftInterfaceType = row.shaft_interface_type?.trim();
+    const bushingBoreIn = row.bushing_bore_in ? parseFloat(row.bushing_bore_in) : null;
+
+    // Validate required fields
+    if (!partNumber || !gearUnitSize || !shaftInterfaceType || bushingBoreIn === null) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid row: ${JSON.stringify(row)}`);
+      }
+      hollowShaftBushingsSkipped++;
+      continue;
+    }
+
+    // Validate part number format (8-digit, starts with 3 or 6)
+    if (!/^[36]\d{7}$/.test(partNumber)) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid PN format: ${partNumber}`);
+      }
+      hollowShaftBushingsSkipped++;
+      continue;
+    }
+
+    // Validate bushing_bore_in: numeric > 0
+    if (bushingBoreIn <= 0) {
+      if (verbose) {
+        console.log(`  [SKIP] Invalid bushing_bore_in: ${bushingBoreIn}`);
+      }
+      hollowShaftBushingsSkipped++;
+      continue;
+    }
+
+    // Check unique key constraint
+    const uniqueKey = `${VENDOR}|${SERIES}|hollow_shaft_bushing|${gearUnitSize}|${shaftInterfaceType}|${bushingBoreIn}`;
+    if (seenBushingKeys.has(uniqueKey)) {
+      if (verbose) {
+        console.log(`  [SKIP] Duplicate key: ${uniqueKey}`);
+      }
+      hollowShaftBushingsSkipped++;
+      continue;
+    }
+    seenBushingKeys.add(uniqueKey);
+
+    const componentRow = {
+      vendor: VENDOR,
+      component_type: 'HOLLOW_SHAFT_BUSHING',
+      vendor_part_number: partNumber,
+      description: row.description || `NORD ${SERIES} Hollow Shaft Bushing ${bushingBoreIn}" for ${gearUnitSize}`,
+      metadata_json: {
+        product_line: row.series || SERIES,
+        component_type_csv: 'hollow_shaft_bushing',
+        gear_unit_size: gearUnitSize,
+        shaft_interface_type: shaftInterfaceType,
+        bushing_bore_in: bushingBoreIn,
+        catalog_page: row.catalog_ref || null,
+      },
+    };
+
+    if (verbose) {
+      console.log(`  [BUSHING] ${partNumber}: ${gearUnitSize} ${shaftInterfaceType} ${bushingBoreIn}"`);
+    }
+
+    if (!dryRun) {
+      const { data, error } = await supabase
+        .from('vendor_components')
+        .upsert(componentRow, { onConflict: 'vendor,vendor_part_number' })
+        .select('id')
+        .single();
+
+      if (error) {
+        if (verbose) console.error(`    Error: ${error.message}`);
+        hollowShaftBushingsErrors++;
+        continue;
+      }
+
+      partNumberToId.set(partNumber, data.id);
+      hollowShaftBushingsInserted++;
+    } else {
+      partNumberToId.set(partNumber, `DRY_RUN_${partNumber}`);
+      hollowShaftBushingsInserted++;
+    }
+  }
+
+  console.log(`  ${hollowShaftBushingsInserted} hollow shaft bushing PNs inserted/updated`);
+  if (hollowShaftBushingsSkipped > 0) console.log(`  ${hollowShaftBushingsSkipped} rows skipped`);
+  if (hollowShaftBushingsErrors > 0) console.log(`  ${hollowShaftBushingsErrors} errors`);
+  console.log();
+
+  // ==========================================================================
   // STEP 5: Insert performance points
   // ==========================================================================
   console.log('Step 5: Inserting performance points...');
@@ -1028,8 +1142,9 @@ async function seedNordFlexblocV2() {
   console.log(`  Inch Keyed Kits v1 (size-only): ${inchKeyedKitsInserted}`);
   console.log(`  Inch Keyed Kits v2 (diameter-specific): ${inchKeyedKitV2Inserted}`);
   console.log(`  Inch Keyed Style Kits (style-based): ${inchKeyedStyleInserted}`);
+  console.log(`  Hollow Shaft Bushings: ${hollowShaftBushingsInserted}`);
   console.log(`  Performance Points: ${performancePointsInserted}`);
-  console.log(`  Total Errors: ${componentErrors + performanceErrors + realGearUnitErrors + outputShaftKitErrors + inchKeyedKitErrors + inchKeyedKitV2Errors + inchKeyedStyleErrors}`);
+  console.log(`  Total Errors: ${componentErrors + performanceErrors + realGearUnitErrors + outputShaftKitErrors + inchKeyedKitErrors + inchKeyedKitV2Errors + inchKeyedStyleErrors + hollowShaftBushingsErrors}`);
   console.log('='.repeat(70));
 
   if (dryRun) {

@@ -27,14 +27,30 @@ import {
   DirectionMode,
 } from '../../src/models/sliderbed_v1/schema';
 
-// Output shaft options for chain drive configuration
-const OUTPUT_SHAFT_OPTIONS = [
-  { value: '', label: 'Not selected' },
-  { value: 'inch_keyed', label: 'Inch keyed bore (default)' },
-  { value: 'metric_keyed', label: 'Metric keyed bore' },
-  { value: 'inch_hollow', label: 'Inch hollow' },
-  { value: 'metric_hollow', label: 'Metric hollow' },
-] as const;
+// Output shaft option is now hardcoded based on mounting style (inch-only):
+// - shaft_mounted => inch_hollow
+// - bottom_mount => inch_keyed
+// No user choice - deterministic mapping.
+const getOutputShaftOptionForMountingStyle = (mountingStyle: GearmotorMountingStyle | string | null | undefined): string => {
+  if (mountingStyle === GearmotorMountingStyle.ShaftMounted || mountingStyle === 'shaft_mounted') {
+    return 'inch_hollow';
+  }
+  if (mountingStyle === GearmotorMountingStyle.BottomMount || mountingStyle === 'bottom_mount') {
+    return 'inch_keyed';
+  }
+  // Default to inch_hollow (shaft mounted is the default)
+  return 'inch_hollow';
+};
+
+const getOutputShaftDisplayLabel = (mountingStyle: GearmotorMountingStyle | string | null | undefined): string => {
+  if (mountingStyle === GearmotorMountingStyle.ShaftMounted || mountingStyle === 'shaft_mounted') {
+    return 'Inch hollow (fixed for shaft mounted)';
+  }
+  if (mountingStyle === GearmotorMountingStyle.BottomMount || mountingStyle === 'bottom_mount') {
+    return 'Inch keyed (fixed for chain drive)';
+  }
+  return 'Inch hollow (fixed for shaft mounted)';
+};
 
 // Bore options for inch keyed output shaft (v1)
 // These match the seeded data in nord_flexbloc_output_shaft_kits_inch_keyed_v1.csv
@@ -47,6 +63,8 @@ const INCH_KEYED_BORE_OPTIONS = [
 
 // Fields managed by this modal
 // NOTE: output_shaft_diameter_in is managed in the NORD Gearmotor modal, not here
+// v1.46: Also manage plug_in_shaft_style and hollow_shaft_bushing_bore_in
+// to clear them when mounting style changes
 type DraftFields = Pick<
   SliderbedInputs,
   | 'direction_mode'
@@ -58,6 +76,8 @@ type DraftFields = Pick<
   | 'drive_shaft_sprocket_teeth'
   | 'output_shaft_option'
   | 'output_shaft_bore_in'
+  | 'plug_in_shaft_style'
+  | 'hollow_shaft_bushing_bore_in'
   | 'gearmotor_orientation'
   | 'drive_hand'
   | 'motor_rpm'
@@ -80,18 +100,25 @@ export default function DriveArrangementModal({
   const modalRef = useRef<HTMLDivElement>(null);
 
   // Initialize draft when modal opens
+  // IMPORTANT: Normalize output_shaft_option to inch-only based on mounting style
   useEffect(() => {
     if (isOpen) {
+      const mountingStyle = inputs.gearmotor_mounting_style;
+      // Always derive output_shaft_option from mounting style (inch-only hardcode)
+      const normalizedOutputShaftOption = getOutputShaftOptionForMountingStyle(mountingStyle);
+
       setDraft({
         direction_mode: inputs.direction_mode,
         start_stop_application: inputs.start_stop_application,
         cycle_time_seconds: inputs.cycle_time_seconds,
         drive_location: inputs.drive_location,
-        gearmotor_mounting_style: inputs.gearmotor_mounting_style,
+        gearmotor_mounting_style: mountingStyle,
         gm_sprocket_teeth: inputs.gm_sprocket_teeth,
         drive_shaft_sprocket_teeth: inputs.drive_shaft_sprocket_teeth,
-        output_shaft_option: inputs.output_shaft_option,
+        output_shaft_option: normalizedOutputShaftOption,
         output_shaft_bore_in: inputs.output_shaft_bore_in,
+        plug_in_shaft_style: inputs.plug_in_shaft_style,
+        hollow_shaft_bushing_bore_in: inputs.hollow_shaft_bushing_bore_in,
         gearmotor_orientation: inputs.gearmotor_orientation,
         drive_hand: inputs.drive_hand,
         motor_rpm: inputs.motor_rpm,
@@ -274,7 +301,13 @@ export default function DriveArrangementModal({
                     type="radio"
                     name="modal_gearmotor_mounting"
                     checked={(draft.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted) === GearmotorMountingStyle.ShaftMounted}
-                    onChange={() => updateDraft('gearmotor_mounting_style', GearmotorMountingStyle.ShaftMounted)}
+                    onChange={() => {
+                      updateDraft('gearmotor_mounting_style', GearmotorMountingStyle.ShaftMounted);
+                      // Auto-set output shaft option (inch-only hardcode)
+                      updateDraft('output_shaft_option', 'inch_hollow');
+                      // Clear plug-in shaft style (not applicable for shaft mounted)
+                      updateDraft('plug_in_shaft_style', null);
+                    }}
                     className="mr-2"
                   />
                   Shaft Mounted
@@ -286,6 +319,10 @@ export default function DriveArrangementModal({
                     checked={draft.gearmotor_mounting_style === GearmotorMountingStyle.BottomMount}
                     onChange={() => {
                       updateDraft('gearmotor_mounting_style', GearmotorMountingStyle.BottomMount);
+                      // Auto-set output shaft option (inch-only hardcode)
+                      updateDraft('output_shaft_option', 'inch_keyed');
+                      // Clear hollow shaft bushing (not applicable for chain drive)
+                      updateDraft('hollow_shaft_bushing_bore_in', null);
                       if (draft.gm_sprocket_teeth === undefined) {
                         updateDraft('gm_sprocket_teeth', 18);
                       }
@@ -362,62 +399,20 @@ export default function DriveArrangementModal({
                   </div>
                 </div>
 
-                {/* Output Shaft Option */}
+                {/* Output Shaft Option - Read-only, fixed to inch_keyed for chain drive */}
                 <div className="pt-2 border-t border-gray-200">
-                  <label htmlFor="modal_output_shaft" className="label">
-                    Output Shaft (Chain Drive)
-                  </label>
-                  <select
-                    id="modal_output_shaft"
-                    className="input"
-                    value={draft.output_shaft_option ?? ''}
-                    onChange={(e) => {
-                      const newValue = e.target.value || null;
-                      updateDraft('output_shaft_option', newValue);
-                      // Clear bore field when changing output shaft option
-                      // Note: output_shaft_diameter_in is managed in NORD Gearmotor modal
-                      updateDraft('output_shaft_bore_in', null);
-                    }}
-                  >
-                    {OUTPUT_SHAFT_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
+                  <label className="label">Output Shaft (NORD)</label>
+                  <div className="input bg-gray-50 text-gray-700 cursor-not-allowed">
+                    {getOutputShaftDisplayLabel(draft.gearmotor_mounting_style)}
+                  </div>
                   <p className="text-xs text-gray-500 mt-1">
-                    Required for chain drive. Used to choose the correct NORD output shaft kit.
+                    Fixed to inch keyed for chain drive. Used to choose the correct NORD output shaft kit.
                   </p>
                 </div>
 
-                {/* Output Hollow Bore - shown for hollow shaft options */}
-                {(draft.output_shaft_option === 'inch_hollow' || draft.output_shaft_option === 'metric_hollow') && (
-                  <div className="pt-2">
-                    <label htmlFor="modal_output_bore" className="label">
-                      Output Hollow Bore
-                    </label>
-                    <select
-                      id="modal_output_bore"
-                      className="input"
-                      value={draft.output_shaft_bore_in ?? ''}
-                      onChange={(e) => updateDraft('output_shaft_bore_in', e.target.value ? parseFloat(e.target.value) : null)}
-                    >
-                      <option value="">Select bore</option>
-                      {INCH_KEYED_BORE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Inner diameter of the hollow shaft. Used for bushing selection (future).
-                    </p>
-                  </div>
-                )}
-
-                {/* Output Shaft Diameter - read-only display for solid shaft (keyed) options */}
+                {/* Output Shaft Diameter - read-only display for keyed options */}
                 {/* Editing is done in the NORD Gearmotor modal */}
-                {(draft.output_shaft_option === 'inch_keyed' || draft.output_shaft_option === 'metric_keyed') && (
+                {draft.output_shaft_option === 'inch_keyed' && (
                   <div className="pt-2">
                     <label className="label">Output Shaft Diameter</label>
                     <div className="input bg-gray-50 text-gray-600 cursor-not-allowed">
@@ -430,6 +425,19 @@ export default function DriveArrangementModal({
                     </p>
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Output Shaft Option - Read-only for shaft mounted */}
+            {(draft.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted) === GearmotorMountingStyle.ShaftMounted && (
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <label className="label">Output Shaft (NORD)</label>
+                <div className="input bg-white text-gray-700 cursor-not-allowed border-gray-200">
+                  {getOutputShaftDisplayLabel(draft.gearmotor_mounting_style)}
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Fixed to inch hollow for shaft mounted configuration.
+                </p>
               </div>
             )}
 

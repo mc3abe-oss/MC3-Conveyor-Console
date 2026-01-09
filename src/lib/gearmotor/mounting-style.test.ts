@@ -1,0 +1,159 @@
+/**
+ * Mounting Style Tests (v1.46)
+ *
+ * Tests for plug-in shaft style vs hollow shaft bushing based on mounting style:
+ * - bottom_mount => inch_keyed => plug-in shaft style selector
+ * - shaft_mounted => inch_hollow => hollow shaft bushing selector
+ */
+
+import { GearmotorMountingStyle } from '../../models/sliderbed_v1/schema';
+import { getAvailableShaftStyles, getAvailableHollowShaftBushings } from './bom';
+
+/**
+ * Helper to determine what configuration UI to show based on mounting style.
+ * This mirrors the logic in DriveSelectorModal.tsx.
+ */
+function getConfigTypeForMountingStyle(mountingStyle: GearmotorMountingStyle | string | null | undefined): 'plug_in_shaft' | 'hollow_shaft' {
+  const isBottomMount = mountingStyle === GearmotorMountingStyle.BottomMount || mountingStyle === 'bottom_mount';
+  return isBottomMount ? 'plug_in_shaft' : 'hollow_shaft';
+}
+
+describe('Mounting style configuration logic', () => {
+  describe('getConfigTypeForMountingStyle', () => {
+    it('should return plug_in_shaft for bottom_mount enum', () => {
+      expect(getConfigTypeForMountingStyle(GearmotorMountingStyle.BottomMount)).toBe('plug_in_shaft');
+    });
+
+    it('should return plug_in_shaft for bottom_mount string', () => {
+      expect(getConfigTypeForMountingStyle('bottom_mount')).toBe('plug_in_shaft');
+    });
+
+    it('should return hollow_shaft for shaft_mounted enum', () => {
+      expect(getConfigTypeForMountingStyle(GearmotorMountingStyle.ShaftMounted)).toBe('hollow_shaft');
+    });
+
+    it('should return hollow_shaft for shaft_mounted string', () => {
+      expect(getConfigTypeForMountingStyle('shaft_mounted')).toBe('hollow_shaft');
+    });
+
+    it('should default to hollow_shaft for null', () => {
+      expect(getConfigTypeForMountingStyle(null)).toBe('hollow_shaft');
+    });
+
+    it('should default to hollow_shaft for undefined', () => {
+      expect(getConfigTypeForMountingStyle(undefined)).toBe('hollow_shaft');
+    });
+  });
+
+  describe('State clearing on mounting style change', () => {
+    /**
+     * Simulates the clearing behavior when mounting style changes.
+     * This mirrors the logic in DriveArrangementModal.tsx.
+     */
+    interface DriveConfig {
+      plugInShaftStyle: string | null;
+      hollowShaftBushingBoreIn: number | null;
+    }
+
+    function clearConfigOnMountingStyleChange(
+      newMountingStyle: GearmotorMountingStyle,
+      currentConfig: DriveConfig
+    ): DriveConfig {
+      if (newMountingStyle === GearmotorMountingStyle.ShaftMounted) {
+        // Switching to shaft_mounted: clear plug-in shaft style
+        return {
+          plugInShaftStyle: null,
+          hollowShaftBushingBoreIn: currentConfig.hollowShaftBushingBoreIn,
+        };
+      } else if (newMountingStyle === GearmotorMountingStyle.BottomMount) {
+        // Switching to bottom_mount: clear hollow shaft bushing
+        return {
+          plugInShaftStyle: currentConfig.plugInShaftStyle,
+          hollowShaftBushingBoreIn: null,
+        };
+      }
+      return currentConfig;
+    }
+
+    it('should clear plug_in_shaft_style when switching to shaft_mounted', () => {
+      const currentConfig: DriveConfig = {
+        plugInShaftStyle: 'single',
+        hollowShaftBushingBoreIn: null,
+      };
+
+      const result = clearConfigOnMountingStyleChange(GearmotorMountingStyle.ShaftMounted, currentConfig);
+
+      expect(result.plugInShaftStyle).toBeNull();
+      expect(result.hollowShaftBushingBoreIn).toBeNull(); // unchanged
+    });
+
+    it('should clear hollow_shaft_bushing_bore_in when switching to bottom_mount', () => {
+      const currentConfig: DriveConfig = {
+        plugInShaftStyle: null,
+        hollowShaftBushingBoreIn: 1.1875,
+      };
+
+      const result = clearConfigOnMountingStyleChange(GearmotorMountingStyle.BottomMount, currentConfig);
+
+      expect(result.plugInShaftStyle).toBeNull(); // unchanged
+      expect(result.hollowShaftBushingBoreIn).toBeNull();
+    });
+
+    it('should preserve other config when switching', () => {
+      const currentConfig: DriveConfig = {
+        plugInShaftStyle: 'double',
+        hollowShaftBushingBoreIn: 1.0,
+      };
+
+      // Switching to shaft_mounted
+      const result1 = clearConfigOnMountingStyleChange(GearmotorMountingStyle.ShaftMounted, currentConfig);
+      expect(result1.plugInShaftStyle).toBeNull();
+      expect(result1.hollowShaftBushingBoreIn).toBe(1.0); // preserved
+
+      // Switching to bottom_mount
+      const result2 = clearConfigOnMountingStyleChange(GearmotorMountingStyle.BottomMount, currentConfig);
+      expect(result2.plugInShaftStyle).toBe('double'); // preserved
+      expect(result2.hollowShaftBushingBoreIn).toBeNull();
+    });
+  });
+});
+
+describe('Available shaft styles and bushings (integration)', () => {
+  describe('getAvailableShaftStyles', () => {
+    it('should return styles for SI63 with inch_keyed', async () => {
+      const styles = await getAvailableShaftStyles('SI63', 'inch_keyed');
+      // SI63 has 3 styles: single, double, flange_b5
+      expect(styles.length).toBeGreaterThan(0);
+      if (styles.length > 0) {
+        expect(styles.some(s => s.style === 'single')).toBe(true);
+        expect(styles.some(s => s.style === 'double')).toBe(true);
+        expect(styles.some(s => s.style === 'flange_b5')).toBe(true);
+      }
+    });
+
+    it('should return empty array for SI75 (not mapped)', async () => {
+      const styles = await getAvailableShaftStyles('SI75', 'inch_keyed');
+      expect(styles).toEqual([]);
+    });
+  });
+
+  describe('getAvailableHollowShaftBushings', () => {
+    it('should return bushings for SI63 with inch_hollow', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI63', 'inch_hollow');
+      // SI63 has bushings
+      expect(bushings.length).toBeGreaterThan(0);
+      if (bushings.length > 0) {
+        // Verify bushings have bore sizes
+        bushings.forEach(b => {
+          expect(b.bore_in).toBeGreaterThan(0);
+          expect(b.part_number).toBeDefined();
+        });
+      }
+    });
+
+    it('should return empty array for SI75 (not mapped)', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI75', 'inch_hollow');
+      expect(bushings).toEqual([]);
+    });
+  });
+});

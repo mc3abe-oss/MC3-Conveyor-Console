@@ -11,6 +11,8 @@ import {
   resolveBom,
   needsOutputShaftKit,
   getAvailableShaftStyles,
+  parseHollowShaftBore,
+  getAvailableHollowShaftBushings,
   type BomComponent,
   type BomResolution,
 } from '../../src/lib/gearmotor';
@@ -89,6 +91,10 @@ interface DriveSelectorModalProps {
   /** Plug-in shaft style for solid shaft (keyed) options.
    * The OD is FIXED by gear unit size; only style varies. */
   plugInShaftStyle?: string | null;
+  /** Hollow shaft bushing bore in inches (optional).
+   * The native bore is FIXED by gear unit size; bushing REDUCES the bore.
+   * null = no bushing (use native bore), number = selected bushing bore. */
+  hollowShaftBushingBoreIn?: number | null;
   selectedCandidate: GearmotorCandidate | null;
   onSelect: (candidate: GearmotorCandidate | null) => void;
   onServiceFactorChange?: (sf: number) => void;
@@ -96,6 +102,8 @@ interface DriveSelectorModalProps {
   onSprocketShaftDiameterChange?: (diameter: number | null) => void;
   /** Callback when plug-in shaft style changes */
   onPlugInShaftStyleChange?: (style: string | null) => void;
+  /** Callback when hollow shaft bushing bore changes */
+  onHollowShaftBushingBoreChange?: (bore: number | null) => void;
 }
 
 const SERVICE_FACTOR_OPTIONS = [
@@ -123,9 +131,10 @@ function formatDiameterLabel(diameterIn: number): string {
     0.875: '7/8"',
     1.0: '1"',
     1.125: '1-1/8"',
+    1.1875: '1-3/16"',
     1.25: '1-1/4"',
     1.375: '1-3/8"',
-    1.438: '1-7/16"',
+    1.4375: '1-7/16"',
     1.5: '1-1/2"',
     1.75: '1-3/4"',
     1.938: '1-15/16"',
@@ -175,11 +184,13 @@ export default function DriveSelectorModal({
   outputShaftBoreIn,
   sprocketShaftDiameterIn: _sprocketShaftDiameterIn, // deprecated
   plugInShaftStyle,
+  hollowShaftBushingBoreIn,
   selectedCandidate,
   onSelect,
   onServiceFactorChange,
   onSprocketShaftDiameterChange: _onSprocketShaftDiameterChange, // deprecated
   onPlugInShaftStyleChange,
+  onHollowShaftBushingBoreChange,
 }: DriveSelectorModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [serviceFactor, setServiceFactor] = useState(initialServiceFactor);
@@ -196,16 +207,23 @@ export default function DriveSelectorModal({
   const [diameterWarning, setDiameterWarning] = useState<string | null>(null);
   const [availableStyles, setAvailableStyles] = useState<Array<{ style: string; od_in: number | null }>>([]);
   const [stylesLoading, setStylesLoading] = useState(false);
+  const [availableBushings, setAvailableBushings] = useState<Array<{ bore_in: number; part_number: string; description: string }>>([]);
+  const [bushingsLoading, setBushingsLoading] = useState(false);
   const prevGearUnitSizeRef = useRef<string | null>(null);
 
-  // Fetch available styles when gear unit changes
+  // Determine mounting style flags for conditional rendering
+  const isBottomMount = gearmotorMountingStyle === GearmotorMountingStyle.BottomMount || gearmotorMountingStyle === 'bottom_mount';
+  const isShaftMounted = !isBottomMount; // shaft_mounted is the default
+
+  // Fetch available styles/bushings when gear unit changes
+  // v1.46: Use mounting style to determine what to fetch (inch-only hardcode)
   useEffect(() => {
     const currentGearUnitSize = selectedCandidate
       ? getSeriesCode(selectedCandidate.size_code, selectedCandidate.gear_unit_part_number)
       : null;
 
-    // Fetch available styles for style-based mapping
-    if (currentGearUnitSize && outputShaftOption === 'inch_keyed') {
+    // Fetch available styles for bottom_mount (chain drive) - always inch_keyed
+    if (currentGearUnitSize && isBottomMount) {
       setStylesLoading(true);
       getAvailableShaftStyles(currentGearUnitSize, 'inch_keyed')
         .then(styles => {
@@ -220,7 +238,23 @@ export default function DriveSelectorModal({
       setAvailableStyles([]);
     }
 
-    // Track gear unit size changes and clear style if gear unit changes
+    // Fetch available bushings for shaft_mounted (hollow shaft) - always inch_hollow
+    if (currentGearUnitSize && isShaftMounted) {
+      setBushingsLoading(true);
+      getAvailableHollowShaftBushings(currentGearUnitSize, 'inch_hollow')
+        .then(bushings => {
+          setAvailableBushings(bushings);
+          setBushingsLoading(false);
+        })
+        .catch(() => {
+          setAvailableBushings([]);
+          setBushingsLoading(false);
+        });
+    } else {
+      setAvailableBushings([]);
+    }
+
+    // Track gear unit size changes and clear selections if gear unit changes
     if (prevGearUnitSizeRef.current !== null && currentGearUnitSize !== null &&
         prevGearUnitSizeRef.current !== currentGearUnitSize) {
       // Gear unit changed - clear style selection and show warning
@@ -229,10 +263,14 @@ export default function DriveSelectorModal({
         setDiameterWarning(`Plug-in shaft style cleared (gear unit changed to ${currentGearUnitSize})`);
         setTimeout(() => setDiameterWarning(null), 5000);
       }
+      // Clear bushing selection if gear unit changes
+      if (hollowShaftBushingBoreIn !== null) {
+        onHollowShaftBushingBoreChange?.(null);
+      }
     }
 
     prevGearUnitSizeRef.current = currentGearUnitSize;
-  }, [selectedCandidate, outputShaftOption, plugInShaftStyle, onPlugInShaftStyleChange]);
+  }, [selectedCandidate, isBottomMount, isShaftMounted, plugInShaftStyle, onPlugInShaftStyleChange, hollowShaftBushingBoreIn, onHollowShaftBushingBoreChange]);
 
   // Resolve BOM when selectedCandidate or gearmotorMountingStyle changes
   // IMPORTANT: Gear unit PNs are keyed by WORM ratio (from catalog), NOT total ratio.
@@ -259,6 +297,7 @@ export default function DriveSelectorModal({
       outputShaftOption, // For output shaft kit configuration status
       outputShaftBoreIn, // For hollow shaft bore-specific lookup
       plugInShaftStyle, // Style-based lookup (preferred)
+      hollowShaftBushingBoreIn, // Hollow shaft bushing bore (optional)
     })
       .then((bom) => {
         setResolvedBom(bom);
@@ -269,7 +308,7 @@ export default function DriveSelectorModal({
       .finally(() => {
         setBomLoading(false);
       });
-  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption, outputShaftBoreIn, plugInShaftStyle]);
+  }, [selectedCandidate, gearmotorMountingStyle, outputShaftOption, outputShaftBoreIn, plugInShaftStyle, hollowShaftBushingBoreIn]);
 
   // Compute active SF: override takes precedence if valid
   const sfOverrideValidation = validateSfOverride(sfOverrideInput);
@@ -894,6 +933,7 @@ export default function DriveSelectorModal({
               const motor = getComponent('motor');
               const adapter = getComponent('adapter');
               const shaftKit = getComponent('output_shaft_kit');
+              const hollowBushing = getComponent('hollow_shaft_bushing');
 
               return (
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
@@ -1051,8 +1091,31 @@ export default function DriveSelectorModal({
                       </div>
                     </div>
 
-                    {/* 5) Shaft Configuration - Only for inch_keyed */}
-                    {shaftKitRequired && outputShaftOption === 'inch_keyed' && (
+                    {/* 5) Hollow Shaft Bushing (optional - only if selected for shaft_mounted) */}
+                    {isShaftMounted && hollowBushing && hollowBushing.found && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-8 h-8 bg-cyan-50 rounded flex items-center justify-center flex-shrink-0 mt-0.5">
+                          <svg className="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-mono text-sm font-medium text-gray-900">
+                              {hollowBushing.part_number || '—'}
+                            </span>
+                            <span className="text-xs text-cyan-600 bg-cyan-50 px-1.5 py-0.5 rounded">Hollow Shaft Bushing</span>
+                            <StatusBadge found={hollowBushing.found} type="hollow_shaft_bushing" />
+                          </div>
+                          <p className="text-xs text-gray-500 mt-0.5">
+                            {hollowBushing.description || 'Reduces hollow bore diameter'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 6) Plug-in Shaft Configuration - Only for bottom_mount (chain drive) */}
+                    {isBottomMount && (
                       <div className="pt-3 mt-3 border-t border-gray-100 space-y-3">
                         {/* 5a) Plug-in Shaft OD (fixed) - read-only */}
                         <div>
@@ -1117,6 +1180,75 @@ export default function DriveSelectorModal({
                         </div>
                       </div>
                     )}
+
+                    {/* 7) Hollow Shaft Configuration - Only for shaft_mounted */}
+                    {isShaftMounted && (() => {
+                      // Parse native bore from gear unit description
+                      const parsedBore = gearUnit?.description
+                        ? parseHollowShaftBore(gearUnit.description)
+                        : null;
+                      const nativeBore = parsedBore?.inchBore;
+
+                      return (
+                        <div className="pt-3 mt-3 border-t border-gray-100 space-y-3">
+                          {/* 6a) Native Hollow Bore (fixed) - read-only */}
+                          <div>
+                            <label className="text-xs font-medium text-gray-500">
+                              Native Hollow Bore (fixed)
+                            </label>
+                            <div className="mt-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500">
+                              {nativeBore
+                                ? formatDiameterLabel(nativeBore)
+                                : `Determined by ${selectedCandidate?.size_code ? `SI${selectedCandidate.size_code}` : 'gear unit'}`}
+                            </div>
+                            <p className="text-xs text-gray-400 mt-1">
+                              The native hollow bore is fixed by the selected gear unit size
+                            </p>
+                          </div>
+
+                          {/* 6b) Hollow Shaft Bushing (optional) */}
+                          <div>
+                            <label className="text-xs font-medium text-gray-600">
+                              Hollow Shaft Bushing (optional)
+                            </label>
+                            <div className="mt-1">
+                              <select
+                                className={clsx(
+                                  "w-full px-3 py-1.5 text-sm border rounded-lg",
+                                  availableBushings.length > 0
+                                    ? "border-gray-300 bg-white text-gray-900 cursor-pointer"
+                                    : "border-gray-300 bg-gray-50 text-gray-500 cursor-not-allowed"
+                                )}
+                                value={hollowShaftBushingBoreIn ?? ''}
+                                disabled={bushingsLoading || availableBushings.length === 0}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  onHollowShaftBushingBoreChange?.(val ? parseFloat(val) : null);
+                                }}
+                              >
+                                <option value="">
+                                  {bushingsLoading
+                                    ? 'Loading...'
+                                    : availableBushings.length > 0
+                                      ? 'None (use native bore)'
+                                      : 'No bushings available for this unit'}
+                                </option>
+                                {availableBushings.map((b) => (
+                                  <option key={b.bore_in} value={b.bore_in}>
+                                    {formatDiameterLabel(b.bore_in)} bore bushing
+                                  </option>
+                                ))}
+                              </select>
+                              <p className="text-xs text-gray-400 mt-1">
+                                {availableBushings.length > 0
+                                  ? 'Optional bushing to reduce the hollow bore for smaller shaft applications'
+                                  : 'Bushing options not mapped yet for this gear unit'}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })()}
 
                     {/* Performance Summary */}
                     <div className="pt-2 mt-2 border-t border-gray-100">

@@ -477,6 +477,36 @@ export function getOutputInterfaceType(outputShaftOption: string | null | undefi
   return OutputInterfaceType.HollowShaft;
 }
 
+/**
+ * Normalize output_shaft_option to inch-only based on mounting style (v1.45)
+ *
+ * NORD FLEXBLOC is inch-only in our implementation:
+ * - shaft_mounted => 'inch_hollow'
+ * - bottom_mount (chain drive) => 'inch_keyed'
+ *
+ * This function coerces any legacy metric selections or null values
+ * to the correct inch-only value.
+ *
+ * @param mountingStyle - The gearmotor mounting style (can be string or enum)
+ * @param _currentOption - The current output_shaft_option (ignored - purely for documentation)
+ */
+export function normalizeOutputShaftOption(
+  mountingStyle: GearmotorMountingStyle | string | null | undefined,
+  _currentOption: string | null | undefined
+): string {
+  // Determine correct inch-only option based on mounting style
+  // Support both enum value and string comparison
+  if (
+    mountingStyle === GearmotorMountingStyle.BottomMount ||
+    mountingStyle === 'bottom_mount'
+  ) {
+    // Chain drive => keyed shaft
+    return 'inch_keyed';
+  }
+  // Default to shaft mounted => hollow shaft
+  return 'inch_hollow';
+}
+
 export enum DriveHand {
   RightHand = 'Right-hand (RH)',
   LeftHand = 'Left-hand (LH)',
@@ -1534,6 +1564,20 @@ export interface SliderbedInputs {
    * - null: Not selected (defaults to 'single' if style rows exist)
    */
   plug_in_shaft_style?: 'single' | 'double' | 'flange_b5' | null;
+
+  /**
+   * Hollow shaft bushing bore in inches (v1.44)
+   * Used when gearmotor_mounting_style is 'shaft_mounted' and gear unit is inch hollow.
+   *
+   * For NORD FLEXBLOC, the native hollow bore is FIXED by gear unit size (e.g., 1.4375" for SI63).
+   * An optional bushing can REDUCE the bore diameter for smaller shaft applications.
+   *
+   * null = no bushing selected (use native bore as-is)
+   * number = selected bushing bore (e.g., 1.0, 1.1875, 1.25)
+   *
+   * Options come from vendor_components where component_type = 'HOLLOW_SHAFT_BUSHING'.
+   */
+  hollow_shaft_bushing_bore_in?: number | null;
 
   /**
    * Actual gearmotor source (v1.38)
@@ -2844,6 +2888,7 @@ export const DEFAULT_INPUT_VALUES = {
   output_shaft_diameter_in: null, // v1.41: DEPRECATED
   sprocket_shaft_diameter_in: null, // v1.42: DEPRECATED - use plug_in_shaft_style
   plug_in_shaft_style: null, // v1.43: Plug-in shaft style (single/double/flange_b5)
+  hollow_shaft_bushing_bore_in: null, // v1.44: Hollow shaft bushing bore (optional)
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,
@@ -2991,6 +3036,7 @@ export function buildDefaultInputs(): SliderbedInputs {
     output_shaft_diameter_in: null, // v1.41: DEPRECATED
     sprocket_shaft_diameter_in: null, // v1.42: DEPRECATED - use plug_in_shaft_style
     plug_in_shaft_style: null, // v1.43: Plug-in shaft style (single/double/flange_b5)
+    hollow_shaft_bushing_bore_in: null, // v1.44: Hollow shaft bushing bore (optional)
 
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,

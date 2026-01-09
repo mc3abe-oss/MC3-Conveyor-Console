@@ -398,6 +398,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             outputShaftBoreIn={inputs.output_shaft_bore_in}
             sprocketShaftDiameterIn={inputs.sprocket_shaft_diameter_in}
             plugInShaftStyle={inputs.plug_in_shaft_style}
+            hollowShaftBushingBoreIn={inputs.hollow_shaft_bushing_bore_in}
             onGearmotorOutputRpmChange={(outputRpm) => {
               // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
               updateInput('actual_gearmotor_output_rpm', outputRpm);
@@ -409,6 +410,10 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             onPlugInShaftStyleChange={(style) => {
               // v1.43: Plug-in shaft style for output shaft kit PN lookup
               updateInput('plug_in_shaft_style', style);
+            }}
+            onHollowShaftBushingBoreChange={(bore) => {
+              // v1.44: Hollow shaft bushing bore for BOM resolution
+              updateInput('hollow_shaft_bushing_bore_in', bore);
             }}
           />
 

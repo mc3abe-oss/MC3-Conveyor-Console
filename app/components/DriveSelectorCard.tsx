@@ -32,12 +32,17 @@ interface DriveSelectorCardProps {
   /** Plug-in shaft style for solid shaft (keyed) options.
    * The OD is FIXED by gear unit size; only style varies. */
   plugInShaftStyle?: string | null;
+  /** Hollow shaft bushing bore in inches (optional).
+   * The native bore is FIXED by gear unit size; bushing REDUCES the bore. */
+  hollowShaftBushingBoreIn?: number | null;
   /** Callback when gearmotor selection changes - receives output_rpm or null if cleared */
   onGearmotorOutputRpmChange?: (outputRpm: number | null) => void;
   /** @deprecated Use onPlugInShaftStyleChange instead */
   onSprocketShaftDiameterChange?: (diameter: number | null) => void;
   /** Callback when plug-in shaft style changes */
   onPlugInShaftStyleChange?: (style: string | null) => void;
+  /** Callback when hollow shaft bushing bore changes */
+  onHollowShaftBushingBoreChange?: (bore: number | null) => void;
 }
 
 /**
@@ -54,9 +59,11 @@ export default function DriveSelectorCard({
   outputShaftBoreIn,
   sprocketShaftDiameterIn,
   plugInShaftStyle,
+  hollowShaftBushingBoreIn,
   onGearmotorOutputRpmChange,
   onSprocketShaftDiameterChange,
   onPlugInShaftStyleChange,
+  onHollowShaftBushingBoreChange,
 }: DriveSelectorCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<GearmotorCandidate | null>(null);
@@ -207,11 +214,13 @@ export default function DriveSelectorCard({
         outputShaftBoreIn={outputShaftBoreIn}
         sprocketShaftDiameterIn={sprocketShaftDiameterIn}
         plugInShaftStyle={plugInShaftStyle}
+        hollowShaftBushingBoreIn={hollowShaftBushingBoreIn}
         selectedCandidate={selectedCandidate}
         onSelect={handleSelect}
         onServiceFactorChange={setServiceFactor}
         onSprocketShaftDiameterChange={onSprocketShaftDiameterChange}
         onPlugInShaftStyleChange={onPlugInShaftStyleChange}
+        onHollowShaftBushingBoreChange={onHollowShaftBushingBoreChange}
       />
     </>
   );

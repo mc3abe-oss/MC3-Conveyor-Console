@@ -73,7 +73,7 @@ export interface ParsedModelType {
 }
 
 export interface BomComponent {
-  component_type: 'gear_unit' | 'motor' | 'adapter' | 'output_shaft_kit';
+  component_type: 'gear_unit' | 'motor' | 'adapter' | 'output_shaft_kit' | 'hollow_shaft_bushing';
   part_number: string | null;
   description: string | null;
   found: boolean;
@@ -103,6 +103,83 @@ export function isRealNordPartNumber(partNumber: string | null | undefined): boo
   if (!partNumber) return false;
   // Real NORD part numbers are 8-digit numbers starting with 3 or 6
   return /^[36]\d{7}$/.test(partNumber);
+}
+
+// ============================================================================
+// HOLLOW SHAFT BORE PARSER
+// ============================================================================
+
+/**
+ * Result of parsing hollow shaft bore from gear unit description.
+ */
+export interface ParsedHollowShaftBore {
+  /** Native bore diameter in inches (e.g., 1.4375) */
+  inchBore: number | null;
+  /** Native bore diameter in mm (e.g., 25) - for metric units */
+  metricBore: number | null;
+  /** Whether the gear unit is a hollow shaft type */
+  isHollowShaft: boolean;
+  /** 'inch' or 'metric' based on which pattern matched first */
+  primaryUnit: 'inch' | 'metric' | null;
+}
+
+/**
+ * Parse hollow shaft bore dimensions from gear unit description.
+ *
+ * Gear unit descriptions follow patterns like:
+ *   - "Wormgearbox 1.4375 Hollow Shaft 25mm ..." (inch hollow)
+ *   - "Wormgearbox 25mm Hollow Shaft ..." (metric hollow)
+ *
+ * This parser extracts the native bore diameter without inventing data.
+ *
+ * @param description - Gear unit description string (e.g., from vendor_components)
+ * @returns Parsed bore information, or defaults if parse fails
+ */
+export function parseHollowShaftBore(description: string | null | undefined): ParsedHollowShaftBore {
+  const result: ParsedHollowShaftBore = {
+    inchBore: null,
+    metricBore: null,
+    isHollowShaft: false,
+    primaryUnit: null,
+  };
+
+  if (!description) {
+    return result;
+  }
+
+  // Check if it's a hollow shaft type
+  if (!/hollow\s*shaft/i.test(description)) {
+    return result;
+  }
+
+  result.isHollowShaft = true;
+
+  // Pattern 1: Inch bore - "1.4375 Hollow Shaft" or "1.4375 in Hollow Shaft"
+  // Matches decimal like: 1.4375, 1.0, 0.875, etc. followed by optional "in" then "Hollow Shaft"
+  const inchMatch = description.match(/(\d+\.?\d*)\s*(?:in(?:ch)?\.?)?\s*Hollow\s*Shaft/i);
+  if (inchMatch) {
+    const value = parseFloat(inchMatch[1]);
+    // Sanity check: inch bore should be between 0.5 and 5 inches for FLEXBLOC
+    if (value >= 0.5 && value <= 5) {
+      result.inchBore = value;
+      result.primaryUnit = 'inch';
+    }
+  }
+
+  // Pattern 2: Metric bore - "25mm Hollow Shaft" or "25 mm Hollow Shaft"
+  const metricMatch = description.match(/(\d+)\s*mm\s*Hollow\s*Shaft/i);
+  if (metricMatch) {
+    const value = parseInt(metricMatch[1], 10);
+    // Sanity check: metric bore should be between 10 and 100 mm for FLEXBLOC
+    if (value >= 10 && value <= 100) {
+      result.metricBore = value;
+      if (!result.primaryUnit) {
+        result.primaryUnit = 'metric';
+      }
+    }
+  }
+
+  return result;
 }
 
 // ============================================================================
@@ -225,6 +302,22 @@ export interface ResolveBomOptions {
    * When provided, resolver uses style-based mapping (preferred over diameter-based).
    */
   plugInShaftStyle?: string | null;
+  /**
+   * Selected hollow shaft bushing bore in inches.
+   *
+   * For shaft-mounted (hollow shaft) configurations, an optional bushing
+   * can reduce the native bore diameter. If null, no bushing is used
+   * (native bore is used as-is).
+   *
+   * Example: SI63 inch hollow has native bore 1.4375". Selecting
+   * hollowShaftBushingBoreIn = 1.25 would use PN 60693420.
+   */
+  hollowShaftBushingBoreIn?: number | null;
+  /**
+   * Gear unit description string for parsing native bore.
+   * Used to determine if hollow shaft and extract native bore diameter.
+   */
+  gearUnitDescription?: string | null;
 }
 
 /**
@@ -531,6 +624,126 @@ export async function getAvailableShaftDiameters(
   }
 }
 
+// =============================================================================
+// Hollow Shaft Bushing Lookup
+// =============================================================================
+
+/**
+ * Get available hollow shaft bushings for a given gear unit size and shaft interface type.
+ *
+ * Used by UI to populate bushing dropdown. Returns distinct bushing bore
+ * values that have real NORD PNs in the database.
+ *
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param shaftInterfaceType - e.g., 'inch_hollow', 'metric_hollow'
+ * @returns Array of available bushing bore values in inches
+ */
+export async function getAvailableHollowShaftBushings(
+  gearUnitSize: string,
+  shaftInterfaceType: string
+): Promise<Array<{ bore_in: number; part_number: string; description: string }>> {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, description, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'HOLLOW_SHAFT_BUSHING')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>shaft_interface_type', 'eq', shaftInterfaceType);
+
+    if (error) {
+      console.error('Available hollow shaft bushings lookup error:', error.message);
+      return [];
+    }
+
+    // Extract bushings with real PNs
+    const bushings: Array<{ bore_in: number; part_number: string; description: string }> = [];
+    if (data) {
+      for (const row of data) {
+        const meta = row.metadata_json as Record<string, unknown> | null;
+        const boreIn = meta?.bushing_bore_in as number | null;
+
+        if (boreIn !== null && boreIn !== undefined && isRealNordPartNumber(row.vendor_part_number)) {
+          bushings.push({
+            bore_in: boreIn,
+            part_number: row.vendor_part_number,
+            description: row.description || `Hollow Shaft Bushing ${boreIn}"`,
+          });
+        }
+      }
+    }
+
+    // Sort by bore size ascending
+    return bushings.sort((a, b) => a.bore_in - b.bore_in);
+  } catch (err) {
+    console.error('Available hollow shaft bushings lookup failed:', err);
+    return [];
+  }
+}
+
+/**
+ * Look up hollow shaft bushing PN by gear unit size, interface type, and bore.
+ *
+ * @param gearUnitSize - e.g., 'SI31', 'SI40', 'SI63'
+ * @param shaftInterfaceType - e.g., 'inch_hollow', 'metric_hollow'
+ * @param bushingBoreIn - Bushing bore size in inches
+ * @returns Part number and description if found, null otherwise
+ */
+export async function lookupHollowShaftBushing(
+  gearUnitSize: string,
+  shaftInterfaceType: string,
+  bushingBoreIn: number
+): Promise<{ vendor_part_number: string; description: string } | null> {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('vendor_components')
+      .select('vendor_part_number, description, metadata_json')
+      .eq('vendor', 'NORD')
+      .eq('component_type', 'HOLLOW_SHAFT_BUSHING')
+      .filter('metadata_json->>gear_unit_size', 'eq', gearUnitSize)
+      .filter('metadata_json->>shaft_interface_type', 'eq', shaftInterfaceType);
+
+    if (error) {
+      console.error('Hollow shaft bushing lookup error:', error.message);
+      return null;
+    }
+
+    // Find matching bore with tolerance
+    if (data && data.length > 0) {
+      for (const row of data) {
+        const meta = row.metadata_json as Record<string, unknown> | null;
+        if (!meta) continue;
+
+        const dbBore = meta.bushing_bore_in as number | null;
+        if (dbBore === null || dbBore === undefined) continue;
+
+        // Compare with tolerance (0.001 inches)
+        if (Math.abs(dbBore - bushingBoreIn) < 0.001) {
+          if (isRealNordPartNumber(row.vendor_part_number)) {
+            return {
+              vendor_part_number: row.vendor_part_number,
+              description: row.description,
+            };
+          }
+        }
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Hollow shaft bushing lookup failed:', err);
+    return null;
+  }
+}
+
 /**
  * Resolve BOM components for a given model type and motor HP.
  *
@@ -768,6 +981,47 @@ export async function resolveBom(
     }
   }
 
+  // 5. Hollow Shaft Bushing - optional component for shaft-mounted (hollow shaft) configurations
+  // Only include when:
+  // - Gear unit is hollow shaft (inch for now)
+  // - User has explicitly selected a bushing bore (hollowShaftBushingBoreIn is set)
+  const hollowShaftBushingBoreIn = options?.hollowShaftBushingBoreIn;
+  // Use the gear unit description we resolved above (line 797), or fallback to options
+  const gearUnitDescForBushing = gearUnitDescription || options?.gearUnitDescription;
+
+  // Only attempt bushing lookup if user has selected a bushing
+  if (hollowShaftBushingBoreIn !== null && hollowShaftBushingBoreIn !== undefined) {
+    const parsedBore = parseHollowShaftBore(gearUnitDescForBushing);
+
+    // Only include bushing if gear unit is inch hollow shaft
+    if (parsedBore.isHollowShaft && parsedBore.primaryUnit === 'inch' && gearUnitSize) {
+      const bushingMatch = await lookupHollowShaftBushing(
+        gearUnitSize,
+        'inch_hollow',
+        hollowShaftBushingBoreIn
+      );
+
+      if (bushingMatch) {
+        // RESOLVED: Real PN found
+        components.push({
+          component_type: 'hollow_shaft_bushing',
+          part_number: bushingMatch.vendor_part_number,
+          description: bushingMatch.description,
+          found: true,
+        });
+      } else {
+        // CONFIGURED: Bushing selected but no PN mapping found (PN pending)
+        components.push({
+          component_type: 'hollow_shaft_bushing',
+          part_number: null,
+          description: `Hollow Shaft Bushing ${hollowShaftBushingBoreIn}" (PN pending)`,
+          found: true, // Mark as configured (not Missing)
+        });
+      }
+    }
+  }
+  // NOTE: If no bushing selected (hollowShaftBushingBoreIn is null), no bushing line item is added
+
   result.components = components;
   // Complete = all required components found (output shaft kit is "found" if not required)
   result.complete = components.every(c => c.found);
@@ -885,6 +1139,7 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
     { type: 'motor', label: 'Motor (STD or BRK)' },
     { type: 'adapter', label: 'Adapter' },
     { type: 'output_shaft_kit', label: 'Output Shaft Kit' },
+    { type: 'hollow_shaft_bushing', label: 'Hollow Shaft Bushing' },
   ];
 
   // Track missing components
@@ -923,6 +1178,34 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
       // State 4: Missing (bottom mount + no option) - found=false
       lines.push(`${index + 1}) ${item.label}: — (select in Drive Arrangement)  | ${desc}`);
       missingComponents.push({ label: `${item.label} PN`, reason: 'Select an output shaft option in Drive Arrangement.' });
+      return;
+    }
+
+    // Special handling for hollow shaft bushing - it's optional and only shows if selected
+    if (item.type === 'hollow_shaft_bushing') {
+      // If no bushing component in BOM, it means none was selected - skip entirely
+      if (!component) {
+        return;
+      }
+
+      const desc = component.description || '';
+      const partNumber = component.part_number;
+
+      // State 1: Resolved - has real part_number
+      if (partNumber && isRealNordPartNumber(partNumber)) {
+        lines.push(`${index + 1}) ${item.label}: ${partNumber}  | ${desc}`);
+        return;
+      }
+
+      // State 2: Configured but no PN - do NOT include in Copy BOM
+      if (desc.includes('PN pending')) {
+        lines.push(`${index + 1}) ${item.label}: — (PN pending, not included in order)  | ${desc}`);
+        missingComponents.push({ label: `${item.label} PN`, reason: 'Bushing catalog mapping pending. Do not order until resolved.' });
+        return;
+      }
+
+      // Fallback - shouldn't normally happen
+      lines.push(`${index + 1}) ${item.label}: — | ${desc}`);
       return;
     }
 
