@@ -410,7 +410,7 @@ export default function DriveArrangementModal({
                       ))}
                     </select>
                     <p className="text-xs text-gray-500 mt-1">
-                      Required to resolve the output shaft kit part number.
+                      Used for future mapping. Not required in v1.
                     </p>
                   </div>
                 )}

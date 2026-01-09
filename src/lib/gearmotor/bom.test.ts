@@ -1345,8 +1345,8 @@ describe('getMissingHint for output_shaft_kit', () => {
 // =============================================================================
 
 describe('Output Shaft Kit with outputShaftOption', () => {
-  describe('shows "Configured" when user selects option in Drive Arrangement', () => {
-    it('does not show MISSING for output shaft kit when configured', () => {
+  describe('shows "Configured" when user selects option in Drive Arrangement (v1 behavior)', () => {
+    it('shows MISSING note for configured output shaft kit when PN is pending (v1)', () => {
       const bom: BomResolution = {
         model_type: 'SK 1SI63 - 56C - 63L/4',
         parsed: {
@@ -1373,11 +1373,12 @@ describe('Output Shaft Kit with outputShaftOption', () => {
 
       const copyText = buildBomCopyText(bom, context);
 
-      // Should show option label with (PN pending)
-      expect(copyText).toContain('4) Output Shaft Kit: Inch keyed bore (PN pending)');
+      // v1: Should show dash with "PN pending, not included in order" (not option label as PN)
+      expect(copyText).toContain('4) Output Shaft Kit: — (PN pending, not included in order)');
+      expect(copyText).toContain('Inch keyed bore');
 
-      // Should NOT show MISSING for output shaft kit
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit PN');
+      // v1: SHOULD show MISSING for output shaft kit when PN is pending (do not order)
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
     });
   });
 
@@ -1417,7 +1418,7 @@ describe('Output Shaft Kit with outputShaftOption', () => {
       expect(copyText).toContain('MISSING: Output Shaft Kit PN');
     });
 
-    it('formats correctly for bottom mount with selection (configured)', () => {
+    it('formats correctly for bottom mount with selection (configured) - v1 behavior', () => {
       const bom: BomResolution = {
         model_type: 'SK 1SI63 - 56C - 63L/4',
         parsed: null,
@@ -1431,8 +1432,11 @@ describe('Output Shaft Kit with outputShaftOption', () => {
       };
 
       const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
-      expect(copyText).toContain('4) Output Shaft Kit: Metric hollow (PN pending)');
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit PN');
+      // v1: Shows dash with "PN pending, not included in order" instead of option label as PN
+      expect(copyText).toContain('4) Output Shaft Kit: — (PN pending, not included in order)');
+      expect(copyText).toContain('Metric hollow');
+      // v1: SHOULD show MISSING for pending PNs (do not order)
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
     });
   });
 });
@@ -1551,7 +1555,7 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
   });
 
   describe('Copy BOM output', () => {
-    it('does NOT contain any 8-digit PN for configured output shaft kit', () => {
+    it('does NOT contain any 8-digit PN for configured output shaft kit (v1)', () => {
       const bom: BomResolution = {
         model_type: 'SK 1SI63 - 56C - 63L/4',
         parsed: null,
@@ -1567,9 +1571,11 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
 
       const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
 
-      // Should NOT contain any 8-digit PN for output shaft kit line
-      // The line should show the option label with "(PN pending)"
-      expect(copyText).toContain('Output Shaft Kit: Metric keyed bore (PN pending)');
+      // v1: Should NOT contain any 8-digit PN for output shaft kit line
+      // The line should show dash with "(PN pending, not included in order)"
+      expect(copyText).toContain('Output Shaft Kit: — (PN pending, not included in order)');
+      // Should still show description with option label
+      expect(copyText).toContain('Metric keyed bore');
 
       // Verify no fake 8-digit PN appears on the output shaft kit line
       // Real PNs like 60892110, 61191120, etc. should NOT appear for output shaft kit
@@ -1580,7 +1586,7 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
       expect(pnMatch).toBeNull();
     });
 
-    it('shows "PN pending" text for configured output shaft kit', () => {
+    it('shows "PN pending, not included in order" text for configured output shaft kit (v1)', () => {
       const bom: BomResolution = {
         model_type: 'SK 1SI63 - 56C - 63L/4',
         parsed: null,
@@ -1592,9 +1598,11 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
 
       const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
 
-      // Should contain "(PN pending)" indicator
-      expect(copyText).toContain('(PN pending)');
+      // v1: Should show dash with "PN pending, not included in order" indicator
+      expect(copyText).toContain('(PN pending, not included in order)');
       expect(copyText).toContain('Inch hollow');
+      // v1: Should show MISSING note for pending PNs
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
     });
 
     it('shows "(not required)" for shaft mount configuration', () => {
@@ -1695,8 +1703,8 @@ describe('Output Shaft Kit PN Resolution', () => {
     });
   });
 
-  describe('State 2: Configured (PN pending)', () => {
-    it('shows option label with (PN pending) when mapping not found', () => {
+  describe('State 2: Configured (PN pending) - v1 behavior', () => {
+    it('shows dash with "PN pending, not included in order" when mapping not found (v1)', () => {
       const bom: BomResolution = {
         model_type: 'SK 1SI31 - 56C - 63S/4',
         parsed: {
@@ -1719,13 +1727,13 @@ describe('Output Shaft Kit PN Resolution', () => {
       const context: BomCopyContext = { appliedSf: 1.5, catalogSf: 2.0 };
       const copyText = buildBomCopyText(bom, context);
 
-      // Should show option label with "(PN pending)"
-      expect(copyText).toContain('4) Output Shaft Kit: Inch keyed bore (PN pending)');
-      // Should NOT show as MISSING (user made a selection)
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+      // v1: Should show dash with "PN pending, not included in order" (not the option label as PN)
+      expect(copyText).toContain('4) Output Shaft Kit: — (PN pending, not included in order)');
+      // v1: Should show MISSING note for pending PNs (do not order until resolved)
+      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
     });
 
-    it('handles all four output shaft option types', () => {
+    it('handles all four output shaft option types with v1 pending behavior', () => {
       const optionTypes = [
         { key: 'inch_keyed', label: 'Inch keyed bore' },
         { key: 'metric_keyed', label: 'Metric keyed bore' },
@@ -1745,7 +1753,10 @@ describe('Output Shaft Kit PN Resolution', () => {
         };
 
         const copyText = buildBomCopyText(bom, { appliedSf: 1.0, catalogSf: 1.5 });
-        expect(copyText).toContain(`${label} (PN pending)`);
+        // v1: Shows dash, not the option label as PN
+        expect(copyText).toContain('(PN pending, not included in order)');
+        // v1: Description should still contain the option label
+        expect(copyText).toContain(label);
       }
     });
   });

@@ -745,8 +745,14 @@ export default function DriveSelectorModal({
               // Check if user has configured an output shaft option
               const shaftKitConfigured = shaftKitRequired && !!outputShaftOption;
 
+              // Helper: Check if PN is a real NORD part number (8 digits starting with 3 or 6)
+              const isRealPN = (pn: string | null | undefined): boolean => {
+                if (!pn) return false;
+                return /^[36]\d{7}$/.test(pn);
+              };
+
               // Status badge component - handles different states for output shaft kit
-              const StatusBadge = ({ found, type, description: _description }: { found: boolean; type: BomComponent['component_type']; description?: string | null }) => {
+              const StatusBadge = ({ found, type, partNumber }: { found: boolean; type: BomComponent['component_type']; partNumber?: string | null; description?: string | null }) => {
                 // Special case: Output shaft kit states
                 if (type === 'output_shaft_kit') {
                   // Not required (shaft mount)
@@ -755,7 +761,13 @@ export default function DriveSelectorModal({
                       <span className="text-xs text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">Not required</span>
                     );
                   }
-                  // Configured but PN pending (bottom mount + option selected)
+                  // RESOLVED: Has real NORD PN (v1: 60x93010 pattern)
+                  if (isRealPN(partNumber)) {
+                    return (
+                      <span className="text-xs text-green-600 bg-green-50 px-1.5 py-0.5 rounded">Resolved</span>
+                    );
+                  }
+                  // Configured but PN pending (bottom mount + option selected but no PN)
                   if (shaftKitConfigured && found) {
                     return (
                       <span className="text-xs text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">Configured</span>
@@ -933,7 +945,7 @@ export default function DriveSelectorModal({
                             "text-xs px-1.5 py-0.5 rounded",
                             shaftKitConfigured ? "text-blue-600 bg-blue-50" : shaftKitRequired ? "text-purple-600 bg-purple-50" : "text-gray-500 bg-gray-100"
                           )}>Output Shaft Kit</span>
-                          <StatusBadge found={shaftKit?.found ?? false} type="output_shaft_kit" description={shaftKit?.description} />
+                          <StatusBadge found={shaftKit?.found ?? false} type="output_shaft_kit" partNumber={shaftKit?.part_number} />
                         </div>
                         <p className="text-xs text-gray-500 mt-0.5">
                           {shaftKit?.description || (shaftKitRequired ? 'Required for chain drive' : 'Not required for shaft mount')}
@@ -942,7 +954,7 @@ export default function DriveSelectorModal({
                         {!shaftKit?.found && shaftKitRequired && (
                           <p className="text-xs text-amber-600 mt-1">Select an output shaft option in Drive Arrangement to resolve this.</p>
                         )}
-                        {shaftKitConfigured && shaftKit?.found && (
+                        {shaftKitConfigured && shaftKit?.found && !isRealPN(shaftKit?.part_number) && (
                           <p className="text-xs text-blue-600 mt-1">PN pending (catalog mapping required)</p>
                         )}
                       </div>

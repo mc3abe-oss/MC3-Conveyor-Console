@@ -617,12 +617,13 @@ async function seedNordFlexblocV2() {
   console.log();
 
   // ==========================================================================
-  // STEP 4.7: Insert inch keyed output shaft kit part numbers (with bore)
+  // STEP 4.7: Insert inch keyed output shaft kit part numbers (v1: gear_unit_size only)
   // ==========================================================================
-  console.log('Step 4.7: Inserting inch keyed output shaft kit PNs (with bore)...');
+  console.log('Step 4.7: Inserting inch keyed output shaft kit PNs (v1: gear_unit_size only)...');
 
-  // These are REAL NORD 8-digit orderable part numbers keyed by:
-  // (vendor, series, component_type, gear_unit_size, mounting_variant, output_shaft_option_key, bore_in)
+  // v1 NORD output shaft kit PNs are keyed by:
+  // (vendor, series, component_type, gear_unit_size, output_shaft_option_key)
+  // NO bore dependency in v1
   let inchKeyedKitsInserted = 0;
   let inchKeyedKitErrors = 0;
   let inchKeyedKitSkipped = 0;
@@ -633,12 +634,10 @@ async function seedNordFlexblocV2() {
   for (const row of inchKeyedKitRows) {
     const partNumber = row.nord_part_number?.trim();
     const gearUnitSize = row.gear_unit_size?.trim();
-    const mountingVariant = row.mounting_variant?.trim();
     const outputShaftOptionKey = row.output_shaft_option_key?.trim();
-    const boreIn = parseFloat(row.bore_in);
 
-    // Validate required fields
-    if (!partNumber || !gearUnitSize || !mountingVariant || !outputShaftOptionKey || isNaN(boreIn)) {
+    // Validate required fields (v1: no mounting_variant or bore required)
+    if (!partNumber || !gearUnitSize || !outputShaftOptionKey) {
       if (verbose) {
         console.log(`  [SKIP] Invalid row: ${JSON.stringify(row)}`);
       }
@@ -655,8 +654,8 @@ async function seedNordFlexblocV2() {
       continue;
     }
 
-    // Check unique key constraint
-    const uniqueKey = `${VENDOR}|${SERIES}|output_shaft_kit|${gearUnitSize}|${mountingVariant}|${outputShaftOptionKey}|${boreIn}`;
+    // Check unique key constraint (v1: gear_unit_size + output_shaft_option_key)
+    const uniqueKey = `${VENDOR}|${SERIES}|output_shaft_kit|${gearUnitSize}|${outputShaftOptionKey}`;
     if (seenInchKeyedKeys.has(uniqueKey)) {
       if (verbose) {
         console.log(`  [SKIP] Duplicate key: ${uniqueKey}`);
@@ -670,20 +669,18 @@ async function seedNordFlexblocV2() {
       vendor: VENDOR,
       component_type: 'OUTPUT_KIT',
       vendor_part_number: partNumber,
-      description: row.description || `NORD ${SERIES} Output Shaft Kit ${gearUnitSize} ${boreIn}" Keyed Bore`,
+      description: row.description || `NORD ${SERIES} Output Shaft Kit ${gearUnitSize} Inch Keyed`,
       metadata_json: {
         product_line: row.series || SERIES,
         component_type_csv: 'output_shaft_kit',
         gear_unit_size: gearUnitSize,
-        mounting_variant: mountingVariant,
         output_shaft_option_key: outputShaftOptionKey,
-        bore_in: boreIn,
         catalog_page: row.catalog_page || null,
       },
     };
 
     if (verbose) {
-      console.log(`  [INCH_KEYED_KIT] ${partNumber}: ${gearUnitSize} ${mountingVariant} ${outputShaftOptionKey} bore=${boreIn}"`);
+      console.log(`  [INCH_KEYED_KIT_V1] ${partNumber}: ${gearUnitSize} ${outputShaftOptionKey}`);
     }
 
     if (!dryRun) {
@@ -707,7 +704,7 @@ async function seedNordFlexblocV2() {
     }
   }
 
-  console.log(`  ${inchKeyedKitsInserted} inch keyed kit PNs inserted/updated`);
+  console.log(`  ${inchKeyedKitsInserted} inch keyed kit PNs (v1) inserted/updated`);
   if (inchKeyedKitSkipped > 0) console.log(`  ${inchKeyedKitSkipped} rows skipped`);
   if (inchKeyedKitErrors > 0) console.log(`  ${inchKeyedKitErrors} errors`);
   console.log();
