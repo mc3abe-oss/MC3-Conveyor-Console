@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import { APP_NAME, APP_DESCRIPTION } from '../src/lib/brand';
 
@@ -21,6 +22,7 @@ export default function RootLayout({
         <div className="min-h-screen bg-gradient-to-b from-mc3-mist/60 to-white">
           {children}
         </div>
+        <SpeedInsights />
       </body>
     </html>
   );
