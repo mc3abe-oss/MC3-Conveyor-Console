@@ -1,4 +1,16 @@
 vendor,series,component_type,gear_unit_size,output_shaft_option_key,plug_in_shaft_style,plug_in_shaft_od_in,nord_part_number,catalog_ref,description
+NORD,FLEXBLOC,output_shaft_kit,SI31,inch_keyed,single,0.625,60393010,C122,Plug-in Shaft (Inch) 0.625 x 30mm
+NORD,FLEXBLOC,output_shaft_kit,SI31,inch_keyed,double,0.625,60393110,C122,Double Shaft (Inch) 0.625 x 30mm
+NORD,FLEXBLOC,output_shaft_kit,SI31,inch_keyed,flange_b5,0.625,60393210,C122,Shaft for Output Flange B5 (Inch) 0.625 x 30mm
+NORD,FLEXBLOC,output_shaft_kit,SI40,inch_keyed,single,0.75,60493010,C122,Plug-in Shaft (Inch) 0.750 x 40mm
+NORD,FLEXBLOC,output_shaft_kit,SI40,inch_keyed,double,0.75,60493110,C122,Double Shaft (Inch) 0.750 x 40mm
+NORD,FLEXBLOC,output_shaft_kit,SI40,inch_keyed,flange_b5,0.75,60493210,C122,Shaft for Output Flange B5 (Inch) 0.750 x 40mm
+NORD,FLEXBLOC,output_shaft_kit,SI50,inch_keyed,single,1.0,60593010,C122,Plug-in Shaft (Inch) 1.000 x 50mm
+NORD,FLEXBLOC,output_shaft_kit,SI50,inch_keyed,double,1.0,60593110,C122,Double Shaft (Inch) 1.000 x 50mm
+NORD,FLEXBLOC,output_shaft_kit,SI50,inch_keyed,flange_b5,1.0,60593210,C122,Shaft for Output Flange B5 (Inch) 1.000 x 50mm
 NORD,FLEXBLOC,output_shaft_kit,SI63,inch_keyed,single,1.125,60693010,C122,Plug-in Shaft (Inch) 1.125 x 60mm
 NORD,FLEXBLOC,output_shaft_kit,SI63,inch_keyed,double,1.125,60693110,C122,Double Shaft (Inch) 1.125 x 60mm
 NORD,FLEXBLOC,output_shaft_kit,SI63,inch_keyed,flange_b5,1.125,60693210,C122,Shaft for Output Flange B5 (Inch) 1.125 x 60mm
+NORD,FLEXBLOC,output_shaft_kit,SI75,inch_keyed,single,1.375,60793010,C122,Plug-in Shaft (Inch) 1.375 x 70mm
+NORD,FLEXBLOC,output_shaft_kit,SI75,inch_keyed,double,1.375,60793110,C122,Double Shaft (Inch) 1.375 x 70mm
+NORD,FLEXBLOC,output_shaft_kit,SI75,inch_keyed,flange_b5,1.375,60793210,C122,Shaft for Output Flange B5 (Inch) 1.375 x 70mm

@@ -119,20 +119,61 @@ describe('Mounting style configuration logic', () => {
 });
 
 describe('Available shaft styles and bushings (integration)', () => {
-  describe('getAvailableShaftStyles', () => {
-    it('should return styles for SI63 with inch_keyed', async () => {
-      const styles = await getAvailableShaftStyles('SI63', 'inch_keyed');
-      // SI63 has 3 styles: single, double, flange_b5
-      expect(styles.length).toBeGreaterThan(0);
-      if (styles.length > 0) {
-        expect(styles.some(s => s.style === 'single')).toBe(true);
-        expect(styles.some(s => s.style === 'double')).toBe(true);
-        expect(styles.some(s => s.style === 'flange_b5')).toBe(true);
-      }
+  describe('getAvailableShaftStyles - full coverage v1.47', () => {
+    // v1.47: All inch sizes now have plug-in shaft style data
+    const expectedSizes = ['SI31', 'SI40', 'SI50', 'SI63', 'SI75'];
+    const expectedStyles = ['single', 'double', 'flange_b5'];
+
+    it.each(expectedSizes)('should return 3 styles for %s with inch_keyed', async (size) => {
+      const styles = await getAvailableShaftStyles(size, 'inch_keyed');
+      expect(styles.length).toBe(3);
+      expect(styles.some(s => s.style === 'single')).toBe(true);
+      expect(styles.some(s => s.style === 'double')).toBe(true);
+      expect(styles.some(s => s.style === 'flange_b5')).toBe(true);
     });
 
-    it('should return empty array for SI75 (not mapped)', async () => {
+    it('should return correct OD for SI31 (0.625")', async () => {
+      const styles = await getAvailableShaftStyles('SI31', 'inch_keyed');
+      expect(styles.length).toBe(3);
+      styles.forEach(s => {
+        expect(s.od_in).toBeCloseTo(0.625, 2);
+      });
+    });
+
+    it('should return correct OD for SI40 (0.75")', async () => {
+      const styles = await getAvailableShaftStyles('SI40', 'inch_keyed');
+      expect(styles.length).toBe(3);
+      styles.forEach(s => {
+        expect(s.od_in).toBeCloseTo(0.75, 2);
+      });
+    });
+
+    it('should return correct OD for SI50 (1.0")', async () => {
+      const styles = await getAvailableShaftStyles('SI50', 'inch_keyed');
+      expect(styles.length).toBe(3);
+      styles.forEach(s => {
+        expect(s.od_in).toBeCloseTo(1.0, 2);
+      });
+    });
+
+    it('should return correct OD for SI63 (1.125")', async () => {
+      const styles = await getAvailableShaftStyles('SI63', 'inch_keyed');
+      expect(styles.length).toBe(3);
+      styles.forEach(s => {
+        expect(s.od_in).toBeCloseTo(1.125, 2);
+      });
+    });
+
+    it('should return correct OD for SI75 (1.375")', async () => {
       const styles = await getAvailableShaftStyles('SI75', 'inch_keyed');
+      expect(styles.length).toBe(3);
+      styles.forEach(s => {
+        expect(s.od_in).toBeCloseTo(1.375, 2);
+      });
+    });
+
+    it('should return empty array for unknown size', async () => {
+      const styles = await getAvailableShaftStyles('SI99', 'inch_keyed');
       expect(styles).toEqual([]);
     });
   });
@@ -151,7 +192,7 @@ describe('Available shaft styles and bushings (integration)', () => {
       }
     });
 
-    it('should return empty array for SI75 (not mapped)', async () => {
+    it('should return empty array for SI75 (bushings not mapped yet)', async () => {
       const bushings = await getAvailableHollowShaftBushings('SI75', 'inch_hollow');
       expect(bushings).toEqual([]);
     });
