@@ -451,6 +451,32 @@ export enum GearmotorMountingStyle {
   BottomMount = 'bottom_mount',
 }
 
+/**
+ * Output shaft interface type (v1.41)
+ * Derived from output_shaft_option to determine the shaft interface model:
+ * - hollow_shaft: Uses the gear unit hollow shaft directly (bore = ID)
+ * - solid_shaft: Uses a plug-in shaft kit (shaft diameter = OD)
+ */
+export enum OutputInterfaceType {
+  /** Hollow shaft interface - bore is the ID */
+  HollowShaft = 'hollow_shaft',
+  /** Solid shaft interface (via kit) - shaft diameter is the OD */
+  SolidShaft = 'solid_shaft',
+}
+
+/**
+ * Derive output interface type from output_shaft_option.
+ * - inch_keyed, metric_keyed → solid_shaft (plug-in kit)
+ * - inch_hollow, metric_hollow → hollow_shaft (direct)
+ * - null/undefined → hollow_shaft (default)
+ */
+export function getOutputInterfaceType(outputShaftOption: string | null | undefined): OutputInterfaceType {
+  if (outputShaftOption === 'inch_keyed' || outputShaftOption === 'metric_keyed') {
+    return OutputInterfaceType.SolidShaft;
+  }
+  return OutputInterfaceType.HollowShaft;
+}
+
 export enum DriveHand {
   RightHand = 'Right-hand (RH)',
   LeftHand = 'Left-hand (LH)',
@@ -1470,13 +1496,22 @@ export interface SliderbedInputs {
   output_shaft_option?: string | null;
 
   /**
-   * Output shaft bore size in inches for inch keyed option (v1.40)
-   * Required when output_shaft_option = 'inch_keyed'.
-   * Used to look up the specific NORD output shaft kit part number.
-   * Available bore sizes: 1.000, 1.125, 1.250, 1.375
-   * - null: Not selected (will show as "Missing" hint: "Select bore")
+   * Output shaft bore size in inches for hollow shaft options (v1.40)
+   * Used when output_shaft_option is 'inch_hollow' or 'metric_hollow'.
+   * Represents the bore (ID) of the gear unit hollow shaft.
+   * v1: Not required for PN resolution. Reserved for future mapping.
+   * - null: Not selected
    */
   output_shaft_bore_in?: number | null;
+
+  /**
+   * Output shaft diameter in inches for solid shaft options (v1.41)
+   * Used when output_shaft_option is 'inch_keyed' or 'metric_keyed'.
+   * Represents the shaft OD when using a plug-in shaft kit.
+   * v1: Not required for PN resolution. Reserved for future mapping.
+   * - null: Not selected
+   */
+  output_shaft_diameter_in?: number | null;
 
   /**
    * Actual gearmotor source (v1.38)
@@ -2783,7 +2818,8 @@ export const DEFAULT_INPUT_VALUES = {
   gm_sprocket_teeth: 18,
   drive_shaft_sprocket_teeth: 24,
   output_shaft_option: null, // v1.39: Output shaft option for chain drive
-  output_shaft_bore_in: null, // v1.40: Bore size for inch keyed output shaft
+  output_shaft_bore_in: null, // v1.40: Bore size for hollow shaft
+  output_shaft_diameter_in: null, // v1.41: Shaft diameter for solid shaft (keyed)
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,
@@ -2927,7 +2963,8 @@ export function buildDefaultInputs(): SliderbedInputs {
     gm_sprocket_teeth: 18,
     drive_shaft_sprocket_teeth: 24,
     output_shaft_option: null, // v1.39: Output shaft option for chain drive
-    output_shaft_bore_in: null, // v1.40: Bore size for inch keyed output shaft
+    output_shaft_bore_in: null, // v1.40: Bore size for hollow shaft
+    output_shaft_diameter_in: null, // v1.41: Shaft diameter for solid shaft (keyed)
 
     // Belt tracking & pulley
     belt_tracking_method: BeltTrackingMethod.Crowned,
