@@ -178,22 +178,63 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
   });
 
-  describe('getAvailableHollowShaftBushings', () => {
-    it('should return bushings for SI63 with inch_hollow', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI63', 'inch_hollow');
-      // SI63 has bushings
-      expect(bushings.length).toBeGreaterThan(0);
-      if (bushings.length > 0) {
-        // Verify bushings have bore sizes
-        bushings.forEach(b => {
-          expect(b.bore_in).toBeGreaterThan(0);
-          expect(b.part_number).toBeDefined();
-        });
-      }
+  describe('getAvailableHollowShaftBushings - full coverage v1.48', () => {
+    // v1.48: Hollow shaft bushings mapped for SI50, SI63, SI75
+    // SI31 and SI40 have no bushings (hollow bore already small)
+
+    it('should return empty array for SI31 (no bushings - bore too small)', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI31', 'inch_hollow');
+      expect(bushings).toEqual([]);
     });
 
-    it('should return empty array for SI75 (bushings not mapped yet)', async () => {
+    it('should return empty array for SI40 (no bushings - bore too small)', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI40', 'inch_hollow');
+      expect(bushings).toEqual([]);
+    });
+
+    it('should return 1 bushing for SI50 (1.000")', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI50', 'inch_hollow');
+      expect(bushings.length).toBe(1);
+      expect(bushings[0].bore_in).toBeCloseTo(1.0, 2);
+      expect(bushings[0].part_number).toBe('60593400');
+    });
+
+    it('should return 3 bushings for SI63 (1.000", 1.1875", 1.250")', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI63', 'inch_hollow');
+      expect(bushings.length).toBe(3);
+
+      // Verify specific bore sizes
+      const bores = bushings.map(b => b.bore_in).sort((a, b) => a - b);
+      expect(bores[0]).toBeCloseTo(1.0, 2);
+      expect(bores[1]).toBeCloseTo(1.1875, 2);
+      expect(bores[2]).toBeCloseTo(1.25, 2);
+
+      // Verify PNs
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.0) < 0.01)?.part_number).toBe('60693400');
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.1875) < 0.01)?.part_number).toBe('60693410');
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.25) < 0.01)?.part_number).toBe('60693420');
+    });
+
+    it('should return 4 bushings for SI75 (1.1875", 1.250", 1.4375", 1.500")', async () => {
       const bushings = await getAvailableHollowShaftBushings('SI75', 'inch_hollow');
+      expect(bushings.length).toBe(4);
+
+      // Verify specific bore sizes
+      const bores = bushings.map(b => b.bore_in).sort((a, b) => a - b);
+      expect(bores[0]).toBeCloseTo(1.1875, 2);
+      expect(bores[1]).toBeCloseTo(1.25, 2);
+      expect(bores[2]).toBeCloseTo(1.4375, 2);
+      expect(bores[3]).toBeCloseTo(1.5, 2);
+
+      // Verify PNs
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.1875) < 0.01)?.part_number).toBe('60793430');
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.25) < 0.01)?.part_number).toBe('60793400');
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.4375) < 0.01)?.part_number).toBe('60793420');
+      expect(bushings.find(b => Math.abs(b.bore_in - 1.5) < 0.01)?.part_number).toBe('60793410');
+    });
+
+    it('should return empty array for unknown size', async () => {
+      const bushings = await getAvailableHollowShaftBushings('SI99', 'inch_hollow');
       expect(bushings).toEqual([]);
     });
   });

@@ -1,4 +1,9 @@
 vendor,series,component_type,gear_unit_size,shaft_interface_type,bushing_bore_in,nord_part_number,catalog_ref,description
-NORD,FLEXBLOC,hollow_shaft_bushing,SI63,inch_hollow,1.0,60693400,B85,Hollow Shaft Bushing 1.00 in
-NORD,FLEXBLOC,hollow_shaft_bushing,SI63,inch_hollow,1.1875,60693410,B85,Hollow Shaft Bushing 1.1875 in
-NORD,FLEXBLOC,hollow_shaft_bushing,SI63,inch_hollow,1.25,60693420,B85,Hollow Shaft Bushing 1.25 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI50,inch_hollow,1.0,60593400,B83,Hollow Shaft Bushing SI50 to 1.000 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI63,inch_hollow,1.0,60693400,B85,Hollow Shaft Bushing SI63 to 1.000 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI63,inch_hollow,1.1875,60693410,B85,Hollow Shaft Bushing SI63 to 1.1875 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI63,inch_hollow,1.25,60693420,B85,Hollow Shaft Bushing SI63 to 1.250 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI75,inch_hollow,1.1875,60793430,B87,Hollow Shaft Bushing SI75 to 1.1875 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI75,inch_hollow,1.25,60793400,B87,Hollow Shaft Bushing SI75 to 1.250 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI75,inch_hollow,1.4375,60793420,B87,Hollow Shaft Bushing SI75 to 1.4375 in
+NORD,FLEXBLOC,hollow_shaft_bushing,SI75,inch_hollow,1.5,60793410,B87,Hollow Shaft Bushing SI75 to 1.500 in
