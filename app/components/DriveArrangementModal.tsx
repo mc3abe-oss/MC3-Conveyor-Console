@@ -46,6 +46,7 @@ const INCH_KEYED_BORE_OPTIONS = [
 ] as const;
 
 // Fields managed by this modal
+// NOTE: output_shaft_diameter_in is managed in the NORD Gearmotor modal, not here
 type DraftFields = Pick<
   SliderbedInputs,
   | 'direction_mode'
@@ -57,7 +58,6 @@ type DraftFields = Pick<
   | 'drive_shaft_sprocket_teeth'
   | 'output_shaft_option'
   | 'output_shaft_bore_in'
-  | 'output_shaft_diameter_in'
   | 'gearmotor_orientation'
   | 'drive_hand'
   | 'motor_rpm'
@@ -92,7 +92,6 @@ export default function DriveArrangementModal({
         drive_shaft_sprocket_teeth: inputs.drive_shaft_sprocket_teeth,
         output_shaft_option: inputs.output_shaft_option,
         output_shaft_bore_in: inputs.output_shaft_bore_in,
-        output_shaft_diameter_in: inputs.output_shaft_diameter_in,
         gearmotor_orientation: inputs.gearmotor_orientation,
         drive_hand: inputs.drive_hand,
         motor_rpm: inputs.motor_rpm,
@@ -375,9 +374,9 @@ export default function DriveArrangementModal({
                     onChange={(e) => {
                       const newValue = e.target.value || null;
                       updateDraft('output_shaft_option', newValue);
-                      // Clear bore/diameter fields when changing output shaft option
+                      // Clear bore field when changing output shaft option
+                      // Note: output_shaft_diameter_in is managed in NORD Gearmotor modal
                       updateDraft('output_shaft_bore_in', null);
-                      updateDraft('output_shaft_diameter_in', null);
                     }}
                   >
                     {OUTPUT_SHAFT_OPTIONS.map((option) => (
@@ -416,27 +415,18 @@ export default function DriveArrangementModal({
                   </div>
                 )}
 
-                {/* Output Shaft Diameter - shown for solid shaft (keyed) options */}
+                {/* Output Shaft Diameter - read-only display for solid shaft (keyed) options */}
+                {/* Editing is done in the NORD Gearmotor modal */}
                 {(draft.output_shaft_option === 'inch_keyed' || draft.output_shaft_option === 'metric_keyed') && (
                   <div className="pt-2">
-                    <label htmlFor="modal_output_diameter" className="label">
-                      Output Shaft Diameter
-                    </label>
-                    <select
-                      id="modal_output_diameter"
-                      className="input"
-                      value={draft.output_shaft_diameter_in ?? ''}
-                      onChange={(e) => updateDraft('output_shaft_diameter_in', e.target.value ? parseFloat(e.target.value) : null)}
-                    >
-                      <option value="">Select diameter</option>
-                      {INCH_KEYED_BORE_OPTIONS.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
+                    <label className="label">Output Shaft Diameter</label>
+                    <div className="input bg-gray-50 text-gray-600 cursor-not-allowed">
+                      {inputs.output_shaft_diameter_in
+                        ? INCH_KEYED_BORE_OPTIONS.find(o => o.value === inputs.output_shaft_diameter_in)?.label || `${inputs.output_shaft_diameter_in}"`
+                        : '—'}
+                    </div>
                     <p className="text-xs text-gray-500 mt-1">
-                      Outer diameter of the solid keyed shaft. Used for sprocket bore matching.
+                      Set in Gearmotor selection (depends on gear unit size).
                     </p>
                   </div>
                 )}

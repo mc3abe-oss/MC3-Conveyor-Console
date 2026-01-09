@@ -396,9 +396,13 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             gearmotorMountingStyle={inputs.gearmotor_mounting_style}
             outputShaftOption={inputs.output_shaft_option}
             outputShaftBoreIn={inputs.output_shaft_bore_in}
+            outputShaftDiameterIn={inputs.output_shaft_diameter_in}
             onGearmotorOutputRpmChange={(outputRpm) => {
               // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
               updateInput('actual_gearmotor_output_rpm', outputRpm);
+            }}
+            onOutputShaftDiameterChange={(diameter) => {
+              updateInput('output_shaft_diameter_in', diameter);
             }}
           />
 

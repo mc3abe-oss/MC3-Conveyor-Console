@@ -25,10 +25,14 @@ interface DriveSelectorCardProps {
   gearmotorMountingStyle?: GearmotorMountingStyle | string;
   /** Output shaft option from Drive Arrangement - for chain drive configuration */
   outputShaftOption?: string | null;
-  /** Output shaft bore size in inches - required for inch_keyed option */
+  /** Output shaft bore size in inches - for hollow shaft options */
   outputShaftBoreIn?: number | null;
+  /** Output shaft diameter in inches - for solid shaft (keyed) options */
+  outputShaftDiameterIn?: number | null;
   /** Callback when gearmotor selection changes - receives output_rpm or null if cleared */
   onGearmotorOutputRpmChange?: (outputRpm: number | null) => void;
+  /** Callback when output shaft diameter changes */
+  onOutputShaftDiameterChange?: (diameter: number | null) => void;
 }
 
 /**
@@ -43,7 +47,9 @@ export default function DriveSelectorCard({
   gearmotorMountingStyle,
   outputShaftOption,
   outputShaftBoreIn,
+  outputShaftDiameterIn,
   onGearmotorOutputRpmChange,
+  onOutputShaftDiameterChange,
 }: DriveSelectorCardProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedCandidate, setSelectedCandidate] = useState<GearmotorCandidate | null>(null);
@@ -192,9 +198,11 @@ export default function DriveSelectorCard({
         gearmotorMountingStyle={gearmotorMountingStyle}
         outputShaftOption={outputShaftOption}
         outputShaftBoreIn={outputShaftBoreIn}
+        outputShaftDiameterIn={outputShaftDiameterIn}
         selectedCandidate={selectedCandidate}
         onSelect={handleSelect}
         onServiceFactorChange={setServiceFactor}
+        onOutputShaftDiameterChange={onOutputShaftDiameterChange}
       />
     </>
   );

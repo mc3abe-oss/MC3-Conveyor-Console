@@ -81,11 +81,15 @@ interface DriveSelectorModalProps {
   gearmotorMountingStyle?: GearmotorMountingStyle | string;
   /** Output shaft option from Drive Arrangement - for chain drive configuration */
   outputShaftOption?: string | null;
-  /** Output shaft bore size in inches - required for inch_keyed option */
+  /** Output shaft bore size in inches - for hollow shaft options */
   outputShaftBoreIn?: number | null;
+  /** Output shaft diameter in inches - for solid shaft (keyed) options */
+  outputShaftDiameterIn?: number | null;
   selectedCandidate: GearmotorCandidate | null;
   onSelect: (candidate: GearmotorCandidate | null) => void;
   onServiceFactorChange?: (sf: number) => void;
+  /** Callback when output shaft diameter changes */
+  onOutputShaftDiameterChange?: (diameter: number | null) => void;
 }
 
 const SERVICE_FACTOR_OPTIONS = [
@@ -94,6 +98,15 @@ const SERVICE_FACTOR_OPTIONS = [
   { value: 1.5, label: 'Std' },
   { value: 2.0, label: 'Heavy' },
 ];
+
+// Diameter options for inch keyed output shaft
+// v1: Not yet linked to gear_unit_size-specific mapping (future v2)
+const OUTPUT_SHAFT_DIAMETER_OPTIONS = [
+  { value: 1.0, label: '1"' },
+  { value: 1.125, label: '1-1/8"' },
+  { value: 1.25, label: '1-1/4"' },
+  { value: 1.375, label: '1-3/8"' },
+] as const;
 
 // SF override validation
 // Per Bob's directive: minimum must be > 0 (e.g., 0.1), keep existing upper bound
@@ -127,9 +140,11 @@ export default function DriveSelectorModal({
   gearmotorMountingStyle,
   outputShaftOption,
   outputShaftBoreIn,
+  outputShaftDiameterIn,
   selectedCandidate,
   onSelect,
   onServiceFactorChange,
+  onOutputShaftDiameterChange,
 }: DriveSelectorModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [serviceFactor, setServiceFactor] = useState(initialServiceFactor);
@@ -143,6 +158,30 @@ export default function DriveSelectorModal({
   const [copied, setCopied] = useState(false);
   const [resolvedBom, setResolvedBom] = useState<BomResolution | null>(null);
   const [bomLoading, setBomLoading] = useState(false);
+  const [diameterWarning, setDiameterWarning] = useState<string | null>(null);
+  const prevGearUnitSizeRef = useRef<string | null>(null);
+
+  // Track gear unit size changes and clear diameter if it becomes invalid
+  // For v1, we don't have diameter-specific mapping, so we just track for future use
+  useEffect(() => {
+    const currentGearUnitSize = selectedCandidate
+      ? getSeriesCode(selectedCandidate.size_code, selectedCandidate.gear_unit_part_number)
+      : null;
+
+    // Check if gear unit changed
+    if (prevGearUnitSizeRef.current !== null && currentGearUnitSize !== null &&
+        prevGearUnitSizeRef.current !== currentGearUnitSize) {
+      // Gear unit changed - clear diameter and show warning
+      if (outputShaftDiameterIn !== null && outputShaftDiameterIn !== undefined) {
+        onOutputShaftDiameterChange?.(null);
+        setDiameterWarning(`Output shaft diameter cleared (gear unit changed to ${currentGearUnitSize})`);
+        // Clear warning after 5 seconds
+        setTimeout(() => setDiameterWarning(null), 5000);
+      }
+    }
+
+    prevGearUnitSizeRef.current = currentGearUnitSize;
+  }, [selectedCandidate, outputShaftDiameterIn, onOutputShaftDiameterChange]);
 
   // Resolve BOM when selectedCandidate or gearmotorMountingStyle changes
   // IMPORTANT: Gear unit PNs are keyed by WORM ratio (from catalog), NOT total ratio.
@@ -959,6 +998,38 @@ export default function DriveSelectorModal({
                         )}
                       </div>
                     </div>
+
+                    {/* 5) Output Shaft Diameter - Only for inch_keyed */}
+                    {shaftKitRequired && outputShaftOption === 'inch_keyed' && (
+                      <div className="pt-3 mt-3 border-t border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-medium text-gray-600">
+                            Output Shaft Diameter
+                          </label>
+                          {diameterWarning && (
+                            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-0.5 rounded">
+                              {diameterWarning}
+                            </span>
+                          )}
+                        </div>
+                        <div className="mt-1">
+                          {/* v1: Diameter-specific mapping not yet available - disabled dropdown */}
+                          <select
+                            className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                            value={outputShaftDiameterIn ?? ''}
+                            disabled
+                          >
+                            <option value="">Not applied in v1</option>
+                            {OUTPUT_SHAFT_DIAMETER_OPTIONS.map((opt) => (
+                              <option key={opt.value} value={opt.value}>{opt.label}</option>
+                            ))}
+                          </select>
+                          <p className="text-xs text-gray-400 mt-1">
+                            Diameter-specific kits not mapped yet. Kit resolves by gear unit size only.
+                          </p>
+                        </div>
+                      </div>
+                    )}
 
                     {/* Performance Summary */}
                     <div className="pt-2 mt-2 border-t border-gray-100">
