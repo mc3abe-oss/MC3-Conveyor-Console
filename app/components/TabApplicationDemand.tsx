@@ -341,7 +341,7 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                   <h4 className="text-sm font-medium text-gray-700 mb-3">Throughput</h4>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
-                      <label htmlFor="part_spacing_in" className="label">Part Spacing (in)</label>
+                      <label htmlFor="part_spacing_in" className="label">Space Between Parts (in)</label>
                       <input
                         type="number"
                         id="part_spacing_in"
@@ -352,8 +352,18 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
                         min="0"
                         placeholder="e.g., 6"
                       />
-                      <p className="text-xs text-gray-500 mt-1">Center-to-center</p>
+                      <p className="text-xs text-gray-500 mt-1">Gap between consecutive parts</p>
                     </div>
+                    {/* Derived Part Pitch (read-only) */}
+                    {(inputs.part_length_in ?? 0) > 0 && (inputs.part_spacing_in ?? 0) > 0 && (
+                      <div>
+                        <label className="label">Part Pitch (in)</label>
+                        <div className="input bg-gray-100 text-gray-700">
+                          {((inputs.part_length_in ?? 0) + (inputs.part_spacing_in ?? 0)).toFixed(2)}
+                        </div>
+                        <p className="text-xs text-gray-500 mt-1">Center-to-center = length + gap</p>
+                      </div>
+                    )}
                     <div>
                       <label htmlFor="required_throughput_pph" className="label">Required Throughput (pph) <span className="text-gray-400 font-normal">(opt)</span></label>
                       <input
