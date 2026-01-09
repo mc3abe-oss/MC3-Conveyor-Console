@@ -56,7 +56,7 @@ import ReturnSupportCard from './conveyorPhysical/cards/ReturnSupportCard';
 import ShaftsCard from './conveyorPhysical/cards/ShaftsCard';
 import FrameHeightBreakdownCard from './conveyorPhysical/cards/FrameHeightBreakdownCard';
 import CleatsPreviewCard from './conveyorPhysical/cards/CleatsPreviewCard';
-import DerivedGeometryCard from './conveyorPhysical/cards/DerivedGeometryCard';
+import ConveyorGeometryVisualization from './conveyorPhysical/cards/ConveyorGeometryVisualization';
 import PulleyPreviewCards from './conveyorPhysical/cards/PulleyPreviewCards';
 import BeltPiwPilCard from './conveyorPhysical/cards/BeltPiwPilCard';
 import VGuideSelectCard from './conveyorPhysical/cards/VGuideSelectCard';
@@ -618,8 +618,8 @@ export default function TabConveyorPhysical({
             </>
           )}
 
-          {/* Derived Geometry Panel - Extracted to separate component (v1.41 slice 3) */}
-          <DerivedGeometryCard
+          {/* Geometry Visualization - v2: dominant diagram replaces stat cards */}
+          <ConveyorGeometryVisualization
             derivedGeometry={derivedGeometry}
             geometryMode={geometryMode}
           />
