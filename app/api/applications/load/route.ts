@@ -209,7 +209,8 @@ function buildContextFromApp(app: any): {
   }
 
   const type = config.reference_type === 'QUOTE' ? 'quote' : 'sales_order';
-  const base = parseInt(config.reference_number, 10) || 0;
+  // Use reference_number_base (5-digit integer) if available, fallback to parsing reference_number
+  const base = config.reference_number_base ?? (parseInt(config.reference_number, 10) || 0);
   const suffix = config.reference_suffix ?? null;
   const jobLine = config.reference_line ?? 1;
   const quantity = config.application_json?.conveyor_qty ?? 1;

@@ -218,7 +218,8 @@ export default function ReferenceHeader({
             className="input"
             value={referenceNumber}
             onChange={(e) => onReferenceNumberChange(e.target.value)}
-            placeholder="e.g., Q62633"
+            placeholder="e.g., 32853 or 32853.1"
+            inputMode="decimal"
           />
         </div>
 

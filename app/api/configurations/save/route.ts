@@ -13,6 +13,11 @@ import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/ser
 import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { hashCanonical, stripUndefined } from '../../../../src/lib/recipes/hash';
 import { MODEL_VERSION_ID } from '../../../../src/lib/model-identity';
+import {
+  parseApplicationCode,
+  isApplicationCodeError,
+  APPLICATION_CODE_HELP,
+} from '../../../../src/lib/applicationCode';
 
 interface SaveRequestBody {
   reference_type: 'QUOTE' | 'SALES_ORDER';  // v1: Every application must be linked to Quote or SO
@@ -82,10 +87,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate reference_number: must be numeric (digits only)
-    if (!/^\d+$/.test(reference_number)) {
+    // Validate reference_number: accepts two formats:
+    // 1. Full application code: "32853" or "32853.1" (5-digit base + optional .X release)
+    // 2. Base-only + separate reference_suffix: reference_number="32853", reference_suffix=1
+    let parsedAppCode = parseApplicationCode(reference_number);
+
+    // If parsing fails but reference_number is just the base and we have reference_suffix,
+    // try combining them (backward compatibility with separate base + suffix)
+    if (isApplicationCodeError(parsedAppCode) && reference_suffix != null) {
+      const combinedCode = `${reference_number}.${reference_suffix}`;
+      parsedAppCode = parseApplicationCode(combinedCode);
+    }
+
+    if (isApplicationCodeError(parsedAppCode)) {
       return NextResponse.json(
-        { error: 'Reference number must be numeric.' },
+        { error: `Invalid reference number: ${parsedAppCode.error}. ${APPLICATION_CODE_HELP}` },
         { status: 400 }
       );
     }
@@ -112,20 +128,24 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient();
 
     // Build unique slug for this configuration
-    const slug = buildRecipeSlug(reference_type, reference_number, lineNumber);
+    // Use the full normalized application code (including release suffix if present)
+    const slug = buildRecipeSlug(reference_type, parsedAppCode.code, lineNumber);
 
-    // Parse reference_number as base number
-    const referenceNumberBase = parseInt(reference_number, 10);
+    // Extract base number from parsed application code (5-digit integer)
+    const referenceNumberBase = parseInt(parsedAppCode.base, 10);
 
     // Build the combined inputs object (stores all config data)
+    // Use release index from parsed code (e.g., 1 from "32853.1"), falling back to passed reference_suffix
+    const releaseIndex = parsedAppCode.releaseIndex ?? reference_suffix ?? null;
+
     const combinedInputs = stripUndefined({
       ...inputs_json,
       _config: {
         reference_type,
-        reference_number,              // Keep string for backward compat
-        reference_number_base: referenceNumberBase, // Store as number
-        reference_suffix: reference_suffix ?? null,
-        reference_line: lineNumber,    // Job line
+        reference_number: parsedAppCode.code, // Full normalized code (e.g., "32853.1")
+        reference_number_base: referenceNumberBase, // 5-digit base as number
+        reference_suffix: releaseIndex,       // Release index (e.g., 1 from ".1")
+        reference_line: lineNumber,           // Job line within the application
         customer_name: customer_name ?? null,
         quantity: quantity ?? 1,
         title,
@@ -168,7 +188,7 @@ export async function POST(request: NextRequest) {
         configuration: {
           id: existingRecipe.id,
           reference_type,
-          reference_number,
+          reference_number: parsedAppCode.code,
           reference_line: lineNumber,
         },
         revision: {
@@ -179,7 +199,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Build recipe name for display
-    const recipeName = title || `${reference_type} ${reference_number} Line ${lineNumber}`;
+    const recipeName = title || `${reference_type} ${parsedAppCode.code} Line ${lineNumber}`;
 
     // Determine calculation status based on outputs and staleness
     const hasOutputs = !!outputs_json;
@@ -202,7 +222,7 @@ export async function POST(request: NextRequest) {
       inputs: combinedInputs,
       inputs_hash: inputsHash,
       source: 'calculator',
-      source_ref: reference_number,
+      source_ref: parsedAppCode.code,
       notes: change_note || null,
       tolerance_policy: 'default_fallback',
       updated_by: userId,
@@ -292,7 +312,7 @@ export async function POST(request: NextRequest) {
       configuration: {
         id: recipe.id,
         reference_type,
-        reference_number,
+        reference_number: parsedAppCode.code,
         reference_line: lineNumber,
         title: recipe.name,
       },
