@@ -25,8 +25,8 @@ import {
   calculateDriveShaftRpm,
 } from '../../src/models/sliderbed_v1/formulas';
 import CatalogSelect from './CatalogSelect';
-import CatalogMultiSelect from './CatalogMultiSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
+import { useCatalog } from '../hooks/useCatalog';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 import DriveArrangementModal from './DriveArrangementModal';
 import AdvancedParametersModal from './AdvancedParametersModal';
@@ -47,6 +47,73 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
   // Modal states
   const [isDriveArrangementModalOpen, setIsDriveArrangementModalOpen] = useState(false);
   const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
+
+  // Sensor selection state
+  const [addSensorModel, setAddSensorModel] = useState('');
+  const [addSensorNote, setAddSensorNote] = useState('');
+  const [addSensorQty, setAddSensorQty] = useState(1);
+  const [editingSensorIndex, setEditingSensorIndex] = useState<number | null>(null);
+  const [editSensorModel, setEditSensorModel] = useState('');
+  const [editSensorNote, setEditSensorNote] = useState('');
+  const [editSensorQty, setEditSensorQty] = useState(1);
+
+  // Fetch sensor models for display labels
+  const { items: sensorModels } = useCatalog('sensor_model');
+
+  // Get sensor label by model_key
+  const getSensorLabel = (modelKey: string) => {
+    const model = sensorModels.find(m => m.item_key === modelKey);
+    return model?.label || modelKey;
+  };
+
+  // Add sensor handler
+  const handleAddSensor = () => {
+    if (!addSensorModel) return;
+    const validQty = Math.max(1, Math.min(99, addSensorQty));
+    const validNote = (addSensorNote || '').slice(0, 120);
+    const current = inputs.sensor_selections || [];
+    const newSensor = { model_key: addSensorModel, qty: validQty, note: validNote || undefined };
+    updateInput('sensor_selections', [...current, newSensor]);
+    // Reset form
+    setAddSensorModel('');
+    setAddSensorNote('');
+    setAddSensorQty(1);
+  };
+
+  // Start editing a sensor
+  const handleStartEdit = (index: number) => {
+    const sensor = inputs.sensor_selections?.[index];
+    if (!sensor) return;
+    setEditingSensorIndex(index);
+    setEditSensorModel(sensor.model_key);
+    setEditSensorNote(sensor.note || '');
+    setEditSensorQty(sensor.qty);
+  };
+
+  // Save edited sensor
+  const handleSaveEdit = () => {
+    if (editingSensorIndex === null || !editSensorModel) return;
+    const validQty = Math.max(1, Math.min(99, editSensorQty));
+    const validNote = (editSensorNote || '').slice(0, 120);
+    const updated = [...(inputs.sensor_selections || [])];
+    updated[editingSensorIndex] = { model_key: editSensorModel, qty: validQty, note: validNote || undefined };
+    updateInput('sensor_selections', updated);
+    setEditingSensorIndex(null);
+  };
+
+  // Cancel edit
+  const handleCancelEdit = () => {
+    setEditingSensorIndex(null);
+  };
+
+  // Remove sensor
+  const handleRemoveSensor = (index: number) => {
+    const updated = inputs.sensor_selections?.filter((_, i) => i !== index) || [];
+    updateInput('sensor_selections', updated.length > 0 ? updated : undefined);
+    if (editingSensorIndex === index) {
+      setEditingSensorIndex(null);
+    }
+  };
 
   // Calculate display values
   const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
@@ -463,6 +530,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
               onChange={(value) => updateInput('controls_package', value)}
               id="controls_package"
               required
+              showDescriptionLong
             />
           </div>
 
@@ -498,18 +566,162 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             Sensors
           </h4>
 
-          {/* Sensor Options - Now catalog-driven */}
-          <div>
-            <label className="label">Sensor Options</label>
-            <CatalogMultiSelect
-              catalogKey="sensor_option"
-              value={inputs.sensor_options || []}
-              onChange={(value) => updateInput('sensor_options', value)}
-              id="sensor_options"
-            />
-            <p className="text-xs text-gray-500 mt-1">
-              Select sensors to include with the conveyor.
-            </p>
+          <div className="space-y-4">
+            {/* Add Sensor Line */}
+            <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="flex flex-wrap items-end gap-2">
+                <div className="flex-1 min-w-[180px]">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Sensor Model</label>
+                  <CatalogSelect
+                    catalogKey="sensor_model"
+                    value={addSensorModel}
+                    onChange={setAddSensorModel}
+                    id="add_sensor_model"
+                    className="input text-sm py-1.5"
+                  />
+                </div>
+                <div className="flex-1 min-w-[140px]">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Note (optional)</label>
+                  <input
+                    type="text"
+                    value={addSensorNote}
+                    onChange={(e) => setAddSensorNote(e.target.value.slice(0, 120))}
+                    placeholder="Note (optional)"
+                    maxLength={120}
+                    className="input text-sm py-1.5 w-full"
+                  />
+                </div>
+                <div className="w-16">
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+                  <input
+                    type="number"
+                    value={addSensorQty}
+                    onChange={(e) => setAddSensorQty(Math.max(1, parseInt(e.target.value) || 1))}
+                    min={1}
+                    max={99}
+                    className="input text-sm py-1.5 text-center w-full"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={handleAddSensor}
+                  disabled={!addSensorModel}
+                  className="px-4 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
+            {/* Selected Sensors List */}
+            {inputs.sensor_selections && inputs.sensor_selections.length > 0 && (
+              <div className="border border-gray-200 rounded-lg overflow-hidden">
+                <div className="bg-gray-100 px-3 py-2 border-b border-gray-200">
+                  <span className="text-xs font-medium text-gray-600 uppercase tracking-wide">
+                    Selected Sensors ({inputs.sensor_selections.length})
+                  </span>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {inputs.sensor_selections.map((sensor, index) => (
+                    <div key={index} className="p-3">
+                      {editingSensorIndex === index ? (
+                        /* Edit Mode */
+                        <div className="space-y-2">
+                          <div className="flex flex-wrap items-end gap-2">
+                            <div className="flex-1 min-w-[180px]">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Sensor Model</label>
+                              <CatalogSelect
+                                catalogKey="sensor_model"
+                                value={editSensorModel}
+                                onChange={setEditSensorModel}
+                                id={`edit_sensor_model_${index}`}
+                                className="input text-sm py-1.5"
+                              />
+                            </div>
+                            <div className="flex-1 min-w-[140px]">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Note</label>
+                              <input
+                                type="text"
+                                value={editSensorNote}
+                                onChange={(e) => setEditSensorNote(e.target.value.slice(0, 120))}
+                                placeholder="Note (optional)"
+                                maxLength={120}
+                                className="input text-sm py-1.5 w-full"
+                              />
+                            </div>
+                            <div className="w-16">
+                              <label className="block text-xs font-medium text-gray-600 mb-1">Qty</label>
+                              <input
+                                type="number"
+                                value={editSensorQty}
+                                onChange={(e) => setEditSensorQty(Math.max(1, parseInt(e.target.value) || 1))}
+                                min={1}
+                                max={99}
+                                className="input text-sm py-1.5 text-center w-full"
+                              />
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button
+                              type="button"
+                              onClick={handleSaveEdit}
+                              className="px-3 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700"
+                            >
+                              Save
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleCancelEdit}
+                              className="px-3 py-1 text-xs bg-gray-500 text-white rounded hover:bg-gray-600"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Read-Only Mode */
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium text-gray-900">{getSensorLabel(sensor.model_key)}</span>
+                              <span className="px-2 py-0.5 bg-gray-100 text-gray-700 text-xs rounded">
+                                Qty: {sensor.qty}
+                              </span>
+                            </div>
+                            {sensor.note && (
+                              <p className="text-sm text-gray-500 mt-1 italic">{sensor.note}</p>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => handleStartEdit(index)}
+                              className="px-2 py-1 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveSensor(index)}
+                              className="px-2 py-1 text-xs text-red-600 hover:text-red-800 hover:bg-red-50 rounded"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Empty State */}
+            {(!inputs.sensor_selections || inputs.sensor_selections.length === 0) && (
+              <p className="text-sm text-gray-500 italic text-center py-4">
+                No sensors added. Use the form above to add sensors.
+              </p>
+            )}
           </div>
         </div>
       </AccordionSection>

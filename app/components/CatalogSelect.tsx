@@ -17,6 +17,8 @@ interface CatalogSelectProps {
   className?: string;
   required?: boolean;
   disabled?: boolean;
+  /** Show description_long below the select when available */
+  showDescriptionLong?: boolean;
 }
 
 export default function CatalogSelect({
@@ -27,6 +29,7 @@ export default function CatalogSelect({
   className = 'input',
   required = false,
   disabled = false,
+  showDescriptionLong = false,
 }: CatalogSelectProps) {
   // Map the field name to the actual catalog_key in the database
   const actualCatalogKey = CATALOG_KEYS[catalogKey];
@@ -62,24 +65,35 @@ export default function CatalogSelect({
     );
   }
 
+  // Find the selected item to show description_long
+  const selectedItem = items.find((item) => item.item_key === value);
+  const descriptionLong = showDescriptionLong && selectedItem?.description_long;
+
   return (
-    <select
-      id={id}
-      className={className}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      required={required}
-      disabled={disabled}
-    >
-      {/* Placeholder option - user must explicitly select */}
-      {!value && (
-        <option value="">Select...</option>
+    <div>
+      <select
+        id={id}
+        className={className}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        required={required}
+        disabled={disabled}
+      >
+        {/* Placeholder option - user must explicitly select */}
+        {!value && (
+          <option value="">Select...</option>
+        )}
+        {items.map((item) => (
+          <option key={item.item_key} value={item.item_key}>
+            {item.label}
+          </option>
+        ))}
+      </select>
+      {descriptionLong && (
+        <div className="mt-2 p-3 bg-gray-50 border border-gray-200 rounded text-sm text-gray-600">
+          {descriptionLong}
+        </div>
       )}
-      {items.map((item) => (
-        <option key={item.item_key} value={item.item_key}>
-          {item.label}
-        </option>
-      ))}
-    </select>
+    </div>
   );
 }

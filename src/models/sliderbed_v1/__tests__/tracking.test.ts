@@ -77,7 +77,6 @@ describe('Belt Tracking Guidance', () => {
     finger_safe: false,
     lacing_style: LacingStyle.Endless,
     side_skirts: false,
-    sensor_options: [],
     pulley_surface_type: PulleySurfaceType.Plain,
     start_stop_application: false,
     direction_mode: DirectionMode.OneDirection,

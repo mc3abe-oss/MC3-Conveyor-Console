@@ -18,6 +18,7 @@ interface CatalogItem {
   item_key: string;
   label: string;
   description: string | null;
+  description_long: string | null;
   sort_order: number | null;
   is_active: boolean;
   created_at: string;
@@ -27,6 +28,7 @@ interface ItemFormData {
   item_key: string;
   label: string;
   description: string;
+  description_long: string;
   sort_order: string;
   is_active: boolean;
 }
@@ -35,6 +37,7 @@ const emptyForm: ItemFormData = {
   item_key: '',
   label: '',
   description: '',
+  description_long: '',
   sort_order: '',
   is_active: true,
 };
@@ -44,6 +47,8 @@ interface CatalogAdminProps {
   title: string;
   itemLabel?: string; // e.g., "Power Feed Option", "Sensor Option"
   description?: string;
+  /** Show description_long field (for controls_package) */
+  showDescriptionLong?: boolean;
 }
 
 export default function CatalogAdmin({
@@ -51,6 +56,7 @@ export default function CatalogAdmin({
   title,
   itemLabel = 'Item',
   description,
+  showDescriptionLong = false,
 }: CatalogAdminProps) {
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -96,6 +102,7 @@ export default function CatalogAdmin({
       item_key: item.item_key,
       label: item.label,
       description: item.description || '',
+      description_long: item.description_long || '',
       sort_order: item.sort_order?.toString() || '',
       is_active: item.is_active,
     });
@@ -144,6 +151,7 @@ export default function CatalogAdmin({
         item_key: formData.item_key,
         label: formData.label,
         description: formData.description || null,
+        description_long: formData.description_long || null,
         sort_order: formData.sort_order ? parseInt(formData.sort_order, 10) : null,
         is_active: formData.is_active,
       };
@@ -193,6 +201,7 @@ export default function CatalogAdmin({
           item_key: selectedItem.item_key,
           label: selectedItem.label,
           description: selectedItem.description,
+          description_long: selectedItem.description_long,
           sort_order: selectedItem.sort_order,
           is_active: !selectedItem.is_active,
         }),
@@ -256,6 +265,7 @@ export default function CatalogAdmin({
             item_key: item.item_key,
             label: item.label,
             description: item.description,
+            description_long: item.description_long,
             sort_order: item.sort_order,
             is_active: item.is_active,
           }),
@@ -297,6 +307,7 @@ export default function CatalogAdmin({
             item_key: item.item_key,
             label: item.label,
             description: item.description,
+            description_long: item.description_long,
             sort_order: item.sort_order,
             is_active: item.is_active,
           }),
@@ -479,6 +490,22 @@ export default function CatalogAdmin({
                     placeholder="Optional description or help text"
                   />
                 </div>
+
+                {showDescriptionLong && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Long Description</label>
+                    <textarea
+                      value={formData.description_long}
+                      onChange={(e) => updateField('description_long', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                      rows={4}
+                      placeholder="Extended description displayed to users in the application"
+                    />
+                    <p className="text-xs text-gray-500 mt-1">
+                      This description is shown read-only to users when selecting this option
+                    </p>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
