@@ -75,6 +75,7 @@ import {
   CompactInfoBanner,
   SectionDivider,
 } from './CompactCardLayouts';
+import SegmentedControl from './SegmentedControl';
 
 interface TabConveyorPhysicalProps {
   inputs: SliderbedInputs;
@@ -470,162 +471,122 @@ export default function TabConveyorPhysical({
         issueCounts={sectionCounts.geometry}
         issues={getMergedIssuesForSection?.('geometry')}
       >
-        <div className="grid grid-cols-1 gap-4">
-          {/* Bed Type */}
-          <div>
-            <label htmlFor="bed_type" className="label">
-              Bed Type
-            </label>
-            <select
-              id="bed_type"
-              className="input"
-              value={(inputs as any).bed_type || BedType.SliderBed}
-              onChange={(e) => updateInput('bed_type' as any, e.target.value)}
-            >
-              <option value={BedType.SliderBed}>Slider Bed</option>
-              <option value={BedType.RollerBed}>Roller Bed</option>
-            </select>
-            <p className="text-xs text-gray-500 mt-1">
-              Slider bed: Belt slides on flat plate (COF ~0.25). Roller bed: Belt rides on rollers (COF ~0.03).
-            </p>
-          </div>
-
-          {/* v1.10: Geometry Mode Selector */}
-          <div>
-            <label className="label">Geometry Input Mode</label>
-            <div className="flex flex-wrap gap-2 sm:gap-4">
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="geometry_mode"
-                  checked={geometryMode === GeometryMode.LengthAngle}
-                  onChange={() => handleGeometryModeChange(GeometryMode.LengthAngle)}
-                  className="mr-2"
-                />
-                <span className="text-sm">Length + Angle</span>
+        {/* Two-column layout: inputs left, diagram right */}
+        <div className="flex flex-col lg:flex-row lg:gap-6">
+          {/* Left column: Inputs (25-30% width on desktop) */}
+          <div className="lg:w-[280px] lg:min-w-[260px] lg:max-w-[320px] flex-shrink-0 space-y-2.5">
+            {/* Bed Type */}
+            <div>
+              <label htmlFor="bed_type" className="label-compact">
+                Bed Type
               </label>
-              <label className="inline-flex items-center">
-                <input
-                  type="radio"
-                  name="geometry_mode"
-                  checked={geometryMode === GeometryMode.HorizontalAngle}
-                  onChange={() => handleGeometryModeChange(GeometryMode.HorizontalAngle)}
-                  className="mr-2"
-                />
-                <span className="text-sm">Horizontal + Angle</span>
+              <select
+                id="bed_type"
+                className="input-compact w-full"
+                value={(inputs as any).bed_type || BedType.SliderBed}
+                onChange={(e) => updateInput('bed_type' as any, e.target.value)}
+              >
+                <option value={BedType.SliderBed}>Slider Bed</option>
+                <option value={BedType.RollerBed}>Roller Bed</option>
+              </select>
+            </div>
+
+            {/* Input Mode */}
+            <div>
+              <label className="label-compact">Input Mode</label>
+              <SegmentedControl
+                name="geometry_mode"
+                value={geometryMode}
+                options={[
+                  { value: GeometryMode.LengthAngle, label: 'Length + Angle' },
+                  { value: GeometryMode.HorizontalAngle, label: 'Horizontal + Angle' },
+                ]}
+                onChange={handleGeometryModeChange}
+              />
+            </div>
+
+            {/* Belt Width */}
+            <div>
+              <label htmlFor="belt_width_in" className="label-compact">
+                Belt Width (in)
               </label>
-              </div>
-            <p className="text-xs text-gray-500 mt-1">
-              {geometryMode === GeometryMode.LengthAngle && 'Enter conveyor axis length (C-C) and incline angle.'}
-              {geometryMode === GeometryMode.HorizontalAngle && 'Enter horizontal run and incline angle.'}
-            </p>
-          </div>
+              <input
+                type="number"
+                id="belt_width_in"
+                className="input-compact w-28"
+                value={inputs.belt_width_in}
+                onChange={(e) => updateInput('belt_width_in', parseFloat(e.target.value) || 0)}
+                step="1"
+                min="0"
+                required
+              />
+            </div>
 
-          {/* Belt Width - always shown */}
-          <div>
-            <label htmlFor="belt_width_in" className="label">
-              Belt Width (in)
-            </label>
-            <input
-              type="number"
-              id="belt_width_in"
-              className="input"
-              value={inputs.belt_width_in}
-              onChange={(e) => updateInput('belt_width_in', parseFloat(e.target.value) || 0)}
-              step="1"
-              min="0"
-              required
-            />
-          </div>
-
-          {/* L_ANGLE mode: Conveyor Length + Angle editable */}
-          {geometryMode === GeometryMode.LengthAngle && (
-            <>
+            {/* Length C-C OR Horizontal Run */}
+            {geometryMode === GeometryMode.LengthAngle ? (
               <div>
-                <label htmlFor="conveyor_length_cc_in" className="label">
-                  Conveyor Length (C-C) (in)
+                <label htmlFor="conveyor_length_cc_in" className="label-compact">
+                  Length C-C (in)
                 </label>
                 <input
                   type="number"
                   id="conveyor_length_cc_in"
-                  className="input"
+                  className="input-compact w-28"
                   value={inputs.conveyor_length_cc_in}
                   onChange={(e) => updateInput('conveyor_length_cc_in', parseFloat(e.target.value) || 0)}
                   step="1"
                   min="0"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Axis length between pulley centers.</p>
               </div>
-
+            ) : (
               <div>
-                <label htmlFor="conveyor_incline_deg" className="label">
-                  Incline Angle (degrees)
-                </label>
-                <input
-                  type="number"
-                  id="conveyor_incline_deg"
-                  className="input"
-                  value={inputs.conveyor_incline_deg ?? 0}
-                  onChange={(e) =>
-                    updateInput('conveyor_incline_deg', parseFloat(e.target.value) || 0)
-                  }
-                  step="0.1"
-                  min="0"
-                />
-                <p className="text-xs text-gray-500 mt-1">0° = horizontal. Positive = incline toward drive.</p>
-              </div>
-            </>
-          )}
-
-          {/* H_ANGLE mode: Horizontal Run + Angle editable */}
-          {geometryMode === GeometryMode.HorizontalAngle && (
-            <>
-              <div>
-                <label htmlFor="horizontal_run_in" className="label">
+                <label htmlFor="horizontal_run_in" className="label-compact">
                   Horizontal Run (in)
                 </label>
                 <input
                   type="number"
                   id="horizontal_run_in"
-                  className="input"
+                  className="input-compact w-28"
                   value={inputs.horizontal_run_in ?? inputs.conveyor_length_cc_in}
                   onChange={(e) => updateInput('horizontal_run_in', parseFloat(e.target.value) || 0)}
                   step="1"
                   min="0"
                   required
                 />
-                <p className="text-xs text-gray-500 mt-1">Horizontal distance between pulley centers.</p>
               </div>
+            )}
 
-              <div>
-                <label htmlFor="conveyor_incline_deg" className="label">
-                  Incline Angle (degrees)
-                </label>
-                <input
-                  type="number"
-                  id="conveyor_incline_deg"
-                  className="input"
-                  value={inputs.conveyor_incline_deg ?? 0}
-                  onChange={(e) =>
-                    updateInput('conveyor_incline_deg', parseFloat(e.target.value) || 0)
-                  }
-                  step="0.1"
-                  min="0"
-                />
-                <p className="text-xs text-gray-500 mt-1">0° = horizontal. Positive = incline toward drive.</p>
-              </div>
-            </>
-          )}
+            {/* Incline Angle */}
+            <div>
+              <label htmlFor="conveyor_incline_deg" className="label-compact">
+                Incline Angle (deg)
+              </label>
+              <input
+                type="number"
+                id="conveyor_incline_deg"
+                className="input-compact w-28"
+                value={inputs.conveyor_incline_deg ?? 0}
+                onChange={(e) =>
+                  updateInput('conveyor_incline_deg', parseFloat(e.target.value) || 0)
+                }
+                step="0.1"
+                min="0"
+              />
+              <p className="text-[11px] text-gray-500 mt-0.5">0° = horizontal. Positive = incline.</p>
+            </div>
+          </div>
 
-          {/* Geometry Visualization - v2: dominant diagram replaces stat cards */}
-          <ConveyorGeometryVisualization
-            derivedGeometry={derivedGeometry}
-            geometryMode={geometryMode}
-          />
-
-          {/* Incline Warning removed - now rendered via useConfigureIssues system */}
+          {/* Right column: Diagram (fills remaining width) */}
+          <div className="flex-1 flex items-start mt-4 lg:mt-0">
+            <ConveyorGeometryVisualization
+              derivedGeometry={derivedGeometry}
+              geometryMode={geometryMode}
+            />
+          </div>
         </div>
+
+        {/* Incline Warning removed - now rendered via useConfigureIssues system */}
       </AccordionSection>
 
       {/* SECTION: Belt & Pulleys (merged from previous "Pulleys & Belt Interface" and "Belt & Tracking") */}

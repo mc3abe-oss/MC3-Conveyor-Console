@@ -64,12 +64,22 @@
     @apply w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
   }
 
+  /* Compact input variant for dense forms */
+  .input-compact {
+    @apply px-2.5 py-1.5 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent;
+  }
+
   .input-error {
     @apply border-red-500 focus:ring-red-500;
   }
 
   .label {
     @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+
+  /* Compact label variant for dense forms */
+  .label-compact {
+    @apply block text-xs font-medium text-gray-600 mb-0.5;
   }
 
   .card {

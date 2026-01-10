@@ -1,12 +1,11 @@
 /**
  * ConveyorGeometryVisualization - Primary geometry visualization
  *
- * Replaces DerivedGeometryCard with a dominant, intuitive SVG diagram.
- * The diagram IS the UI - numbers support it, not the other way around.
- *
- * Visual encoding (self-evident, no legend needed):
- * - Inputs: Solid lines, dark text, heavier stroke
- * - Derived: Blue text, dashed lines, lighter stroke
+ * Clean, professional SVG diagram showing conveyor geometry.
+ * Visual encoding:
+ * - Inputs: Solid lines, dark text
+ * - Derived: Blue text, dashed construction lines
+ * - Belt: Two parallel edge lines tangent to pulleys
  */
 
 'use client';
@@ -28,18 +27,14 @@ interface ConveyorGeometryVisualizationProps {
 
 // Visual constants
 const COLORS = {
-  input: '#1f2937',      // gray-800 - solid, authoritative
-  derived: '#2563eb',    // blue-600 - computed values
-  structure: '#6b7280',  // gray-500 - pulleys, structural elements
-  baseline: '#d1d5db',   // gray-300 - reference lines
-  belt: '#374151',       // gray-700 - belt surface
-  pulleyFill: '#f3f4f6', // gray-100 - pulley interior
-};
-
-const STROKES = {
-  inputWeight: 3,
-  derivedWeight: 2,
-  dashedPattern: '6,4',
+  input: '#1f2937',        // gray-800 - solid, authoritative
+  derived: '#3b82f6',      // blue-500 - computed values
+  construction: '#94a3b8', // slate-400 - construction lines (lighter)
+  pulley: '#64748b',       // slate-500 - pulley stroke
+  pulleyFill: '#f8fafc',   // slate-50 - pulley interior
+  pulleyCenter: '#475569', // slate-600 - center dot
+  belt: '#334155',         // slate-700 - belt edges
+  background: '#f8fafc',   // slate-50 - clean background
 };
 
 export default function ConveyorGeometryVisualization({
@@ -51,47 +46,50 @@ export default function ConveyorGeometryVisualization({
   // Determine which values are derived vs input based on geometry mode
   const isLDerived = geometryMode !== GeometryMode.LengthAngle;
   const isHDerived = geometryMode === GeometryMode.LengthAngle;
-  // Rise is always derived, Angle is always input
 
   // Check if flat (no incline)
   const isFlat = Math.abs(theta_deg) < 0.5;
 
-  // SVG dimensions - significantly larger than before
-  const svgWidth = 480;
-  const svgHeight = 240;
-  const padding = { top: 40, right: 60, bottom: 50, left: 40 };
+  // SVG dimensions - compact but well-filled
+  const svgWidth = 400;
+  const svgHeight = 180;
+  const padding = { top: 28, right: 50, bottom: 35, left: 35 };
 
   // Calculate diagram geometry
   const diagram = useMemo(() => {
     const availableWidth = svgWidth - padding.left - padding.right;
     const availableHeight = svgHeight - padding.top - padding.bottom;
 
-    // Pulley visual radius (for display, not to scale)
-    const pulleyRadius = 18;
+    // Pulley visual radius - 25% smaller than before (was 18, now ~13.5)
+    const pulleyRadius = 13;
+    // Belt visual thickness (half-width from centerline)
+    const beltHalfWidth = 3;
 
     // Scale to fit, maintaining proportions
     let displayH: number;
     let displayRise: number;
 
     if (isFlat) {
-      displayH = availableWidth - pulleyRadius * 2;
+      displayH = availableWidth - pulleyRadius * 2 - 20;
       displayRise = 0;
     } else {
-      // Fit within available space while maintaining aspect ratio
-      const scaleByWidth = (availableWidth - pulleyRadius * 2) / H_cc_in;
-      const scaleByHeight = (availableHeight - pulleyRadius * 2) / rise_in;
+      const scaleByWidth = (availableWidth - pulleyRadius * 2 - 20) / H_cc_in;
+      const scaleByHeight = (availableHeight - pulleyRadius * 2 - 10) / rise_in;
       const scale = Math.min(scaleByWidth, scaleByHeight);
 
       displayH = H_cc_in * scale;
       displayRise = rise_in * scale;
 
       // Ensure minimum visibility
-      displayH = Math.max(displayH, 100);
-      displayRise = Math.max(displayRise, 20);
+      displayH = Math.max(displayH, 80);
+      displayRise = Math.max(displayRise, 15);
     }
 
-    // Position pulleys
-    const tailX = padding.left + pulleyRadius;
+    // Position pulleys - center the diagram better
+    const totalWidth = displayH + pulleyRadius * 2;
+    const offsetX = (availableWidth - totalWidth) / 2;
+
+    const tailX = padding.left + offsetX + pulleyRadius;
     const tailY = svgHeight - padding.bottom - pulleyRadius;
     const driveX = tailX + displayH;
     const driveY = tailY - displayRise;
@@ -100,8 +98,25 @@ export default function ConveyorGeometryVisualization({
     const cornerX = driveX;
     const cornerY = tailY;
 
+    // Calculate belt tangent points for realistic belt edges
+    const angleRad = (theta_deg * Math.PI) / 180;
+    const perpAngle = angleRad + Math.PI / 2; // Perpendicular to belt direction
+
+    // Top belt edge tangent points
+    const topTailX = tailX + beltHalfWidth * Math.cos(perpAngle);
+    const topTailY = tailY - beltHalfWidth * Math.sin(perpAngle);
+    const topDriveX = driveX + beltHalfWidth * Math.cos(perpAngle);
+    const topDriveY = driveY - beltHalfWidth * Math.sin(perpAngle);
+
+    // Bottom belt edge tangent points
+    const bottomTailX = tailX - beltHalfWidth * Math.cos(perpAngle);
+    const bottomTailY = tailY + beltHalfWidth * Math.sin(perpAngle);
+    const bottomDriveX = driveX - beltHalfWidth * Math.cos(perpAngle);
+    const bottomDriveY = driveY + beltHalfWidth * Math.sin(perpAngle);
+
     return {
       pulleyRadius,
+      beltHalfWidth,
       tailX,
       tailY,
       driveX,
@@ -110,8 +125,11 @@ export default function ConveyorGeometryVisualization({
       cornerY,
       displayH,
       displayRise,
+      // Belt edge points
+      topTailX, topTailY, topDriveX, topDriveY,
+      bottomTailX, bottomTailY, bottomDriveX, bottomDriveY,
     };
-  }, [H_cc_in, rise_in, isFlat, svgWidth, svgHeight, padding]);
+  }, [H_cc_in, rise_in, isFlat, theta_deg, svgWidth, svgHeight, padding]);
 
   // Format values for display
   const formatLength = (val: number) => `${val.toFixed(1)}"`;
@@ -120,217 +138,246 @@ export default function ConveyorGeometryVisualization({
   // Calculate angle arc path
   const getAngleArcPath = () => {
     if (isFlat) return '';
-    const arcRadius = 35;
+    const arcRadius = 28;
     const angleRad = (theta_deg * Math.PI) / 180;
+    const startX = diagram.tailX + arcRadius;
+    const startY = diagram.tailY;
     const endX = diagram.tailX + arcRadius * Math.cos(angleRad);
     const endY = diagram.tailY - arcRadius * Math.sin(angleRad);
-    return `M ${diagram.tailX + arcRadius} ${diagram.tailY} A ${arcRadius} ${arcRadius} 0 0 0 ${endX} ${endY}`;
+    const largeArc = theta_deg > 180 ? 1 : 0;
+    return `M ${startX} ${startY} A ${arcRadius} ${arcRadius} 0 ${largeArc} 0 ${endX} ${endY}`;
   };
 
-  // Label positions with smart offsets
+  // Label positions
   const labels = useMemo(() => {
     const midBeltX = (diagram.tailX + diagram.driveX) / 2;
     const midBeltY = (diagram.tailY + diagram.driveY) / 2;
     const midHorizontalX = (diagram.tailX + diagram.cornerX) / 2;
 
+    // Calculate offset perpendicular to belt for L label
+    const angleRad = (theta_deg * Math.PI) / 180;
+    const labelOffset = 14;
+
     return {
-      // L label - along the belt (hypotenuse), offset above
       L: {
-        x: midBeltX - 15,
-        y: midBeltY - 12,
-        anchor: 'middle' as const,
+        x: midBeltX - labelOffset * Math.sin(angleRad),
+        y: midBeltY - labelOffset * Math.cos(angleRad) - 2,
       },
-      // H label - below the horizontal baseline
       H: {
         x: midHorizontalX,
-        y: diagram.tailY + 25,
-        anchor: 'middle' as const,
+        y: diagram.tailY + 18,
       },
-      // Rise label - to the right of the vertical line
       Rise: {
-        x: diagram.cornerX + 12,
+        x: diagram.cornerX + 10,
         y: (diagram.cornerY + diagram.driveY) / 2 + 4,
-        anchor: 'start' as const,
       },
-      // Angle label - near the arc
       Angle: {
-        x: diagram.tailX + 48,
-        y: diagram.tailY - 8,
-        anchor: 'start' as const,
+        x: diagram.tailX + 38,
+        y: diagram.tailY - 6,
       },
     };
-  }, [diagram]);
+  }, [diagram, theta_deg]);
 
   return (
-    <div className="mt-4 w-full">
+    <div className="w-full">
       <svg
         viewBox={`0 0 ${svgWidth} ${svgHeight}`}
         className="w-full h-auto"
-        style={{ minHeight: '200px', maxHeight: '280px' }}
-        aria-label="Conveyor geometry visualization showing length, horizontal run, rise, and angle"
+        aria-label="Conveyor geometry diagram"
       >
         {/* Background */}
-        <rect x="0" y="0" width={svgWidth} height={svgHeight} fill="#fafafa" rx="8" />
+        <rect x="0" y="0" width={svgWidth} height={svgHeight} fill={COLORS.background} rx="6" />
 
-        {/* Ground/baseline reference (light gray, always shown) */}
-        <line
-          x1={padding.left}
-          y1={diagram.tailY}
-          x2={svgWidth - padding.right}
-          y2={diagram.tailY}
-          stroke={COLORS.baseline}
-          strokeWidth="1"
-          strokeDasharray="2,2"
-        />
+        {/* === CONSTRUCTION LINES (dashed, lighter) === */}
 
-        {/* === GEOMETRY LINES === */}
-
-        {/* Horizontal run (H) - base of triangle */}
+        {/* Horizontal baseline reference */}
         <line
           x1={diagram.tailX}
           y1={diagram.tailY}
           x2={diagram.cornerX}
           y2={diagram.cornerY}
-          stroke={isHDerived ? COLORS.derived : COLORS.input}
-          strokeWidth={isHDerived ? STROKES.derivedWeight : STROKES.inputWeight}
-          strokeDasharray={isHDerived ? STROKES.dashedPattern : 'none'}
+          stroke={COLORS.construction}
+          strokeWidth="1.5"
+          strokeDasharray="4,3"
         />
 
-        {/* Rise - vertical line (always derived, dashed) */}
+        {/* Rise - vertical line (always derived) */}
         {!isFlat && (
           <line
             x1={diagram.cornerX}
             y1={diagram.cornerY}
             x2={diagram.driveX}
             y2={diagram.driveY}
-            stroke={COLORS.derived}
-            strokeWidth={STROKES.derivedWeight}
-            strokeDasharray={STROKES.dashedPattern}
+            stroke={COLORS.construction}
+            strokeWidth="1.5"
+            strokeDasharray="4,3"
           />
         )}
 
         {/* Right angle indicator */}
         {!isFlat && (
           <path
-            d={`M ${diagram.cornerX - 10} ${diagram.cornerY} L ${diagram.cornerX - 10} ${diagram.cornerY - 10} L ${diagram.cornerX} ${diagram.cornerY - 10}`}
+            d={`M ${diagram.cornerX - 8} ${diagram.cornerY} L ${diagram.cornerX - 8} ${diagram.cornerY - 8} L ${diagram.cornerX} ${diagram.cornerY - 8}`}
             fill="none"
-            stroke={COLORS.baseline}
+            stroke={COLORS.construction}
             strokeWidth="1"
           />
         )}
 
-        {/* L (C-C) - Belt/axis connecting pulleys (hypotenuse) */}
-        <line
-          x1={diagram.tailX}
-          y1={diagram.tailY}
-          x2={diagram.driveX}
-          y2={diagram.driveY}
-          stroke={isLDerived ? COLORS.derived : COLORS.input}
-          strokeWidth={isLDerived ? STROKES.derivedWeight + 1 : STROKES.inputWeight + 1}
-          strokeDasharray={isLDerived ? STROKES.dashedPattern : 'none'}
-        />
-
-        {/* Angle arc at tail pulley */}
+        {/* Angle arc */}
         {!isFlat && (
           <path
             d={getAngleArcPath()}
             fill="none"
             stroke={COLORS.input}
-            strokeWidth="2"
+            strokeWidth="1.5"
           />
         )}
 
+        {/* Small arrowhead on angle arc */}
+        {!isFlat && theta_deg > 3 && (
+          <polygon
+            points={(() => {
+              const arcRadius = 28;
+              const angleRad = (theta_deg * Math.PI) / 180;
+              const tipX = diagram.tailX + arcRadius * Math.cos(angleRad);
+              const tipY = diagram.tailY - arcRadius * Math.sin(angleRad);
+              // Arrow pointing along the arc tangent
+              const arrowAngle = angleRad + Math.PI / 2;
+              const arrowLen = 5;
+              const arrowWidth = 3;
+              const baseX = tipX - arrowLen * Math.cos(arrowAngle);
+              const baseY = tipY + arrowLen * Math.sin(arrowAngle);
+              const leftX = baseX + arrowWidth * Math.cos(angleRad);
+              const leftY = baseY - arrowWidth * Math.sin(angleRad);
+              const rightX = baseX - arrowWidth * Math.cos(angleRad);
+              const rightY = baseY + arrowWidth * Math.sin(angleRad);
+              return `${tipX},${tipY} ${leftX},${leftY} ${rightX},${rightY}`;
+            })()}
+            fill={COLORS.input}
+          />
+        )}
+
+        {/* === BELT EDGES (two parallel lines tangent to pulleys) === */}
+
+        {/* Top belt edge */}
+        <line
+          x1={diagram.topTailX}
+          y1={diagram.topTailY}
+          x2={diagram.topDriveX}
+          y2={diagram.topDriveY}
+          stroke={COLORS.belt}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+
+        {/* Bottom belt edge */}
+        <line
+          x1={diagram.bottomTailX}
+          y1={diagram.bottomTailY}
+          x2={diagram.bottomDriveX}
+          y2={diagram.bottomDriveY}
+          stroke={COLORS.belt}
+          strokeWidth="2"
+          strokeLinecap="round"
+        />
+
         {/* === PULLEYS === */}
 
-        {/* Tail pulley (left) */}
+        {/* Tail pulley */}
         <circle
           cx={diagram.tailX}
           cy={diagram.tailY}
           r={diagram.pulleyRadius}
           fill={COLORS.pulleyFill}
-          stroke={COLORS.structure}
-          strokeWidth="2"
+          stroke={COLORS.pulley}
+          strokeWidth="1.5"
         />
         <circle
           cx={diagram.tailX}
           cy={diagram.tailY}
-          r={4}
-          fill={COLORS.structure}
+          r={2.5}
+          fill={COLORS.pulleyCenter}
         />
 
-        {/* Drive pulley (right) */}
+        {/* Drive pulley */}
         <circle
           cx={diagram.driveX}
           cy={diagram.driveY}
           r={diagram.pulleyRadius}
           fill={COLORS.pulleyFill}
-          stroke={COLORS.structure}
-          strokeWidth="2"
+          stroke={COLORS.pulley}
+          strokeWidth="1.5"
         />
         <circle
           cx={diagram.driveX}
           cy={diagram.driveY}
-          r={4}
-          fill={COLORS.structure}
+          r={2.5}
+          fill={COLORS.pulleyCenter}
         />
 
-        {/* Direction arrow on drive pulley */}
+        {/* Direction arrow on drive */}
         <path
-          d={`M ${diagram.driveX + diagram.pulleyRadius + 5} ${diagram.driveY - 3} l 8 3 l -8 3`}
-          fill={COLORS.structure}
+          d={`M ${diagram.driveX + diagram.pulleyRadius + 4} ${diagram.driveY - 2} l 6 2 l -6 2`}
+          fill={COLORS.pulley}
         />
 
         {/* === LABELS === */}
 
-        {/* Pulley labels */}
+        {/* Pulley labels - positioned better */}
         <text
           x={diagram.tailX}
-          y={diagram.tailY + diagram.pulleyRadius + 16}
+          y={diagram.tailY + diagram.pulleyRadius + 12}
           textAnchor="middle"
-          className="text-xs font-medium"
-          fill={COLORS.structure}
+          fontSize="10"
+          fontWeight="500"
+          fill={COLORS.pulley}
         >
           TAIL
         </text>
         <text
           x={diagram.driveX}
-          y={diagram.driveY - diagram.pulleyRadius - 8}
+          y={diagram.driveY - diagram.pulleyRadius - 6}
           textAnchor="middle"
-          className="text-xs font-medium"
-          fill={COLORS.structure}
+          fontSize="10"
+          fontWeight="500"
+          fill={COLORS.pulley}
         >
           DRIVE
         </text>
 
-        {/* L (C-C) label - along belt */}
+        {/* L (C-C) label - on the belt line */}
         <text
           x={labels.L.x}
           y={labels.L.y}
-          textAnchor={labels.L.anchor}
-          className="text-sm font-semibold"
+          textAnchor="middle"
+          fontSize="12"
+          fontWeight="600"
           fill={isLDerived ? COLORS.derived : COLORS.input}
         >
           L = {formatLength(L_cc_in)}
         </text>
 
-        {/* H (Horizontal) label - below baseline */}
+        {/* H label - on the horizontal line */}
         <text
           x={labels.H.x}
           y={labels.H.y}
-          textAnchor={labels.H.anchor}
-          className="text-sm font-semibold"
+          textAnchor="middle"
+          fontSize="11"
+          fontWeight="500"
           fill={isHDerived ? COLORS.derived : COLORS.input}
         >
           H = {formatLength(H_cc_in)}
         </text>
 
-        {/* Rise label - beside vertical */}
-        {!isFlat && diagram.displayRise > 30 && (
+        {/* Rise label - on the vertical line */}
+        {!isFlat && diagram.displayRise > 25 && (
           <text
             x={labels.Rise.x}
             y={labels.Rise.y}
-            textAnchor={labels.Rise.anchor}
-            className="text-sm font-semibold"
+            textAnchor="start"
+            fontSize="11"
+            fontWeight="500"
             fill={COLORS.derived}
           >
             Rise = {formatLength(rise_in)}
@@ -342,8 +389,9 @@ export default function ConveyorGeometryVisualization({
           <text
             x={labels.Angle.x}
             y={labels.Angle.y}
-            textAnchor={labels.Angle.anchor}
-            className="text-sm font-semibold"
+            textAnchor="start"
+            fontSize="11"
+            fontWeight="600"
             fill={COLORS.input}
           >
             {formatAngle(theta_deg)}
@@ -354,25 +402,14 @@ export default function ConveyorGeometryVisualization({
         {isFlat && (
           <text
             x={svgWidth / 2}
-            y={svgHeight - 15}
+            y={svgHeight - 8}
             textAnchor="middle"
-            className="text-xs"
-            fill={COLORS.structure}
+            fontSize="10"
+            fill={COLORS.construction}
           >
-            Horizontal Conveyor (0° incline)
+            Horizontal (0°)
           </text>
         )}
-
-        {/* Mode indicator - subtle, bottom right */}
-        <text
-          x={svgWidth - padding.right}
-          y={svgHeight - 10}
-          textAnchor="end"
-          className="text-[10px]"
-          fill="#9ca3af"
-        >
-          {geometryMode === GeometryMode.LengthAngle ? 'L+Angle mode' : 'H+Angle mode'}
-        </text>
       </svg>
     </div>
   );
