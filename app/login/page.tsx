@@ -6,18 +6,32 @@ import { createClient } from '../../src/lib/supabase/browser';
 import { getAuthCallbackUrl } from '../../src/lib/auth/canonical-url';
 import Link from 'next/link';
 import MC3Logo from '../components/MC3Logo';
+import SegmentedControl from '../components/SegmentedControl';
 import { APP_NAME } from '../../src/lib/brand';
+
+type AuthMode = 'magic_link' | 'password';
+
+const AUTH_MODE_OPTIONS = [
+  { value: 'magic_link' as const, label: 'Email link' },
+  { value: 'password' as const, label: 'Password' },
+];
 
 export default function LoginPage() {
   const router = useRouter();
+  const [authMode, setAuthMode] = useState<AuthMode>('magic_link');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleModeChange = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setPassword('');
+    setError(null);
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -40,14 +54,16 @@ export default function LoginPage() {
     router.refresh();
   };
 
-  const handleMagicLink = async () => {
+  const handleMagicLinkSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!email.trim()) {
-      setError('Please enter your email address first.');
+      setError('Please enter your email address.');
       return;
     }
 
     setError(null);
-    setIsSendingMagicLink(true);
+    setIsLoading(true);
 
     const supabase = createClient();
     const emailRedirectTo = getAuthCallbackUrl();
@@ -62,13 +78,15 @@ export default function LoginPage() {
 
     if (otpError) {
       setError(otpError.message);
-      setIsSendingMagicLink(false);
+      setIsLoading(false);
       return;
     }
 
     setMagicLinkSent(true);
-    setIsSendingMagicLink(false);
+    setIsLoading(false);
   };
+
+  const handleSubmit = authMode === 'password' ? handlePasswordSubmit : handleMagicLinkSubmit;
 
   // Show success message after magic link sent
   if (magicLinkSent) {
@@ -131,6 +149,16 @@ export default function LoginPage() {
               </div>
             </div>
 
+            {/* Auth Mode Toggle */}
+            <div className="flex justify-center">
+              <SegmentedControl
+                name="auth-mode"
+                value={authMode}
+                options={AUTH_MODE_OPTIONS}
+                onChange={handleModeChange}
+              />
+            </div>
+
             <form className="space-y-5" onSubmit={handleSubmit}>
               {error && (
                 <div className="rounded-md bg-red-50 p-4">
@@ -156,21 +184,23 @@ export default function LoginPage() {
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="password" className="label">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="current-password"
-                    required
-                    className="input"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
+                {authMode === 'password' && (
+                  <div>
+                    <label htmlFor="password" className="label">
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      autoComplete="current-password"
+                      required
+                      className="input"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -179,38 +209,24 @@ export default function LoginPage() {
                   disabled={isLoading}
                   className="w-full btn btn-primary py-3"
                 >
-                  {isLoading ? 'Signing in...' : 'Sign in'}
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">or</span>
-                </div>
-              </div>
-
-              {/* Magic Link Button */}
-              <div>
-                <button
-                  type="button"
-                  onClick={handleMagicLink}
-                  disabled={isSendingMagicLink}
-                  className="w-full btn btn-secondary py-3"
-                >
-                  {isSendingMagicLink ? 'Sending...' : 'Send me a magic link'}
+                  {isLoading
+                    ? authMode === 'password'
+                      ? 'Signing in...'
+                      : 'Sending...'
+                    : authMode === 'password'
+                      ? 'Sign in'
+                      : 'Send me a magic link'}
                 </button>
               </div>
 
               <div className="text-center text-sm space-y-2">
-                <div>
-                  <Link href="/forgot-password" className="text-primary-600 hover:text-primary-500 font-medium">
-                    Forgot your password?
-                  </Link>
-                </div>
+                {authMode === 'password' && (
+                  <div>
+                    <Link href="/forgot-password" className="text-primary-600 hover:text-primary-500 font-medium">
+                      Forgot your password?
+                    </Link>
+                  </div>
+                )}
                 <div>
                   <span className="text-gray-600">Don&apos;t have an account? </span>
                   <Link href="/signup" className="text-primary-600 hover:text-primary-500 font-medium">

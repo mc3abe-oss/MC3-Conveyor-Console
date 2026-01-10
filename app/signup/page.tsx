@@ -5,19 +5,34 @@ import { createClient } from '../../src/lib/supabase/browser';
 import { getAuthCallbackUrl, logAuthEmailUrlSource } from '../../src/lib/auth/canonical-url';
 import Link from 'next/link';
 import MC3Logo from '../components/MC3Logo';
+import SegmentedControl from '../components/SegmentedControl';
 import { APP_NAME } from '../../src/lib/brand';
 
 const ALLOWED_DOMAINS = ['@mc3mfg.com', '@clearcode.ca'];
 
+type AuthMode = 'magic_link' | 'password';
+
+const AUTH_MODE_OPTIONS = [
+  { value: 'magic_link' as const, label: 'Email link' },
+  { value: 'password' as const, label: 'Password' },
+];
+
 export default function SignupPage() {
+  const [authMode, setAuthMode] = useState<AuthMode>('magic_link');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
-  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
   const [magicLinkSent, setMagicLinkSent] = useState(false);
+
+  const handleModeChange = (mode: AuthMode) => {
+    setAuthMode(mode);
+    setPassword('');
+    setConfirmPassword('');
+    setError(null);
+  };
 
   const validateEmail = (email: string): string | null => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -27,9 +42,11 @@ export default function SignupPage() {
     return null;
   };
 
-  const handleMagicLinkSignup = async () => {
+  const handleMagicLinkSignup = async (e: React.FormEvent) => {
+    e.preventDefault();
+
     if (!email.trim()) {
-      setError('Please enter your email address first.');
+      setError('Please enter your email address.');
       return;
     }
 
@@ -40,7 +57,7 @@ export default function SignupPage() {
     }
 
     setError(null);
-    setIsSendingMagicLink(true);
+    setIsLoading(true);
 
     const supabase = createClient();
     const emailRedirectTo = getAuthCallbackUrl();
@@ -59,15 +76,15 @@ export default function SignupPage() {
       } else {
         setError(otpError.message);
       }
-      setIsSendingMagicLink(false);
+      setIsLoading(false);
       return;
     }
 
     setMagicLinkSent(true);
-    setIsSendingMagicLink(false);
+    setIsLoading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setIsLoading(true);
@@ -122,6 +139,8 @@ export default function SignupPage() {
     setSuccess(true);
     setIsLoading(false);
   };
+
+  const handleSubmit = authMode === 'password' ? handlePasswordSignup : handleMagicLinkSignup;
 
   if (success || magicLinkSent) {
     return (
@@ -183,6 +202,16 @@ export default function SignupPage() {
               </div>
             </div>
 
+            {/* Auth Mode Toggle */}
+            <div className="flex justify-center">
+              <SegmentedControl
+                name="auth-mode"
+                value={authMode}
+                options={AUTH_MODE_OPTIONS}
+                onChange={handleModeChange}
+              />
+            </div>
+
             <form className="space-y-5" onSubmit={handleSubmit}>
               {error && (
                 <div className="rounded-md bg-red-50 p-4">
@@ -208,38 +237,42 @@ export default function SignupPage() {
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="password" className="label">
-                    Password
-                  </label>
-                  <input
-                    id="password"
-                    name="password"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    className="input"
-                    placeholder="At least 6 characters"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </div>
+                {authMode === 'password' && (
+                  <>
+                    <div>
+                      <label htmlFor="password" className="label">
+                        Password
+                      </label>
+                      <input
+                        id="password"
+                        name="password"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        className="input"
+                        placeholder="At least 6 characters"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                      />
+                    </div>
 
-                <div>
-                  <label htmlFor="confirmPassword" className="label">
-                    Confirm password
-                  </label>
-                  <input
-                    id="confirmPassword"
-                    name="confirmPassword"
-                    type="password"
-                    autoComplete="new-password"
-                    required
-                    className="input"
-                    value={confirmPassword}
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                  />
-                </div>
+                    <div>
+                      <label htmlFor="confirmPassword" className="label">
+                        Confirm password
+                      </label>
+                      <input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        autoComplete="new-password"
+                        required
+                        className="input"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                      />
+                    </div>
+                  </>
+                )}
               </div>
 
               <div>
@@ -248,29 +281,13 @@ export default function SignupPage() {
                   disabled={isLoading}
                   className="w-full btn btn-primary py-3"
                 >
-                  {isLoading ? 'Creating account...' : 'Create account'}
-                </button>
-              </div>
-
-              {/* Divider */}
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-gray-300" />
-                </div>
-                <div className="relative flex justify-center text-sm">
-                  <span className="px-2 bg-white text-gray-500">or</span>
-                </div>
-              </div>
-
-              {/* Magic Link Button */}
-              <div>
-                <button
-                  type="button"
-                  onClick={handleMagicLinkSignup}
-                  disabled={isSendingMagicLink}
-                  className="w-full btn btn-secondary py-3"
-                >
-                  {isSendingMagicLink ? 'Sending...' : 'Sign up with magic link'}
+                  {isLoading
+                    ? authMode === 'password'
+                      ? 'Creating account...'
+                      : 'Sending...'
+                    : authMode === 'password'
+                      ? 'Create account'
+                      : 'Sign up with magic link'}
                 </button>
               </div>
 
