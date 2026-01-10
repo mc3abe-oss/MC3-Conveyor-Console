@@ -75,8 +75,8 @@ export interface SummaryV2 {
   actual_belt_speed_fpm?: number | null;
   /** Actual belt speed delta percentage vs desired (v1.38) */
   actual_belt_speed_delta_pct?: number | null;
-  /** Speed error in FPM (actual - desired) (v1.39) */
-  speed_error_fpm?: number | null;
+  /** Speed difference in FPM (actual - desired) (v1.39) - informational only */
+  speed_difference_fpm?: number | null;
   /** Actual drive shaft RPM from selected gearmotor */
   actual_drive_shaft_rpm?: number | null;
   /** Warning code from speed calculation (if any) */

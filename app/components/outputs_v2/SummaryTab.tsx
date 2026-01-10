@@ -109,14 +109,12 @@ export default function SummaryTab({ outputs }: SummaryTabProps) {
                     ? ` (${summary.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${summary.actual_belt_speed_delta_pct.toFixed(1)}%)`
                     : undefined
                 }
-                warning={Math.abs(summary.actual_belt_speed_delta_pct ?? 0) > 5}
               />
               <SummaryField
-                label="Speed Error"
-                value={summary.speed_error_fpm}
+                label="Speed Difference"
+                value={summary.speed_difference_fpm}
                 unit="FPM"
                 decimals={2}
-                warning={summary.speed_error_fpm != null && Math.abs(summary.speed_error_fpm) > 1}
               />
             </>
           )}

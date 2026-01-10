@@ -216,11 +216,8 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             {/* Row 2: Actual values (only show when gearmotor is selected) */}
             {hasOutputs && outputs.actual_belt_speed_fpm != null && (
               <div className="mt-3 pt-3 border-t border-gray-200">
-                <div className="flex items-center gap-2 mb-2">
-                  <span className="text-xs font-medium text-blue-600">Selected Gearmotor</span>
-                  {outputs.actual_speed_warning_code === 'SPEED_DELTA_HIGH' && (
-                    <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Speed delta &gt; 5%</span>
-                  )}
+                <div className="mb-2">
+                  <span className="text-xs font-medium text-gray-600">From Selected Gearmotor</span>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
@@ -236,26 +233,16 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                     </span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Speed Error</span>
-                    <span className={`font-mono font-semibold ${
-                      outputs.speed_error_fpm != null && Math.abs(outputs.speed_error_fpm) > 0.1
-                        ? outputs.speed_error_fpm > 0 ? 'text-blue-600' : 'text-amber-600'
-                        : 'text-gray-900'
-                    }`}>
-                      {outputs.speed_error_fpm != null
-                        ? `${outputs.speed_error_fpm > 0 ? '+' : ''}${outputs.speed_error_fpm.toFixed(1)} FPM`
+                    <span className="text-xs text-gray-500 block">Difference (FPM)</span>
+                    <span className="font-mono font-semibold text-gray-900">
+                      {outputs.speed_difference_fpm != null
+                        ? `${outputs.speed_difference_fpm > 0 ? '+' : ''}${outputs.speed_difference_fpm.toFixed(1)}`
                         : '—'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500 block">Speed Delta</span>
-                    <span className={`font-mono font-semibold ${
-                      outputs.actual_belt_speed_delta_pct != null && Math.abs(outputs.actual_belt_speed_delta_pct) > 5
-                        ? 'text-amber-600'
-                        : outputs.actual_belt_speed_delta_pct != null && Math.abs(outputs.actual_belt_speed_delta_pct) > 0.1
-                        ? outputs.actual_belt_speed_delta_pct > 0 ? 'text-blue-600' : 'text-amber-600'
-                        : 'text-gray-900'
-                    }`}>
+                    <span className="text-xs text-gray-500 block">Difference (%)</span>
+                    <span className="font-mono font-semibold text-gray-900">
                       {outputs.actual_belt_speed_delta_pct != null
                         ? `${outputs.actual_belt_speed_delta_pct > 0 ? '+' : ''}${outputs.actual_belt_speed_delta_pct.toFixed(1)}%`
                         : '—'}
@@ -313,33 +300,15 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   </span>
                 </div>
               </div>
-              {/* Show actual/selected RPM when gearmotor is selected */}
+              {/* Show selected RPM when gearmotor is selected */}
               {inputs.actual_gearmotor_output_rpm != null && (
                 <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 gap-4">
                   <div>
                     <span className="text-xs text-gray-500 block">Selected GM Output RPM</span>
-                    <span className="font-mono font-semibold text-blue-600">
+                    <span className="font-mono font-semibold text-gray-900">
                       {inputs.actual_gearmotor_output_rpm.toFixed(1)}
                     </span>
                   </div>
-                  {outputs.actual_belt_speed_delta_pct != null && (
-                    <div>
-                      <span className="text-xs text-gray-500 block">Speed Match</span>
-                      <span className={`font-mono font-semibold ${
-                        Math.abs(outputs.actual_belt_speed_delta_pct) <= 2
-                          ? 'text-green-600'
-                          : Math.abs(outputs.actual_belt_speed_delta_pct) <= 5
-                          ? 'text-amber-600'
-                          : 'text-red-600'
-                      }`}>
-                        {Math.abs(outputs.actual_belt_speed_delta_pct) <= 2
-                          ? 'Excellent'
-                          : Math.abs(outputs.actual_belt_speed_delta_pct) <= 5
-                          ? 'Acceptable'
-                          : 'Review needed'}
-                      </span>
-                    </div>
-                  )}
                   <div>
                     <span className="text-xs text-gray-500 block">Friction Coeff Used</span>
                     <span className="font-mono font-semibold text-gray-900">

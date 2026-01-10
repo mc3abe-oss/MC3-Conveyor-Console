@@ -262,37 +262,37 @@ describe('calculateSpeedDeltaPct', () => {
   });
 });
 
-describe('speed_error_fpm calculation (v1.39)', () => {
-  it('should calculate positive error when actual is faster', () => {
+describe('speed_difference_fpm calculation (v1.39)', () => {
+  it('should calculate positive difference when actual is faster', () => {
     const desiredFpm = 50;
     const actualFpm = 55;
-    const speedErrorFpm = actualFpm - desiredFpm;
+    const speedDifferenceFpm = actualFpm - desiredFpm;
 
-    expect(speedErrorFpm).toBe(5);
+    expect(speedDifferenceFpm).toBe(5);
   });
 
-  it('should calculate negative error when actual is slower', () => {
+  it('should calculate negative difference when actual is slower', () => {
     const desiredFpm = 50;
     const actualFpm = 45;
-    const speedErrorFpm = actualFpm - desiredFpm;
+    const speedDifferenceFpm = actualFpm - desiredFpm;
 
-    expect(speedErrorFpm).toBe(-5);
+    expect(speedDifferenceFpm).toBe(-5);
   });
 
   it('should be zero when speeds match exactly', () => {
     const desiredFpm = 50;
     const actualFpm = 50;
-    const speedErrorFpm = actualFpm - desiredFpm;
+    const speedDifferenceFpm = actualFpm - desiredFpm;
 
-    expect(speedErrorFpm).toBe(0);
+    expect(speedDifferenceFpm).toBe(0);
   });
 
-  it('should calculate error with decimal precision', () => {
+  it('should calculate difference with decimal precision', () => {
     const desiredFpm = 50.5;
     const actualFpm = 52.3;
-    const speedErrorFpm = actualFpm - desiredFpm;
+    const speedDifferenceFpm = actualFpm - desiredFpm;
 
-    expect(speedErrorFpm).toBeCloseTo(1.8, 2);
+    expect(speedDifferenceFpm).toBeCloseTo(1.8, 2);
   });
 });
 
@@ -359,7 +359,7 @@ describe('integration: full speed chain', () => {
     expect(result.warningCode).toBe('SPROCKET_TEETH_MISSING');
   });
 
-  it('should calculate speed_error_fpm correctly in integration scenario', () => {
+  it('should calculate speed_difference_fpm correctly in integration scenario', () => {
     // Example from NORD selection:
     // Desired: 50 FPM, NORD at 66.7 RPM, bottom mount with 18T/24T chain, 4" pulley
     const nordRpm = 66.7;
@@ -371,16 +371,16 @@ describe('integration: full speed chain', () => {
     const result = calculateActualBeltSpeed(nordRpm, pulleyDia, gmTeeth, driveTeeth, true);
     const actualFpm = result.actualBeltSpeedFpm!;
 
-    // Calculate speed error (actual - desired)
-    const speedErrorFpm = actualFpm - desiredFpm;
+    // Calculate speed difference (actual - desired)
+    const speedDifferenceFpm = actualFpm - desiredFpm;
 
     // Actual is ~52.4 FPM, desired is 50 FPM
-    // Speed error should be positive ~2.4 FPM
-    expect(speedErrorFpm).toBeGreaterThan(0);
-    expect(speedErrorFpm).toBeCloseTo(2.4, 0);
+    // Speed difference should be positive ~2.4 FPM
+    expect(speedDifferenceFpm).toBeGreaterThan(0);
+    expect(speedDifferenceFpm).toBeCloseTo(2.4, 0);
 
     // Verify delta percent matches
     const deltaPct = calculateSpeedDeltaPct(desiredFpm, actualFpm);
-    expect(deltaPct).toBeCloseTo((speedErrorFpm / desiredFpm) * 100, 2);
+    expect(deltaPct).toBeCloseTo((speedDifferenceFpm / desiredFpm) * 100, 2);
   });
 });

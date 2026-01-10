@@ -175,15 +175,13 @@ export default function CalculationResults({ result, inputs }: Props) {
                         ? ` (${outputs.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${outputs.actual_belt_speed_delta_pct.toFixed(1)}%)`
                         : undefined
                     }
-                    warning={Math.abs(outputs.actual_belt_speed_delta_pct ?? 0) > 5}
                   />
                   <ResultRow
-                    label="Speed Error"
-                    value={outputs.speed_error_fpm}
+                    label="Speed Difference"
+                    value={outputs.speed_difference_fpm}
                     unit="FPM"
                     decimals={2}
                     highlight
-                    warning={outputs.speed_error_fpm != null && Math.abs(outputs.speed_error_fpm) > 1}
                   />
                 </>
               )}

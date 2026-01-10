@@ -2346,13 +2346,14 @@ export interface SliderbedOutputs {
   actual_belt_speed_delta_pct?: number | null;
 
   /**
-   * Speed error in FPM (v1.39)
+   * Speed difference in FPM (v1.39)
    * = actual_belt_speed_fpm - belt_speed_fpm
-   * The absolute FPM difference between actual and desired belt speed.
+   * The FPM difference between actual and desired belt speed.
    * Positive = faster than desired, Negative = slower than desired.
    * Null when actual_belt_speed_fpm is null.
+   * Informational only - no judgment or warnings.
    */
-  speed_error_fpm?: number | null;
+  speed_difference_fpm?: number | null;
 
   /**
    * Actual drive shaft RPM (v1.38)
@@ -2369,7 +2370,6 @@ export interface SliderbedOutputs {
    *   ACTUAL_GM_RPM_INVALID - gearmotor RPM was 0
    *   PULLEY_DIAMETER_MISSING - pulley diameter not configured
    *   SPROCKET_TEETH_MISSING - sprocket teeth not configured for bottom mount
-   *   SPEED_DELTA_HIGH - |actual - desired| > 5% (soft warning, informational)
    * Null when calculation succeeded with no warnings.
    */
   actual_speed_warning_code?: string | null;
