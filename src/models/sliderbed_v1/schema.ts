@@ -2346,6 +2346,15 @@ export interface SliderbedOutputs {
   actual_belt_speed_delta_pct?: number | null;
 
   /**
+   * Speed error in FPM (v1.39)
+   * = actual_belt_speed_fpm - belt_speed_fpm
+   * The absolute FPM difference between actual and desired belt speed.
+   * Positive = faster than desired, Negative = slower than desired.
+   * Null when actual_belt_speed_fpm is null.
+   */
+  speed_error_fpm?: number | null;
+
+  /**
    * Actual drive shaft RPM (v1.38)
    * = gearmotor_output_rpm * drive_ratio
    * where drive_ratio = gm_sprocket_teeth / drive_shaft_sprocket_teeth (for bottom mount)

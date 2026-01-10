@@ -155,27 +155,37 @@ export default function CalculationResults({ result, inputs }: Props) {
                 highlight
               />
               <ResultRow
-                label="Belt Speed"
+                label="Desired Belt Speed"
                 value={outputs.belt_speed_fpm}
                 unit="FPM"
                 decimals={2}
                 highlight
               />
-              {/* v1.38: Actual Belt Speed from selected gearmotor */}
+              {/* v1.39: Full speed chain when gearmotor is selected */}
               {outputs.actual_belt_speed_fpm !== null && outputs.actual_belt_speed_fpm !== undefined && (
-                <ResultRow
-                  label="Actual Belt Speed"
-                  value={outputs.actual_belt_speed_fpm}
-                  unit="FPM"
-                  decimals={2}
-                  highlight
-                  suffix={
-                    outputs.actual_belt_speed_delta_pct !== null && outputs.actual_belt_speed_delta_pct !== undefined
-                      ? ` (${outputs.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${outputs.actual_belt_speed_delta_pct.toFixed(1)}%)`
-                      : undefined
-                  }
-                  warning={Math.abs(outputs.actual_belt_speed_delta_pct ?? 0) > 5}
-                />
+                <>
+                  <ResultRow
+                    label="Actual Belt Speed"
+                    value={outputs.actual_belt_speed_fpm}
+                    unit="FPM"
+                    decimals={2}
+                    highlight
+                    suffix={
+                      outputs.actual_belt_speed_delta_pct !== null && outputs.actual_belt_speed_delta_pct !== undefined
+                        ? ` (${outputs.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${outputs.actual_belt_speed_delta_pct.toFixed(1)}%)`
+                        : undefined
+                    }
+                    warning={Math.abs(outputs.actual_belt_speed_delta_pct ?? 0) > 5}
+                  />
+                  <ResultRow
+                    label="Speed Error"
+                    value={outputs.speed_error_fpm}
+                    unit="FPM"
+                    decimals={2}
+                    highlight
+                    warning={outputs.speed_error_fpm != null && Math.abs(outputs.speed_error_fpm) > 1}
+                  />
+                </>
               )}
               <ResultRow
                 label="Drive Shaft RPM"

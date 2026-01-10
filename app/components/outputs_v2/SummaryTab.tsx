@@ -95,21 +95,30 @@ export default function SummaryTab({ outputs }: SummaryTabProps) {
         <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <SummaryField label="Type" value={summary.conveyor_type} capitalize />
           <SummaryField label="Duty" value={summary.duty} capitalize />
-          <SummaryField label="Belt Speed" value={summary.belt_speed_fpm} unit="FPM" decimals={1} />
-          {/* v1.38: Actual Belt Speed from selected gearmotor */}
+          <SummaryField label="Desired Belt Speed" value={summary.belt_speed_fpm} unit="FPM" decimals={1} />
+          {/* v1.39: Actual Belt Speed from selected gearmotor */}
           {summary.actual_belt_speed_fpm !== null && summary.actual_belt_speed_fpm !== undefined && (
-            <SummaryField
-              label="Actual Belt Speed"
-              value={summary.actual_belt_speed_fpm}
-              unit="FPM"
-              decimals={1}
-              suffix={
-                summary.actual_belt_speed_delta_pct !== null && summary.actual_belt_speed_delta_pct !== undefined
-                  ? ` (${summary.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${summary.actual_belt_speed_delta_pct.toFixed(1)}%)`
-                  : undefined
-              }
-              warning={Math.abs(summary.actual_belt_speed_delta_pct ?? 0) > 5}
-            />
+            <>
+              <SummaryField
+                label="Actual Belt Speed"
+                value={summary.actual_belt_speed_fpm}
+                unit="FPM"
+                decimals={1}
+                suffix={
+                  summary.actual_belt_speed_delta_pct !== null && summary.actual_belt_speed_delta_pct !== undefined
+                    ? ` (${summary.actual_belt_speed_delta_pct >= 0 ? '+' : ''}${summary.actual_belt_speed_delta_pct.toFixed(1)}%)`
+                    : undefined
+                }
+                warning={Math.abs(summary.actual_belt_speed_delta_pct ?? 0) > 5}
+              />
+              <SummaryField
+                label="Speed Error"
+                value={summary.speed_error_fpm}
+                unit="FPM"
+                decimals={2}
+                warning={summary.speed_error_fpm != null && Math.abs(summary.speed_error_fpm) > 1}
+              />
+            </>
           )}
           <SummaryField label="Center Distance" value={summary.center_distance_in} unit="in" decimals={1} />
           <SummaryField label="Overall Length" value={summary.overall_length_in} unit="in" decimals={1} />

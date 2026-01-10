@@ -36,6 +36,7 @@ export function exportOutputsV2ToJSON(outputs: OutputsV2, pretty = true): string
     'belt_speed_fpm',
     'actual_belt_speed_fpm', // v1.38
     'actual_belt_speed_delta_pct', // v1.38
+    'speed_error_fpm', // v1.39
     'center_distance_in',
     'overall_length_in',
     'incline_deg',

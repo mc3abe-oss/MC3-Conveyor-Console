@@ -19,13 +19,11 @@ import {
   SliderbedInputs,
   SliderbedOutputs,
   GearmotorMountingStyle,
-  SpeedMode,
   SensorOption,
   DirectionMode,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateDriveShaftRpm,
-  calculateBeltSpeed,
 } from '../../src/models/sliderbed_v1/formulas';
 import CatalogSelect from './CatalogSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
@@ -69,31 +67,17 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
     updateInput('sensor_options', current.filter((o) => o !== option));
   };
 
-  // Calculate display values
+  // Calculate display values (v1.39: single belt speed workflow)
   const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
   const motorRpm = inputs.motor_rpm ?? 1750;
 
-  const displayDriveRpm = (() => {
-    if ((inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed) {
-      if (inputs.belt_speed_fpm > 0 && pulleyDia > 0) {
-        return calculateDriveShaftRpm(inputs.belt_speed_fpm, pulleyDia);
-      }
-    } else {
-      return inputs.drive_rpm_input ?? inputs.drive_rpm;
-    }
-    return 0;
-  })();
+  // Required Drive RPM from desired belt speed
+  const displayDriveRpm = inputs.belt_speed_fpm > 0 && pulleyDia > 0
+    ? calculateDriveShaftRpm(inputs.belt_speed_fpm, pulleyDia)
+    : 0;
 
-  const displayBeltSpeed = (() => {
-    if ((inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed) {
-      return inputs.belt_speed_fpm;
-    } else {
-      if ((inputs.drive_rpm_input ?? inputs.drive_rpm) > 0 && pulleyDia > 0) {
-        return calculateBeltSpeed(inputs.drive_rpm_input ?? inputs.drive_rpm, pulleyDia);
-      }
-    }
-    return 0;
-  })();
+  // Desired belt speed (user input)
+  const displayBeltSpeed = inputs.belt_speed_fpm;
 
   const displayGearRatio = displayDriveRpm > 0 ? motorRpm / displayDriveRpm : 0;
 
@@ -153,77 +137,25 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
         <div className="space-y-4">
           {/* Speed Definition Inputs - Inline */}
           <div className="grid grid-cols-1 gap-4">
-            {/* Speed Mode Selector */}
+            {/* Desired Belt Speed - Single workflow (v1.39) */}
             <div>
-              <label className="label">Speed Mode</label>
-              <div className="flex gap-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="speed_mode"
-                    checked={(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed}
-                    onChange={() => updateInput('speed_mode', SpeedMode.BeltSpeed)}
-                    className="mr-2"
-                  />
-                  Specify Belt Speed
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="speed_mode"
-                    checked={inputs.speed_mode === SpeedMode.DriveRpm}
-                    onChange={() => updateInput('speed_mode', SpeedMode.DriveRpm)}
-                    className="mr-2"
-                  />
-                  Specify Drive RPM
-                </label>
-              </div>
+              <label htmlFor="belt_speed_fpm" className="label">
+                Desired Belt Speed (FPM) <span className="text-primary-600">*</span>
+              </label>
+              <input
+                type="number"
+                id="belt_speed_fpm"
+                className="input"
+                value={inputs.belt_speed_fpm}
+                onChange={(e) => updateInput('belt_speed_fpm', parseFloat(e.target.value) || 0)}
+                step="0.01"
+                min="0"
+                required
+              />
               <p className="text-xs text-gray-500 mt-1">
-                Primary workflow: specify Belt Speed and Motor RPM to calculate Drive RPM and Gear Ratio
+                Enter desired belt speed. Required Drive RPM and Gear Ratio are calculated automatically.
               </p>
             </div>
-
-            {/* Belt Speed Mode (default) */}
-            {(inputs.speed_mode ?? SpeedMode.BeltSpeed) === SpeedMode.BeltSpeed && (
-              <div>
-                <label htmlFor="belt_speed_fpm" className="label">
-                  Belt Speed (FPM) <span className="text-primary-600">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="belt_speed_fpm"
-                  className="input"
-                  value={inputs.belt_speed_fpm}
-                  onChange={(e) => updateInput('belt_speed_fpm', parseFloat(e.target.value) || 0)}
-                  step="0.01"
-                  min="0"
-                  required
-                />
-              </div>
-            )}
-
-            {/* Drive RPM Mode (legacy) */}
-            {inputs.speed_mode === SpeedMode.DriveRpm && (
-              <div>
-                <label htmlFor="drive_rpm_input" className="label">
-                  Drive RPM <span className="text-primary-600">*</span>
-                </label>
-                <input
-                  type="number"
-                  id="drive_rpm_input"
-                  className="input"
-                  value={inputs.drive_rpm_input ?? inputs.drive_rpm}
-                  onChange={(e) => {
-                    const value = parseFloat(e.target.value) || 0;
-                    updateInput('drive_rpm_input', value);
-                    updateInput('drive_rpm', value);
-                  }}
-                  step="1"
-                  min="0"
-                  required
-                />
-              </div>
-            )}
 
             {/* Motor Brand - Now in main section */}
             <div>
@@ -242,9 +174,10 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
           {/* Speed & Kinematics Panel - Read-only */}
           <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
             <h4 className="text-sm font-semibold text-gray-700 mb-3">Speed & Kinematics</h4>
+            {/* Row 1: Desired/Required values */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div>
-                <span className="text-xs text-gray-500 block">Belt Speed</span>
+                <span className="text-xs text-gray-500 block">Desired Belt Speed</span>
                 <span className="font-mono font-semibold text-gray-900">
                   {hasOutputs && outputs.belt_speed_fpm
                     ? `${outputs.belt_speed_fpm.toFixed(1)} FPM`
@@ -254,7 +187,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                 </span>
               </div>
               <div>
-                <span className="text-xs text-gray-500 block">Drive RPM</span>
+                <span className="text-xs text-gray-500 block">Required Drive RPM</span>
                 <span className="font-mono font-semibold text-gray-900">
                   {hasOutputs && outputs.drive_shaft_rpm
                     ? outputs.drive_shaft_rpm.toFixed(1)
@@ -280,6 +213,58 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                 </span>
               </div>
             </div>
+            {/* Row 2: Actual values (only show when gearmotor is selected) */}
+            {hasOutputs && outputs.actual_belt_speed_fpm != null && (
+              <div className="mt-3 pt-3 border-t border-gray-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-xs font-medium text-blue-600">Selected Gearmotor</span>
+                  {outputs.actual_speed_warning_code === 'SPEED_DELTA_HIGH' && (
+                    <span className="text-xs text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">Speed delta &gt; 5%</span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-xs text-gray-500 block">Actual Belt Speed</span>
+                    <span className="font-mono font-semibold text-gray-900">
+                      {outputs.actual_belt_speed_fpm.toFixed(1)} FPM
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Actual Drive RPM</span>
+                    <span className="font-mono font-semibold text-gray-900">
+                      {outputs.actual_drive_shaft_rpm?.toFixed(1) ?? '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Speed Error</span>
+                    <span className={`font-mono font-semibold ${
+                      outputs.speed_error_fpm != null && Math.abs(outputs.speed_error_fpm) > 0.1
+                        ? outputs.speed_error_fpm > 0 ? 'text-blue-600' : 'text-amber-600'
+                        : 'text-gray-900'
+                    }`}>
+                      {outputs.speed_error_fpm != null
+                        ? `${outputs.speed_error_fpm > 0 ? '+' : ''}${outputs.speed_error_fpm.toFixed(1)} FPM`
+                        : '—'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Speed Delta</span>
+                    <span className={`font-mono font-semibold ${
+                      outputs.actual_belt_speed_delta_pct != null && Math.abs(outputs.actual_belt_speed_delta_pct) > 5
+                        ? 'text-amber-600'
+                        : outputs.actual_belt_speed_delta_pct != null && Math.abs(outputs.actual_belt_speed_delta_pct) > 0.1
+                        ? outputs.actual_belt_speed_delta_pct > 0 ? 'text-blue-600' : 'text-amber-600'
+                        : 'text-gray-900'
+                    }`}>
+                      {outputs.actual_belt_speed_delta_pct != null
+                        ? `${outputs.actual_belt_speed_delta_pct > 0 ? '+' : ''}${outputs.actual_belt_speed_delta_pct.toFixed(1)}%`
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+            {/* Row 3: Chain ratio info (bottom mount only) */}
             {displayChainRatio !== 1 && (
               <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-4 gap-4">
                 <div>
@@ -290,7 +275,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                 </div>
                 {hasOutputs && outputs.gearmotor_output_rpm && (
                   <div>
-                    <span className="text-xs text-gray-500 block">Gearmotor Output RPM</span>
+                    <span className="text-xs text-gray-500 block">Required GM Output RPM</span>
                     <span className="font-mono font-semibold text-gray-900">{outputs.gearmotor_output_rpm.toFixed(1)}</span>
                   </div>
                 )}
@@ -322,12 +307,47 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   </span>
                 </div>
                 <div>
-                  <span className="text-xs text-gray-500 block">Friction Coeff Used</span>
+                  <span className="text-xs text-gray-500 block">Required GM Output RPM</span>
                   <span className="font-mono font-semibold text-gray-900">
-                    {outputs.friction_coeff_used?.toFixed(2) ?? '—'}
+                    {outputs.gearmotor_output_rpm?.toFixed(1) ?? outputs.drive_shaft_rpm?.toFixed(1) ?? '—'}
                   </span>
                 </div>
               </div>
+              {/* Show actual/selected RPM when gearmotor is selected */}
+              {inputs.actual_gearmotor_output_rpm != null && (
+                <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div>
+                    <span className="text-xs text-gray-500 block">Selected GM Output RPM</span>
+                    <span className="font-mono font-semibold text-blue-600">
+                      {inputs.actual_gearmotor_output_rpm.toFixed(1)}
+                    </span>
+                  </div>
+                  {outputs.actual_belt_speed_delta_pct != null && (
+                    <div>
+                      <span className="text-xs text-gray-500 block">Speed Match</span>
+                      <span className={`font-mono font-semibold ${
+                        Math.abs(outputs.actual_belt_speed_delta_pct) <= 2
+                          ? 'text-green-600'
+                          : Math.abs(outputs.actual_belt_speed_delta_pct) <= 5
+                          ? 'text-amber-600'
+                          : 'text-red-600'
+                      }`}>
+                        {Math.abs(outputs.actual_belt_speed_delta_pct) <= 2
+                          ? 'Excellent'
+                          : Math.abs(outputs.actual_belt_speed_delta_pct) <= 5
+                          ? 'Acceptable'
+                          : 'Review needed'}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-xs text-gray-500 block">Friction Coeff Used</span>
+                    <span className="font-mono font-semibold text-gray-900">
+                      {outputs.friction_coeff_used?.toFixed(2) ?? '—'}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

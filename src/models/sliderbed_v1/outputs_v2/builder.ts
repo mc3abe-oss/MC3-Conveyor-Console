@@ -132,6 +132,7 @@ function buildSummary(inputs: SliderbedInputs, outputs: SliderbedOutputs): Summa
     required_gearmotor_output_rpm: outputs.required_gearmotor_output_rpm ?? outputs.gearmotor_output_rpm ?? null,
     actual_belt_speed_fpm: outputs.actual_belt_speed_fpm ?? null,
     actual_belt_speed_delta_pct: outputs.actual_belt_speed_delta_pct ?? null,
+    speed_error_fpm: outputs.speed_error_fpm ?? null,
     actual_drive_shaft_rpm: outputs.actual_drive_shaft_rpm ?? null,
     actual_speed_warning_code: outputs.actual_speed_warning_code ?? null,
     center_distance_in: inputs.conveyor_length_cc_in ?? null,

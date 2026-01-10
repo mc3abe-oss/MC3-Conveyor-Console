@@ -2043,6 +2043,7 @@ export function calculate(
   // Only computed when a gearmotor has been selected (actual_gearmotor_output_rpm is set)
   let actualBeltSpeedFpm: number | null = null;
   let actualBeltSpeedDeltaPct: number | null = null;
+  let speedErrorFpm: number | null = null; // v1.39: Absolute FPM difference
   let actualDriveShaftRpm: number | null = null;
   let actualSpeedWarningCode: string | null = null;
 
@@ -2065,6 +2066,8 @@ export function calculate(
     // Calculate delta vs desired belt speed (only if actual speed was computed)
     if (actualBeltSpeedFpm !== null) {
       actualBeltSpeedDeltaPct = calculateSpeedDeltaPct(beltSpeedFpm, actualBeltSpeedFpm);
+      // v1.39: Speed error in FPM (absolute difference)
+      speedErrorFpm = actualBeltSpeedFpm - beltSpeedFpm;
       // v1.38: Check for high speed delta (soft warning)
       if (Math.abs(actualBeltSpeedDeltaPct) > 5) {
         // If no other warning code is set, set SPEED_DELTA_HIGH
@@ -2499,6 +2502,7 @@ export function calculate(
     // Actual: computed from selected/configured gearmotor
     actual_belt_speed_fpm: actualBeltSpeedFpm,
     actual_belt_speed_delta_pct: actualBeltSpeedDeltaPct,
+    speed_error_fpm: speedErrorFpm,
     actual_drive_shaft_rpm: actualDriveShaftRpm,
     actual_speed_warning_code: actualSpeedWarningCode,
 
