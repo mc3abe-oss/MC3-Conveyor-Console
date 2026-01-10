@@ -404,6 +404,7 @@ export default function TabConveyorPhysical({
     const currentL_cc = derivedGeometry.L_cc_in;
     const currentH_cc = derivedGeometry.H_cc_in;
     const currentTheta = derivedGeometry.theta_deg;
+    const currentRise = derivedGeometry.rise_in;
 
     updateInput('geometry_mode', newMode);
 
@@ -415,6 +416,10 @@ export default function TabConveyorPhysical({
       // Switching to H_ANGLE: use current H_cc and theta
       updateInput('horizontal_run_in', currentH_cc);
       updateInput('conveyor_incline_deg', currentTheta);
+    } else if (newMode === GeometryMode.HorizontalRise) {
+      // Switching to H_RISE: use current H_cc and rise
+      updateInput('horizontal_run_in', currentH_cc);
+      updateInput('input_rise_in', currentRise);
     }
     // Note: H_TOB mode removed in User Feedback 2 - legacy apps migrated to H_ANGLE on load
   };
@@ -498,8 +503,9 @@ export default function TabConveyorPhysical({
                 name="geometry_mode"
                 value={geometryMode}
                 options={[
-                  { value: GeometryMode.LengthAngle, label: 'Length + Angle' },
-                  { value: GeometryMode.HorizontalAngle, label: 'Horizontal + Angle' },
+                  { value: GeometryMode.LengthAngle, label: 'L + Angle' },
+                  { value: GeometryMode.HorizontalAngle, label: 'H + Angle' },
+                  { value: GeometryMode.HorizontalRise, label: 'H + Rise' },
                 ]}
                 onChange={handleGeometryModeChange}
               />
@@ -557,24 +563,45 @@ export default function TabConveyorPhysical({
               </div>
             )}
 
-            {/* Incline Angle */}
-            <div>
-              <label htmlFor="conveyor_incline_deg" className="label-compact">
-                Incline Angle (deg)
-              </label>
-              <input
-                type="number"
-                id="conveyor_incline_deg"
-                className="input-compact w-28"
-                value={inputs.conveyor_incline_deg ?? 0}
-                onChange={(e) =>
-                  updateInput('conveyor_incline_deg', parseFloat(e.target.value) || 0)
-                }
-                step="0.1"
-                min="0"
-              />
-              <p className="text-[11px] text-gray-500 mt-0.5">0° = horizontal. Positive = incline.</p>
-            </div>
+            {/* Incline Angle (for L_ANGLE and H_ANGLE modes) */}
+            {geometryMode !== GeometryMode.HorizontalRise && (
+              <div>
+                <label htmlFor="conveyor_incline_deg" className="label-compact">
+                  Incline Angle (deg)
+                </label>
+                <input
+                  type="number"
+                  id="conveyor_incline_deg"
+                  className="input-compact w-28"
+                  value={inputs.conveyor_incline_deg ?? 0}
+                  onChange={(e) =>
+                    updateInput('conveyor_incline_deg', parseFloat(e.target.value) || 0)
+                  }
+                  step="0.1"
+                  min="0"
+                />
+                <p className="text-[11px] text-gray-500 mt-0.5">0° = horizontal. Positive = incline.</p>
+              </div>
+            )}
+
+            {/* Rise (for H_RISE mode) */}
+            {geometryMode === GeometryMode.HorizontalRise && (
+              <div>
+                <label htmlFor="input_rise_in" className="label-compact">
+                  Rise (in)
+                </label>
+                <input
+                  type="number"
+                  id="input_rise_in"
+                  className="input-compact w-28"
+                  value={inputs.input_rise_in ?? 0}
+                  onChange={(e) => updateInput('input_rise_in', parseFloat(e.target.value) || 0)}
+                  step="1"
+                  min="0"
+                />
+                <p className="text-[11px] text-gray-500 mt-0.5">Vertical rise from tail to drive.</p>
+              </div>
+            )}
           </div>
 
           {/* Right column: Diagram (fills remaining width) */}

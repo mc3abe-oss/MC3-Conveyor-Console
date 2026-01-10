@@ -640,6 +640,8 @@ export enum GeometryMode {
   HorizontalAngle = 'H_ANGLE',
   /** User specifies H_cc + both TOBs, system derives angle + L_cc */
   HorizontalTob = 'H_TOB',
+  /** User specifies H_cc + rise, system derives angle + L_cc */
+  HorizontalRise = 'H_RISE',
 }
 
 // ============================================================================
@@ -915,9 +917,16 @@ export interface SliderbedInputs {
   /**
    * Horizontal run in inches (H_cc) - horizontal projection of conveyor
    * In L_ANGLE mode: derived from conveyor_length_cc_in and angle
-   * In H_ANGLE/H_TOB modes: user input
+   * In H_ANGLE/H_TOB/H_RISE modes: user input
    */
   horizontal_run_in?: number;
+
+  /**
+   * Rise in inches - vertical distance between tail and drive pulley centers
+   * In H_RISE mode: user input
+   * In other modes: derived from length/horizontal and angle
+   */
+  input_rise_in?: number;
 
   /** Belt Width in inches (active belt surface width) */
   belt_width_in: number;

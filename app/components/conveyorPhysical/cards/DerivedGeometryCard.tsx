@@ -65,7 +65,8 @@ function mapGeometryModeToInputMode(
       return 'length-angle';
     case GeometryMode.HorizontalAngle:
       return 'horizontal-angle';
-    case GeometryMode.HorizontalTob:
+    case GeometryMode.HorizontalRise:
+    case GeometryMode.HorizontalTob: // Legacy mode, treated same as H_RISE
       return 'horizontal-rise';
     default:
       return 'length-angle';
@@ -92,16 +93,13 @@ export default function DerivedGeometryCard({
       {/* Diagram + Stats layout */}
       <div className="flex flex-col sm:flex-row gap-4">
         {/* Geometry Diagram */}
-        <div className="flex-shrink-0 flex items-center justify-center sm:justify-start">
+        <div className="flex-shrink-0 flex items-center justify-center sm:justify-start w-full sm:w-[280px]">
           <ConveyorGeometryDiagram
             inputMode={inputMode}
             lengthCC={derivedGeometry.L_cc_in}
             horizontalRun={derivedGeometry.H_cc_in}
             inclineAngle={derivedGeometry.theta_deg}
             rise={derivedGeometry.rise_in}
-            width={240}
-            height={150}
-            compact={true}
           />
         </div>
 

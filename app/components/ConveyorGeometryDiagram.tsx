@@ -4,15 +4,15 @@
  * Technical drawing showing conveyor geometry with proper dimension lines,
  * extension lines, and drafting conventions.
  *
+ * v2: Scaled up for better readability, responsive sizing, fills available panel.
+ *
  * Props:
  *   inputMode: 'length-angle' | 'horizontal-angle' | 'horizontal-rise'
  *   lengthCC: center-to-center length (inches)
  *   horizontalRun: horizontal distance (inches)
  *   inclineAngle: angle in degrees
  *   rise: vertical rise (inches)
- *   width: SVG width (default 600)
- *   height: SVG height (default 380)
- *   compact: boolean - use compact sizing for cards (default false)
+ *   className: optional CSS class for container sizing
  */
 
 'use client';
@@ -27,22 +27,24 @@ interface ConveyorGeometryDiagramProps {
   horizontalRun?: number;
   inclineAngle?: number;
   rise?: number;
-  width?: number;
-  height?: number;
-  compact?: boolean;
+  className?: string;
 }
 
-// Drawing constants
+// Drawing constants - optimized for readability
 const COLORS = {
   input: '#0066cc',
   calculated: '#666666',
-  construction: '#999999',
-  belt: '#1a1a1a',
-  pulley: '#1a1a1a',
-  pulleyCenter: '#1a1a1a',
-  background: '#fafafa',
-  grid: '#e8e8e8',
+  construction: '#9ca3af',
+  belt: '#1f2937',
+  pulley: '#374151',
+  pulleyCenter: '#1f2937',
+  background: '#f9fafb',
+  grid: '#e5e7eb',
 };
+
+// Base dimensions for the viewBox (coordinate space)
+const VIEW_WIDTH = 520;
+const VIEW_HEIGHT = 280;
 
 export default function ConveyorGeometryDiagram({
   inputMode = 'length-angle',
@@ -50,14 +52,8 @@ export default function ConveyorGeometryDiagram({
   horizontalRun = 103.9,
   inclineAngle = 30,
   rise = 60,
-  width: propWidth,
-  height: propHeight,
-  compact = false,
+  className = '',
 }: ConveyorGeometryDiagramProps) {
-  // Use compact dimensions if specified
-  const width = propWidth ?? (compact ? 320 : 600);
-  const height = propHeight ?? (compact ? 200 : 380);
-
   // Calculate all geometry values based on input mode
   const geometry = useMemo(() => {
     let L: number, H: number, R: number, angle: number;
@@ -79,37 +75,36 @@ export default function ConveyorGeometryDiagram({
       H = horizontalRun;
       R = rise;
       L = Math.sqrt(H * H + R * R);
-      angle = (Math.atan(R / H) * 180) / Math.PI;
+      angle = H > 0 ? (Math.atan(R / H) * 180) / Math.PI : 0;
     }
 
     return {
       length: L,
       horizontal: H,
       rise: R,
-      angle: angle,
+      angle: Math.max(0, angle),
     };
   }, [inputMode, lengthCC, horizontalRun, inclineAngle, rise]);
 
-  // Drawing constants - scale for compact mode
-  const scale = compact ? 0.6 : 1;
-  const MARGIN = 70 * scale;
-  const PULLEY_RADIUS = 14 * scale;
-  const DIM_OFFSET = 40 * scale;
-  const DIM_GAP = 5 * scale;
-  const TICK_SIZE = 10 * scale;
-  const EXT_OVERSHOOT = 10 * scale;
+  // Drawing constants - scaled for readability
+  const MARGIN = 60;
+  const PULLEY_RADIUS = 16;
+  const DIM_OFFSET = 38;
+  const DIM_GAP = 6;
+  const TICK_SIZE = 12;
+  const EXT_OVERSHOOT = 12;
 
-  // Calculate scale to fit drawing in viewport
-  const availableWidth = width - MARGIN * 2 - 80 * scale;
-  const availableHeight = height - MARGIN * 2 - 60 * scale;
+  // Calculate scale to fit drawing in viewport with proper padding
+  const availableWidth = VIEW_WIDTH - MARGIN * 2 - 60;
+  const availableHeight = VIEW_HEIGHT - MARGIN * 2 - 40;
 
-  const scaleX = availableWidth / Math.max(geometry.horizontal, 80);
-  const scaleY = availableHeight / Math.max(geometry.rise, 40);
-  const drawScale = Math.min(scaleX, scaleY, compact ? 1.8 : 2.8);
+  const scaleX = availableWidth / Math.max(geometry.horizontal, 60);
+  const scaleY = availableHeight / Math.max(geometry.rise, 30);
+  const drawScale = Math.min(scaleX, scaleY, 2.2);
 
   // Tail pulley position (bottom-left of conveyor)
-  const tailX = MARGIN + 40 * scale;
-  const tailY = height - MARGIN - 30 * scale;
+  const tailX = MARGIN + 35;
+  const tailY = VIEW_HEIGHT - MARGIN - 25;
 
   // Drive pulley position (top-right of conveyor)
   const driveX = tailX + geometry.horizontal * drawScale;
@@ -122,6 +117,7 @@ export default function ConveyorGeometryDiagram({
 
   // Format number for display
   const fmt = (n: number): string => {
+    if (isNaN(n) || !isFinite(n)) return '0';
     if (Math.abs(n - Math.round(n)) < 0.01) return Math.round(n).toString();
     return n.toFixed(1);
   };
@@ -132,12 +128,22 @@ export default function ConveyorGeometryDiagram({
   const isAngleInput = inputMode === 'length-angle' || inputMode === 'horizontal-angle';
   const isRiseInput = inputMode === 'horizontal-rise';
 
-  // Font sizes for compact mode
+  // Font sizes - larger for readability
   const fontSize = {
-    dimension: compact ? 10 : 13,
-    angle: compact ? 11 : 14,
-    pulleyLabel: compact ? 9 : 11,
-    legend: compact ? 9 : 11,
+    dimension: 14,
+    angle: 15,
+    pulleyLabel: 12,
+    legend: 11,
+  };
+
+  // Stroke widths - proportional hierarchy
+  const strokeWidth = {
+    belt: 3,
+    pulley: 2.5,
+    dimensionInput: 1.8,
+    dimensionCalc: 1.2,
+    extension: 0.8,
+    construction: 0.8,
   };
 
   // Dimension line component with proper engineering style
@@ -166,7 +172,7 @@ export default function ConveyorGeometryDiagram({
     if (len < 1) return null;
 
     const color = isInput ? COLORS.input : COLORS.calculated;
-    const strokeW = isInput ? 1.5 : 1;
+    const strokeW = isInput ? strokeWidth.dimensionInput : strokeWidth.dimensionCalc;
     const fontWeight = isInput ? 600 : 400;
 
     // Perpendicular direction for offset
@@ -206,8 +212,8 @@ export default function ConveyorGeometryDiagram({
     if (textAngle > 90) textAngle -= 180;
     if (textAngle < -90) textAngle += 180;
 
-    const textOffsetX = perpX * 14 * scale;
-    const textOffsetY = perpY * 14 * scale;
+    const textOffsetX = perpX * 16;
+    const textOffsetY = perpY * 16;
 
     return (
       <g className="dimension-line">
@@ -218,7 +224,7 @@ export default function ConveyorGeometryDiagram({
           x2={ext1EndX}
           y2={ext1EndY}
           stroke={color}
-          strokeWidth={0.75}
+          strokeWidth={strokeWidth.extension}
         />
         <line
           x1={ext2StartX}
@@ -226,7 +232,7 @@ export default function ConveyorGeometryDiagram({
           x2={ext2EndX}
           y2={ext2EndY}
           stroke={color}
-          strokeWidth={0.75}
+          strokeWidth={strokeWidth.extension}
         />
 
         {/* Dimension line */}
@@ -266,7 +272,7 @@ export default function ConveyorGeometryDiagram({
           dominantBaseline="middle"
           style={{
             fontSize: `${fontSize.dimension}px`,
-            fontFamily: "'JetBrains Mono', 'SF Mono', 'Consolas', monospace",
+            fontFamily: "'SF Mono', 'Consolas', 'Monaco', monospace",
             fontWeight: fontWeight,
             fill: color,
           }}
@@ -296,11 +302,11 @@ export default function ConveyorGeometryDiagram({
     isInput: boolean;
   }) => {
     const color = isInput ? COLORS.input : COLORS.calculated;
-    const strokeW = isInput ? 1.5 : 1;
+    const strokeW = isInput ? strokeWidth.dimensionInput : strokeWidth.dimensionCalc;
     const fontWeight = isInput ? 600 : 400;
 
     // Clamp angle for display
-    const displayAngle = Math.max(5, Math.min(endAngle, 85));
+    const displayAngle = Math.max(3, Math.min(endAngle, 85));
 
     const start = (startAngle * Math.PI) / 180;
     const end = (displayAngle * Math.PI) / 180;
@@ -312,11 +318,11 @@ export default function ConveyorGeometryDiagram({
 
     const largeArc = Math.abs(displayAngle - startAngle) > 180 ? 1 : 0;
 
-    // Position label BELOW the horizontal line
-    const labelX = cx + radius + 30 * scale;
-    const labelY = cy + 22 * scale;
+    // Position label outside the arc
+    const labelX = cx + radius + 32;
+    const labelY = cy + 20;
 
-    const tickLen = 6 * scale;
+    const tickLen = 7;
 
     return (
       <g className="angle-arc">
@@ -346,12 +352,12 @@ export default function ConveyorGeometryDiagram({
         />
         {/* Label background */}
         <rect
-          x={labelX - 24 * scale}
-          y={labelY - 10 * scale}
-          width={48 * scale}
-          height={20 * scale}
+          x={labelX - 26}
+          y={labelY - 11}
+          width={52}
+          height={22}
           fill={COLORS.background}
-          rx={2}
+          rx={3}
         />
         <text
           x={labelX}
@@ -360,7 +366,7 @@ export default function ConveyorGeometryDiagram({
           dominantBaseline="middle"
           style={{
             fontSize: `${fontSize.angle}px`,
-            fontFamily: "'JetBrains Mono', 'SF Mono', 'Consolas', monospace",
+            fontFamily: "'SF Mono', 'Consolas', 'Monaco', monospace",
             fontWeight: fontWeight,
             fill: color,
           }}
@@ -383,7 +389,7 @@ export default function ConveyorGeometryDiagram({
     label: string;
     position: 'tail' | 'drive';
   }) => {
-    const labelY = position === 'tail' ? cy + PULLEY_RADIUS + 18 * scale : cy - PULLEY_RADIUS - 10 * scale;
+    const labelY = position === 'tail' ? cy + PULLEY_RADIUS + 18 : cy - PULLEY_RADIUS - 10;
 
     return (
       <g className="pulley">
@@ -393,18 +399,18 @@ export default function ConveyorGeometryDiagram({
           r={PULLEY_RADIUS}
           fill="none"
           stroke={COLORS.pulley}
-          strokeWidth={2.5}
+          strokeWidth={strokeWidth.pulley}
         />
-        <circle cx={cx} cy={cy} r={4 * scale} fill={COLORS.pulleyCenter} />
+        <circle cx={cx} cy={cy} r={4} fill={COLORS.pulleyCenter} />
         <text
           x={cx}
           y={labelY}
           textAnchor="middle"
           style={{
             fontSize: `${fontSize.pulleyLabel}px`,
-            fontFamily: "'JetBrains Mono', 'SF Mono', 'Consolas', monospace",
+            fontFamily: "'SF Mono', 'Consolas', 'Monaco', monospace",
             fontWeight: 500,
-            fill: '#555',
+            fill: '#6b7280',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
           }}
@@ -419,32 +425,32 @@ export default function ConveyorGeometryDiagram({
 
   return (
     <svg
-      width={width}
-      height={height}
-      viewBox={`0 0 ${width} ${height}`}
+      viewBox={`0 0 ${VIEW_WIDTH} ${VIEW_HEIGHT}`}
+      preserveAspectRatio="xMidYMid meet"
+      className={`w-full h-auto max-w-full ${className}`}
       style={{
         backgroundColor: COLORS.background,
-        borderRadius: '4px',
+        borderRadius: '6px',
       }}
       aria-label="Conveyor geometry diagram"
     >
       {/* Background grid pattern */}
       <defs>
-        <pattern id="diagram-grid" width="20" height="20" patternUnits="userSpaceOnUse">
-          <path d="M 20 0 L 0 0 0 20" fill="none" stroke={COLORS.grid} strokeWidth="0.5" />
+        <pattern id="diagram-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <path d="M 24 0 L 0 0 0 24" fill="none" stroke={COLORS.grid} strokeWidth="0.5" />
         </pattern>
       </defs>
-      <rect width={width} height={height} fill={COLORS.background} />
-      <rect width={width} height={height} fill="url(#diagram-grid)" />
+      <rect width={VIEW_WIDTH} height={VIEW_HEIGHT} fill={COLORS.background} rx="6" />
+      <rect width={VIEW_WIDTH} height={VIEW_HEIGHT} fill="url(#diagram-grid)" rx="6" />
 
-      {/* Belt lines */}
+      {/* Belt lines (centerline representation) */}
       <line
         x1={tailX - tangentOffsetX}
         y1={tailY - tangentOffsetY}
         x2={driveX - tangentOffsetX}
         y2={driveY - tangentOffsetY}
         stroke={COLORS.belt}
-        strokeWidth={2.5}
+        strokeWidth={strokeWidth.belt}
       />
       <line
         x1={tailX + tangentOffsetX}
@@ -452,38 +458,38 @@ export default function ConveyorGeometryDiagram({
         x2={driveX + tangentOffsetX}
         y2={driveY + tangentOffsetY}
         stroke={COLORS.belt}
-        strokeWidth={2.5}
+        strokeWidth={strokeWidth.belt}
       />
 
-      {/* Reference lines (dashed) */}
+      {/* Reference lines (dashed) - horizontal datum and vertical datum */}
       <line
         x1={tailX}
         y1={tailY}
-        x2={driveX + 20 * scale}
+        x2={driveX + 25}
         y2={tailY}
         stroke={COLORS.construction}
-        strokeWidth={0.75}
-        strokeDasharray="5,4"
+        strokeWidth={strokeWidth.construction}
+        strokeDasharray="6,4"
       />
       <line
         x1={driveX}
         y1={driveY}
         x2={driveX}
-        y2={tailY + 20 * scale}
+        y2={tailY + 25}
         stroke={COLORS.construction}
-        strokeWidth={0.75}
-        strokeDasharray="5,4"
+        strokeWidth={strokeWidth.construction}
+        strokeDasharray="6,4"
       />
 
       {/* Centerline through pulley centers (for C-C dimension) */}
       <line
-        x1={tailX - 15 * scale * Math.cos(angleRad)}
-        y1={tailY + 15 * scale * Math.sin(angleRad)}
-        x2={driveX + 15 * scale * Math.cos(angleRad)}
-        y2={driveY - 15 * scale * Math.sin(angleRad)}
+        x1={tailX - 18 * Math.cos(angleRad)}
+        y1={tailY + 18 * Math.sin(angleRad)}
+        x2={driveX + 18 * Math.cos(angleRad)}
+        y2={driveY - 18 * Math.sin(angleRad)}
         stroke={COLORS.construction}
-        strokeWidth={0.75}
-        strokeDasharray="8,3,2,3"
+        strokeWidth={strokeWidth.construction}
+        strokeDasharray="10,4,3,4"
       />
 
       {/* Pulleys */}
@@ -497,7 +503,7 @@ export default function ConveyorGeometryDiagram({
         x2={driveX}
         y2={driveY}
         label={`L = ${fmt(geometry.length)}"`}
-        offset={48 * scale}
+        offset={46}
         side="left"
         isInput={isLengthInput}
       />
@@ -509,7 +515,7 @@ export default function ConveyorGeometryDiagram({
         x2={driveX}
         y2={tailY}
         label={`H = ${fmt(geometry.horizontal)}"`}
-        offset={50 * scale}
+        offset={48}
         side="right"
         isInput={isHorizontalInput}
       />
@@ -522,7 +528,7 @@ export default function ConveyorGeometryDiagram({
           x2={driveX}
           y2={driveY}
           label={`Rise = ${fmt(geometry.rise)}"`}
-          offset={45 * scale}
+          offset={44}
           side="right"
           isInput={isRiseInput}
         />
@@ -533,7 +539,7 @@ export default function ConveyorGeometryDiagram({
         <AngleArc
           cx={tailX}
           cy={tailY}
-          radius={75 * scale}
+          radius={70}
           startAngle={0}
           endAngle={geometry.angle}
           label={`${fmt(geometry.angle)}°`}
@@ -544,8 +550,8 @@ export default function ConveyorGeometryDiagram({
       {/* Flat indicator */}
       {isFlat && (
         <text
-          x={width / 2}
-          y={height - 10}
+          x={VIEW_WIDTH / 2}
+          y={VIEW_HEIGHT - 12}
           textAnchor="middle"
           style={{
             fontSize: `${fontSize.legend}px`,
@@ -558,44 +564,44 @@ export default function ConveyorGeometryDiagram({
       )}
 
       {/* Legend */}
-      <g transform={`translate(${width - 125 * scale}, ${15 * scale})`}>
+      <g transform={`translate(${VIEW_WIDTH - 115}, 14)`}>
         <rect
           x={0}
           y={0}
-          width={110 * scale}
-          height={52 * scale}
+          width={100}
+          height={50}
           fill="white"
-          stroke="#ddd"
+          stroke="#e5e7eb"
           strokeWidth={1}
-          rx={3}
+          rx={4}
         />
         <line
-          x1={12 * scale}
-          y1={18 * scale}
-          x2={32 * scale}
-          y2={18 * scale}
+          x1={10}
+          y1={17}
+          x2={30}
+          y2={17}
           stroke={COLORS.input}
-          strokeWidth={2}
+          strokeWidth={2.5}
         />
         <text
-          x={40 * scale}
-          y={22 * scale}
-          style={{ fontSize: `${fontSize.legend}px`, fontFamily: 'system-ui', fill: '#333' }}
+          x={38}
+          y={21}
+          style={{ fontSize: `${fontSize.legend}px`, fontFamily: 'system-ui', fill: '#374151' }}
         >
           Input
         </text>
         <line
-          x1={12 * scale}
-          y1={38 * scale}
-          x2={32 * scale}
-          y2={38 * scale}
+          x1={10}
+          y1={35}
+          x2={30}
+          y2={35}
           stroke={COLORS.calculated}
-          strokeWidth={1}
+          strokeWidth={1.5}
         />
         <text
-          x={40 * scale}
-          y={42 * scale}
-          style={{ fontSize: `${fontSize.legend}px`, fontFamily: 'system-ui', fill: '#333' }}
+          x={38}
+          y={39}
+          style={{ fontSize: `${fontSize.legend}px`, fontFamily: 'system-ui', fill: '#374151' }}
         >
           Calculated
         </text>

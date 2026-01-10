@@ -33,7 +33,8 @@ function mapGeometryModeToInputMode(
       return 'length-angle';
     case GeometryMode.HorizontalAngle:
       return 'horizontal-angle';
-    case GeometryMode.HorizontalTob:
+    case GeometryMode.HorizontalRise:
+    case GeometryMode.HorizontalTob: // Legacy mode, treated same as H_RISE
       return 'horizontal-rise';
     default:
       return 'length-angle';
@@ -48,16 +49,13 @@ export default function ConveyorGeometryVisualization({
   const inputMode = mapGeometryModeToInputMode(geometryMode);
 
   return (
-    <div className="w-full">
+    <div className="w-full max-w-[90%]">
       <ConveyorGeometryDiagram
         inputMode={inputMode}
         lengthCC={L_cc_in}
         horizontalRun={H_cc_in}
         inclineAngle={theta_deg}
         rise={rise_in}
-        width={400}
-        height={180}
-        compact={true}
       />
     </div>
   );

@@ -1,5 +1,5 @@
 /**
- * Geometry Utilities (v1.10)
+ * Geometry Utilities (v1.11)
  *
  * Functions for converting between different geometry representations:
  * - L_cc (axis length between pulley centers)
@@ -7,10 +7,11 @@
  * - theta (incline angle in degrees)
  * - TOB (Top of Belt) and centerline heights
  *
- * These utilities support three geometry input modes:
+ * These utilities support four geometry input modes:
  * - L_ANGLE: User specifies L_cc + angle -> derive H_cc
  * - H_ANGLE: User specifies H_cc + angle -> derive L_cc
  * - H_TOB: User specifies H_cc + both TOBs -> derive angle + L_cc
+ * - H_RISE: User specifies H_cc + rise -> derive angle + L_cc
  */
 
 import { SliderbedInputs, GeometryMode } from './schema';
@@ -410,6 +411,41 @@ export function normalizeGeometry(inputs: Partial<SliderbedInputs>): {
       derived.rise_in = rise;
       derived.tail_cl_in = tailCl;
       derived.drive_cl_in = driveCl;
+
+      // Update normalized inputs
+      normalized.conveyor_length_cc_in = L_cc;
+      normalized.horizontal_run_in = H_cc;
+      normalized.conveyor_incline_deg = theta;
+      break;
+    }
+
+    case GeometryMode.HorizontalRise: {
+      // H_RISE: H_cc and rise are primary
+      const H_cc = inputs.horizontal_run_in ?? inputs.conveyor_length_cc_in ?? 0;
+      const rise = inputs.input_rise_in ?? 0;
+
+      if (H_cc <= 0) {
+        derived.isValid = false;
+        derived.error = 'Horizontal run must be greater than 0';
+        return { normalized, derived };
+      }
+
+      // Calculate angle from rise and horizontal run: theta = atan(rise / H_cc)
+      let theta = 0;
+      if (H_cc > 0 && Math.abs(rise) > 0.001) {
+        theta = Math.atan(rise / H_cc) * RAD_TO_DEG;
+        // Clamp to max supported angle
+        if (theta > MAX_INCLINE_DEG) theta = MAX_INCLINE_DEG;
+        if (theta < -MAX_INCLINE_DEG) theta = -MAX_INCLINE_DEG;
+      }
+
+      // Calculate L_cc from H_cc and rise: L_cc = sqrt(H_cc² + rise²)
+      const L_cc = Math.sqrt(H_cc * H_cc + rise * rise);
+
+      derived.L_cc_in = L_cc;
+      derived.H_cc_in = H_cc;
+      derived.theta_deg = theta;
+      derived.rise_in = rise;
 
       // Update normalized inputs
       normalized.conveyor_length_cc_in = L_cc;
