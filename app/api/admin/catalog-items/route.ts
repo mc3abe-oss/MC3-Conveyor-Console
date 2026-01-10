@@ -17,6 +17,8 @@ interface CatalogItemPayload {
   catalog_key: string;
   item_key: string;
   label: string;
+  description?: string | null;
+  description_long?: string | null;
   sort_order?: number | null;
   is_active?: boolean;
 }
@@ -109,6 +111,8 @@ export async function POST(request: NextRequest) {
         catalog_key: body.catalog_key,
         item_key: body.item_key,
         label: body.label,
+        description: body.description || null,
+        description_long: body.description_long || null,
         sort_order: body.sort_order || null,
         is_active: body.is_active !== false,
       })
@@ -185,6 +189,8 @@ export async function PUT(request: NextRequest) {
       .from('catalog_items')
       .update({
         label: body.label,
+        description: body.description,
+        description_long: body.description_long,
         sort_order: body.sort_order,
         is_active: body.is_active,
       })

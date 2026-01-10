@@ -19,6 +19,26 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { supabaseAdmin } from '../../../../src/lib/supabase/client';
+
+/**
+ * Format user display name as "First name + last initial" or email prefix
+ */
+function formatCreatorDisplay(email: string | null, metadata?: { first_name?: string; last_name?: string } | null): string | null {
+  if (!email) return null;
+
+  // Try to use metadata names first
+  if (metadata?.first_name) {
+    const lastName = metadata.last_name || '';
+    const lastInitial = lastName ? ` ${lastName.charAt(0)}.` : '';
+    return `${metadata.first_name}${lastInitial}`;
+  }
+
+  // Fall back to email prefix
+  const emailPrefix = email.split('@')[0];
+  // Capitalize first letter
+  return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
+}
 
 interface QuoteLineRow {
   quote_number: string;
@@ -30,6 +50,7 @@ interface QuoteLineRow {
   revision_count: number;
   latest_updated_at: string;
   latest_application_id: string;
+  created_by_display?: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -49,7 +70,7 @@ export async function GET(request: NextRequest) {
     // Get all calc_recipes with QUOTE reference type
     const { data: recipes, error: recipesError } = await supabase
       .from('calc_recipes')
-      .select('id, created_at, updated_at, inputs')
+      .select('id, created_at, updated_at, inputs, created_by')
       .order('updated_at', { ascending: false });
 
     if (recipesError) {
@@ -68,7 +89,33 @@ export async function GET(request: NextRequest) {
         updated_at: r.updated_at,
         created_at: r.created_at,
         config: r.inputs._config,
+        created_by: r.created_by,
       }));
+
+    // Build a map of user IDs to display names
+    const creatorIds = [...new Set(quoteRecipes.map(r => r.created_by).filter(Boolean))];
+    const creatorMap = new Map<string, string>();
+
+    if (creatorIds.length > 0 && supabaseAdmin) {
+      try {
+        // Fetch users from auth.users
+        const { data: authUsersResponse } = await supabaseAdmin.auth.admin.listUsers();
+        const authUsers = authUsersResponse?.users || [];
+
+        for (const user of authUsers) {
+          if (creatorIds.includes(user.id)) {
+            const metadata = user.user_metadata as { first_name?: string; last_name?: string } | undefined;
+            const display = formatCreatorDisplay(user.email || null, metadata);
+            if (display) {
+              creatorMap.set(user.id, display);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error fetching creator info:', err);
+        // Continue without creator info
+      }
+    }
 
     // Get quotes table for customer_name and status
     const { data: quotes, error: quotesError } = await supabase
@@ -146,6 +193,7 @@ export async function GET(request: NextRequest) {
         revision_count: group.revisions.length,
         latest_updated_at: latest.updated_at,
         latest_application_id: latest.id,
+        created_by_display: latest.created_by ? creatorMap.get(latest.created_by) || null : null,
       });
     }
 

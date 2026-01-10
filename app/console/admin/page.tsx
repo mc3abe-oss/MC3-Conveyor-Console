@@ -114,12 +114,12 @@ export default function ConsoleAdminPage() {
         </Link>
 
         <Link
-          href="/console/admin/sensor-options"
+          href="/console/admin/sensor-models"
           className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-green-300 bg-green-50"
         >
-          <h2 className="text-lg font-semibold text-green-900 mb-2">Sensor Options</h2>
+          <h2 className="text-lg font-semibold text-green-900 mb-2">Sensor Models</h2>
           <p className="text-sm text-green-700">
-            Manage sensor options (photoeye, jam detection, encoder, etc.)
+            Manage sensor model catalog with quantity selection support
           </p>
         </Link>
 

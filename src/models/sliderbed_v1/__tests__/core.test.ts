@@ -72,7 +72,6 @@ describe('Sliderbed Conveyor v1 - Calculation Engine', () => {
     finger_safe: false,
     lacing_style: LacingStyle.Endless,
     side_skirts: false,
-    sensor_options: [],
     // Application / Demand
     pulley_surface_type: PulleySurfaceType.Plain,
     start_stop_application: false,

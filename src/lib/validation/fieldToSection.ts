@@ -169,10 +169,9 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
   lacing_material: { tabKey: 'physical', sectionKey: 'beltPulleys' },
 
   // ===========================================================================
-  // Drive Tab - Electrical Section (Sensors moved from Build Options)
-  // NOTE: field_wiring_required removed from UI - now expressed via sensor_option variants
+  // Drive Tab - Electrical Section (Sensors)
   // ===========================================================================
-  sensor_options: { tabKey: 'drive', sectionKey: 'electrical' },
+  sensor_selections: { tabKey: 'drive', sectionKey: 'electrical' },
 
   // ===========================================================================
   // Build Tab - Documentation Section

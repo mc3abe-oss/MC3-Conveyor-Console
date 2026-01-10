@@ -13,6 +13,7 @@ export default function AdminControlsPackagePage() {
       title="Controls Package Options"
       itemLabel="Controls Package Option"
       description="Manage the controls package options shown in the Electrical section. These determine the level of automation included with the conveyor."
+      showDescriptionLong
     />
   );
 }

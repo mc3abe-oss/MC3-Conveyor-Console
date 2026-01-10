@@ -1555,9 +1555,7 @@ export interface SliderbedInputs {
 
   /**
    * Field Wiring Required
-   * @deprecated Removed from UI in v1.46. Field wiring intent is now expressed
-   * via sensor_option variants (e.g., "PHOTOEYE_WIRED" includes field wiring).
-   * Kept for backward compatibility with existing saved applications.
+   * @deprecated Removed from UI. Kept for backward compatibility.
    */
   field_wiring_required: FieldWiringRequired | string;
 
@@ -1652,8 +1650,11 @@ export interface SliderbedInputs {
   /** Side skirts - optional belt edge containment */
   side_skirts: boolean;
 
-  /** Sensor options - multi-select */
-  sensor_options: string[];
+  /**
+   * Sensor selections with quantities and optional notes
+   * Each entry has a model_key (from sensor_model catalog), quantity, and optional note
+   */
+  sensor_selections?: Array<{ model_key: string; qty: number; note?: string }>;
 
   // =========================================================================
   // APPLICATION / DEMAND (Extended)
@@ -3087,7 +3088,6 @@ export const DEFAULT_INPUT_VALUES = {
   finger_safe: false,
   lacing_style: LacingStyle.Endless,
   side_skirts: false,
-  sensor_options: [],
 
   // Application / Demand defaults
   pulley_surface_type: PulleySurfaceType.Plain,
@@ -3240,7 +3240,6 @@ export function buildDefaultInputs(): SliderbedInputs {
     finger_safe: false,
     lacing_style: LacingStyle.Endless,
     side_skirts: false,
-    sensor_options: [],
 
     // Application / Demand (extended)
     pulley_surface_type: PulleySurfaceType.Plain,

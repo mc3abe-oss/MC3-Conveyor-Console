@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     // Query catalog_items table (using admin client to bypass RLS for read-only catalog data)
     const { data: items, error } = await supabaseAdmin
       .from('catalog_items')
-      .select('item_key, label')
+      .select('item_key, label, description_long')
       .eq('catalog_key', catalog_key)
       .eq('is_active', true)
       .order('sort_order', { ascending: true })

@@ -117,7 +117,6 @@ const LEGACY_SLIDERBED_INPUTS: SliderbedInputs = {
   finger_safe: false,
   lacing_style: LacingStyle.Endless,
   side_skirts: false,
-  sensor_options: [],
 
   // Application / Demand
   pulley_surface_type: PulleySurfaceType.Plain,

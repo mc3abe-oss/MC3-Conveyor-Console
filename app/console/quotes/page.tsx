@@ -20,6 +20,7 @@ interface QuoteLine {
   revision_count: number;
   latest_updated_at: string;
   latest_application_id: string;
+  created_by_display?: string | null;
 }
 
 interface PaginatedResponse {
@@ -356,6 +357,9 @@ export default function ConsoleQuotesPage() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Creator
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Last Updated
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -387,6 +391,9 @@ export default function ConsoleQuotesPage() {
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${STATUS_BADGE_COLORS[line.quote_status as QuoteStatus] || 'bg-gray-100 text-gray-800'}`}>
                       {line.quote_status.charAt(0).toUpperCase() + line.quote_status.slice(1)}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {line.created_by_display || <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(line.latest_updated_at)}
