@@ -72,12 +72,11 @@ export async function POST(request: NextRequest) {
         ? 'http://localhost:3000'
         : 'https://conveyors.mc3mfg.com');
 
-    // Generate magic link using admin API
-    const { error: otpError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
+    // Send magic link email using signInWithOtp (actually sends the email)
+    const { error: otpError } = await supabaseAdmin.auth.signInWithOtp({
       email,
       options: {
-        redirectTo: `${baseUrl}/api/auth/callback`,
+        emailRedirectTo: `${baseUrl}/api/auth/callback`,
       },
     });
 

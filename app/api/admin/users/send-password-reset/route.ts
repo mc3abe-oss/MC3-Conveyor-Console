@@ -72,14 +72,13 @@ export async function POST(request: NextRequest) {
         ? 'http://localhost:3000'
         : 'https://conveyors.mc3mfg.com');
 
-    // Generate password reset link using admin API
-    const { error: resetError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'recovery',
+    // Send password reset email (actually sends the email)
+    const { error: resetError } = await supabaseAdmin.auth.resetPasswordForEmail(
       email,
-      options: {
+      {
         redirectTo: `${baseUrl}/reset-password`,
-      },
-    });
+      }
+    );
 
     if (resetError) {
       console.error('[Admin] Send password reset error:', resetError);
