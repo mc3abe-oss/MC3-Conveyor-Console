@@ -1540,7 +1540,12 @@ export interface SliderbedInputs {
    */
   pulley_end_to_frame_inside_in?: number;
 
-  /** Field Wiring Required */
+  /**
+   * Field Wiring Required
+   * @deprecated Removed from UI in v1.46. Field wiring intent is now expressed
+   * via sensor_option variants (e.g., "PHOTOEYE_WIRED" includes field wiring).
+   * Kept for backward compatibility with existing saved applications.
+   */
   field_wiring_required: FieldWiringRequired | string;
 
   /** Bearing Grade */

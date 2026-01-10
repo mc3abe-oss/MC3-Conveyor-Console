@@ -15,12 +15,15 @@ export const CATALOG_KEYS = {
   controls_package: 'controls_package',
   spec_source: 'spec_source',
 
-  // Build option catalogs (to be seeded)
+  // Build option catalogs (seeded)
   support_option: 'support_option',
   bearing_grade: 'bearing_grade',
   documentation_package: 'documentation_package',
   finish_paint_system: 'finish_paint_system',
   motor_brand: 'motor_brand',
+
+  // Sensors/Controls (multi-select, includes field wiring variants)
+  sensor_option: 'sensor_option',
 
   // Support model catalogs (v1.39)
   leg_model: 'leg_model',
@@ -28,10 +31,10 @@ export const CATALOG_KEYS = {
 
   // Note: These are NOT catalogs and are rendered as native inputs:
   // - parts_sharp: boolean checkbox
-  // - field_wiring_required: boolean checkbox
   // - labels_required: boolean checkbox
   // - send_to_estimating: boolean checkbox
   // - ambient_temperature: text input
+  // NOTE: field_wiring_required has been removed - use sensor_option variants instead
 } as const;
 
 export type CatalogKey = keyof typeof CATALOG_KEYS;

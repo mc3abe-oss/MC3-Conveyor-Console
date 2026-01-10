@@ -170,9 +170,9 @@ export const FIELD_TO_SECTION: Record<string, FieldMapping> = {
 
   // ===========================================================================
   // Drive Tab - Electrical Section (Sensors moved from Build Options)
+  // NOTE: field_wiring_required removed from UI - now expressed via sensor_option variants
   // ===========================================================================
   sensor_options: { tabKey: 'drive', sectionKey: 'electrical' },
-  field_wiring_required: { tabKey: 'drive', sectionKey: 'electrical' },
 
   // ===========================================================================
   // Build Tab - Documentation Section

@@ -92,6 +92,47 @@ export default function ConsoleAdminPage() {
           </p>
         </Link>
 
+        {/* Electrical & Controls Dropdowns */}
+        <Link
+          href="/console/admin/power-feed"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-green-300 bg-green-50"
+        >
+          <h2 className="text-lg font-semibold text-green-900 mb-2">Power Feed Options</h2>
+          <p className="text-sm text-green-700">
+            Manage electrical power feed dropdown options (120V, 240V, 480V, 600V)
+          </p>
+        </Link>
+
+        <Link
+          href="/console/admin/controls-package"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-green-300 bg-green-50"
+        >
+          <h2 className="text-lg font-semibold text-green-900 mb-2">Controls Package Options</h2>
+          <p className="text-sm text-green-700">
+            Manage controls package options (None, Start/Stop, VFD, Full Automation)
+          </p>
+        </Link>
+
+        <Link
+          href="/console/admin/sensor-options"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-green-300 bg-green-50"
+        >
+          <h2 className="text-lg font-semibold text-green-900 mb-2">Sensor Options</h2>
+          <p className="text-sm text-green-700">
+            Manage sensor options (photoeye, jam detection, encoder, etc.)
+          </p>
+        </Link>
+
+        <Link
+          href="/console/admin/documentation-package"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-green-300 bg-green-50"
+        >
+          <h2 className="text-lg font-semibold text-green-900 mb-2">Documentation Package Options</h2>
+          <p className="text-sm text-green-700">
+            Manage documentation deliverable options (Basic, Full, As-Built)
+          </p>
+        </Link>
+
         {isSuperAdmin && (
           <Link
             href="/console/admin/users"

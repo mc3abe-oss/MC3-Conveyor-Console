@@ -14,23 +14,22 @@
 
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import {
   SliderbedInputs,
   SliderbedOutputs,
   GearmotorMountingStyle,
-  SensorOption,
   DirectionMode,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateDriveShaftRpm,
 } from '../../src/models/sliderbed_v1/formulas';
 import CatalogSelect from './CatalogSelect';
+import CatalogMultiSelect from './CatalogMultiSelect';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 import DriveArrangementModal from './DriveArrangementModal';
 import AdvancedParametersModal from './AdvancedParametersModal';
-import DropdownPortal from './DropdownPortal';
 import DriveSelectorCard from './DriveSelectorCard';
 
 interface TabDriveControlsProps {
@@ -49,25 +48,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
   const [isDriveArrangementModalOpen, setIsDriveArrangementModalOpen] = useState(false);
   const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
 
-  // Sensor dropdown state
-  const [sensorDropdownOpen, setSensorDropdownOpen] = useState(false);
-  const sensorTriggerRef = useRef<HTMLDivElement>(null);
-
-  const handleSensorToggle = (option: string) => {
-    const current = inputs.sensor_options || [];
-    if (current.includes(option)) {
-      updateInput('sensor_options', current.filter((o) => o !== option));
-    } else {
-      updateInput('sensor_options', [...current, option]);
-    }
-  };
-
-  const removeSensor = (option: string) => {
-    const current = inputs.sensor_options || [];
-    updateInput('sensor_options', current.filter((o) => o !== option));
-  };
-
-  // Calculate display values (v1.39: single belt speed workflow)
+  // Calculate display values
   const pulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in;
   const motorRpm = inputs.motor_rpm ?? 1750;
 
@@ -485,135 +466,50 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             />
           </div>
 
-          {/* Binary options row - compact 2-column layout on desktop */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Brake Motor */}
-            <div>
-              <label className="label">Brake Motor</label>
-              <div className="flex gap-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="brake_motor"
-                    checked={inputs.brake_motor === false}
-                    onChange={() => updateInput('brake_motor', false)}
-                    className="mr-2"
-                  />
-                  No
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="brake_motor"
-                    checked={inputs.brake_motor === true}
-                    onChange={() => updateInput('brake_motor', true)}
-                    className="mr-2"
-                  />
-                  Yes
-                </label>
-              </div>
-            </div>
-
-            {/* Field Wiring Required - moved here for compact layout */}
-            <div>
-              <label className="label">Field Wiring Required</label>
-              <div className="flex gap-4">
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="field_wiring_required"
-                    checked={inputs.field_wiring_required === 'No'}
-                    onChange={() => updateInput('field_wiring_required', 'No')}
-                    className="mr-2"
-                  />
-                  No
-                </label>
-                <label className="inline-flex items-center">
-                  <input
-                    type="radio"
-                    name="field_wiring_required"
-                    checked={inputs.field_wiring_required === 'Yes'}
-                    onChange={() => updateInput('field_wiring_required', 'Yes')}
-                    className="mr-2"
-                  />
-                  Yes
-                </label>
-              </div>
+          {/* Brake Motor */}
+          <div>
+            <label className="label">Brake Motor</label>
+            <div className="flex gap-4">
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="brake_motor"
+                  checked={inputs.brake_motor === false}
+                  onChange={() => updateInput('brake_motor', false)}
+                  className="mr-2"
+                />
+                No
+              </label>
+              <label className="inline-flex items-center">
+                <input
+                  type="radio"
+                  name="brake_motor"
+                  checked={inputs.brake_motor === true}
+                  onChange={() => updateInput('brake_motor', true)}
+                  className="mr-2"
+                />
+                Yes
+              </label>
             </div>
           </div>
 
-          {/* ===== SENSORS / CONTROLS SUBSECTION ===== */}
+          {/* ===== SENSORS SUBSECTION ===== */}
           <h4 className="text-sm font-semibold text-gray-700 border-b border-gray-200 pb-2 mt-4">
-            Sensors / Controls
+            Sensors
           </h4>
 
-          {/* Sensor Options */}
+          {/* Sensor Options - Now catalog-driven */}
           <div>
             <label className="label">Sensor Options</label>
-
-            {/* Selected chips - trigger element */}
-            <div
-              ref={sensorTriggerRef}
-              className="input min-h-[42px] flex flex-wrap gap-1 items-center cursor-pointer"
-              onClick={() => setSensorDropdownOpen(!sensorDropdownOpen)}
-            >
-              {(inputs.sensor_options || []).length === 0 ? (
-                <span className="text-gray-400">Select sensors...</span>
-              ) : (
-                (inputs.sensor_options || []).map((option) => (
-                  <span
-                    key={option}
-                    className="inline-flex items-center bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded"
-                  >
-                    {option}
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        removeSensor(option);
-                      }}
-                      className="ml-1 hover:text-blue-600"
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))
-              )}
-            </div>
-
-            {/* Portal-based dropdown */}
-            <DropdownPortal
-              isOpen={sensorDropdownOpen}
-              onClose={() => setSensorDropdownOpen(false)}
-              triggerRef={sensorTriggerRef}
-              width="trigger"
-              align="left"
-            >
-              <div className="bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                {Object.values(SensorOption).map((option) => {
-                  const isSelected = (inputs.sensor_options || []).includes(option);
-                  return (
-                    <div
-                      key={option}
-                      className={`px-3 py-2 cursor-pointer hover:bg-gray-100 flex items-center ${
-                        isSelected ? 'bg-blue-50' : ''
-                      }`}
-                      onClick={() => handleSensorToggle(option)}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => {}}
-                        className="mr-2 h-4 w-4"
-                      />
-                      {option}
-                    </div>
-                  );
-                })}
-              </div>
-            </DropdownPortal>
-
-            <p className="text-xs text-gray-500 mt-1">Preference only. No logic applied yet.</p>
+            <CatalogMultiSelect
+              catalogKey="sensor_option"
+              value={inputs.sensor_options || []}
+              onChange={(value) => updateInput('sensor_options', value)}
+              id="sensor_options"
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Select sensors to include with the conveyor.
+            </p>
           </div>
         </div>
       </AccordionSection>
