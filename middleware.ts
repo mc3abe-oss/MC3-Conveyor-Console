@@ -33,7 +33,20 @@ function isDevBypassEnabled(): boolean {
 }
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, searchParams } = request.nextUrl;
+
+  // Handle auth callback parameters that might arrive at root or other paths
+  // Supabase sometimes redirects to the Site URL instead of emailRedirectTo
+  const code = searchParams.get('code');
+  const token_hash = searchParams.get('token_hash');
+  const error = searchParams.get('error');
+
+  if ((code || token_hash) && !error && !pathname.startsWith('/api/auth/callback')) {
+    // Redirect to the auth callback with all search params preserved
+    const callbackUrl = new URL('/api/auth/callback', request.url);
+    callbackUrl.search = request.nextUrl.search;
+    return NextResponse.redirect(callbackUrl);
+  }
 
   // Check if Supabase is configured
   const supabaseConfigured =
