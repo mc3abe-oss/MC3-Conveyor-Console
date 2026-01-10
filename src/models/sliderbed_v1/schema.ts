@@ -416,6 +416,19 @@ export enum FinishPaintSystem {
   Galvanized = 'Galvanized',
 }
 
+/**
+ * Coating Method - for conveyor and guarding finish selection
+ */
+export enum CoatingMethod {
+  PowderCoat = 'powder_coat',
+  WetPaint = 'wet_paint',
+}
+
+export const COATING_METHOD_LABELS: Record<CoatingMethod, string> = {
+  [CoatingMethod.PowderCoat]: 'Powder Coat (Recommended)',
+  [CoatingMethod.WetPaint]: 'Wet Paint (Non-standard)',
+};
+
 export enum LabelsRequired {
   No = 'No',
   Yes = 'Yes',
@@ -1554,8 +1567,56 @@ export interface SliderbedInputs {
   /** Documentation Package */
   documentation_package: DocumentationPackage | string;
 
-  /** Finish Paint System */
+  /** Finish Paint System (legacy - for backwards compatibility) */
   finish_paint_system: FinishPaintSystem | string;
+
+  // =========================================================================
+  // CONVEYOR FINISH (Smart Paint Selection)
+  // =========================================================================
+
+  /**
+   * Conveyor coating method - defaults to powder_coat
+   */
+  finish_coating_method?: CoatingMethod | string;
+
+  /**
+   * Conveyor powder coat color code (e.g., 'RAL5015')
+   * Only applicable when finish_coating_method = 'powder_coat'
+   */
+  finish_powder_color_code?: string;
+
+  /**
+   * Conveyor custom finish note
+   * Required when:
+   * - finish_coating_method = 'wet_paint', OR
+   * - finish_powder_color_code is non-stock, OR
+   * - finish_powder_color_code = 'CUSTOM'
+   */
+  finish_custom_note?: string;
+
+  // =========================================================================
+  // GUARDING FINISH (Smart Paint Selection)
+  // =========================================================================
+
+  /**
+   * Guarding coating method - defaults to powder_coat
+   */
+  guarding_coating_method?: CoatingMethod | string;
+
+  /**
+   * Guarding powder coat color code (e.g., 'RAL5015')
+   * Only applicable when guarding_coating_method = 'powder_coat'
+   */
+  guarding_powder_color_code?: string;
+
+  /**
+   * Guarding custom finish note
+   * Required when:
+   * - guarding_coating_method = 'wet_paint', OR
+   * - guarding_powder_color_code is non-stock, OR
+   * - guarding_powder_color_code = 'CUSTOM'
+   */
+  guarding_custom_note?: string;
 
   /** Labels Required */
   labels_required: LabelsRequired | string;
@@ -3006,6 +3067,15 @@ export const DEFAULT_INPUT_VALUES = {
   bearing_grade: BearingGrade.Standard,
   documentation_package: DocumentationPackage.Basic,
   finish_paint_system: FinishPaintSystem.PowderCoat,
+
+  // Conveyor finish defaults (smart paint selection)
+  finish_coating_method: CoatingMethod.PowderCoat,
+  finish_powder_color_code: 'RAL5015', // RAL 5015 Sky Blue (stock default)
+
+  // Guarding finish defaults (smart paint selection)
+  guarding_coating_method: CoatingMethod.PowderCoat,
+  guarding_powder_color_code: 'RAL1023', // RAL 1023 Traffic Yellow (stock default for safety)
+
   labels_required: LabelsRequired.Yes,
   send_to_estimating: SendToEstimating.No,
   motor_brand: MotorBrand.Standard,

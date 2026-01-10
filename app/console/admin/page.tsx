@@ -133,6 +133,16 @@ export default function ConsoleAdminPage() {
           </p>
         </Link>
 
+        <Link
+          href="/console/admin/powder-colors"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-amber-300 bg-amber-50"
+        >
+          <h2 className="text-lg font-semibold text-amber-900 mb-2">Powder Colors</h2>
+          <p className="text-sm text-amber-700">
+            Manage powder coat color options for conveyor and guarding finish
+          </p>
+        </Link>
+
         {isSuperAdmin && (
           <Link
             href="/console/admin/users"

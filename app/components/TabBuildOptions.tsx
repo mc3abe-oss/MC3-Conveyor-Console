@@ -28,6 +28,7 @@ import {
   HeightReferenceEnd,
 } from '../../src/models/sliderbed_v1/schema';
 import CatalogSelect from './CatalogSelect';
+import FinishSelector from './FinishSelector';
 import AccordionSection, { useAccordionState } from './AccordionSection';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 
@@ -540,15 +541,33 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts, ge
             />
           </div>
 
-          {/* Finish Paint System */}
-          <div>
-            <label htmlFor="finish_paint_system" className="label">Finish Paint System</label>
-            <CatalogSelect
-              catalogKey="finish_paint_system"
-              value={inputs.finish_paint_system}
-              onChange={(value) => updateInput('finish_paint_system', value)}
-              id="finish_paint_system"
-              required
+          {/* Conveyor Finish - Full width card */}
+          <div className="md:col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="text-sm font-semibold text-blue-800 mb-3">Conveyor Finish</h4>
+            <FinishSelector
+              category="conveyor"
+              coatingMethod={inputs.finish_coating_method}
+              colorCode={inputs.finish_powder_color_code}
+              customNote={inputs.finish_custom_note}
+              onCoatingMethodChange={(value) => updateInput('finish_coating_method', value)}
+              onColorCodeChange={(value) => updateInput('finish_powder_color_code', value)}
+              onCustomNoteChange={(value) => updateInput('finish_custom_note', value)}
+              idPrefix="conveyor_finish"
+            />
+          </div>
+
+          {/* Guarding Finish - Full width card */}
+          <div className="md:col-span-2 p-4 bg-blue-50 rounded-lg border border-blue-200">
+            <h4 className="text-sm font-semibold text-blue-800 mb-3">Guarding Finish</h4>
+            <FinishSelector
+              category="guarding"
+              coatingMethod={inputs.guarding_coating_method}
+              colorCode={inputs.guarding_powder_color_code}
+              customNote={inputs.guarding_custom_note}
+              onCoatingMethodChange={(value) => updateInput('guarding_coating_method', value)}
+              onColorCodeChange={(value) => updateInput('guarding_powder_color_code', value)}
+              onCustomNoteChange={(value) => updateInput('guarding_custom_note', value)}
+              idPrefix="guarding_finish"
             />
           </div>
 

@@ -9,7 +9,7 @@
  */
 
 import { useMemo } from 'react';
-import { SliderbedInputs, LacingStyle, BeltTrackingMethod, MaterialForm } from '../../src/models/sliderbed_v1/schema';
+import { SliderbedInputs, LacingStyle, BeltTrackingMethod, MaterialForm, CoatingMethod } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateTrackingRecommendation,
   TRACKING_MODE_LABELS,
@@ -56,6 +56,11 @@ export enum IssueCode {
   CLEATS_SIZE_REQUIRED = 'CLEATS_SIZE_REQUIRED',
   // CLEATS_PATTERN_REQUIRED removed - pattern is informational only
   CLEATS_DRILL_SIPED_CAUTION = 'CLEATS_DRILL_SIPED_CAUTION',
+  // Finish validation issues
+  FINISH_COLOR_REQUIRED = 'FINISH_COLOR_REQUIRED',
+  FINISH_NOTE_REQUIRED = 'FINISH_NOTE_REQUIRED',
+  GUARDING_COLOR_REQUIRED = 'GUARDING_COLOR_REQUIRED',
+  GUARDING_NOTE_REQUIRED = 'GUARDING_NOTE_REQUIRED',
 }
 
 // ============================================================================
@@ -385,6 +390,80 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
       tabKey: 'build',
       sectionKey: 'documentation',
       fieldKeys: ['customer_spec_reference'],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // BUILD TAB - Conveyor Finish Validation
+  // ---------------------------------------------------------------------------
+
+  const finishCoatingMethod = inputs.finish_coating_method || CoatingMethod.PowderCoat;
+  const finishIsPowderCoat = finishCoatingMethod === CoatingMethod.PowderCoat || finishCoatingMethod === 'powder_coat';
+  const finishIsWetPaint = finishCoatingMethod === CoatingMethod.WetPaint || finishCoatingMethod === 'wet_paint';
+
+  // Powder coat requires color selection
+  if (finishIsPowderCoat && !inputs.finish_powder_color_code) {
+    issues.push({
+      severity: 'error',
+      code: IssueCode.FINISH_COLOR_REQUIRED,
+      message: 'Conveyor finish color is required',
+      detail: 'Select a powder coat color for the conveyor',
+      tabKey: 'build',
+      sectionKey: 'documentation',
+      fieldKeys: ['finish_powder_color_code'],
+    });
+  }
+
+  // Wet paint or CUSTOM color requires note
+  const finishNoteRequired = finishIsWetPaint || inputs.finish_powder_color_code === 'CUSTOM';
+  if (finishNoteRequired && !inputs.finish_custom_note?.trim()) {
+    issues.push({
+      severity: 'error',
+      code: IssueCode.FINISH_NOTE_REQUIRED,
+      message: finishIsWetPaint ? 'Wet paint details required' : 'Custom color details required',
+      detail: finishIsWetPaint
+        ? 'Specify paint color, finish type, and any special requirements'
+        : 'Provide details about the custom color selection',
+      tabKey: 'build',
+      sectionKey: 'documentation',
+      fieldKeys: ['finish_custom_note'],
+    });
+  }
+
+  // ---------------------------------------------------------------------------
+  // BUILD TAB - Guarding Finish Validation
+  // ---------------------------------------------------------------------------
+
+  const guardingCoatingMethod = inputs.guarding_coating_method || CoatingMethod.PowderCoat;
+  const guardingIsPowderCoat = guardingCoatingMethod === CoatingMethod.PowderCoat || guardingCoatingMethod === 'powder_coat';
+  const guardingIsWetPaint = guardingCoatingMethod === CoatingMethod.WetPaint || guardingCoatingMethod === 'wet_paint';
+
+  // Powder coat requires color selection
+  if (guardingIsPowderCoat && !inputs.guarding_powder_color_code) {
+    issues.push({
+      severity: 'error',
+      code: IssueCode.GUARDING_COLOR_REQUIRED,
+      message: 'Guarding finish color is required',
+      detail: 'Select a powder coat color for guarding',
+      tabKey: 'build',
+      sectionKey: 'documentation',
+      fieldKeys: ['guarding_powder_color_code'],
+    });
+  }
+
+  // Wet paint or CUSTOM color requires note
+  const guardingNoteRequired = guardingIsWetPaint || inputs.guarding_powder_color_code === 'CUSTOM';
+  if (guardingNoteRequired && !inputs.guarding_custom_note?.trim()) {
+    issues.push({
+      severity: 'error',
+      code: IssueCode.GUARDING_NOTE_REQUIRED,
+      message: guardingIsWetPaint ? 'Wet paint details required' : 'Custom color details required',
+      detail: guardingIsWetPaint
+        ? 'Specify paint color, finish type, and any special requirements'
+        : 'Provide details about the custom color selection',
+      tabKey: 'build',
+      sectionKey: 'documentation',
+      fieldKeys: ['guarding_custom_note'],
     });
   }
 
