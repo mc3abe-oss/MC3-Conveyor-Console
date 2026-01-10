@@ -16,6 +16,8 @@ export default function SignupPage() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [isSendingMagicLink, setIsSendingMagicLink] = useState(false);
+  const [magicLinkSent, setMagicLinkSent] = useState(false);
 
   const validateEmail = (email: string): string | null => {
     const normalizedEmail = email.trim().toLowerCase();
@@ -23,6 +25,46 @@ export default function SignupPage() {
       return `Only ${ALLOWED_DOMAINS.join(' or ')} email addresses are allowed.`;
     }
     return null;
+  };
+
+  const handleMagicLinkSignup = async () => {
+    if (!email.trim()) {
+      setError('Please enter your email address first.');
+      return;
+    }
+
+    const emailError = validateEmail(email);
+    if (emailError) {
+      setError(emailError);
+      return;
+    }
+
+    setError(null);
+    setIsSendingMagicLink(true);
+
+    const supabase = createClient();
+    const emailRedirectTo = getAuthCallbackUrl();
+
+    const { error: otpError } = await supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        emailRedirectTo,
+        shouldCreateUser: true, // Allow creating new users
+      },
+    });
+
+    if (otpError) {
+      if (otpError.message.includes('mc3mfg.com') || otpError.message.includes('clearcode.ca') || otpError.message.includes('not allowed')) {
+        setError(`Only ${ALLOWED_DOMAINS.join(' or ')} email addresses are allowed.`);
+      } else {
+        setError(otpError.message);
+      }
+      setIsSendingMagicLink(false);
+      return;
+    }
+
+    setMagicLinkSent(true);
+    setIsSendingMagicLink(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -81,7 +123,7 @@ export default function SignupPage() {
     setIsLoading(false);
   };
 
-  if (success) {
+  if (success || magicLinkSent) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-mc3-mist/80 to-white py-12 px-4 sm:px-6 lg:px-8">
         <div className="w-full max-w-[480px]">
@@ -97,8 +139,8 @@ export default function SignupPage() {
                     Check your email
                   </h1>
                   <p className="mt-4 text-sm mc3-subtle">
-                    We've sent a confirmation link to <strong>{email}</strong>.
-                    Click the link to activate your account.
+                    We&apos;ve sent a {magicLinkSent ? 'magic link' : 'confirmation link'} to <strong>{email}</strong>.
+                    Click the link to {magicLinkSent ? 'sign in and complete your account setup' : 'activate your account'}.
                   </p>
                 </div>
               </div>
@@ -207,6 +249,28 @@ export default function SignupPage() {
                   className="w-full btn btn-primary py-3"
                 >
                   {isLoading ? 'Creating account...' : 'Create account'}
+                </button>
+              </div>
+
+              {/* Divider */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-gray-300" />
+                </div>
+                <div className="relative flex justify-center text-sm">
+                  <span className="px-2 bg-white text-gray-500">or</span>
+                </div>
+              </div>
+
+              {/* Magic Link Button */}
+              <div>
+                <button
+                  type="button"
+                  onClick={handleMagicLinkSignup}
+                  disabled={isSendingMagicLink}
+                  className="w-full btn btn-secondary py-3"
+                >
+                  {isSendingMagicLink ? 'Sending...' : 'Sign up with magic link'}
                 </button>
               </div>
 
