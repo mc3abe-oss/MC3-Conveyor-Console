@@ -61,7 +61,7 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL ||
       (process.env.NODE_ENV === 'development'
         ? 'http://localhost:3000'
-        : 'https://mc3abe-oss-belt-conveyor-ninja.vercel.app');
+        : 'https://conveyor-console.vercel.app');
 
     // Invite user via Supabase admin
     const { data: inviteData, error: inviteError } = await supabaseAdmin.auth.admin.inviteUserByEmail(
