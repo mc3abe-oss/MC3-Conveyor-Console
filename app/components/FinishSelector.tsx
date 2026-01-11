@@ -118,12 +118,8 @@ export default function FinishSelector({
     fetchColors();
   }, [category]);
 
-  // Auto-select default color if no color is selected and we're in powder coat mode
-  useEffect(() => {
-    if (isPowderCoat && !colorCode && defaultColorCode && !loading) {
-      onColorCodeChange(defaultColorCode);
-    }
-  }, [isPowderCoat, colorCode, defaultColorCode, loading, onColorCodeChange]);
+  // NOTE: Auto-selection of default color has been removed (paint logic fix).
+  // Color must be explicitly selected by the user.
 
   // Find selected color option
   const selectedColor = colorOptions.find((opt) => opt.code === colorCode);
@@ -142,14 +138,11 @@ export default function FinishSelector({
       // Clear color selection when switching away from powder coat
       if (newMethod !== CoatingMethod.PowderCoat) {
         onColorCodeChange(undefined);
-      } else {
-        // Auto-select default color when switching back to powder coat
-        if (!colorCode && defaultColorCode) {
-          onColorCodeChange(defaultColorCode);
-        }
       }
+      // NOTE: Auto-selection when switching to powder coat has been removed (paint logic fix).
+      // User must explicitly select a color.
     },
-    [colorCode, defaultColorCode, onCoatingMethodChange, onColorCodeChange]
+    [onCoatingMethodChange, onColorCodeChange]
   );
 
   // Handle color selection change

@@ -3070,12 +3070,14 @@ export const DEFAULT_INPUT_VALUES = {
   finish_paint_system: FinishPaintSystem.PowderCoat,
 
   // Conveyor finish defaults (smart paint selection)
+  // NOTE: Color codes are intentionally undefined - user must explicitly select
+  // This prevents paint errors from appearing until Calculate/Save is attempted
   finish_coating_method: CoatingMethod.PowderCoat,
-  finish_powder_color_code: 'RAL5015', // RAL 5015 Sky Blue (stock default)
+  finish_powder_color_code: undefined,
 
   // Guarding finish defaults (smart paint selection)
   guarding_coating_method: CoatingMethod.PowderCoat,
-  guarding_powder_color_code: 'RAL1023', // RAL 1023 Traffic Yellow (stock default for safety)
+  guarding_powder_color_code: undefined,
 
   labels_required: LabelsRequired.Yes,
   send_to_estimating: SendToEstimating.No,

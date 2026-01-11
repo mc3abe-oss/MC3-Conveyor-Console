@@ -12,7 +12,7 @@ import TabApplicationDemand from './TabApplicationDemand';
 import TabConveyorPhysical from './TabConveyorPhysical';
 import TabDriveControls from './TabDriveControls';
 import TabBuildOptions from './TabBuildOptions';
-import { useConfigureIssues, ConfigureTabKey, Issue, SectionKey } from './useConfigureIssues';
+import { useConfigureIssues, ConfigureTabKey, Issue, SectionKey, ValidationOptions } from './useConfigureIssues';
 import StatusLight from './StatusLight';
 import { ValidationError } from '../../src/models/sliderbed_v1/schema';
 import { getFieldMapping } from '../../src/lib/validation/fieldToSection';
@@ -48,6 +48,8 @@ interface Props {
   outputs?: SliderbedOutputs | null;
   /** v1.35: Toast notification callback */
   showToast?: (message: string) => void;
+  /** When true, skip paint/finish validation (for initial load before Calculate/Save) */
+  skipPaintValidation?: boolean;
 }
 
 export default function CalculatorForm({
@@ -62,6 +64,7 @@ export default function CalculatorForm({
   postCalcErrors,
   outputs,
   showToast,
+  skipPaintValidation = false,
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -118,7 +121,9 @@ export default function CalculatorForm({
   const { belt: selectedBelt } = useBelt(inputs.belt_catalog_key);
 
   // Compute validation issues (includes pre-calc tracking, min pulley, and belt compatibility checks)
-  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs, selectedBelt);
+  // skipPaintValidation suppresses paint errors until user explicitly attempts Calculate/Save
+  const validationOptions: ValidationOptions = { skipPaintValidation };
+  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs, selectedBelt, validationOptions);
 
   // Convert post-calc ValidationErrors to Issues and organize by section
   const postCalcIssuesBySection = useMemo(() => {

@@ -73,6 +73,10 @@ export default function BeltConveyorCalculatorApp() {
   const autoCalcTimerRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_CALC_DEBOUNCE_MS = 300;
 
+  // Paint validation state: skip paint validation until user explicitly attempts Calculate/Save
+  // This prevents paint errors from appearing on initial load
+  const [hasAttemptedExplicitAction, setHasAttemptedExplicitAction] = useState(false);
+
   // Ref to skip URL-change effect during deliberate Clear
   const isClearingRef = useRef(false);
 
@@ -690,6 +694,9 @@ export default function BeltConveyorCalculatorApp() {
     setCalculationStatus('draft');
     setOutputsStale(false);
 
+    // Reset paint validation state (skip validation until explicit Calculate/Save)
+    setHasAttemptedExplicitAction(false);
+
     // Clear localStorage to prevent auto-loading old app on refresh
     if (typeof window !== 'undefined') {
       localStorage.removeItem(LAST_APP_KEY);
@@ -832,6 +839,9 @@ export default function BeltConveyorCalculatorApp() {
 
   // Handle Save button click
   const handleSave = async () => {
+    // Mark that user has attempted explicit action - enables paint validation
+    setHasAttemptedExplicitAction(true);
+
     // If no context (draft), open modal to select target
     if (!context) {
       // Draft saves allowed without calculation (v1.21)
@@ -1210,6 +1220,8 @@ export default function BeltConveyorCalculatorApp() {
   // Wrapper to trigger Calculate from header button
   const handleCalculateClick = () => {
     console.log('[CalculateClick] User clicked Calculate in header');
+    // Mark that user has attempted explicit action - enables paint validation
+    setHasAttemptedExplicitAction(true);
     setTriggerCalculate(prev => prev + 1);
   };
 
@@ -1248,127 +1260,117 @@ export default function BeltConveyorCalculatorApp() {
       )}
 
       {/* ============================================================ */}
-      {/* PAGE HEADER FRAME - Edge-to-edge, anchored to top            */}
-      {/* This is a STRUCTURAL FRAME, not a card. No rounded, no shadow */}
-      {/* Uses negative margins to break out of layout container        */}
+      {/* DOCUMENT HEADER - Card with context info and mode selector   */}
       {/* ============================================================ */}
-      <div className="bg-white border-b-2 border-gray-300 -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-6">
-        <div className="px-4 sm:px-6 lg:px-8">
-          {/* Application Context Header */}
-          <ApplicationContextHeader
-            context={context}
-            loadedConfigurationId={loadedConfigurationId}
-            onClear={handleClear}
-            onDeleteLine={handleDeleteLine}
-            onDeleteDraft={handleDeleteDraft}
-            isDirty={isDirty}
-            isSaving={isSaving}
-            onSave={handleSave}
-            onSaveAsRecipe={() => setIsRecipeModalOpen(true)}
-            canSaveAsRecipe={!!(result?.success && result?.outputs && inputs)}
-            onCalculate={handleCalculateClick}
-            isCalculating={isCalculating}
-            canSave={canSave}
-            needsRecalc={needsRecalc}
-            calculationStatus={calculationStatus}
-            outputsStale={outputsStale}
-            hasCalcError={result ? !result.success : false}
-            createdByDisplay={createdByDisplay}
-            createdAt={applicationCreatedAt}
-            lastUpdatedAt={applicationUpdatedAt}
-            revisionCount={applicationRevisionCount}
-          />
+      <div className="bg-white rounded-lg shadow-sm border border-gray-400 mb-4">
+        {/* Application Context Header */}
+        <ApplicationContextHeader
+          context={context}
+          loadedConfigurationId={loadedConfigurationId}
+          onClear={handleClear}
+          onDeleteLine={handleDeleteLine}
+          onDeleteDraft={handleDeleteDraft}
+          isDirty={isDirty}
+          isSaving={isSaving}
+          onSave={handleSave}
+          onSaveAsRecipe={() => setIsRecipeModalOpen(true)}
+          canSaveAsRecipe={!!(result?.success && result?.outputs && inputs)}
+          onCalculate={handleCalculateClick}
+          isCalculating={isCalculating}
+          canSave={canSave}
+          needsRecalc={needsRecalc}
+          calculationStatus={calculationStatus}
+          outputsStale={outputsStale}
+          hasCalcError={result ? !result.success : false}
+          createdByDisplay={createdByDisplay}
+          createdAt={applicationCreatedAt}
+          lastUpdatedAt={applicationUpdatedAt}
+          revisionCount={applicationRevisionCount}
+        />
 
-          {/* Mode Segmented Control - NO border-t, compressed with header */}
-          <div className="flex items-center gap-3 px-4 py-2">
-            <span className="text-sm font-medium text-gray-500">Mode:</span>
-            <div className="inline-flex rounded-lg bg-gray-100 p-0.5" role="tablist" aria-label="View mode">
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'configure'}
-                onClick={() => setViewMode('configure')}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
-                  ${
-                    viewMode === 'configure'
-                      ? 'bg-white text-gray-900 font-semibold shadow-sm'
-                      : 'font-medium text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                </svg>
-                Configure
-              </button>
-              <button
-                type="button"
-                role="tab"
-                aria-selected={viewMode === 'results'}
-                onClick={() => setViewMode('results')}
-                className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
-                  ${
-                    viewMode === 'results'
-                      ? 'bg-white text-gray-900 font-semibold shadow-sm'
-                      : 'font-medium text-gray-600 hover:text-gray-900'
-                  }
-                `}
-              >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Results
-                {(isAutoCalcPending || isCalculating) && (
-                  <span className="ml-1 w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                )}
-              </button>
-              {showOutputsV2 && (
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={viewMode === 'outputs_v2'}
-                  onClick={() => setViewMode('outputs_v2')}
-                  className={`
-                    flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
-                    ${
-                      viewMode === 'outputs_v2'
-                        ? 'bg-white text-gray-900 font-semibold shadow-sm'
-                        : 'font-medium text-gray-600 hover:text-gray-900'
-                    }
-                  `}
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Outputs v2
-                </button>
+        {/* Mode Selector - Segmented Button Group */}
+        <div className="px-5 pb-4">
+          <div className="inline-flex rounded-lg border border-gray-200 bg-gray-100 p-1" role="tablist" aria-label="View mode">
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'configure'}
+              onClick={() => setViewMode('configure')}
+              className={`
+                flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all
+                ${viewMode === 'configure'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                }
+              `}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Configure
+            </button>
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'results'}
+              onClick={() => setViewMode('results')}
+              className={`
+                flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all
+                ${viewMode === 'results'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                }
+              `}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              Results
+              {(isAutoCalcPending || isCalculating) && (
+                <span className="w-2 h-2 bg-white rounded-full animate-pulse" />
               )}
+            </button>
+            {showOutputsV2 && (
               <button
                 type="button"
                 role="tab"
-                aria-selected={viewMode === 'vault'}
-                onClick={() => setViewMode('vault')}
+                aria-selected={viewMode === 'outputs_v2'}
+                onClick={() => setViewMode('outputs_v2')}
                 className={`
-                  flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-md transition-all
-                  ${
-                    viewMode === 'vault'
-                      ? 'bg-white text-gray-900 font-semibold shadow-sm'
-                      : 'font-medium text-gray-600 hover:text-gray-900'
+                  flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all
+                  ${viewMode === 'outputs_v2'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
                   }
                 `}
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                 </svg>
-                Vault
+                Outputs v2
               </button>
-            </div>
+            )}
+            <button
+              type="button"
+              role="tab"
+              aria-selected={viewMode === 'vault'}
+              onClick={() => setViewMode('vault')}
+              className={`
+                flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all
+                ${viewMode === 'vault'
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                }
+              `}
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+              </svg>
+              Vault
+            </button>
           </div>
         </div>
       </div>
-      {/* END PAGE HEADER FRAME */}
 
       {/* ============================================================ */}
       {/* CONTENT AREA - Full width within layout container            */}
@@ -1426,6 +1428,7 @@ export default function BeltConveyorCalculatorApp() {
             postCalcErrors={result?.errors}
             outputs={result?.outputs}
             showToast={showToast}
+            skipPaintValidation={!hasAttemptedExplicitAction}
           />
         </div>
 

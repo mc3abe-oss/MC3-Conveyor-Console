@@ -133,8 +133,9 @@ export interface IssueAggregation {
 
 /**
  * Compute validation issues from inputs and optional belt information
+ * @param skipPaintValidation When true, skip paint/finish validation (for initial load)
  */
-function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem | null): Issue[] {
+function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem | null, skipPaintValidation = false): Issue[] {
   const issues: Issue[] = [];
 
   // ---------------------------------------------------------------------------
@@ -403,76 +404,80 @@ function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem |
 
   // ---------------------------------------------------------------------------
   // BUILD TAB - Conveyor Finish Validation
+  // NOTE: Paint validation is skipped on initial load (skipPaintValidation=true)
+  //       and only runs when user explicitly attempts Calculate/Save
   // ---------------------------------------------------------------------------
 
-  const finishCoatingMethod = inputs.finish_coating_method || CoatingMethod.PowderCoat;
-  const finishIsPowderCoat = finishCoatingMethod === CoatingMethod.PowderCoat || finishCoatingMethod === 'powder_coat';
-  const finishIsWetPaint = finishCoatingMethod === CoatingMethod.WetPaint || finishCoatingMethod === 'wet_paint';
+  if (!skipPaintValidation) {
+    const finishCoatingMethod = inputs.finish_coating_method || CoatingMethod.PowderCoat;
+    const finishIsPowderCoat = finishCoatingMethod === CoatingMethod.PowderCoat || finishCoatingMethod === 'powder_coat';
+    const finishIsWetPaint = finishCoatingMethod === CoatingMethod.WetPaint || finishCoatingMethod === 'wet_paint';
 
-  // Powder coat requires color selection
-  if (finishIsPowderCoat && !inputs.finish_powder_color_code) {
-    issues.push({
-      severity: 'error',
-      code: IssueCode.FINISH_COLOR_REQUIRED,
-      message: 'Conveyor finish color is required',
-      detail: 'Select a powder coat color for the conveyor',
-      tabKey: 'build',
-      sectionKey: 'documentation',
-      fieldKeys: ['finish_powder_color_code'],
-    });
-  }
+    // Powder coat requires color selection
+    if (finishIsPowderCoat && !inputs.finish_powder_color_code) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.FINISH_COLOR_REQUIRED,
+        message: 'Conveyor finish color is required',
+        detail: 'Select a powder coat color for the conveyor',
+        tabKey: 'build',
+        sectionKey: 'documentation',
+        fieldKeys: ['finish_powder_color_code'],
+      });
+    }
 
-  // Wet paint or CUSTOM color requires note
-  const finishNoteRequired = finishIsWetPaint || inputs.finish_powder_color_code === 'CUSTOM';
-  if (finishNoteRequired && !inputs.finish_custom_note?.trim()) {
-    issues.push({
-      severity: 'error',
-      code: IssueCode.FINISH_NOTE_REQUIRED,
-      message: finishIsWetPaint ? 'Wet paint details required' : 'Custom color details required',
-      detail: finishIsWetPaint
-        ? 'Specify paint color, finish type, and any special requirements'
-        : 'Provide details about the custom color selection',
-      tabKey: 'build',
-      sectionKey: 'documentation',
-      fieldKeys: ['finish_custom_note'],
-    });
-  }
+    // Wet paint or CUSTOM color requires note
+    const finishNoteRequired = finishIsWetPaint || inputs.finish_powder_color_code === 'CUSTOM';
+    if (finishNoteRequired && !inputs.finish_custom_note?.trim()) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.FINISH_NOTE_REQUIRED,
+        message: finishIsWetPaint ? 'Wet paint details required' : 'Custom color details required',
+        detail: finishIsWetPaint
+          ? 'Specify paint color, finish type, and any special requirements'
+          : 'Provide details about the custom color selection',
+        tabKey: 'build',
+        sectionKey: 'documentation',
+        fieldKeys: ['finish_custom_note'],
+      });
+    }
 
-  // ---------------------------------------------------------------------------
-  // BUILD TAB - Guarding Finish Validation
-  // ---------------------------------------------------------------------------
+    // ---------------------------------------------------------------------------
+    // BUILD TAB - Guarding Finish Validation
+    // ---------------------------------------------------------------------------
 
-  const guardingCoatingMethod = inputs.guarding_coating_method || CoatingMethod.PowderCoat;
-  const guardingIsPowderCoat = guardingCoatingMethod === CoatingMethod.PowderCoat || guardingCoatingMethod === 'powder_coat';
-  const guardingIsWetPaint = guardingCoatingMethod === CoatingMethod.WetPaint || guardingCoatingMethod === 'wet_paint';
+    const guardingCoatingMethod = inputs.guarding_coating_method || CoatingMethod.PowderCoat;
+    const guardingIsPowderCoat = guardingCoatingMethod === CoatingMethod.PowderCoat || guardingCoatingMethod === 'powder_coat';
+    const guardingIsWetPaint = guardingCoatingMethod === CoatingMethod.WetPaint || guardingCoatingMethod === 'wet_paint';
 
-  // Powder coat requires color selection
-  if (guardingIsPowderCoat && !inputs.guarding_powder_color_code) {
-    issues.push({
-      severity: 'error',
-      code: IssueCode.GUARDING_COLOR_REQUIRED,
-      message: 'Guarding finish color is required',
-      detail: 'Select a powder coat color for guarding',
-      tabKey: 'build',
-      sectionKey: 'documentation',
-      fieldKeys: ['guarding_powder_color_code'],
-    });
-  }
+    // Powder coat requires color selection
+    if (guardingIsPowderCoat && !inputs.guarding_powder_color_code) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.GUARDING_COLOR_REQUIRED,
+        message: 'Guarding finish color is required',
+        detail: 'Select a powder coat color for guarding',
+        tabKey: 'build',
+        sectionKey: 'documentation',
+        fieldKeys: ['guarding_powder_color_code'],
+      });
+    }
 
-  // Wet paint or CUSTOM color requires note
-  const guardingNoteRequired = guardingIsWetPaint || inputs.guarding_powder_color_code === 'CUSTOM';
-  if (guardingNoteRequired && !inputs.guarding_custom_note?.trim()) {
-    issues.push({
-      severity: 'error',
-      code: IssueCode.GUARDING_NOTE_REQUIRED,
-      message: guardingIsWetPaint ? 'Wet paint details required' : 'Custom color details required',
-      detail: guardingIsWetPaint
-        ? 'Specify paint color, finish type, and any special requirements'
-        : 'Provide details about the custom color selection',
-      tabKey: 'build',
-      sectionKey: 'documentation',
-      fieldKeys: ['guarding_custom_note'],
-    });
+    // Wet paint or CUSTOM color requires note
+    const guardingNoteRequired = guardingIsWetPaint || inputs.guarding_powder_color_code === 'CUSTOM';
+    if (guardingNoteRequired && !inputs.guarding_custom_note?.trim()) {
+      issues.push({
+        severity: 'error',
+        code: IssueCode.GUARDING_NOTE_REQUIRED,
+        message: guardingIsWetPaint ? 'Wet paint details required' : 'Custom color details required',
+        detail: guardingIsWetPaint
+          ? 'Specify paint color, finish type, and any special requirements'
+          : 'Provide details about the custom color selection',
+        tabKey: 'build',
+        sectionKey: 'documentation',
+        fieldKeys: ['guarding_custom_note'],
+      });
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -698,15 +703,30 @@ function initTabCounts(): Record<ConfigureTabKey, TabCounts> {
 }
 
 // ============================================================================
+// VALIDATION OPTIONS
+// ============================================================================
+
+export interface ValidationOptions {
+  /**
+   * When true, skip paint/finish validation errors.
+   * Used to suppress paint errors on initial load before user attempts Calculate/Save.
+   */
+  skipPaintValidation?: boolean;
+}
+
+// ============================================================================
 // MAIN HOOK
 // ============================================================================
 
 export function useConfigureIssues(
   inputs: SliderbedInputs,
-  selectedBelt?: BeltCatalogItem | null
+  selectedBelt?: BeltCatalogItem | null,
+  options?: ValidationOptions
 ): IssueAggregation {
+  const skipPaintValidation = options?.skipPaintValidation ?? false;
+
   return useMemo(() => {
-    const issues = computeIssues(inputs, selectedBelt);
+    const issues = computeIssues(inputs, selectedBelt, skipPaintValidation);
 
     // Aggregate by section (info severity doesn't count toward warnings)
     const sectionCounts = initSectionCounts();
@@ -758,7 +778,7 @@ export function useConfigureIssues(
       getTrackingIssue,
       getMinPulleyIssues,
     };
-  }, [inputs, selectedBelt]);
+  }, [inputs, selectedBelt, skipPaintValidation]);
 }
 
 // ============================================================================
