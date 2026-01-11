@@ -87,7 +87,7 @@ export default function TabApplicationDemand({ inputs, updateInput, sectionCount
   const environmentIssues = getIssuesForSection('environment');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* ================================================================
           SECTION 1: Material to Be Conveyed
           ================================================================ */}

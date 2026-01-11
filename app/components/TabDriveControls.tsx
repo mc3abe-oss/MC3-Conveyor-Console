@@ -158,7 +158,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Modals */}
       <DriveArrangementModal
         isOpen={isDriveArrangementModalOpen}

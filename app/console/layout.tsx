@@ -51,7 +51,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
       {/* Console Header */}
       <header className="bg-mc3-navy text-white shadow-md">
         {/* Desktop Header */}
-        <div className="hidden md:block max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="hidden md:block max-w-screen-2xl mx-auto px-6 lg:px-8">
           <div className="flex items-center justify-between h-14">
             {/* Left: Logo + Product Selector */}
             <div className="flex items-center gap-6">
@@ -182,7 +182,7 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
       {/* Product Context Bar - hidden on mobile */}
       {currentProduct && (
         <div className="hidden md:block bg-white border-b border-mc3-line">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-screen-2xl mx-auto px-6 lg:px-8">
             <div className="flex items-center h-10">
               <h2 className="text-sm font-semibold text-mc3-navy">
                 {currentProduct.name}
@@ -204,8 +204,10 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
       )}
 
       {/* Main Content */}
-      <main className="flex-1">
-        {children}
+      <main className="flex-1 bg-gray-50">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          {children}
+        </div>
       </main>
     </div>
   );

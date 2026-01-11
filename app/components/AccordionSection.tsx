@@ -37,7 +37,7 @@ export default function AccordionSection({
   issues,
 }: AccordionSectionProps) {
   return (
-    <div className="border border-gray-200 rounded-lg">
+    <div className="border border-gray-200 rounded-lg overflow-hidden">
       {/* Header - clickable */}
       <button
         type="button"
@@ -47,13 +47,12 @@ export default function AccordionSection({
         aria-controls={`accordion-content-${id}`}
       >
         <div className="flex items-center gap-2">
-          <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-          {/* Status light indicator */}
+          <h3 className="text-sm font-medium text-gray-900">{title}</h3>
           {issueCounts && (
             <StatusLight
               errorCount={issueCounts.errors}
               warningCount={issueCounts.warnings}
-              size="md"
+              size="sm"
             />
           )}
         </div>
@@ -65,24 +64,16 @@ export default function AccordionSection({
           stroke="currentColor"
           viewBox="0 0 24 24"
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth={2}
-            d="M19 9l-7 7-7-7"
-          />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {/* Content - always mounted, hidden via CSS when collapsed */}
       <div
         id={`accordion-content-${id}`}
-        className={`transition-all duration-200 ${
-          isExpanded ? 'block' : 'hidden'
-        }`}
+        className={isExpanded ? 'block' : 'hidden'}
       >
-        <div className="p-4">
-          {/* Inline issues banner (errors/warnings from pre-calc and post-calc) */}
+        <div className="px-4 py-4 bg-white border-t border-gray-200">
           {issues && issues.length > 0 && (
             <SectionIssuesBanner issues={issues} />
           )}

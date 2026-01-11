@@ -119,7 +119,7 @@ export default function TabBuildOptions({ inputs, updateInput, sectionCounts, ge
   }, [optionsCounts, documentationCounts, expandSection]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* Options & Accessories - Consolidated section (v1.41) */}
       <AccordionSection
         id="options"

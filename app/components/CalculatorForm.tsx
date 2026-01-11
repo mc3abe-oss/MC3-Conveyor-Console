@@ -198,14 +198,15 @@ export default function CalculatorForm({
   };
 
   return (
-    <form onSubmit={handleSubmit} onKeyPress={handleKeyPress} className="space-y-6">
+    <form onSubmit={handleSubmit} onKeyPress={handleKeyPress}>
       {/* Configure Sub-Tabs */}
-      <div className="bg-white rounded-lg shadow-sm border border-gray-200">
-        {/* Sub-tab navigation */}
-        <div className="border-b border-gray-200 bg-gray-50">
-          <nav className="flex -mb-px overflow-x-auto scrollbar-hide" aria-label="Configure tabs">
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* Tab navigation - no vertical dividers, bottom border only on active */}
+        <div className="border-b border-gray-200">
+          <nav className="flex" aria-label="Configure tabs">
             {CONFIGURE_TABS.map((tab) => {
               const counts = tabCounts[tab.id];
+              const isActive = activeTab === tab.id;
 
               return (
                 <button
@@ -213,24 +214,17 @@ export default function CalculatorForm({
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    flex-1 md:flex-1 flex-shrink-0 whitespace-nowrap
-                    py-3 px-4 text-center font-medium text-sm transition-colors
-                    min-h-[44px] min-w-[100px]
-                    border-b-2 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500
-                    ${
-                      activeTab === tab.id
-                        ? 'border-blue-500 text-blue-600 bg-white'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 hover:bg-gray-100'
+                    flex-1 py-3 px-4 text-center text-sm font-medium transition-colors
+                    focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500
+                    ${isActive
+                      ? 'text-blue-600 border-b-2 border-blue-500 bg-white'
+                      : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
                     }
                   `}
                 >
                   <span className="flex items-center justify-center gap-1.5">
                     {tab.label}
-                    <StatusLight
-                      errorCount={counts.errors}
-                      warningCount={counts.warnings}
-                      size="sm"
-                    />
+                    <StatusLight errorCount={counts.errors} warningCount={counts.warnings} size="sm" />
                   </span>
                 </button>
               );
@@ -238,14 +232,11 @@ export default function CalculatorForm({
           </nav>
         </div>
 
-        {/* Tab content */}
-        <div className="p-6">
-          {/* Application Tab */}
+        {/* Tab content - consistent padding */}
+        <div className="p-4">
           {activeTab === 'application' && (
             <TabApplicationDemand inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
           )}
-
-          {/* Physical Tab */}
           {activeTab === 'physical' && (
             <TabConveyorPhysical
               inputs={inputs}
@@ -259,13 +250,9 @@ export default function CalculatorForm({
               showToast={showToast}
             />
           )}
-
-          {/* Drive & Controls Tab */}
           {activeTab === 'drive' && (
             <TabDriveControls inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} outputs={outputs} applicationId={applicationLineId ?? undefined} />
           )}
-
-          {/* Build Options Tab */}
           {activeTab === 'build' && (
             <TabBuildOptions inputs={inputs} updateInput={updateInput} sectionCounts={mergedSectionCounts} getIssuesForSection={getMergedIssuesForSection} />
           )}

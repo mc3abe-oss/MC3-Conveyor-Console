@@ -466,7 +466,7 @@ export default function TabConveyorPhysical({
   ]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {/* SECTION: Conveyor Type & Geometry */}
       <AccordionSection
         id="geometry"

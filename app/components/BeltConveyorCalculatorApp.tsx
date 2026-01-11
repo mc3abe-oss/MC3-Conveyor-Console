@@ -1250,9 +1250,10 @@ export default function BeltConveyorCalculatorApp() {
       {/* ============================================================ */}
       {/* PAGE HEADER FRAME - Edge-to-edge, anchored to top            */}
       {/* This is a STRUCTURAL FRAME, not a card. No rounded, no shadow */}
+      {/* Uses negative margins to break out of layout container        */}
       {/* ============================================================ */}
-      <div className="bg-white border-b-2 border-gray-300">
-        <div className="max-w-7xl mx-auto">
+      <div className="bg-white border-b-2 border-gray-300 -mx-4 sm:-mx-6 lg:-mx-8 -mt-6 mb-6">
+        <div className="px-4 sm:px-6 lg:px-8">
           {/* Application Context Header */}
           <ApplicationContextHeader
             context={context}
@@ -1370,9 +1371,9 @@ export default function BeltConveyorCalculatorApp() {
       {/* END PAGE HEADER FRAME */}
 
       {/* ============================================================ */}
-      {/* CONTENT AREA - Padded container below anchored header        */}
+      {/* CONTENT AREA - Full width within layout container            */}
       {/* ============================================================ */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div>
         {/* Loading State */}
         {loadState === 'loading' && (
           <div className="flex items-center justify-center py-12">
