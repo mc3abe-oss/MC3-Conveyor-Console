@@ -9,13 +9,14 @@
  */
 
 import { useMemo } from 'react';
-import { SliderbedInputs, LacingStyle, BeltTrackingMethod, MaterialForm, CoatingMethod } from '../../src/models/sliderbed_v1/schema';
+import { SliderbedInputs, LacingStyle, BeltTrackingMethod, MaterialForm, CoatingMethod, TemperatureUnit, FluidsOnMaterial, MaterialFluidType } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateTrackingRecommendation,
   TRACKING_MODE_LABELS,
   TrackingRecommendationOutput,
 } from '../../src/lib/tracking';
-import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../src/lib/belt-catalog';
+import { getCleatSpacingMultiplier, roundUpToIncrement, BeltCatalogItem } from '../../src/lib/belt-catalog';
+import { checkBeltCompatibility } from '../../src/lib/validation/beltCompatibility';
 
 // ============================================================================
 // TAB AND SECTION KEYS
@@ -61,6 +62,13 @@ export enum IssueCode {
   FINISH_NOTE_REQUIRED = 'FINISH_NOTE_REQUIRED',
   GUARDING_COLOR_REQUIRED = 'GUARDING_COLOR_REQUIRED',
   GUARDING_NOTE_REQUIRED = 'GUARDING_NOTE_REQUIRED',
+  // v1.38: Belt compatibility issues
+  BELT_TEMP_EXCEEDED = 'BELT_TEMP_EXCEEDED',
+  BELT_TEMP_NEAR_MAX = 'BELT_TEMP_NEAR_MAX',
+  BELT_TEMP_BELOW_MIN = 'BELT_TEMP_BELOW_MIN',
+  BELT_TEMP_RATING_MISSING = 'BELT_TEMP_RATING_MISSING',
+  BELT_OIL_INCOMPATIBLE = 'BELT_OIL_INCOMPATIBLE',
+  BELT_FLUID_TYPE_UNKNOWN = 'BELT_FLUID_TYPE_UNKNOWN',
 }
 
 // ============================================================================
@@ -124,9 +132,9 @@ export interface IssueAggregation {
 // ============================================================================
 
 /**
- * Compute validation issues from inputs
+ * Compute validation issues from inputs and optional belt information
  */
-function computeIssues(inputs: SliderbedInputs): Issue[] {
+function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem | null): Issue[] {
   const issues: Issue[] = [];
 
   // ---------------------------------------------------------------------------
@@ -621,6 +629,42 @@ function computeIssues(inputs: SliderbedInputs): Issue[] {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // PHYSICAL TAB - Belt Compatibility Checks (v1.38)
+  // Temperature and oil compatibility validation
+  // ---------------------------------------------------------------------------
+
+  if (selectedBelt) {
+    const beltCompatResult = checkBeltCompatibility(
+      {
+        partTempValue: inputs.part_temperature_value ?? null,
+        partTempUnit: (inputs.part_temperature_unit as TemperatureUnit) ?? 'Fahrenheit',
+        fluidsOnMaterial: (inputs.fluids_on_material as FluidsOnMaterial) ?? null,
+        materialFluidType: (inputs.material_fluid_type as MaterialFluidType) ?? null,
+      },
+      {
+        temp_min_f: selectedBelt.temp_min_f,
+        temp_max_f: selectedBelt.temp_max_f,
+        oil_resistant: selectedBelt.oil_resistant,
+      }
+    );
+
+    // Add belt compatibility issues to the issues array
+    for (const beltIssue of beltCompatResult.issues) {
+      issues.push({
+        severity: beltIssue.severity,
+        code: beltIssue.code,
+        message: beltIssue.message,
+        detail: beltIssue.detail,
+        tabKey: 'physical',
+        sectionKey: beltIssue.sectionKey === 'application' ? 'beltPulleys' : 'beltPulleys',
+        fieldKeys: beltIssue.sectionKey === 'application'
+          ? ['fluids_on_material', 'material_fluid_type']
+          : ['belt_catalog_key'],
+      });
+    }
+  }
+
   return issues;
 }
 
@@ -657,9 +701,12 @@ function initTabCounts(): Record<ConfigureTabKey, TabCounts> {
 // MAIN HOOK
 // ============================================================================
 
-export function useConfigureIssues(inputs: SliderbedInputs): IssueAggregation {
+export function useConfigureIssues(
+  inputs: SliderbedInputs,
+  selectedBelt?: BeltCatalogItem | null
+): IssueAggregation {
   return useMemo(() => {
-    const issues = computeIssues(inputs);
+    const issues = computeIssues(inputs, selectedBelt);
 
     // Aggregate by section (info severity doesn't count toward warnings)
     const sectionCounts = initSectionCounts();
@@ -711,7 +758,7 @@ export function useConfigureIssues(inputs: SliderbedInputs): IssueAggregation {
       getTrackingIssue,
       getMinPulleyIssues,
     };
-  }, [inputs]);
+  }, [inputs, selectedBelt]);
 }
 
 // ============================================================================

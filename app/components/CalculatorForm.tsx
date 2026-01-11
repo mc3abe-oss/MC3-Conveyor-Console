@@ -16,6 +16,7 @@ import { useConfigureIssues, ConfigureTabKey, Issue, SectionKey } from './useCon
 import StatusLight from './StatusLight';
 import { ValidationError } from '../../src/models/sliderbed_v1/schema';
 import { getFieldMapping } from '../../src/lib/validation/fieldToSection';
+import { useBelt } from '../hooks/useBeltCatalog';
 
 /**
  * Configure sub-tab type (alias to ConfigureTabKey for local use)
@@ -113,8 +114,11 @@ export default function CalculatorForm({
     setInputs((prev) => ({ ...prev, [field]: value }));
   };
 
-  // Compute validation issues (includes pre-calc tracking and min pulley checks)
-  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs);
+  // Get selected belt for compatibility validation
+  const { belt: selectedBelt } = useBelt(inputs.belt_catalog_key);
+
+  // Compute validation issues (includes pre-calc tracking, min pulley, and belt compatibility checks)
+  const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs, selectedBelt);
 
   // Convert post-calc ValidationErrors to Issues and organize by section
   const postCalcIssuesBySection = useMemo(() => {

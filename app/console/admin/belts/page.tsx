@@ -37,6 +37,9 @@ interface BeltFormData {
   notes: string;
   tags: string;
   is_active: boolean;
+  // v1.38: Temperature limits
+  temp_min_f: string;
+  temp_max_f: string;
 }
 
 interface BeltUsage {
@@ -66,6 +69,9 @@ const emptyForm: BeltFormData = {
   notes: '',
   tags: '',
   is_active: true,
+  // v1.38: Temperature limits
+  temp_min_f: '',
+  temp_max_f: '',
 };
 
 export default function AdminBeltsPage() {
@@ -147,6 +153,9 @@ export default function AdminBeltsPage() {
       notes: belt.notes || '',
       tags: belt.tags?.join(', ') || '',
       is_active: belt.is_active,
+      // v1.38: Temperature limits
+      temp_min_f: belt.temp_min_f?.toString() || '',
+      temp_max_f: belt.temp_max_f?.toString() || '',
     });
     setChangeReason('');
     setSaveMessage(null);
@@ -185,6 +194,17 @@ export default function AdminBeltsPage() {
     try {
       const minPulleyDia = parseFloat(formData.min_pulley_dia_in);
 
+      // v1.38: Parse temperature values with validation
+      const tempMinF = formData.temp_min_f ? parseFloat(formData.temp_min_f) : null;
+      const tempMaxF = formData.temp_max_f ? parseFloat(formData.temp_max_f) : null;
+
+      // Validate temp range
+      if (tempMinF !== null && tempMaxF !== null && tempMinF >= tempMaxF) {
+        setSaveMessage({ type: 'error', text: 'Min temperature must be less than max temperature' });
+        setIsSaving(false);
+        return;
+      }
+
       const belt = {
         catalog_key: formData.catalog_key,
         display_name: formData.display_name,
@@ -210,6 +230,9 @@ export default function AdminBeltsPage() {
               .filter(Boolean)
           : null,
         is_active: formData.is_active,
+        // v1.38: Temperature limits
+        temp_min_f: tempMinF,
+        temp_max_f: tempMaxF,
       };
 
       const response = await fetch('/api/belts', {
@@ -603,6 +626,39 @@ export default function AdminBeltsPage() {
                     V-guide min pulley requirements are handled via the V-Guide dropdown.
                   </p>
                 </div>
+
+                {/* v1.38: Temperature Limits */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Min Temp (°F)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={formData.temp_min_f}
+                      onChange={(e) => updateField('temp_min_f', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                      placeholder="e.g., 14"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Max Temp (°F)
+                    </label>
+                    <input
+                      type="number"
+                      step="1"
+                      value={formData.temp_max_f}
+                      onChange={(e) => updateField('temp_max_f', e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded"
+                      placeholder="e.g., 160"
+                    />
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500 -mt-2">
+                  Operating temperature limits. Leave blank if unknown. Used for compatibility validation.
+                </p>
 
                 {/* Flags */}
                 <div>

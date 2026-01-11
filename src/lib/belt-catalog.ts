@@ -120,6 +120,22 @@ export interface BeltCatalogItem {
   tags: string[] | null;
   is_active: boolean;
 
+  // =========================================================================
+  // Temperature Limits (v1.38)
+  // =========================================================================
+
+  /**
+   * Minimum operating temperature in Fahrenheit.
+   * Nullable if not specified by manufacturer.
+   */
+  temp_min_f: number | null;
+
+  /**
+   * Maximum operating temperature in Fahrenheit.
+   * Nullable if not specified by manufacturer.
+   */
+  temp_max_f: number | null;
+
   /**
    * Optional material profile (v1.11)
    * When present, min_dia fields override legacy flat columns.

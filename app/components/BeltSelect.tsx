@@ -133,6 +133,28 @@ export default function BeltSelect({
               </div>
             )}
 
+            {/* v1.38: Temperature and oil compatibility info */}
+            <div className="mt-2 pt-2 border-t border-gray-200 space-y-1">
+              <div className="flex justify-between">
+                <span>Temp range:</span>
+                <span className="font-mono">
+                  {selectedBelt.temp_min_f !== null && selectedBelt.temp_max_f !== null
+                    ? `${selectedBelt.temp_min_f}°F – ${selectedBelt.temp_max_f}°F`
+                    : selectedBelt.temp_min_f !== null
+                      ? `Min ${selectedBelt.temp_min_f}°F`
+                      : selectedBelt.temp_max_f !== null
+                        ? `Max ${selectedBelt.temp_max_f}°F`
+                        : <span className="text-amber-600 text-[10px]">Not set (admin)</span>}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span>Oil resistant:</span>
+                <span className={selectedBelt.oil_resistant ? 'text-green-700' : 'text-gray-500'}>
+                  {selectedBelt.oil_resistant ? 'Yes' : 'No'}
+                </span>
+              </div>
+            </div>
+
             {/* Phase 3A: Banding info */}
             {effectiveMin.banding.supported && (
               <div className="mt-2 pt-2 border-t border-gray-200">
