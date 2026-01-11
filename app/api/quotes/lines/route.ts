@@ -20,25 +20,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
-
-/**
- * Format user display name as "First name + last initial" or email prefix
- */
-function formatCreatorDisplay(email: string | null, metadata?: { first_name?: string; last_name?: string } | null): string | null {
-  if (!email) return null;
-
-  // Try to use metadata names first
-  if (metadata?.first_name) {
-    const lastName = metadata.last_name || '';
-    const lastInitial = lastName ? ` ${lastName.charAt(0)}.` : '';
-    return `${metadata.first_name}${lastInitial}`;
-  }
-
-  // Fall back to email prefix
-  const emailPrefix = email.split('@')[0];
-  // Capitalize first letter
-  return emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1);
-}
+import { getCreatorDisplayOrNull } from '../../../../src/lib/user-display';
 
 interface QuoteLineRow {
   quote_number: string;
@@ -48,6 +30,7 @@ interface QuoteLineRow {
   customer_name: string | null;
   quote_status: string;
   revision_count: number;
+  created_at: string;
   latest_updated_at: string;
   latest_application_id: string;
   created_by_display?: string | null;
@@ -70,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Get all calc_recipes with QUOTE reference type
     const { data: recipes, error: recipesError } = await supabase
       .from('calc_recipes')
-      .select('id, created_at, updated_at, inputs, created_by')
+      .select('id, created_at, updated_at, inputs, created_by, created_by_display')
       .order('updated_at', { ascending: false });
 
     if (recipesError) {
@@ -90,6 +73,7 @@ export async function GET(request: NextRequest) {
         created_at: r.created_at,
         config: r.inputs._config,
         created_by: r.created_by,
+        created_by_display: r.created_by_display as string | null,
       }));
 
     // Build a map of user IDs to display names
@@ -105,7 +89,7 @@ export async function GET(request: NextRequest) {
         for (const user of authUsers) {
           if (creatorIds.includes(user.id)) {
             const metadata = user.user_metadata as { first_name?: string; last_name?: string } | undefined;
-            const display = formatCreatorDisplay(user.email || null, metadata);
+            const display = getCreatorDisplayOrNull(user.email, metadata);
             if (display) {
               creatorMap.set(user.id, display);
             }
@@ -183,6 +167,11 @@ export async function GET(request: NextRequest) {
       // Look up quote record for customer and status
       const quoteRecord = quoteMap.get(quoteNumber);
 
+      // Find earliest created_at (oldest revision)
+      const earliestCreatedAt = group.revisions.reduce((earliest, rev) => {
+        return new Date(rev.created_at) < new Date(earliest) ? rev.created_at : earliest;
+      }, group.revisions[0].created_at);
+
       allRows.push({
         quote_number: quoteNumber,
         base_number: group.base_number,
@@ -191,9 +180,13 @@ export async function GET(request: NextRequest) {
         customer_name: latest.config.customer_name || quoteRecord?.customer_name || null,
         quote_status: quoteRecord?.quote_status || 'draft',
         revision_count: group.revisions.length,
+        created_at: earliestCreatedAt,
         latest_updated_at: latest.updated_at,
         latest_application_id: latest.id,
-        created_by_display: latest.created_by ? creatorMap.get(latest.created_by) || null : null,
+        // Prefer stamped display name, fall back to runtime lookup
+        created_by_display: latest.created_by_display
+          || (latest.created_by ? creatorMap.get(latest.created_by) : null)
+          || null,
       });
     }
 

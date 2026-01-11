@@ -19,6 +19,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { supabaseAdmin } from '../../../../src/lib/supabase/client';
+import { getCreatorDisplayOrNull } from '../../../../src/lib/user-display';
 
 export async function GET(request: NextRequest) {
   try {
@@ -56,9 +58,16 @@ export async function GET(request: NextRequest) {
         );
       }
 
+      // Get revision count for this reference + job line combination
+      const revisionCount = await getRevisionCount(supabase, app);
+
+      // Enrich with creator display if missing
+      await enrichCreatorDisplay(app);
+
       return NextResponse.json({
         application: app,
         context: buildContextFromApp(app),
+        revision_count: revisionCount,
       });
     }
 
@@ -148,9 +157,12 @@ export async function GET(request: NextRequest) {
 
       // Return the latest revision for this job line (already sorted by updated_at desc)
       const latestApp = matchingApps[0];
+      const revisionCount = matchingApps.length;
+      await enrichCreatorDisplay(latestApp);
       return NextResponse.json({
         application: latestApp,
         context: buildContextFromApp(latestApp),
+        revision_count: revisionCount,
       });
     }
 
@@ -162,9 +174,12 @@ export async function GET(request: NextRequest) {
     if (uniqueJobLines.length === 1) {
       // Only one job line exists, load it
       const latestApp = filteredApps[0];
+      const revisionCount = filteredApps.length;
+      await enrichCreatorDisplay(latestApp);
       return NextResponse.json({
         application: latestApp,
         context: buildContextFromApp(latestApp),
+        revision_count: revisionCount,
       });
     }
 
@@ -233,4 +248,72 @@ function buildContextFromApp(app: any): {
     outputs_stale: app.outputs_stale ?? false,
     last_calculated_at: app.last_calculated_at ?? null,
   };
+}
+
+/**
+ * Get the revision count for an application by counting all versions
+ * with the same reference type, base number, suffix, and job line.
+ */
+async function getRevisionCount(supabase: any, app: any): Promise<number> {
+  const config = app.inputs?._config;
+  if (!config?.reference_type) {
+    return 1;
+  }
+
+  const referenceType = config.reference_type;
+  const referenceBase = config.reference_number_base ?? config.reference_number;
+  const referenceSuffix = config.reference_suffix ?? null;
+  const referenceJobLine = config.reference_line ?? 1;
+
+  // Count all versions with matching reference
+  const { count, error } = await supabase
+    .from('calc_recipes')
+    .select('*', { count: 'exact', head: true })
+    .eq('inputs->_config->>reference_type', referenceType)
+    .or(`inputs->_config->>reference_number.eq.${referenceBase},inputs->_config->>reference_number_base.eq.${referenceBase}`)
+    .is('deleted_at', null)
+    .eq('is_active', true);
+
+  if (error) {
+    console.error('Error counting revisions:', error);
+    return 1;
+  }
+
+  // If we need to filter by suffix and job line, we'd need additional logic
+  // For now, return the count of all versions for this reference
+  return count || 1;
+}
+
+/**
+ * Enrich an application with creator display name if it's missing.
+ * Does runtime lookup from auth.users when stamped value is null.
+ */
+async function enrichCreatorDisplay(app: any): Promise<void> {
+  // Already has stamped display name
+  if (app.created_by_display) {
+    return;
+  }
+
+  // No creator ID to lookup
+  if (!app.created_by) {
+    return;
+  }
+
+  // Need runtime lookup
+  if (!supabaseAdmin) {
+    return;
+  }
+
+  try {
+    const { data: userData } = await supabaseAdmin.auth.admin.getUserById(app.created_by);
+    if (userData?.user) {
+      const metadata = userData.user.user_metadata as { first_name?: string; last_name?: string } | undefined;
+      const display = getCreatorDisplayOrNull(userData.user.email, metadata);
+      if (display) {
+        app.created_by_display = display;
+      }
+    }
+  } catch (err) {
+    console.error('Error fetching creator info:', err);
+  }
 }

@@ -25,6 +25,8 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../src/lib/supabase/server';
+import { supabaseAdmin } from '../../../src/lib/supabase/client';
+import { getCreatorDisplayOrNull } from '../../../src/lib/user-display';
 
 export async function GET(request: NextRequest) {
   try {
@@ -115,8 +117,93 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Enrich sales orders with creator display from associated applications
+    const salesOrders = dataResult.data || [];
+
+    // Get applications associated with these sales orders to get creator info
+    if (salesOrders.length > 0) {
+      const soIds = salesOrders.map(so => so.id);
+
+      // Fetch applications linked to these sales orders (include updated_at for revision tracking)
+      const { data: apps } = await supabase
+        .from('calc_recipes')
+        .select('id, sales_order_id, created_by, created_by_display, updated_at')
+        .in('sales_order_id', soIds)
+        .is('deleted_at', null)
+        .eq('is_active', true);
+
+      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at)
+      const enrichmentMap = new Map<string, {
+        created_by: string | null;
+        created_by_display: string | null;
+        revision_count: number;
+        latest_updated_at: string | null;
+      }>();
+
+      for (const app of apps || []) {
+        if (!app.sales_order_id) continue;
+
+        const existing = enrichmentMap.get(app.sales_order_id);
+        if (!existing) {
+          enrichmentMap.set(app.sales_order_id, {
+            created_by: app.created_by,
+            created_by_display: app.created_by_display,
+            revision_count: 1,
+            latest_updated_at: app.updated_at,
+          });
+        } else {
+          existing.revision_count++;
+          // Track most recent update
+          if (app.updated_at && (!existing.latest_updated_at || new Date(app.updated_at) > new Date(existing.latest_updated_at))) {
+            existing.latest_updated_at = app.updated_at;
+          }
+        }
+      }
+
+      // Get unique creator user IDs that need lookup (no stamped display)
+      const userIdsNeedingLookup = [...new Set(
+        [...enrichmentMap.values()]
+          .filter(c => c.created_by && !c.created_by_display)
+          .map(c => c.created_by!)
+      )];
+
+      // Fetch user info for runtime lookup
+      const userDisplayMap = new Map<string, string>();
+      if (userIdsNeedingLookup.length > 0 && supabaseAdmin) {
+        try {
+          const { data: usersResponse } = await supabaseAdmin.auth.admin.listUsers();
+          for (const user of usersResponse?.users || []) {
+            if (userIdsNeedingLookup.includes(user.id)) {
+              const display = getCreatorDisplayOrNull(
+                user.email,
+                user.user_metadata as { first_name?: string; last_name?: string } | undefined
+              );
+              if (display) userDisplayMap.set(user.id, display);
+            }
+          }
+        } catch (err) {
+          console.error('Error fetching user info:', err);
+        }
+      }
+
+      // Attach enrichment data to each sales order
+      for (const so of salesOrders) {
+        const enrichment = enrichmentMap.get(so.id);
+        if (enrichment) {
+          (so as any).created_by_display = enrichment.created_by_display
+            || (enrichment.created_by ? userDisplayMap.get(enrichment.created_by) : null)
+            || null;
+          (so as any).revision_count = enrichment.revision_count;
+          (so as any).latest_updated_at = enrichment.latest_updated_at;
+        } else {
+          (so as any).revision_count = 0;
+          (so as any).latest_updated_at = null;
+        }
+      }
+    }
+
     return NextResponse.json({
-      data: dataResult.data || [],
+      data: salesOrders,
       total: countResult.count || 0,
       page,
       pageSize,

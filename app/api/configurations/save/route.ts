@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../src/lib/supabase/server';
-import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { isSupabaseConfigured, supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { hashCanonical, stripUndefined } from '../../../../src/lib/recipes/hash';
 import { MODEL_VERSION_ID } from '../../../../src/lib/model-identity';
 import {
@@ -18,6 +18,7 @@ import {
   isApplicationCodeError,
   APPLICATION_CODE_HELP,
 } from '../../../../src/lib/applicationCode';
+import { formatCreatorDisplay } from '../../../../src/lib/user-display';
 
 interface SaveRequestBody {
   reference_type: 'QUOTE' | 'SALES_ORDER';  // v1: Every application must be linked to Quote or SO
@@ -261,8 +262,23 @@ export async function POST(request: NextRequest) {
       recipe = result.data;
       recipeError = result.error;
     } else {
-      // Insert new recipe
+      // Insert new recipe - stamp creator info
       recipeRow.created_by = userId;
+
+      // Fetch user info to build display name
+      if (supabaseAdmin) {
+        try {
+          const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
+          if (userData?.user) {
+            const metadata = userData.user.user_metadata as { first_name?: string; last_name?: string } | undefined;
+            recipeRow.created_by_display = formatCreatorDisplay(userData.user.email, metadata);
+          }
+        } catch (err) {
+          console.error('Failed to fetch user info for creator display:', err);
+          // Continue without display name - it can be derived at read time
+        }
+      }
+
       const result = await supabase
         .from('calc_recipes')
         .insert(recipeRow)

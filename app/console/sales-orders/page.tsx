@@ -263,7 +263,16 @@ export default function ConsoleSalesOrdersPage() {
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Created by
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last updated
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Revisions
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Origin Quote
@@ -286,7 +295,20 @@ export default function ConsoleSalesOrdersPage() {
                     {so.customer_name || <span className="text-gray-400 italic">No customer</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {(so as any).created_by_display || <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {new Date(so.created_at).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {(so as any).latest_updated_at
+                      ? new Date((so as any).latest_updated_at).toLocaleDateString()
+                      : <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {(so as any).revision_count > 0
+                      ? (so as any).revision_count
+                      : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     {so.origin_quote_id ? (

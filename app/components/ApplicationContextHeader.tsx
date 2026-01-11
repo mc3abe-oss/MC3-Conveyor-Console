@@ -22,6 +22,14 @@ interface ApplicationContextHeaderProps {
   calculationStatus?: 'draft' | 'calculated';
   outputsStale?: boolean;
   hasCalcError?: boolean;
+  /** Creator display name (e.g., "Bob M.") */
+  createdByDisplay?: string | null;
+  /** Application creation timestamp */
+  createdAt?: string | null;
+  /** Application last updated timestamp */
+  lastUpdatedAt?: string | null;
+  /** Number of saved revisions */
+  revisionCount?: number;
 }
 
 /**
@@ -48,6 +56,10 @@ export default function ApplicationContextHeader({
   calculationStatus = 'draft',
   outputsStale = false,
   hasCalcError = false,
+  createdByDisplay,
+  createdAt,
+  lastUpdatedAt,
+  revisionCount,
 }: ApplicationContextHeaderProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -372,6 +384,24 @@ export default function ApplicationContextHeader({
           {statusChip.label}
         </span>
       </div>
+
+      {/* ROW 3: Metadata block for saved applications */}
+      {isSavedApplication && (createdByDisplay || createdAt || lastUpdatedAt || revisionCount) && (
+        <div className="flex items-center gap-4 px-4 py-1 text-xs text-gray-500 border-t border-gray-100">
+          {createdByDisplay && (
+            <span>Created by <span className="text-gray-700">{createdByDisplay}</span></span>
+          )}
+          {createdAt && (
+            <span>Created <span className="text-gray-700">{new Date(createdAt).toLocaleDateString()}</span></span>
+          )}
+          {lastUpdatedAt && (
+            <span>Last updated <span className="text-gray-700">{new Date(lastUpdatedAt).toLocaleDateString()}</span></span>
+          )}
+          {typeof revisionCount === 'number' && revisionCount > 0 && (
+            <span>Revisions <span className="text-gray-700">{revisionCount}</span></span>
+          )}
+        </div>
+      )}
 
       {/* Clear Confirmation Modal */}
       {showClearConfirm && (

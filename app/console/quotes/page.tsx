@@ -18,6 +18,7 @@ interface QuoteLine {
   customer_name: string | null;
   quote_status: string;
   revision_count: number;
+  created_at: string;
   latest_updated_at: string;
   latest_application_id: string;
   created_by_display?: string | null;
@@ -357,10 +358,13 @@ export default function ConsoleQuotesPage() {
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Creator
+                  Created by
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Last Updated
+                  Created
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Last updated
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Revisions
@@ -394,6 +398,9 @@ export default function ConsoleQuotesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {line.created_by_display || <span className="text-gray-400">—</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                    {line.created_at ? new Date(line.created_at).toLocaleDateString() : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {formatDate(line.latest_updated_at)}

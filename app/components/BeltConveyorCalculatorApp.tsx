@@ -53,6 +53,10 @@ export default function BeltConveyorCalculatorApp() {
   // Load/Save state with dirty tracking
   const [loadedConfigurationId, setLoadedConfigurationId] = useState<string | null>(null);
   const [loadedRevisionId, setLoadedRevisionId] = useState<string | null>(null);
+  const [createdByDisplay, setCreatedByDisplay] = useState<string | null>(null);
+  const [applicationCreatedAt, setApplicationCreatedAt] = useState<string | null>(null);
+  const [applicationUpdatedAt, setApplicationUpdatedAt] = useState<string | null>(null);
+  const [applicationRevisionCount, setApplicationRevisionCount] = useState<number | undefined>(undefined);
   const [initialLoadedPayload, setInitialLoadedPayload] = useState<any>(null);
 
   // Calculate tracking
@@ -200,6 +204,14 @@ export default function BeltConveyorCalculatorApp() {
     }
     setLoadedConfigurationId(application.id);
     setLoadedRevisionId(application.id);
+
+    // Set creator display if available
+    setCreatedByDisplay(application.created_by_display || null);
+
+    // Set application metadata for header display
+    setApplicationCreatedAt(application.created_at || null);
+    setApplicationUpdatedAt(application.updated_at || null);
+    setApplicationRevisionCount(data.revision_count ?? undefined);
 
     // Set outputs/results if available
     if (application.expected_outputs) {
@@ -663,6 +675,7 @@ export default function BeltConveyorCalculatorApp() {
     setLoadedConfigurationId(null);
     const clearRevisionId = `__clear__${Date.now()}`;
     setLoadedRevisionId(clearRevisionId);
+    setCreatedByDisplay(null);
     setInitialLoadedPayload(null);
 
     // Reset inputs to factory defaults (using buildDefaultInputs for single source of truth)
@@ -1259,6 +1272,10 @@ export default function BeltConveyorCalculatorApp() {
             calculationStatus={calculationStatus}
             outputsStale={outputsStale}
             hasCalcError={result ? !result.success : false}
+            createdByDisplay={createdByDisplay}
+            createdAt={applicationCreatedAt}
+            lastUpdatedAt={applicationUpdatedAt}
+            revisionCount={applicationRevisionCount}
           />
 
           {/* Mode Segmented Control - NO border-t, compressed with header */}
