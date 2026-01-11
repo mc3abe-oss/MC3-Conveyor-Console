@@ -1217,11 +1217,8 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
 
     // Track missing for notes section
     if (!component?.part_number || !component?.found) {
-      let reason = 'No matching component found in component map.';
-      if (item.type === 'gear_unit' && component?.part_number) {
-        // Has synthetic PN but not found in DB
-        reason = 'Gear unit PN mapping not keyed for this model yet.';
-      }
+      // Use component-specific hint message
+      const reason = getMissingHint(item.type);
       missingComponents.push({ label: `${item.label} PN`, reason });
     }
   });
@@ -1238,10 +1235,10 @@ export function buildBomCopyText(bom: BomResolution, context: BomCopyContext): s
     lines.push('- NOTE: Multiple matches existed; selected first deterministic match.');
   }
 
-  // Missing mappings
+  // Missing mappings - use UNRESOLVED marker
   if (missingComponents.length > 0) {
     missingComponents.forEach(m => {
-      lines.push(`- MISSING: ${m.label} (${m.reason})`);
+      lines.push(`- UNRESOLVED: ${m.label} (${m.reason})`);
     });
   }
 
@@ -1267,11 +1264,15 @@ export function getMissingHint(
       }
       return 'Select an output shaft option to resolve this.';
     case 'gear_unit':
-      return 'Gear unit PN mapping not keyed for this model yet.';
+      return 'Not yet in NORD catalog data (gear unit PN).';
     case 'motor':
+      return 'Not yet in NORD catalog data (motor).';
     case 'adapter':
+      return 'Not yet in NORD catalog data (adapter).';
+    case 'hollow_shaft_bushing':
+      return 'Not yet in NORD catalog data (bushing).';
     default:
-      return 'No matching component found in component map.';
+      return 'Not yet in NORD catalog data.';
   }
 }
 

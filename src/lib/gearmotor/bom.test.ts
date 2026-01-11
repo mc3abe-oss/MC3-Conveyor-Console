@@ -403,7 +403,7 @@ describe('buildBomCopyText', () => {
       expect(result).toContain('Catalog SF: 1.6');
 
       // Check missing notation
-      expect(result).toContain('MISSING: Output Shaft Kit PN');
+      expect(result).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
 
     it('includes MISSING lines when part numbers are null', () => {
@@ -436,9 +436,9 @@ describe('buildBomCopyText', () => {
       expect(result).toContain('3) Adapter: —');
 
       // Should include MISSING notes
-      expect(result).toContain('MISSING: Gear Unit PN');
-      expect(result).toContain('MISSING: Motor (STD or BRK) PN');
-      expect(result).toContain('MISSING: Adapter PN');
+      expect(result).toContain('UNRESOLVED: Gear Unit PN');
+      expect(result).toContain('UNRESOLVED: Motor (STD or BRK) PN');
+      expect(result).toContain('UNRESOLVED: Adapter PN');
     });
   });
 
@@ -507,15 +507,19 @@ describe('getMissingHint', () => {
   });
 
   it('returns correct hint for gear_unit', () => {
-    expect(getMissingHint('gear_unit')).toBe('Gear unit PN mapping not keyed for this model yet.');
+    expect(getMissingHint('gear_unit')).toBe('Not yet in NORD catalog data (gear unit PN).');
   });
 
   it('returns correct hint for motor', () => {
-    expect(getMissingHint('motor')).toBe('No matching component found in component map.');
+    expect(getMissingHint('motor')).toBe('Not yet in NORD catalog data (motor).');
   });
 
   it('returns correct hint for adapter', () => {
-    expect(getMissingHint('adapter')).toBe('No matching component found in component map.');
+    expect(getMissingHint('adapter')).toBe('Not yet in NORD catalog data (adapter).');
+  });
+
+  it('returns correct hint for hollow_shaft_bushing', () => {
+    expect(getMissingHint('hollow_shaft_bushing')).toBe('Not yet in NORD catalog data (bushing).');
   });
 });
 
@@ -1289,7 +1293,7 @@ describe('Output Shaft Kit in BOM copy text', () => {
       expect(copyText).toContain('4) Output Shaft Kit: — (not required)');
 
       // Should NOT show MISSING for output shaft kit
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).not.toContain('UNRESOLVED: Output Shaft Kit PN');
     });
   });
 
@@ -1325,7 +1329,7 @@ describe('Output Shaft Kit in BOM copy text', () => {
       expect(copyText).toContain('4) Output Shaft Kit: —');
 
       // Should show MISSING for output shaft kit
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
   });
 });
@@ -1380,7 +1384,7 @@ describe('Output Shaft Kit with outputShaftOption', () => {
       expect(copyText).toContain('Inch keyed bore');
 
       // v1: SHOULD show MISSING for output shaft kit when PN is pending (do not order)
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
   });
 
@@ -1417,7 +1421,7 @@ describe('Output Shaft Kit with outputShaftOption', () => {
 
       const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
       expect(copyText).toContain('4) Output Shaft Kit: — (select in Drive Arrangement)');
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
 
     it('formats correctly for bottom mount with selection (configured) - v1 behavior', () => {
@@ -1438,7 +1442,7 @@ describe('Output Shaft Kit with outputShaftOption', () => {
       expect(copyText).toContain('4) Output Shaft Kit: — (PN pending, not included in order)');
       expect(copyText).toContain('Metric hollow');
       // v1: SHOULD show MISSING for pending PNs (do not order)
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
   });
 });
@@ -1604,7 +1608,7 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
       expect(copyText).toContain('(PN pending, not included in order)');
       expect(copyText).toContain('Inch hollow');
       // v1: Should show MISSING note for pending PNs
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
 
     it('shows "(not required)" for shaft mount configuration', () => {
@@ -1620,7 +1624,7 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
       const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
 
       expect(copyText).toContain('Output Shaft Kit: — (not required)');
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+      expect(copyText).not.toContain('UNRESOLVED: Output Shaft Kit');
     });
 
     it('shows MISSING for bottom mount with no selection', () => {
@@ -1636,7 +1640,7 @@ describe('REGRESSION: Output shaft kit PN is always null until catalog mapping i
       const copyText = buildBomCopyText(bom, { appliedSf: 1.5, catalogSf: 2.0 });
 
       expect(copyText).toContain('(select in Drive Arrangement)');
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
   });
 });
@@ -1682,7 +1686,7 @@ describe('Output Shaft Kit PN Resolution', () => {
       expect(copyText).toContain('4) Output Shaft Kit: 60892110');
       expect(copyText).toContain('Output Shaft Kit SI31 5/8" Keyed Bore');
       // Should NOT show as missing or pending
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+      expect(copyText).not.toContain('UNRESOLVED: Output Shaft Kit');
       expect(copyText).not.toContain('(PN pending)');
       expect(copyText).not.toContain('(not required)');
     });
@@ -1732,7 +1736,7 @@ describe('Output Shaft Kit PN Resolution', () => {
       // v1: Should show dash with "PN pending, not included in order" (not the option label as PN)
       expect(copyText).toContain('4) Output Shaft Kit: — (PN pending, not included in order)');
       // v1: Should show MISSING note for pending PNs (do not order until resolved)
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
 
     it('handles all four output shaft option types with v1 pending behavior', () => {
@@ -1790,7 +1794,7 @@ describe('Output Shaft Kit PN Resolution', () => {
       // Should show "(not required)" and dash for PN
       expect(copyText).toContain('4) Output Shaft Kit: — (not required)');
       // Should NOT show as MISSING
-      expect(copyText).not.toContain('MISSING: Output Shaft Kit');
+      expect(copyText).not.toContain('UNRESOLVED: Output Shaft Kit');
     });
 
     it('needsOutputShaftKit returns false for shaft_mounted', () => {
@@ -1820,7 +1824,7 @@ describe('Output Shaft Kit PN Resolution', () => {
       // Should prompt user to select
       expect(copyText).toContain('4) Output Shaft Kit: — (select in Drive Arrangement)');
       // Should show as MISSING
-      expect(copyText).toContain('MISSING: Output Shaft Kit PN');
+      expect(copyText).toContain('UNRESOLVED: Output Shaft Kit PN');
     });
 
     it('needsOutputShaftKit returns true for bottom_mount', () => {
