@@ -15,13 +15,15 @@ import SaveRecipeModal from './SaveRecipeModal';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs, normalizeOutputShaftOption, GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
 import { buildOutputsV2, OutputsV2 } from '../../src/models/sliderbed_v1/outputs_v2';
 import { OutputsV2Tabs } from './outputs_v2';
+import CommercialScopeOutput from './CommercialScopeOutput';
+import { useCurrentUserRole } from '../hooks/useCurrentUserRole';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
 import { createClient } from '../../src/lib/supabase/browser';
 import { stripSoContextFromSearchParams } from '../../src/lib/strip-so-context';
 
-type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'vault';
+type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'commercial_scope' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
 
 const LAST_APP_KEY = 'belt_lastApplicationId';
@@ -105,6 +107,9 @@ export default function BeltConveyorCalculatorApp() {
   // v1.42: User email for feature gating
   const [userEmail, setUserEmail] = useState<string | null>(null);
 
+  // User role for superuser-only features
+  const { isSuperAdmin } = useCurrentUserRole();
+
   // Fetch user email on mount for feature gating
   useEffect(() => {
     const fetchUserEmail = async () => {
@@ -121,6 +126,9 @@ export default function BeltConveyorCalculatorApp() {
 
   // v1.42: Outputs v2 is only visible to abek@mc3mfg.com
   const showOutputsV2 = userEmail === 'abek@mc3mfg.com';
+
+  // Commercial Scope is only visible to Super Admins
+  const showCommercialScope = isSuperAdmin;
 
   // URL-based loading state
   const searchParams = useSearchParams();
@@ -1350,6 +1358,26 @@ export default function BeltConveyorCalculatorApp() {
                 Outputs v2
               </button>
             )}
+            {showCommercialScope && (
+              <button
+                type="button"
+                role="tab"
+                aria-selected={viewMode === 'commercial_scope'}
+                onClick={() => setViewMode('commercial_scope')}
+                className={`
+                  flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-all
+                  ${viewMode === 'commercial_scope'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-200'
+                  }
+                `}
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                Commercial Scope
+              </button>
+            )}
             <button
               type="button"
               role="tab"
@@ -1520,6 +1548,36 @@ export default function BeltConveyorCalculatorApp() {
                 Go to Configure
               </button>
             </div>
+            )}
+          </div>
+        )}
+
+        {/* Commercial Scope Mode - Superuser only */}
+        {showCommercialScope && (
+          <div className={viewMode === 'commercial_scope' ? '' : 'hidden'}>
+            {inputs ? (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <CommercialScopeOutput
+                  inputs={inputs}
+                  outputs={result?.outputs}
+                  outputsV2={outputsV2}
+                />
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Configuration Available</h3>
+                <p className="text-gray-500 mb-4">Configure your conveyor to generate Commercial Scope output</p>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('configure')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Go to Configure
+                </button>
+              </div>
             )}
           </div>
         )}

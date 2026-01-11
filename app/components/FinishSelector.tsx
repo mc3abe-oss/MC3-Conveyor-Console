@@ -81,7 +81,6 @@ export default function FinishSelector({
   const [colorOptions, setColorOptions] = useState<PowderColorOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [defaultColorCode, setDefaultColorCode] = useState<string | null>(null);
 
   // Normalize coating method
   const currentMethod = coatingMethod || CoatingMethod.PowderCoat;
@@ -101,12 +100,7 @@ export default function FinishSelector({
         }
         const data = await response.json() as PowderColorOption[];
         setColorOptions(data);
-
-        // Find the default color from the DB
-        const defaultOpt = data.find((opt: PowderColorOption) => opt.is_default);
-        if (defaultOpt) {
-          setDefaultColorCode(defaultOpt.code);
-        }
+        // NOTE: Default color tracking removed - user must explicitly select color
       } catch (err) {
         console.error('Error fetching powder colors:', err);
         setError('Failed to load color options');
