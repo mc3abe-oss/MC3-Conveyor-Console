@@ -7,7 +7,7 @@
  * Tabs:
  * - Catalog: View NORD parts/kits/accessories from vendor_components
  * - Mappings: (Coming soon) Manage versioned mapping rules for PN resolution
- * - Coverage: (Coming soon) View resolution coverage and identify gaps
+ * - Coverage: View resolution coverage and identify gaps
  */
 
 'use client';
@@ -35,6 +35,41 @@ interface NordPart {
   source: string;
   created_at: string;
   updated_at: string;
+}
+
+// Coverage types
+interface CoverageSummary {
+  total: number;
+  resolved: number;
+  ambiguous: number;
+  unresolved: number;
+  invalid: number;
+  generated_at: string | null;
+}
+
+interface CoverageInputs {
+  series: string;
+  gear_unit_size: string;
+  gearmotor_mounting_style: string;
+  output_shaft_option: string | null;
+  plug_in_shaft_style: string | null;
+  total_ratio: number | null;
+  motor_hp: number | null;
+}
+
+interface CoverageCase {
+  id: string;
+  case_key: string;
+  inputs_json: CoverageInputs;
+  status: 'resolved' | 'ambiguous' | 'unresolved' | 'invalid';
+  resolved_pns: string[];
+  message: string | null;
+  components_json: Record<string, {
+    found: boolean;
+    part_number: string | null;
+    description: string | null;
+  }>;
+  last_checked_at: string;
 }
 
 type TabId = 'catalog' | 'mappings' | 'coverage';
@@ -85,7 +120,6 @@ export default function NordCatalogAdminPage() {
           <TabButton
             active={activeTab === 'coverage'}
             onClick={() => setActiveTab('coverage')}
-            disabled
           >
             Coverage
           </TabButton>
@@ -95,7 +129,7 @@ export default function NordCatalogAdminPage() {
       {/* Tab Content */}
       {activeTab === 'catalog' && <CatalogTab />}
       {activeTab === 'mappings' && <ComingSoonTab feature="Mapping Rules" />}
-      {activeTab === 'coverage' && <ComingSoonTab feature="Coverage Analysis" />}
+      {activeTab === 'coverage' && <CoverageTab />}
     </main>
   );
 }
@@ -138,6 +172,375 @@ function TabButton({
       {children}
       {disabled && <span className="ml-1 text-xs">(soon)</span>}
     </button>
+  );
+}
+
+// =============================================================================
+// COVERAGE TAB
+// =============================================================================
+
+function CoverageTab() {
+  const [summary, setSummary] = useState<CoverageSummary | null>(null);
+  const [cases, setCases] = useState<CoverageCase[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  const [selectedCase, setSelectedCase] = useState<CoverageCase | null>(null);
+
+  useEffect(() => {
+    loadCoverage();
+  }, [statusFilter]);
+
+  async function loadCoverage() {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const url = statusFilter
+        ? `/api/admin/nord/coverage?status=${statusFilter}`
+        : '/api/admin/nord/coverage';
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Failed to fetch coverage');
+      const data = await response.json();
+      setSummary(data.summary);
+      setCases(data.cases || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load coverage');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/admin/nord/coverage/refresh', {
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to refresh coverage');
+      }
+      await loadCoverage();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh');
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  if (isLoading && !summary) {
+    return <p className="text-gray-500">Loading coverage data...</p>;
+  }
+
+  if (error && !summary) {
+    return (
+      <div>
+        <p className="text-red-600 mb-4">{error}</p>
+        <button
+          onClick={loadCoverage}
+          className="px-4 py-2 bg-blue-600 text-white rounded"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  const isEmpty = !summary || summary.total === 0;
+
+  return (
+    <div className="space-y-6">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        <SummaryCard
+          label="Total"
+          value={summary?.total || 0}
+          color="gray"
+        />
+        <SummaryCard
+          label="Resolved"
+          value={summary?.resolved || 0}
+          color="green"
+          onClick={() => setStatusFilter(statusFilter === 'resolved' ? '' : 'resolved')}
+          active={statusFilter === 'resolved'}
+        />
+        <SummaryCard
+          label="Ambiguous"
+          value={summary?.ambiguous || 0}
+          color="yellow"
+          onClick={() => setStatusFilter(statusFilter === 'ambiguous' ? '' : 'ambiguous')}
+          active={statusFilter === 'ambiguous'}
+        />
+        <SummaryCard
+          label="Unresolved"
+          value={summary?.unresolved || 0}
+          color="red"
+          onClick={() => setStatusFilter(statusFilter === 'unresolved' ? '' : 'unresolved')}
+          active={statusFilter === 'unresolved'}
+        />
+        <SummaryCard
+          label="Invalid"
+          value={summary?.invalid || 0}
+          color="gray"
+          onClick={() => setStatusFilter(statusFilter === 'invalid' ? '' : 'invalid')}
+          active={statusFilter === 'invalid'}
+        />
+      </div>
+
+      {/* Refresh button and status */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-gray-500">
+          {summary?.generated_at ? (
+            <>Last updated: {new Date(summary.generated_at).toLocaleString()}</>
+          ) : (
+            <>No coverage data generated yet</>
+          )}
+        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-wait"
+        >
+          {isRefreshing ? 'Regenerating...' : 'Recalculate Coverage'}
+        </button>
+      </div>
+
+      {error && (
+        <div className="p-3 bg-red-50 border border-red-200 rounded text-red-700 text-sm">
+          {error}
+        </div>
+      )}
+
+      {isEmpty ? (
+        <div className="bg-white rounded-lg shadow p-8 text-center">
+          <h3 className="text-lg font-medium text-gray-700 mb-2">No Coverage Data</h3>
+          <p className="text-gray-500 mb-4">
+            Click &quot;Recalculate Coverage&quot; to generate coverage analysis.
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Cases List */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="font-medium">
+                Coverage Cases ({cases.length})
+                {statusFilter && <span className="ml-2 text-sm text-gray-500">- {statusFilter}</span>}
+              </h3>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto">
+              {cases.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCase(c)}
+                  className={`w-full text-left p-4 border-b border-gray-100 hover:bg-gray-50 ${
+                    selectedCase?.id === c.id ? 'bg-blue-50' : ''
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-mono text-sm">
+                      {c.inputs_json.gear_unit_size}
+                    </span>
+                    <StatusBadge status={c.status} />
+                  </div>
+                  <div className="text-sm text-gray-600">
+                    {c.inputs_json.gearmotor_mounting_style === 'shaft_mounted'
+                      ? 'Shaft Mounted'
+                      : 'Bottom Mount'}
+                    {c.inputs_json.output_shaft_option && (
+                      <> / {c.inputs_json.output_shaft_option}</>
+                    )}
+                    {c.inputs_json.plug_in_shaft_style && (
+                      <> / {c.inputs_json.plug_in_shaft_style}</>
+                    )}
+                  </div>
+                  {c.message && (
+                    <div className="text-xs text-gray-500 mt-1 truncate">
+                      {c.message}
+                    </div>
+                  )}
+                </button>
+              ))}
+              {cases.length === 0 && (
+                <div className="p-4 text-center text-gray-500">
+                  No cases match the filter
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Case Detail */}
+          <div className="bg-white rounded-lg shadow p-6">
+            {selectedCase ? (
+              <CaseDetailView caseData={selectedCase} />
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                Select a case to view details
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SummaryCard({
+  label,
+  value,
+  color,
+  onClick,
+  active,
+}: {
+  label: string;
+  value: number;
+  color: 'gray' | 'green' | 'yellow' | 'red';
+  onClick?: () => void;
+  active?: boolean;
+}) {
+  const colorClasses = {
+    gray: 'bg-gray-100 text-gray-800',
+    green: 'bg-green-100 text-green-800',
+    yellow: 'bg-yellow-100 text-yellow-800',
+    red: 'bg-red-100 text-red-800',
+  };
+
+  const baseClasses = `rounded-lg p-4 ${colorClasses[color]}`;
+  const interactiveClasses = onClick
+    ? 'cursor-pointer hover:ring-2 hover:ring-offset-2 hover:ring-blue-500'
+    : '';
+  const activeClasses = active ? 'ring-2 ring-blue-500' : '';
+
+  return (
+    <div
+      onClick={onClick}
+      className={`${baseClasses} ${interactiveClasses} ${activeClasses}`}
+    >
+      <div className="text-sm font-medium">{label}</div>
+      <div className="text-2xl font-bold">{value}</div>
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: CoverageCase['status'] }) {
+  const config = {
+    resolved: { bg: 'bg-green-100', text: 'text-green-800', label: 'Resolved' },
+    ambiguous: { bg: 'bg-yellow-100', text: 'text-yellow-800', label: 'Ambiguous' },
+    unresolved: { bg: 'bg-red-100', text: 'text-red-800', label: 'Unresolved' },
+    invalid: { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Invalid' },
+  };
+  const c = config[status];
+
+  return (
+    <span className={`px-2 py-0.5 rounded text-xs font-medium ${c.bg} ${c.text}`}>
+      {c.label}
+    </span>
+  );
+}
+
+function CaseDetailView({ caseData }: { caseData: CoverageCase }) {
+  const { inputs_json: inputs, components_json: components } = caseData;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-medium">Case Details</h3>
+        <StatusBadge status={caseData.status} />
+      </div>
+
+      {/* Inputs */}
+      <div>
+        <h4 className="text-sm font-medium text-gray-500 mb-2">Inputs</h4>
+        <div className="grid grid-cols-2 gap-2 text-sm">
+          <div>
+            <span className="text-gray-500">Series:</span>{' '}
+            <span className="font-medium">{inputs.series}</span>
+          </div>
+          <div>
+            <span className="text-gray-500">Size:</span>{' '}
+            <span className="font-medium">{inputs.gear_unit_size}</span>
+          </div>
+          <div>
+            <span className="text-gray-500">Mounting:</span>{' '}
+            <span className="font-medium">{inputs.gearmotor_mounting_style}</span>
+          </div>
+          <div>
+            <span className="text-gray-500">Output:</span>{' '}
+            <span className="font-medium">{inputs.output_shaft_option || '-'}</span>
+          </div>
+          <div>
+            <span className="text-gray-500">Shaft Style:</span>{' '}
+            <span className="font-medium">{inputs.plug_in_shaft_style || '-'}</span>
+          </div>
+          <div>
+            <span className="text-gray-500">Ratio:</span>{' '}
+            <span className="font-medium">{inputs.total_ratio || '-'}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Message */}
+      {caseData.message && (
+        <div className="p-3 bg-gray-50 rounded text-sm">
+          <span className="font-medium">Result:</span> {caseData.message}
+        </div>
+      )}
+
+      {/* Components */}
+      {Object.keys(components).length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-500 mb-2">Components</h4>
+          <div className="space-y-2">
+            {Object.entries(components).map(([type, comp]) => (
+              <div
+                key={type}
+                className={`p-2 rounded border text-sm ${
+                  comp.found
+                    ? 'border-green-200 bg-green-50'
+                    : 'border-red-200 bg-red-50'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-medium">{type}</span>
+                  {comp.found ? (
+                    <span className="text-green-700 font-mono">{comp.part_number}</span>
+                  ) : (
+                    <span className="text-red-700">Not Found</span>
+                  )}
+                </div>
+                {comp.description && (
+                  <div className="text-xs text-gray-600 mt-1">{comp.description}</div>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Resolved PNs */}
+      {caseData.resolved_pns.length > 0 && (
+        <div>
+          <h4 className="text-sm font-medium text-gray-500 mb-2">Resolved Part Numbers</h4>
+          <div className="flex flex-wrap gap-2">
+            {caseData.resolved_pns.map((pn) => (
+              <span
+                key={pn}
+                className="px-2 py-1 bg-gray-100 rounded font-mono text-sm"
+              >
+                {pn}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Timestamp */}
+      <div className="text-xs text-gray-500 pt-2 border-t">
+        Last checked: {new Date(caseData.last_checked_at).toLocaleString()}
+      </div>
+    </div>
   );
 }
 
