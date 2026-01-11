@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
+import Link from 'next/link';
 import RevisionDetailDrawer from '../../components/RevisionDetailDrawer';
 import Header from '../../components/Header';
 
@@ -224,11 +225,14 @@ export default function HistoryPage() {
             )}
           </div>
 
-          {/* Back link */}
+          {/* Back link - preserves application context */}
           <div className="text-center">
-            <a href="/" className="text-primary-600 hover:text-primary-700 text-sm">
-              ← Back to Calculator
-            </a>
+            <Link
+              href={`/console/belt?app=${configId}` as `/console/belt?app=${string}`}
+              className="text-primary-600 hover:text-primary-700 text-sm"
+            >
+              ← Back to Application
+            </Link>
           </div>
 
           {/* Detail Drawer */}

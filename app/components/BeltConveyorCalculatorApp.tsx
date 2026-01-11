@@ -27,6 +27,15 @@ type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
 const LAST_APP_KEY = 'belt_lastApplicationId';
 
 /**
+ * Deep clone a payload for immutable snapshot storage.
+ * Ensures no shared references between current state and saved snapshot.
+ */
+function deepClonePayload<T>(payload: T): T {
+  if (payload === null || payload === undefined) return payload;
+  return JSON.parse(JSON.stringify(payload));
+}
+
+/**
  * BeltConveyorCalculatorApp - The main calculator application component.
  *
  * Supports both slider bed and roller bed configurations.
@@ -558,7 +567,8 @@ export default function BeltConveyorCalculatorApp() {
       console.log('[Effect] Setting initial payload after load', { loadedRevisionId });
       const payload = buildCurrentPayload();
       if (payload) {
-        setInitialLoadedPayload(payload);
+        // Deep clone to ensure immutable snapshot (no shared references)
+        setInitialLoadedPayload(deepClonePayload(payload));
         console.log('[Effect] Initial payload set:', payload);
       }
     }
@@ -906,9 +916,9 @@ export default function BeltConveyorCalculatorApp() {
         localStorage.setItem(LAST_APP_KEY, configuration.id);
       }
 
-      // Reset initial loaded payload to current state
+      // Reset initial loaded payload to current state (deep clone for immutability)
       const currentPayload = buildCurrentPayload();
-      setInitialLoadedPayload(currentPayload);
+      setInitialLoadedPayload(deepClonePayload(currentPayload));
 
       // Show save feedback message from API (v1.21)
       showToast(save_message || `Saved Rev ${revision.revision_number}`);
@@ -1171,9 +1181,9 @@ export default function BeltConveyorCalculatorApp() {
         }
       }
 
-      // Set initial loaded payload
+      // Set initial loaded payload (deep clone for immutability)
       const currentPayload = buildCurrentPayload();
-      setInitialLoadedPayload(currentPayload);
+      setInitialLoadedPayload(deepClonePayload(currentPayload));
     } catch (error) {
       console.error('[SaveTarget] Error:', error);
       showToast(error instanceof Error ? error.message : 'Failed to save');
