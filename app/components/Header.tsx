@@ -33,31 +33,31 @@ export default function Header({ loadedConfigurationId }: HeaderProps) {
           </div>
           <nav className="flex items-center space-x-4">
             <Link
-              href="/"
+              href="/console/belt"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >
               Application
             </Link>
             <Link
-              href="/quotes"
+              href="/console/quotes"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >
               Quotes
             </Link>
             <Link
-              href="/sales-orders"
+              href="/console/sales-orders"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >
               Sales Orders
             </Link>
             <Link
-              href="/recipes"
+              href="/console/recipes"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >
               Recipes
             </Link>
             <Link
-              href="/admin"
+              href="/console/admin"
               className="text-gray-700 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium"
             >
               Admin
