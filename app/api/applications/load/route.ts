@@ -262,10 +262,8 @@ async function getRevisionCount(supabase: any, app: any): Promise<number> {
 
   const referenceType = config.reference_type;
   const referenceBase = config.reference_number_base ?? config.reference_number;
-  const referenceSuffix = config.reference_suffix ?? null;
-  const referenceJobLine = config.reference_line ?? 1;
 
-  // Count all versions with matching reference
+  // Count all versions with matching reference (by type and base number)
   const { count, error } = await supabase
     .from('calc_recipes')
     .select('*', { count: 'exact', head: true })
@@ -279,8 +277,6 @@ async function getRevisionCount(supabase: any, app: any): Promise<number> {
     return 1;
   }
 
-  // If we need to filter by suffix and job line, we'd need additional logic
-  // For now, return the count of all versions for this reference
   return count || 1;
 }
 

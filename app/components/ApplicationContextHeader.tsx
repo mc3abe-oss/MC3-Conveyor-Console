@@ -33,10 +33,10 @@ interface ApplicationContextHeaderProps {
 }
 
 /**
- * ApplicationContextHeader - A2-Flat Layout
+ * ApplicationContextHeader - Compact 2-Row Layout
  *
- * ROW 1 (Primary): Quote number (prominent) + type label | inline buttons
- * ROW 2 (Context): Customer · Line · Qty | Status pill
+ * ROW 1 (Identity + Status): Reference # · Type · Customer · Line · Qty [Unsaved] | Status pill
+ * ROW 2 (Metadata + Actions): Created by · Updated · Revisions | Save · Clear · Delete · History
  */
 export default function ApplicationContextHeader({
   context,
@@ -237,22 +237,34 @@ export default function ApplicationContextHeader({
   const typeLabel = isQuote ? 'Quote' : 'SO';
   const refDisplay = formatSaveTarget(context);
 
+  // Format metadata for display
+  const hasMetadata = isSavedApplication && (createdByDisplay || createdAt || lastUpdatedAt || revisionCount);
+
   return (
     <>
-      {/* ROW 1: Primary header - Quote number + inline buttons */}
+      {/* ROW 1: Identity + Status */}
       <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-2">
-        {/* Left: Primary identifier */}
-        <div className="flex items-center gap-3">
-          <Link href={href} className="text-xl font-bold text-gray-900 hover:text-blue-600">
+        {/* Left: Primary identifier with context */}
+        <div className="flex items-center gap-2 min-w-0">
+          <Link href={href} className="text-lg font-bold text-gray-900 hover:text-blue-600 shrink-0">
             {refDisplay}
           </Link>
-          <span className="text-sm font-medium text-gray-500">{typeLabel}</span>
+          <span className="text-sm text-gray-400 shrink-0">·</span>
+          <span className="text-sm text-gray-500 shrink-0">{typeLabel}</span>
+          <span className="text-sm text-gray-400 hidden sm:inline shrink-0">·</span>
+          <span className="text-sm text-gray-600 truncate max-w-[150px] hidden sm:inline">
+            {context.customer_name || 'No customer'}
+          </span>
+          <span className="text-sm text-gray-400 hidden md:inline shrink-0">·</span>
+          <span className="text-sm text-gray-500 hidden md:inline shrink-0">Line {context.jobLine}</span>
+          <span className="text-sm text-gray-400 hidden md:inline shrink-0">·</span>
+          <span className="text-sm text-gray-500 hidden md:inline shrink-0">Qty {context.quantity}</span>
           {isDirty && (
             <span
-              className="inline-flex items-center gap-1.5 px-2 py-1 text-sm font-semibold bg-orange-500 text-white rounded-md shadow-sm animate-pulse"
+              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-semibold bg-orange-500 text-white rounded shadow-sm animate-pulse ml-2 shrink-0"
               title="You have unsaved changes"
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
               </svg>
               Unsaved
@@ -260,8 +272,40 @@ export default function ApplicationContextHeader({
           )}
         </div>
 
-        {/* Right: Inline action buttons */}
-        <div className="flex items-center gap-2">
+        {/* Right: Status badges */}
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusChip.bg}`}>
+            {statusChip.label}
+          </span>
+        </div>
+      </div>
+
+      {/* ROW 2: Metadata + Actions */}
+      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-1.5 border-t border-gray-100">
+        {/* Left: Metadata (for saved apps) or context summary (for drafts) */}
+        <div className="flex items-center gap-3 text-xs text-gray-500 min-w-0">
+          {hasMetadata ? (
+            <>
+              {createdByDisplay && (
+                <span className="hidden sm:inline">Created by <span className="text-gray-700">{createdByDisplay}</span></span>
+              )}
+              {createdAt && (
+                <span className="hidden md:inline"><span className="text-gray-700">{new Date(createdAt).toLocaleDateString()}</span></span>
+              )}
+              {lastUpdatedAt && (
+                <span>Updated <span className="text-gray-700">{new Date(lastUpdatedAt).toLocaleDateString()}</span></span>
+              )}
+              {typeof revisionCount === 'number' && revisionCount > 0 && (
+                <span className="hidden sm:inline"><span className="text-gray-700">{revisionCount}</span> rev{revisionCount !== 1 ? 's' : ''}</span>
+              )}
+            </>
+          ) : (
+            <span className="text-gray-400">Not yet saved</span>
+          )}
+        </div>
+
+        {/* Right: Action buttons */}
+        <div className="flex items-center gap-2 shrink-0">
           {/* Recalculate - only on error */}
           {onCalculate && hasCalcError && (
             <button
@@ -325,7 +369,7 @@ export default function ApplicationContextHeader({
           {onClear && (
             <button
               type="button"
-              className="btn btn-sm btn-outline text-gray-600"
+              className="btn btn-sm btn-outline text-gray-600 hidden md:inline-flex"
               onClick={handleClearClick}
             >
               Clear
@@ -336,7 +380,7 @@ export default function ApplicationContextHeader({
           {isDraftWithContext && onDeleteDraft && (
             <button
               type="button"
-              className="btn btn-sm btn-outline text-red-600 hover:border-red-300"
+              className="btn btn-sm btn-outline text-red-600 hover:border-red-300 hidden md:inline-flex"
               onClick={handleDeleteDraftClick}
             >
               Delete
@@ -347,7 +391,7 @@ export default function ApplicationContextHeader({
           {isSavedApplication && onDeleteLine && (
             <button
               type="button"
-              className="btn btn-sm btn-outline text-red-600 hover:border-red-300"
+              className="btn btn-sm btn-outline text-red-600 hover:border-red-300 hidden md:inline-flex"
               onClick={handleDeleteClick}
               disabled={isCheckingEligibility}
             >
@@ -355,14 +399,14 @@ export default function ApplicationContextHeader({
             </button>
           )}
 
-          {/* History - only for saved applications */}
+          {/* History - contextual navigation, de-emphasized */}
           {isSavedApplication && loadedConfigurationId && (
             <Link
               href={`/history/${loadedConfigurationId}` as `/history/${string}`}
-              className="btn btn-sm btn-outline text-gray-600 hover:text-gray-800"
+              className="text-xs text-gray-500 hover:text-gray-700 hidden md:inline-flex items-center gap-1"
               title="View revision history"
             >
-              <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               History
@@ -370,38 +414,6 @@ export default function ApplicationContextHeader({
           )}
         </div>
       </div>
-
-      {/* ROW 2: Supporting context - NO border, compressed with row 1 */}
-      <div className="flex items-center justify-between px-4 sm:px-6 lg:px-8 py-1">
-        <div className="flex items-center gap-2 text-sm text-gray-600">
-          <span className="truncate max-w-[200px]">{context.customer_name || 'No customer'}</span>
-          <span className="text-gray-400">·</span>
-          <span>Line {context.jobLine}</span>
-          <span className="text-gray-400">·</span>
-          <span>Qty {context.quantity}</span>
-        </div>
-        <span className={`px-2 py-0.5 text-xs font-medium rounded ${statusChip.bg}`}>
-          {statusChip.label}
-        </span>
-      </div>
-
-      {/* ROW 3: Metadata block for saved applications */}
-      {isSavedApplication && (createdByDisplay || createdAt || lastUpdatedAt || revisionCount) && (
-        <div className="flex items-center gap-4 px-4 sm:px-6 lg:px-8 py-1 text-xs text-gray-500 border-t border-gray-100">
-          {createdByDisplay && (
-            <span>Created by <span className="text-gray-700">{createdByDisplay}</span></span>
-          )}
-          {createdAt && (
-            <span>Created <span className="text-gray-700">{new Date(createdAt).toLocaleDateString()}</span></span>
-          )}
-          {lastUpdatedAt && (
-            <span>Last updated <span className="text-gray-700">{new Date(lastUpdatedAt).toLocaleDateString()}</span></span>
-          )}
-          {typeof revisionCount === 'number' && revisionCount > 0 && (
-            <span>Revisions <span className="text-gray-700">{revisionCount}</span></span>
-          )}
-        </div>
-      )}
 
       {/* Clear Confirmation Modal */}
       {showClearConfirm && (

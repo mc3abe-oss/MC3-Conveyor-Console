@@ -123,7 +123,20 @@ export default function HistoryPage() {
   return (
     <>
       <Header loadedConfigurationId={configId} />
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {/* Back navigation - prominent placement */}
+        <div className="mb-4">
+          <Link
+            href={`/console/belt?app=${configId}` as `/console/belt?app=${string}`}
+            className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+            Back to Application
+          </Link>
+        </div>
+
         <div className="space-y-6">
           {/* Page Header */}
           <div className="card">
@@ -223,16 +236,6 @@ export default function HistoryPage() {
                 })}
               </div>
             )}
-          </div>
-
-          {/* Back link - preserves application context */}
-          <div className="text-center">
-            <Link
-              href={`/console/belt?app=${configId}` as `/console/belt?app=${string}`}
-              className="text-primary-600 hover:text-primary-700 text-sm"
-            >
-              ← Back to Application
-            </Link>
           </div>
 
           {/* Detail Drawer */}
