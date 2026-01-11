@@ -1188,25 +1188,11 @@ export default function DriveSelectorModal({
                         ? parseHollowShaftBore(gearUnit.description)
                         : null;
                       const nativeBore = parsedBore?.inchBore;
+                      const gearUnitSize = selectedCandidate?.size_code ? `SI${selectedCandidate.size_code}` : 'gear unit';
 
                       return (
-                        <div className="pt-3 mt-3 border-t border-gray-100 space-y-3">
-                          {/* 6a) Native Hollow Bore (fixed) - read-only */}
-                          <div>
-                            <label className="text-xs font-medium text-gray-500">
-                              Native Hollow Bore (fixed)
-                            </label>
-                            <div className="mt-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-gray-50 text-gray-500">
-                              {nativeBore
-                                ? formatDiameterLabel(nativeBore)
-                                : `Determined by ${selectedCandidate?.size_code ? `SI${selectedCandidate.size_code}` : 'gear unit'}`}
-                            </div>
-                            <p className="text-xs text-gray-400 mt-1">
-                              The native hollow bore is fixed by the selected gear unit size
-                            </p>
-                          </div>
-
-                          {/* 6b) Hollow Shaft Bushing (optional) */}
+                        <div className="pt-3 mt-3 border-t border-gray-100">
+                          {/* Hollow Shaft Bushing (optional) - with native bore info inline */}
                           <div>
                             <label className="text-xs font-medium text-gray-600">
                               Hollow Shaft Bushing (optional)
@@ -1239,11 +1225,23 @@ export default function DriveSelectorModal({
                                   </option>
                                 ))}
                               </select>
-                              <p className="text-xs text-gray-400 mt-1">
-                                {availableBushings.length > 0
-                                  ? 'Optional bushing to reduce the hollow bore for smaller shaft applications'
-                                  : 'Bushing options not mapped yet for this gear unit'}
+                              {/* Native bore info displayed as helper text */}
+                              <p className="text-xs text-gray-500 mt-1.5">
+                                {nativeBore ? (
+                                  <>
+                                    <span className="font-medium">Native bore (no bushing):</span>{' '}
+                                    <span className="font-mono">{formatDiameterLabel(nativeBore)}</span>{' '}
+                                    <span className="text-gray-400">(from {gearUnitSize})</span>
+                                  </>
+                                ) : (
+                                  `Native bore determined by ${gearUnitSize}`
+                                )}
                               </p>
+                              {availableBushings.length > 0 && (
+                                <p className="text-xs text-gray-400 mt-0.5">
+                                  Optional bushing to reduce the bore for smaller shaft applications
+                                </p>
+                              )}
                             </div>
                           </div>
                         </div>
