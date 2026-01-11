@@ -143,6 +143,16 @@ export default function ConsoleAdminPage() {
           </p>
         </Link>
 
+        <Link
+          href="/console/admin/nord"
+          className="block p-6 bg-white rounded-lg shadow hover:shadow-md transition-shadow border border-indigo-300 bg-indigo-50"
+        >
+          <h2 className="text-lg font-semibold text-indigo-900 mb-2">NORD Catalog</h2>
+          <p className="text-sm text-indigo-700">
+            View NORD FLEXBLOC vendor components (read-only)
+          </p>
+        </Link>
+
         {isSuperAdmin && (
           <Link
             href="/console/admin/users"
