@@ -1991,6 +1991,36 @@ describe('parseHollowShaftBore', () => {
       expect(result.primaryUnit).toBe('inch');
     });
   });
+
+  /**
+   * Regression tests for native bore values by gear unit size.
+   * These values come from the NORD FLEXBLOC gear unit catalog (CSV seed data).
+   * If these tests fail, the native bore display in the UI will be incorrect.
+   *
+   * The UI displays the inch bore value, which is parsed from descriptions like:
+   * "Wormgearbox 1.4375 Hollow Shaft 25mm - Ratio 5"
+   *
+   * @see Reference/Vendor/nord_flexbloc_gear_unit_part_numbers_v1.csv
+   */
+  describe('native bore regression: expected values by gear unit size', () => {
+    const testCases: Array<{ gearUnitSize: string; description: string; expectedInchBore: number }> = [
+      { gearUnitSize: 'SI31', description: 'Wormgearbox 0.625 Hollow Shaft 14mm - Ratio 5', expectedInchBore: 0.625 },
+      { gearUnitSize: 'SI40', description: 'Gearbox 1.000 Hollow Shaft 18mm - Ratio 5', expectedInchBore: 1.0 },
+      { gearUnitSize: 'SI50', description: 'Wormgearbox 1.125 Hollow Shaft 25mm - Ratio 5', expectedInchBore: 1.125 },
+      { gearUnitSize: 'SI63', description: 'Wormgearbox 1.4375 Hollow Shaft 25mm - Ratio 5', expectedInchBore: 1.4375 },
+      { gearUnitSize: 'SI75', description: 'Wormgearbox 1.9375 Hollow Shaft 35mm - Ratio 5', expectedInchBore: 1.9375 },
+    ];
+
+    testCases.forEach(({ gearUnitSize, description, expectedInchBore }) => {
+      it(`${gearUnitSize} has native bore of ${expectedInchBore}"`, () => {
+        const result = parseHollowShaftBore(description);
+
+        expect(result.isHollowShaft).toBe(true);
+        expect(result.inchBore).toBeCloseTo(expectedInchBore, 4);
+        expect(result.primaryUnit).toBe('inch');
+      });
+    });
+  });
 });
 
 describe('Hollow Shaft Bushing in BOM', () => {

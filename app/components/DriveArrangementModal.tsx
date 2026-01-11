@@ -6,7 +6,6 @@
  * - Start/Stop Application (+ Cycle Time)
  * - Drive Location
  * - Gearmotor Mounting Style (+ Sprocket Config)
- * - Gearmotor Mounting Orientation
  * - Drive Hand
  * - Motor RPM
  *
@@ -21,7 +20,6 @@ import { useState, useEffect, useRef } from 'react';
 import {
   SliderbedInputs,
   DriveLocation,
-  GearmotorOrientation,
   GearmotorMountingStyle,
   DriveHand,
   DirectionMode,
@@ -78,7 +76,6 @@ type DraftFields = Pick<
   | 'output_shaft_bore_in'
   | 'plug_in_shaft_style'
   | 'hollow_shaft_bushing_bore_in'
-  | 'gearmotor_orientation'
   | 'drive_hand'
   | 'motor_rpm'
 >;
@@ -119,7 +116,6 @@ export default function DriveArrangementModal({
         output_shaft_bore_in: inputs.output_shaft_bore_in,
         plug_in_shaft_style: inputs.plug_in_shaft_style,
         hollow_shaft_bushing_bore_in: inputs.hollow_shaft_bushing_bore_in,
-        gearmotor_orientation: inputs.gearmotor_orientation,
         drive_hand: inputs.drive_hand,
         motor_rpm: inputs.motor_rpm,
       });
@@ -399,66 +395,33 @@ export default function DriveArrangementModal({
                   </div>
                 </div>
 
-                {/* Output Shaft Option - Read-only, fixed to inch_keyed for chain drive */}
-                <div className="pt-2 border-t border-gray-200">
-                  <label className="label">Output Shaft (NORD)</label>
-                  <div className="input bg-gray-50 text-gray-700 cursor-not-allowed">
-                    {getOutputShaftDisplayLabel(draft.gearmotor_mounting_style)}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Fixed to inch keyed for chain drive. Used to choose the correct NORD output shaft kit.
-                  </p>
-                </div>
+                {/* Output Shaft Option - Inline static text, fixed to inch_keyed for chain drive */}
+                <p className="pt-2 border-t border-gray-200 text-sm text-gray-600">
+                  <span className="font-medium text-gray-700">Output Shaft (NORD):</span>{' '}
+                  {getOutputShaftDisplayLabel(draft.gearmotor_mounting_style)}
+                </p>
 
-                {/* Output Shaft Diameter - read-only display for keyed options */}
+                {/* Output Shaft Diameter - inline static text for keyed options */}
                 {/* Editing is done in the NORD Gearmotor modal */}
                 {draft.output_shaft_option === 'inch_keyed' && (
-                  <div className="pt-2">
-                    <label className="label">Output Shaft Diameter</label>
-                    <div className="input bg-gray-50 text-gray-600 cursor-not-allowed">
-                      {inputs.output_shaft_diameter_in
-                        ? INCH_KEYED_BORE_OPTIONS.find(o => o.value === inputs.output_shaft_diameter_in)?.label || `${inputs.output_shaft_diameter_in}"`
-                        : '—'}
-                    </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      Set in Gearmotor selection (depends on gear unit size).
-                    </p>
-                  </div>
+                  <p className="pt-1 text-sm text-gray-600">
+                    <span className="font-medium text-gray-700">Output Shaft Diameter:</span>{' '}
+                    {inputs.output_shaft_diameter_in
+                      ? INCH_KEYED_BORE_OPTIONS.find(o => o.value === inputs.output_shaft_diameter_in)?.label || `${inputs.output_shaft_diameter_in}"`
+                      : '—'}{' '}
+                    <span className="text-xs text-gray-400">(set in Gearmotor selection)</span>
+                  </p>
                 )}
               </div>
             )}
 
-            {/* Output Shaft Option - Read-only for shaft mounted */}
+            {/* Output Shaft Option - Inline static text for shaft mounted */}
             {(draft.gearmotor_mounting_style ?? GearmotorMountingStyle.ShaftMounted) === GearmotorMountingStyle.ShaftMounted && (
-              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
-                <label className="label">Output Shaft (NORD)</label>
-                <div className="input bg-white text-gray-700 cursor-not-allowed border-gray-200">
-                  {getOutputShaftDisplayLabel(draft.gearmotor_mounting_style)}
-                </div>
-                <p className="text-xs text-gray-500 mt-1">
-                  Fixed to inch hollow for shaft mounted configuration.
-                </p>
-              </div>
+              <p className="text-sm text-gray-600">
+                <span className="font-medium text-gray-700">Output Shaft (NORD):</span>{' '}
+                {getOutputShaftDisplayLabel(draft.gearmotor_mounting_style)}
+              </p>
             )}
-
-            {/* Gearmotor Orientation */}
-            <div>
-              <label htmlFor="modal_gearmotor_orientation" className="label">
-                Gearmotor Mounting Orientation
-              </label>
-              <select
-                id="modal_gearmotor_orientation"
-                className="input"
-                value={draft.gearmotor_orientation}
-                onChange={(e) => updateDraft('gearmotor_orientation', e.target.value as GearmotorOrientation)}
-              >
-                {Object.values(GearmotorOrientation).map((option) => (
-                  <option key={option} value={option}>
-                    {option}
-                  </option>
-                ))}
-              </select>
-            </div>
 
             {/* Drive Hand */}
             <div>
