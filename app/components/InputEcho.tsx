@@ -1,16 +1,17 @@
 'use client';
 
-import { SliderbedInputs, FrameHeightMode } from '../../src/models/sliderbed_v1/schema';
+import { SliderbedInputs, FrameHeightMode, SliderbedOutputs } from '../../src/models/sliderbed_v1/schema';
 
 interface Props {
   inputs: SliderbedInputs | null;
+  outputs?: SliderbedOutputs | null;
 }
 
 /**
  * InputEcho - Displays a read-only summary of key input values
  * Used in Results view to show what was configured without needing to switch tabs
  */
-export default function InputEcho({ inputs }: Props) {
+export default function InputEcho({ inputs, outputs }: Props) {
   if (!inputs) {
     return null;
   }
@@ -85,8 +86,15 @@ export default function InputEcho({ inputs }: Props) {
               Drive
             </h4>
             <div className="space-y-1.5 text-sm">
-              <EchoRow label="RPM" value={inputs.drive_rpm?.toString() ?? '100'} />
-              <EchoRow label="Belt Speed" value={`${inputs.belt_speed_fpm?.toFixed(1) ?? '0'} FPM`} />
+              {/* Use calculated drive_shaft_rpm from outputs, with guardrail for missing calc */}
+              <EchoRow
+                label="Drive Shaft RPM"
+                value={outputs?.drive_shaft_rpm != null ? outputs.drive_shaft_rpm.toFixed(2) : '—'}
+              />
+              <EchoRow
+                label="Belt Speed"
+                value={outputs?.belt_speed_fpm != null ? `${outputs.belt_speed_fpm.toFixed(1)} FPM` : '—'}
+              />
               <EchoRow label="Location" value={inputs.drive_location ?? 'Head'} />
               {inputs.brake_motor && <EchoRow label="Brake Motor" value="Yes" />}
             </div>

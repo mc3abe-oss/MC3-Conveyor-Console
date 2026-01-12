@@ -1478,7 +1478,7 @@ export default function BeltConveyorCalculatorApp() {
 
                   {/* Input Echo - Summary of key inputs */}
                   <div className="lg:col-span-1">
-                    <InputEcho inputs={inputs} />
+                    <InputEcho inputs={inputs} outputs={result.outputs} />
                   </div>
                 </div>
               );
