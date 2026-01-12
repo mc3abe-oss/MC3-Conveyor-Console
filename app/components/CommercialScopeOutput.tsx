@@ -1,19 +1,30 @@
 /**
- * CommercialScopeOutput - Customer-facing output mode (v1.3)
+ * CommercialScopeOutput - Plain text commercial scope (v2.0)
  *
- * Provides clear commercial understanding of what is being sold:
- * - Scope of Supply (high-level narrative)
- * - Key Conveyor Details (physical specifications)
- * - Included Equipment & Options (explicit inclusions/exclusions)
- * - Application Summary (selling content)
- * - Commercial Notes (terms)
+ * Generates plain text output suitable for:
+ * - Direct paste into Epicor ERP description fields
+ * - Customer documentation
+ * - Sales quotes
+ *
+ * Format: Line breaks and hyphen-led lists only. No tables, no markdown.
+ *
+ * Content Structure:
+ * 1. Header Block (conveyor name, part number, customer ref)
+ * 2. Intro Paragraph (conveyor type, application, purpose)
+ * 3. Dimensional Summary
+ * 4. Belt and Speed
+ * 5. Mechanical Details
+ * 6. Included Equipment
+ * 7. Not Included
+ * 8. Finish
+ * 9. Commercial Notes
  *
  * Access: Superuser only
  */
 
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useCallback } from 'react';
 import {
   SliderbedInputs,
   SliderbedOutputs,
@@ -29,10 +40,17 @@ interface CommercialScopeOutputProps {
   inputs: SliderbedInputs;
   outputs?: SliderbedOutputs | null;
   outputsV2?: OutputsV2 | null;
+  conveyorName?: string;
+  partNumber?: string;
+  customerReference?: string;
 }
 
+// ============================================================================
+// FORMATTING UTILITIES
+// ============================================================================
+
 /**
- * Format a number as feet and inches (e.g., "10'-0"")
+ * Format inches as feet-inches (e.g., 120 -> "10'-0"")
  */
 function formatFeetInches(inches: number): string {
   const feet = Math.floor(inches / 12);
@@ -41,7 +59,7 @@ function formatFeetInches(inches: number): string {
 }
 
 /**
- * Format inches with inch symbol
+ * Format inches with inch symbol (e.g., 24 -> "24"")
  */
 function formatInches(inches: number): string {
   return `${inches}"`;
@@ -60,503 +78,505 @@ function isGuidedBelt(trackingMethod?: string): boolean {
 function getBeltMaterialDescription(beltCatalogKey?: string): string {
   if (!beltCatalogKey) return 'fabric';
 
-  // Extract belt type from catalog key (e.g., "PVC120_24_WHITE" -> "PVC")
   const key = beltCatalogKey.toUpperCase();
   if (key.includes('PVC')) return 'PVC';
   if (key.includes('PU') || key.includes('POLYURETHANE')) return 'polyurethane';
   if (key.includes('RUBBER')) return 'rubber';
   if (key.includes('SILICONE')) return 'silicone';
   if (key.includes('MODULAR')) return 'modular plastic';
+  if (key.includes('FLEECE')) return 'fleece';
 
   return 'fabric';
 }
 
 /**
- * Get belt specification from catalog key (for display)
+ * Get commercial belt specification string
  */
-function getBeltSpecification(beltCatalogKey?: string): string {
+function getBeltSpecification(beltCatalogKey?: string, trackingMethod?: string): string {
   if (!beltCatalogKey) return 'Per application requirements';
 
-  // Extract meaningful spec from catalog key
   const key = beltCatalogKey.toUpperCase();
+  const parts: string[] = [];
 
-  // Common patterns: PVC120, PVC150, PU80, etc.
+  // Extract belt type/grade
   const pvcMatch = key.match(/PVC(\d+)/);
-  if (pvcMatch) return `PVC ${pvcMatch[1]}`;
+  if (pvcMatch) {
+    parts.push(`PVC${pvcMatch[1]}`);
+  } else if (key.includes('PVC')) {
+    parts.push('PVC');
+  }
 
   const puMatch = key.match(/PU(\d+)/);
-  if (puMatch) return `PU ${puMatch[1]}`;
+  if (puMatch) {
+    parts.push(`PU${puMatch[1]}`);
+  } else if (key.includes('PU')) {
+    parts.push('PU');
+  }
 
-  // If no specific pattern, return generic
-  if (key.includes('PVC')) return 'PVC series';
-  if (key.includes('PU')) return 'PU series';
+  // Check for fleece
+  if (key.includes('FLEECE')) {
+    parts.push('fleece backing');
+  }
 
-  return 'Per application requirements';
+  // Add guidance
+  const guided = isGuidedBelt(trackingMethod);
+  parts.push(guided ? 'guided' : 'non-guided');
+
+  return parts.length > 0 ? parts.join(', ') : 'Per application requirements';
 }
 
 /**
- * Get drive description (manufacturer + mounting only)
+ * Get application type from incline
+ */
+function getApplicationType(inclineDeg?: number): string {
+  const incline = inclineDeg ?? 0;
+  if (incline > 5) return 'inclined unit handling';
+  if (incline < -5) return 'declined unit handling';
+  return 'horizontal unit handling';
+}
+
+/**
+ * Get drive description
  */
 function getDriveDescription(inputs: SliderbedInputs): string {
   const mounting = inputs.gearmotor_mounting_style === GearmotorMountingStyle.ShaftMounted
     ? 'shaft-mounted'
-    : 'bottom-mounted';
-
+    : 'base-mounted';
   return `${mounting} gearmotor`;
 }
 
 /**
- * Get paint/finish description
+ * Get voltage description
  */
-function getFinishDescription(inputs: SliderbedInputs): string {
+function getVoltageDescription(powerFeed?: string): string {
+  if (!powerFeed) return '480V 3-Phase';
+
+  const feed = String(powerFeed);
+  if (feed.includes('480') || feed === 'V480_3Ph') return '480V 3-Phase';
+  if (feed.includes('230') && feed.includes('3')) return '230V 3-Phase';
+  if (feed.includes('230') && feed.includes('1')) return '230V 1-Phase';
+  if (feed.includes('115') || feed.includes('120')) return '115V 1-Phase';
+  if (feed.includes('240')) return '240V 1-Phase';
+  if (feed.includes('600')) return '600V 3-Phase';
+
+  return feed;
+}
+
+/**
+ * Get finish description
+ */
+function getFinishDescription(inputs: SliderbedInputs): { paint: string; note: string | null } {
   const coatingMethod = inputs.finish_coating_method;
   const colorCode = inputs.finish_powder_color_code;
+  const customNote = inputs.finish_custom_note;
 
   if (coatingMethod === 'wet_paint') {
-    return 'Wet paint per specification';
+    return {
+      paint: 'Wet paint per customer specification',
+      note: customNote || null,
+    };
   }
 
   if (colorCode) {
     const stockCodes = ['RAL5015', 'RAL1023', 'RAL7035', 'RAL9005'];
     if (stockCodes.includes(colorCode)) {
-      return `Powder coat, stock color (${colorCode})`;
+      return {
+        paint: `Powder coat, ${colorCode} (stock color)`,
+        note: null,
+      };
     }
     if (colorCode === 'CUSTOM') {
-      return 'Powder coat, custom color per specification';
+      return {
+        paint: 'Powder coat, custom color per specification',
+        note: customNote || 'Color TBD',
+      };
     }
-    return `Powder coat (${colorCode})`;
+    return {
+      paint: `Powder coat, ${colorCode}`,
+      note: stockCodes.includes(colorCode) ? null : 'Non-stock color - pricing may vary',
+    };
   }
 
-  return 'Powder coat, color TBD';
+  return {
+    paint: 'Powder coat, color TBD',
+    note: null,
+  };
 }
 
-/**
- * Get application type description
- */
-function getApplicationTypeDescription(inputs: SliderbedInputs): string {
-  const incline = inputs.conveyor_incline_deg ?? 0;
+// ============================================================================
+// INCLUSION/EXCLUSION HELPERS
+// ============================================================================
 
-  if (incline > 5) {
-    return 'inclined unit handling';
+function hasLegs(inputs: SliderbedInputs, outputsV2?: OutputsV2 | null): boolean {
+  if (outputsV2?.support_system?.has_legs !== undefined) {
+    return outputsV2.support_system.has_legs;
   }
-  if (incline < -5) {
-    return 'declined unit handling';
-  }
-  return 'horizontal unit handling';
+  return inputs.include_legs === true ||
+    inputs.support_method === 'floor_supported' ||
+    inputs.support_method === 'legs';
 }
 
-/**
- * Get environment description
- */
-function getEnvironmentDescription(inputs: SliderbedInputs): string {
-  const factors = inputs.environment_factors ?? [];
-
-  if (factors.length === 0) {
-    return 'Standard indoor';
+function hasCasters(inputs: SliderbedInputs, outputsV2?: OutputsV2 | null): boolean {
+  if (outputsV2?.support_system?.has_casters !== undefined) {
+    return outputsV2.support_system.has_casters;
   }
-
-  const descriptions: string[] = [];
-  if (factors.includes('washdown') || factors.includes('wet')) {
-    descriptions.push('Washdown');
-  }
-  if (factors.includes('outdoor') || factors.includes('weather')) {
-    descriptions.push('Outdoor');
-  }
-  if (factors.includes('food_grade') || factors.includes('food')) {
-    descriptions.push('Food-grade');
-  }
-  if (factors.includes('high_temp') || factors.includes('heat')) {
-    descriptions.push('Elevated temperature');
-  }
-
-  return descriptions.length > 0 ? descriptions.join(', ') : 'Standard indoor';
+  return inputs.include_casters === true || inputs.support_method === 'casters';
 }
 
-/**
- * Check if controls package is included
- */
-function hasControlsPackage(inputs: SliderbedInputs): boolean {
-  const pkg = inputs.controls_package;
-  return !!(pkg && pkg !== ControlsPackage.None && pkg !== 'None' && pkg !== 'NOT_SUPPLIED');
-}
-
-/**
- * Get controls package description
- */
-function getControlsDescription(inputs: SliderbedInputs): string {
-  const pkg = inputs.controls_package;
-  if (!pkg || pkg === ControlsPackage.None || pkg === 'None' || pkg === 'NOT_SUPPLIED') {
-    return 'Not Included';
-  }
-  if (pkg === ControlsPackage.StartStop || pkg === 'Start/Stop') {
-    return 'Included (Start/Stop)';
-  }
-  if (pkg === ControlsPackage.VFD || pkg === 'VFD') {
-    return 'Included (VFD)';
-  }
-  if (pkg === ControlsPackage.FullAutomation || pkg === 'Full Automation') {
-    return 'Included (Full Automation)';
-  }
-  return 'Included';
-}
-
-/**
- * Check if side rails are included
- */
-function hasSideRails(inputs: SliderbedInputs): boolean {
-  const rails = inputs.side_rails;
-  return !!(rails && rails !== SideRails.None && rails !== 'None');
-}
-
-/**
- * Get side rails description
- */
-function getSideRailsDescription(inputs: SliderbedInputs): string {
+function hasSideRails(inputs: SliderbedInputs): { included: boolean; description: string } {
   const rails = inputs.side_rails;
   if (!rails || rails === SideRails.None || rails === 'None') {
-    return 'Not Included';
+    return { included: false, description: '' };
   }
   if (rails === SideRails.Both || rails === 'Both') {
-    return 'Included (Both sides)';
+    return { included: true, description: 'both sides' };
   }
   if (rails === SideRails.Left || rails === 'Left') {
-    return 'Included (Left side)';
+    return { included: true, description: 'left side' };
   }
   if (rails === SideRails.Right || rails === 'Right') {
-    return 'Included (Right side)';
+    return { included: true, description: 'right side' };
   }
-  return 'Included';
+  return { included: true, description: '' };
 }
 
-/**
- * Check if end guards are included
- */
-function hasEndGuards(inputs: SliderbedInputs): boolean {
-  const guards = inputs.end_guards;
-  return !!(guards && guards !== EndGuards.None && guards !== 'None');
-}
-
-/**
- * Get end guards description
- */
-function getEndGuardsDescription(inputs: SliderbedInputs): string {
+function hasEndGuards(inputs: SliderbedInputs): { included: boolean; description: string } {
   const guards = inputs.end_guards;
   if (!guards || guards === EndGuards.None || guards === 'None') {
-    return 'Not Included';
+    return { included: false, description: '' };
   }
   if (guards === EndGuards.BothEnds || guards === 'Both ends') {
-    return 'Included (Both ends)';
+    return { included: true, description: 'both ends' };
   }
   if (guards === EndGuards.HeadEnd || guards === 'Head end') {
-    return 'Included (Head end)';
+    return { included: true, description: 'head end' };
   }
   if (guards === EndGuards.TailEnd || guards === 'Tail end') {
-    return 'Included (Tail end)';
+    return { included: true, description: 'tail end' };
   }
-  return 'Included';
+  return { included: true, description: '' };
 }
 
-/**
- * Inclusion status component
- */
-function InclusionItem({ label, status, isIncluded }: { label: string; status: string; isIncluded: boolean }) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-      <span className="text-sm text-gray-700">{label}</span>
-      <span className={`text-sm font-medium ${isIncluded ? 'text-green-700' : 'text-gray-500'}`}>
-        {status}
-      </span>
-    </div>
+function hasControlsPackage(inputs: SliderbedInputs): { included: boolean; description: string } {
+  const pkg = inputs.controls_package;
+  if (!pkg || pkg === ControlsPackage.None || pkg === 'None' || pkg === 'NOT_SUPPLIED') {
+    return { included: false, description: '' };
+  }
+  if (pkg === ControlsPackage.StartStop || pkg === 'Start/Stop') {
+    return { included: true, description: 'Start/Stop' };
+  }
+  if (pkg === ControlsPackage.VFD || pkg === 'VFD') {
+    return { included: true, description: 'VFD' };
+  }
+  if (pkg === ControlsPackage.FullAutomation || pkg === 'Full Automation') {
+    return { included: true, description: 'Full Automation' };
+  }
+  return { included: true, description: '' };
+}
+
+// ============================================================================
+// PLAIN TEXT GENERATOR
+// ============================================================================
+
+function generateCommercialScopeText(
+  inputs: SliderbedInputs,
+  outputs: SliderbedOutputs | null | undefined,
+  outputsV2: OutputsV2 | null | undefined,
+  conveyorName?: string,
+  partNumber?: string,
+  customerReference?: string
+): string {
+  const lines: string[] = [];
+
+  // Computed values
+  const beltWidth = inputs.belt_width_in;
+  const centerDistance = inputs.conveyor_length_cc_in;
+  const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
+  const tailPulleyDia = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
+  const overallLength = centerDistance + (drivePulleyDia / 2) + (tailPulleyDia / 2);
+  const applicationType = getApplicationType(inputs.conveyor_incline_deg);
+  const beltMaterial = getBeltMaterialDescription(inputs.belt_catalog_key);
+  const beltSpec = getBeltSpecification(inputs.belt_catalog_key, inputs.belt_tracking_method);
+  const isGuided = isGuidedBelt(inputs.belt_tracking_method);
+  const driveDesc = getDriveDescription(inputs);
+  const voltageDesc = getVoltageDescription(inputs.power_feed);
+  const finishInfo = getFinishDescription(inputs);
+  const targetBeltSpeed = outputs?.belt_speed_fpm ?? inputs.belt_speed_fpm ?? null;
+  const tobValue = outputsV2?.design_geometry?.top_of_belt_in?.value;
+
+  // Support/equipment flags
+  const legsIncluded = hasLegs(inputs, outputsV2);
+  const castersIncluded = hasCasters(inputs, outputsV2);
+  const sideRailsInfo = hasSideRails(inputs);
+  const endGuardsInfo = hasEndGuards(inputs);
+  const controlsInfo = hasControlsPackage(inputs);
+  const bottomCoversIncluded = inputs.bottom_covers === true;
+  const fingerSafeIncluded = inputs.finger_safe === true;
+
+  // =========================================================================
+  // 1) HEADER BLOCK
+  // =========================================================================
+  if (conveyorName) {
+    lines.push(conveyorName.toUpperCase());
+  } else {
+    lines.push('SLIDER BED BELT CONVEYOR');
+  }
+  if (partNumber) {
+    lines.push(`Part Number: ${partNumber}`);
+  }
+  if (customerReference) {
+    lines.push(`Reference: ${customerReference}`);
+  }
+  lines.push('');
+
+  // =========================================================================
+  // 2) INTRO PARAGRAPH
+  // =========================================================================
+  const introLines: string[] = [];
+  introLines.push(
+    `MC3 to supply one (1) slider bed belt conveyor designed for ${applicationType}.`
   );
+  introLines.push(
+    `The conveyor features a steel slider bed with formed steel frame construction, ` +
+    `utilizing a ${beltMaterial} belt${isGuided ? ' with V-guide tracking' : ''}.`
+  );
+  introLines.push(
+    `Drive is provided by a ${driveDesc}, with pulleys sized appropriately for the application.`
+  );
+  lines.push(introLines.join(' '));
+  lines.push('');
+
+  // =========================================================================
+  // 3) DIMENSIONAL SUMMARY
+  // =========================================================================
+  lines.push('DIMENSIONAL SUMMARY');
+  lines.push(`- Overall Length: ~${formatFeetInches(overallLength)}`);
+  lines.push(`- Pulley Center-to-Center: ${formatFeetInches(centerDistance)}`);
+  lines.push(`- Belt Width: ${formatInches(beltWidth)}`);
+
+  // Between-frame width (belt width + typical frame offset)
+  const betweenFrameWidth = beltWidth + 1; // Approximation
+  lines.push(`- Between-Frame Width: ~${formatInches(betweenFrameWidth)}`);
+
+  // Frame/body height (use frame height if available)
+  if (inputs.custom_frame_height_in) {
+    lines.push(`- Body Height: ${formatInches(inputs.custom_frame_height_in)}`);
+  }
+
+  // Conveyor elevation (TOB)
+  if (tobValue) {
+    lines.push(`- Conveyor Elevation (TOB): ${formatInches(tobValue)}`);
+  } else if (inputs.tail_tob_in || inputs.drive_tob_in) {
+    const tob = inputs.tail_tob_in ?? inputs.drive_tob_in;
+    if (tob) {
+      lines.push(`- Conveyor Elevation (TOB): ${formatInches(tob)}`);
+    }
+  }
+
+  // Incline if applicable
+  if (inputs.conveyor_incline_deg && Math.abs(inputs.conveyor_incline_deg) > 0) {
+    lines.push(`- Incline Angle: ${inputs.conveyor_incline_deg}°`);
+  }
+  lines.push('');
+
+  // =========================================================================
+  // 4) BELT AND SPEED
+  // =========================================================================
+  lines.push('BELT AND SPEED');
+  lines.push(`- Belt: ${beltSpec}`);
+  if (targetBeltSpeed) {
+    lines.push(`- Target Belt Speed: ${targetBeltSpeed} FPM (actual speed subject to final drive selection)`);
+  }
+  lines.push('');
+
+  // =========================================================================
+  // 5) MECHANICAL DETAILS
+  // =========================================================================
+  lines.push('MECHANICAL DETAILS');
+  lines.push(`- Drive Pulley: ${formatInches(drivePulleyDia)} diameter (nominal)`);
+  lines.push(`- Tail Pulley: ${formatInches(tailPulleyDia)} diameter (nominal)`);
+  lines.push('- Bearings: Industrial grade, sealed');
+  lines.push('- Frame: Formed steel slider bed construction');
+  lines.push(`- Drive: ${driveDesc.charAt(0).toUpperCase() + driveDesc.slice(1)}, ${voltageDesc}`);
+  lines.push('');
+
+  // =========================================================================
+  // 6) INCLUDED EQUIPMENT
+  // =========================================================================
+  lines.push('INCLUDED EQUIPMENT');
+
+  const includedItems: string[] = [];
+
+  if (legsIncluded) {
+    includedItems.push('- Floor support legs with leveling adjustment');
+  }
+  if (castersIncluded) {
+    includedItems.push('- Casters');
+  }
+  if (sideRailsInfo.included) {
+    const desc = sideRailsInfo.description ? ` (${sideRailsInfo.description})` : '';
+    includedItems.push(`- Side rails${desc}`);
+  }
+  if (endGuardsInfo.included) {
+    const desc = endGuardsInfo.description ? ` (${endGuardsInfo.description})` : '';
+    includedItems.push(`- End guards${desc}`);
+  }
+  if (bottomCoversIncluded) {
+    includedItems.push('- Bottom covers');
+  }
+  if (fingerSafeIncluded) {
+    includedItems.push('- Finger-safe guarding at drive and tail');
+  }
+  if (controlsInfo.included) {
+    includedItems.push(`- Controls package (${controlsInfo.description})`);
+  }
+
+  // Standard inclusions always present
+  includedItems.push('- Belt (endless splice or mechanical lacing per application)');
+  includedItems.push('- Gearmotor');
+  includedItems.push('- Hardware for assembly');
+
+  if (includedItems.length > 0) {
+    lines.push(...includedItems);
+  }
+  lines.push('');
+
+  // =========================================================================
+  // 7) NOT INCLUDED
+  // =========================================================================
+  lines.push('NOT INCLUDED');
+
+  const excludedItems: string[] = [];
+
+  if (!controlsInfo.included) {
+    excludedItems.push('- Controls / control panel');
+  }
+  excludedItems.push('- Sensors / instrumentation / photoeyes');
+  if (!legsIncluded && !castersIncluded) {
+    excludedItems.push('- Floor support (legs, casters, or stands)');
+  }
+  if (!sideRailsInfo.included) {
+    excludedItems.push('- Side rails / product guides');
+  }
+  if (!endGuardsInfo.included) {
+    excludedItems.push('- End guards');
+  }
+  if (!bottomCoversIncluded) {
+    excludedItems.push('- Bottom covers');
+  }
+  if (!fingerSafeIncluded) {
+    excludedItems.push('- Finger-safe guarding');
+  }
+  excludedItems.push('- Electrical inspection / certification (UL, CE, etc.)');
+  excludedItems.push('- Field wiring');
+  excludedItems.push('- Installation / field services');
+  excludedItems.push('- Spare parts');
+  excludedItems.push('- Freight / shipping');
+
+  lines.push(...excludedItems);
+  lines.push('');
+
+  // =========================================================================
+  // 8) FINISH
+  // =========================================================================
+  lines.push('FINISH');
+  lines.push(`- ${finishInfo.paint}`);
+  if (finishInfo.note) {
+    lines.push(`- Note: ${finishInfo.note}`);
+  }
+
+  // Guarding finish if different
+  if (inputs.guarding_coating_method && inputs.guarding_powder_color_code) {
+    if (inputs.guarding_powder_color_code !== inputs.finish_powder_color_code) {
+      lines.push(`- Guarding: Powder coat, ${inputs.guarding_powder_color_code}`);
+    }
+  }
+  lines.push('');
+
+  // =========================================================================
+  // 9) COMMERCIAL NOTES
+  // =========================================================================
+  lines.push('COMMERCIAL NOTES');
+  lines.push('- Approval drawing provided; one (1) revision cycle included');
+  lines.push('- Drawing turnaround: Up to four (4) working days from order');
+  lines.push('- Lead time: Subject to shop capacity at time of order');
+  lines.push('- Pricing valid for 30 days');
+
+  return lines.join('\n');
 }
 
-export default function CommercialScopeOutput({ inputs, outputs, outputsV2 }: CommercialScopeOutputProps) {
-  // Compute derived values
-  const commercialData = useMemo(() => {
-    const beltWidth = inputs.belt_width_in;
-    const centerDistance = inputs.conveyor_length_cc_in;
-    const drivePulleyDia = inputs.drive_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
-    const tailPulleyDia = inputs.tail_pulley_diameter_in ?? inputs.pulley_diameter_in ?? 4;
+// ============================================================================
+// COMPONENT
+// ============================================================================
 
-    // Overall length approximation (C-C + pulley radii)
-    const overallLength = centerDistance + (drivePulleyDia / 2) + (tailPulleyDia / 2);
+export default function CommercialScopeOutput({
+  inputs,
+  outputs,
+  outputsV2,
+  conveyorName,
+  partNumber,
+  customerReference,
+}: CommercialScopeOutputProps) {
+  const [copied, setCopied] = useState(false);
 
-    const isGuided = isGuidedBelt(inputs.belt_tracking_method);
-    const beltMaterial = getBeltMaterialDescription(inputs.belt_catalog_key);
-    const beltSpec = getBeltSpecification(inputs.belt_catalog_key);
-    const applicationType = getApplicationTypeDescription(inputs);
-    const driveDesc = getDriveDescription(inputs);
-    const finishDesc = getFinishDescription(inputs);
-    const envDesc = getEnvironmentDescription(inputs);
+  // Generate the plain text scope
+  const scopeText = useMemo(() => {
+    return generateCommercialScopeText(
+      inputs,
+      outputs,
+      outputsV2,
+      conveyorName,
+      partNumber,
+      customerReference
+    );
+  }, [inputs, outputs, outputsV2, conveyorName, partNumber, customerReference]);
 
-    // Belt speed
-    const targetBeltSpeed = outputs?.belt_speed_fpm ?? inputs.belt_speed_fpm ?? null;
-
-    // Part info (if available)
-    const partWeight = inputs.part_weight_lbs;
-    const partLength = inputs.part_length_in;
-    const partWidth = inputs.part_width_in;
-
-    // Power feed
-    const powerFeed = inputs.power_feed ?? 'V480_3Ph';
-    const powerFeedDisplay = powerFeed === 'V480_3Ph' ? '480V 3-Phase'
-      : powerFeed === 'V230_3Ph' ? '230V 3-Phase'
-      : powerFeed === 'V230_1Ph' ? '230V 1-Phase'
-      : powerFeed === 'V115_1Ph' ? '115V 1-Phase'
-      : String(powerFeed);
-
-    // Support / Legs / Casters
-    const hasLegs = inputs.include_legs === true ||
-      inputs.support_method === 'floor_supported' ||
-      inputs.support_method === 'legs';
-    const hasCasters = inputs.include_casters === true ||
-      inputs.support_method === 'casters';
-
-    // From outputsV2 if available
-    const legsIncluded = outputsV2?.support_system?.has_legs ?? hasLegs;
-    const castersIncluded = outputsV2?.support_system?.has_casters ?? hasCasters;
-
-    // Controls
-    const controlsIncluded = hasControlsPackage(inputs);
-    const controlsDesc = getControlsDescription(inputs);
-
-    // Side rails
-    const sideRailsIncluded = hasSideRails(inputs);
-    const sideRailsDesc = getSideRailsDescription(inputs);
-
-    // End guards
-    const endGuardsIncluded = hasEndGuards(inputs);
-    const endGuardsDesc = getEndGuardsDescription(inputs);
-
-    // Bottom covers
-    const bottomCoversIncluded = inputs.bottom_covers === true;
-
-    // Finger safe guards
-    const fingerSafeIncluded = inputs.finger_safe === true;
-
-    return {
-      beltWidth,
-      overallLength,
-      drivePulleyDia,
-      tailPulleyDia,
-      isGuided,
-      beltMaterial,
-      beltSpec,
-      applicationType,
-      driveDesc,
-      finishDesc,
-      envDesc,
-      targetBeltSpeed,
-      partWeight,
-      partLength,
-      partWidth,
-      powerFeedDisplay,
-      // Inclusions
-      legsIncluded,
-      castersIncluded,
-      controlsIncluded,
-      controlsDesc,
-      sideRailsIncluded,
-      sideRailsDesc,
-      endGuardsIncluded,
-      endGuardsDesc,
-      bottomCoversIncluded,
-      fingerSafeIncluded,
-    };
-  }, [inputs, outputs, outputsV2]);
+  // Copy handler
+  const handleCopy = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(scopeText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    }
+  }, [scopeText]);
 
   return (
-    <div className="space-y-8">
-      {/* ================================================================== */}
-      {/* SECTION 1 - Scope of Supply */}
-      {/* ================================================================== */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-          Scope of Supply
-        </h2>
-        <div className="prose prose-sm max-w-none text-gray-700">
-          <p>
-            MC3 to supply one (1) slider bed conveyor designed for {commercialData.applicationType}.
-            The conveyor will have an overall length of approximately {formatFeetInches(commercialData.overallLength)} and
-            a conveying width of {formatInches(commercialData.beltWidth)}, utilizing a steel slider bed and
-            formed steel frame construction. The conveyor will be equipped with
-            a {commercialData.beltMaterial}{commercialData.isGuided ? ', guided' : ', non-guided'} belt
-            selected for the specified application and driven by a {commercialData.driveDesc}.
-            Drive and tail pulleys are sized appropriately for the application.
+    <div className="space-y-4">
+      {/* Header with copy button */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-gray-900">Commercial Scope</h2>
+          <p className="text-sm text-gray-500">
+            Plain text commercial scope suitable for ERP and customer documentation.
           </p>
         </div>
-      </section>
+        <button
+          onClick={handleCopy}
+          className={`
+            px-4 py-2 rounded-md text-sm font-medium transition-colors
+            ${copied
+              ? 'bg-green-100 text-green-800 border border-green-300'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+            }
+          `}
+        >
+          {copied ? 'Copied!' : 'Copy to Clipboard'}
+        </button>
+      </div>
 
-      {/* ================================================================== */}
-      {/* SECTION 2 - Key Conveyor Details */}
-      {/* ================================================================== */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-          Key Conveyor Details
-        </h2>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Overall Length</dt>
-            <dd className="text-sm text-gray-900">~{formatFeetInches(commercialData.overallLength)}</dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Belt Width</dt>
-            <dd className="text-sm text-gray-900">{formatInches(commercialData.beltWidth)}</dd>
-          </div>
-          {outputsV2?.design_geometry?.top_of_belt_in?.value && (
-            <div className="flex justify-between sm:block">
-              <dt className="text-sm font-medium text-gray-500">Conveyor Elevation (TOB)</dt>
-              <dd className="text-sm text-gray-900">{formatInches(outputsV2.design_geometry.top_of_belt_in.value)}</dd>
-            </div>
-          )}
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Belt Specification</dt>
-            <dd className="text-sm text-gray-900">{commercialData.beltSpec}</dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Belt Guidance</dt>
-            <dd className="text-sm text-gray-900">{commercialData.isGuided ? 'Guided' : 'Non-Guided'}</dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Pulley Diameters</dt>
-            <dd className="text-sm text-gray-900">
-              Drive: {formatInches(commercialData.drivePulleyDia)} / Tail: {formatInches(commercialData.tailPulleyDia)}
-            </dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Frame / Bed Type</dt>
-            <dd className="text-sm text-gray-900">Steel slider bed, formed steel frame</dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Drive</dt>
-            <dd className="text-sm text-gray-900 capitalize">{commercialData.driveDesc}</dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Paint / Finish</dt>
-            <dd className="text-sm text-gray-900">{commercialData.finishDesc}</dd>
-          </div>
-        </dl>
-      </section>
+      {/* Plain text output */}
+      <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+        <pre className="whitespace-pre-wrap font-mono text-sm text-gray-800 leading-relaxed">
+          {scopeText}
+        </pre>
+      </div>
 
-      {/* ================================================================== */}
-      {/* SECTION 3 - Included Equipment & Options */}
-      {/* ================================================================== */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-          Included Equipment &amp; Options
-        </h2>
-        <div className="bg-gray-50 rounded-lg p-4">
-          <InclusionItem
-            label="Support Legs"
-            status={commercialData.legsIncluded ? 'Included' : 'Not Included'}
-            isIncluded={commercialData.legsIncluded}
-          />
-          <InclusionItem
-            label="Casters"
-            status={commercialData.castersIncluded ? 'Included' : 'Not Included'}
-            isIncluded={commercialData.castersIncluded}
-          />
-          <InclusionItem
-            label="Side Rails / Guides"
-            status={commercialData.sideRailsDesc}
-            isIncluded={commercialData.sideRailsIncluded}
-          />
-          <InclusionItem
-            label="Controls Package"
-            status={commercialData.controlsDesc}
-            isIncluded={commercialData.controlsIncluded}
-          />
-          <InclusionItem
-            label="End Guards"
-            status={commercialData.endGuardsDesc}
-            isIncluded={commercialData.endGuardsIncluded}
-          />
-          <InclusionItem
-            label="Bottom Covers"
-            status={commercialData.bottomCoversIncluded ? 'Included' : 'Not Included'}
-            isIncluded={commercialData.bottomCoversIncluded}
-          />
-          <InclusionItem
-            label="Finger-Safe Guarding"
-            status={commercialData.fingerSafeIncluded ? 'Included' : 'Not Included'}
-            isIncluded={commercialData.fingerSafeIncluded}
-          />
-          <InclusionItem
-            label="Sensors / Instrumentation"
-            status="Not Included"
-            isIncluded={false}
-          />
-          <InclusionItem
-            label="Electrical Inspection / Certification"
-            status="Not Included"
-            isIncluded={false}
-          />
-          <InclusionItem
-            label="Installation / Field Services"
-            status="Not Included"
-            isIncluded={false}
-          />
-        </div>
-      </section>
-
-      {/* ================================================================== */}
-      {/* SECTION 4 - Application Summary */}
-      {/* ================================================================== */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-          Application Summary
-        </h2>
-        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3">
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Material Handling Type</dt>
-            <dd className="text-sm text-gray-900 capitalize">{commercialData.applicationType}</dd>
-          </div>
-          {(commercialData.partWeight || commercialData.partLength) && (
-            <div className="flex justify-between sm:block">
-              <dt className="text-sm font-medium text-gray-500">Part Size / Weight Range</dt>
-              <dd className="text-sm text-gray-900">
-                {commercialData.partLength && commercialData.partWidth && (
-                  <span>{commercialData.partLength}" x {commercialData.partWidth}"</span>
-                )}
-                {commercialData.partWeight && (
-                  <span>{commercialData.partLength ? ', ' : ''}{commercialData.partWeight} lbs</span>
-                )}
-              </dd>
-            </div>
-          )}
-          {commercialData.targetBeltSpeed && (
-            <div className="flex justify-between sm:block">
-              <dt className="text-sm font-medium text-gray-500">Target Belt Speed</dt>
-              <dd className="text-sm text-gray-900">{commercialData.targetBeltSpeed} FPM</dd>
-            </div>
-          )}
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Operating Voltage</dt>
-            <dd className="text-sm text-gray-900">{commercialData.powerFeedDisplay}</dd>
-          </div>
-          <div className="flex justify-between sm:block">
-            <dt className="text-sm font-medium text-gray-500">Environment</dt>
-            <dd className="text-sm text-gray-900">{commercialData.envDesc}</dd>
-          </div>
-        </dl>
-      </section>
-
-      {/* ================================================================== */}
-      {/* SECTION 5 - Commercial Notes */}
-      {/* ================================================================== */}
-      <section>
-        <h2 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">
-          Commercial Notes
-        </h2>
-        <ul className="list-disc list-inside space-y-2 text-sm text-gray-700">
-          <li>
-            <span className="font-medium">Approval drawings:</span> One (1) review cycle included, up to four (4) working days
-          </li>
-          <li>
-            <span className="font-medium">Lead time:</span> Subject to change based on workload at time of order
-          </li>
-        </ul>
-      </section>
+      {/* Version footer */}
+      <div className="text-xs text-gray-400 text-right">
+        Commercial Scope v2.0
+      </div>
     </div>
   );
 }
