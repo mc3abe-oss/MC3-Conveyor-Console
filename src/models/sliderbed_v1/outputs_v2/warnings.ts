@@ -12,7 +12,7 @@
  * - SNUB_WRAP_INSUFFICIENT: wrap_angle_deg < 180
  */
 
-import { SliderbedInputs, SliderbedOutputs } from '../schema';
+import { SliderbedInputs, SliderbedOutputs, DriveSourceMode } from '../schema';
 import {
   OutputMessageV2,
   CanonicalComponentId,
@@ -31,6 +31,9 @@ const DRIVE_UNDERSIZED_FACTOR = 0.95;
 const SHAFT_DEFLECTION_FACTOR = 0.001;
 const CASTER_OVERLOAD_FACTOR = 0.8;
 const SNUB_WRAP_MIN_DEG = 180;
+// v1.49: Manual drive validation thresholds
+const MANUAL_DRIVE_SF_MIN = 1.0;
+const MANUAL_DRIVE_TORQUE_MISMATCH_THRESHOLD = 0.15; // 15%
 
 // =============================================================================
 // WARNING RULE CONTEXT
@@ -325,6 +328,93 @@ export function checkCasterOverload(ctx: WarningRuleContext): OutputMessageV2[] 
   return warnings;
 }
 
+/**
+ * MANUAL_DRIVE_SF_LOW (v1.49)
+ * Triggers when manual drive service factor is below 1.0.
+ * WARNING ONLY - does not block.
+ */
+export function checkManualDriveSfLow(ctx: WarningRuleContext): OutputMessageV2[] {
+  const warnings: OutputMessageV2[] = [];
+  const { inputs, outputs_v1 } = ctx;
+
+  // Only check in custom manual mode
+  const driveSourceMode = inputs.drive_source_mode ?? DriveSourceMode.FlexblocCatalog;
+  const isCustomManualMode =
+    driveSourceMode === DriveSourceMode.CustomManual ||
+    driveSourceMode === 'custom_manual';
+
+  if (!isCustomManualMode) {
+    return warnings;
+  }
+
+  // Check selected_service_factor from outputs (canonical value)
+  const serviceFactor = outputs_v1.selected_service_factor;
+  if (serviceFactor != null && serviceFactor < MANUAL_DRIVE_SF_MIN) {
+    warnings.push({
+      severity: 'warning',
+      code: WARNING_CODES.MANUAL_DRIVE_SF_LOW,
+      message: `Service factor (${serviceFactor.toFixed(2)}) is below ${MANUAL_DRIVE_SF_MIN}. Confirm this is intentional.`,
+      recommendation: 'Service factors below 1.0 may result in premature drive failure under normal operating conditions.',
+      impacts: ['design'],
+      related_component_ids: ['drive_primary'],
+    });
+  }
+
+  return warnings;
+}
+
+/**
+ * MANUAL_DRIVE_TORQUE_MISMATCH (v1.49)
+ * Triggers when entered torque doesn't match implied torque from HP & RPM.
+ * WARNING ONLY - does not alter calculations.
+ */
+export function checkManualDriveTorqueMismatch(ctx: WarningRuleContext): OutputMessageV2[] {
+  const warnings: OutputMessageV2[] = [];
+  const { inputs } = ctx;
+
+  // Only check in custom manual mode
+  const driveSourceMode = inputs.drive_source_mode ?? DriveSourceMode.FlexblocCatalog;
+  const isCustomManualMode =
+    driveSourceMode === DriveSourceMode.CustomManual ||
+    driveSourceMode === 'custom_manual';
+
+  if (!isCustomManualMode) {
+    return warnings;
+  }
+
+  // Need HP, RPM, and torque to compute
+  const hp = inputs.manual_motor_hp;
+  const rpm = inputs.manual_output_rpm;
+  const enteredTorque = inputs.manual_output_torque_lb_in;
+
+  // Skip if any required value is missing or invalid
+  if (hp == null || rpm == null || rpm <= 0 || enteredTorque == null || enteredTorque <= 0) {
+    return warnings;
+  }
+
+  // Compute implied torque: T = (63025 * HP / RPM) * 12
+  // Note: 63025 gives oz-in when HP/RPM, multiply by 12 to convert to lb-in?
+  // Actually: T (lb-in) = (HP * 63025) / RPM for lb-in (standard formula)
+  // Let me verify: HP = (T * RPM) / 63025 => T = (HP * 63025) / RPM (in lb-in)
+  const impliedTorqueLbIn = (hp * 63025) / rpm;
+
+  // Check if difference exceeds threshold
+  const difference = Math.abs(impliedTorqueLbIn - enteredTorque) / enteredTorque;
+  if (difference > MANUAL_DRIVE_TORQUE_MISMATCH_THRESHOLD) {
+    const pctDiff = (difference * 100).toFixed(0);
+    warnings.push({
+      severity: 'warning',
+      code: WARNING_CODES.MANUAL_DRIVE_TORQUE_MISMATCH,
+      message: `Entered torque (${enteredTorque.toFixed(0)} lb-in) differs from implied torque (${impliedTorqueLbIn.toFixed(0)} lb-in) by ${pctDiff}%.`,
+      recommendation: 'Check units and values. Torque should satisfy: T (lb-in) = (HP × 63025) / RPM.',
+      impacts: ['design'],
+      related_component_ids: ['drive_primary'],
+    });
+  }
+
+  return warnings;
+}
+
 // =============================================================================
 // AGGREGATE WARNING RUNNER
 // =============================================================================
@@ -345,6 +435,9 @@ export function runAllWarningRules(ctx: WarningRuleContext): OutputMessageV2[] {
   allWarnings.push(...checkSnubWrapInsufficient(ctx));
   allWarnings.push(...checkRollerSpacingExcessive(ctx));
   allWarnings.push(...checkCasterOverload(ctx));
+  // v1.49: Manual drive warnings
+  allWarnings.push(...checkManualDriveSfLow(ctx));
+  allWarnings.push(...checkManualDriveTorqueMismatch(ctx));
 
   return allWarnings;
 }

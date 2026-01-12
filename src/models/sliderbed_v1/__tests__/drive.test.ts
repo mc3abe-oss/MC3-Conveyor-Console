@@ -44,6 +44,7 @@ import {
   SpeedMode,
   GearmotorMountingStyle,
   EndSupportType,
+  DriveSourceMode,
 } from '../schema';
 import { migrateInputs } from '../migrate';
 
@@ -560,6 +561,317 @@ describe('v1.7 Gearmotor Mounting Style & Sprocket Chain Ratio', () => {
       expect(
         result.warnings?.some((w) => w.message.includes('sprocket') && w.message.includes('12'))
       ).toBe(true);
+    });
+  });
+});
+
+/**
+ * v1.49: Drive Source Mode Tests
+ *
+ * Tests to verify:
+ * 1. Flexbloc catalog mode produces correct selected_* outputs
+ * 2. Custom manual mode produces correct selected_* outputs
+ * 3. Equivalence: manual mode with same values produces identical downstream outputs
+ * 4. No math drift in existing Flexbloc behavior
+ */
+describe('v1.49 Drive Source Mode', () => {
+  // Application field defaults (used in all tests)
+  const APPLICATION_DEFAULTS = {
+    material_form: 'PARTS',
+    material_type: MaterialType.Steel,
+    process_type: ProcessType.Assembly,
+    parts_sharp: PartsSharp.No,
+    environment_factors: [EnvironmentFactors.Indoor],
+    ambient_temperature: AmbientTemperature.Normal,
+    power_feed: PowerFeed.V480_3Ph,
+    controls_package: ControlsPackage.StartStop,
+    spec_source: SpecSource.Standard,
+    support_method: SupportMethod.External,
+    field_wiring_required: FieldWiringRequired.No,
+    bearing_grade: BearingGrade.Standard,
+    documentation_package: DocumentationPackage.Basic,
+    finish_paint_system: FinishPaintSystem.PowderCoat,
+    labels_required: LabelsRequired.Yes,
+    send_to_estimating: SendToEstimating.No,
+    motor_brand: MotorBrand.Standard,
+    bottom_covers: false,
+    side_rails: SideRails.None,
+    end_guards: EndGuards.None,
+    lacing_style: LacingStyle.Standard,
+    belt_tracking_method: BeltTrackingMethod.Crowned,
+    shaft_diameter_mode: ShaftDiameterMode.Calculated,
+    belt_coeff_piw: 0.109,
+    belt_coeff_pil: 0.109,
+    tail_support_type: EndSupportType.External,
+    drive_support_type: EndSupportType.External,
+  };
+
+  const BASE_INPUTS: SliderbedInputs = {
+    conveyor_length_cc_in: 240,
+    belt_width_in: 18,
+    conveyor_incline_deg: 0,
+    belt_speed_fpm: 50,
+    motor_rpm: 1750,
+    drive_rpm: 0,
+    pulley_diameter_in: 4,
+    part_weight_lbs: 5,
+    part_length_in: 12,
+    part_width_in: 6,
+    drop_height_in: 0,
+    part_temperature_class: PartTemperatureClass.Ambient,
+    fluid_type: FluidType.None,
+    orientation: Orientation.Lengthwise,
+    part_spacing_in: 0.5,
+    speed_mode: SpeedMode.BeltSpeed,
+    gearmotor_mounting_style: GearmotorMountingStyle.ShaftMounted,
+    ...APPLICATION_DEFAULTS,
+  };
+
+  describe('Flexbloc Catalog Mode (default)', () => {
+    it('should produce selected_* outputs when actual_gearmotor_output_rpm is set', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.FlexblocCatalog,
+        actual_gearmotor_output_rpm: 56.5,
+        actual_gearmotor_output_torque_inlbf: 1500,
+        actual_gearmotor_service_factor: 1.5,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs).toBeDefined();
+
+      // Canonical outputs should be populated from actual_gearmotor_* values
+      expect(result.outputs?.selected_output_rpm).toBe(56.5);
+      expect(result.outputs?.selected_output_torque_lb_in).toBe(1500);
+      expect(result.outputs?.selected_service_factor).toBe(1.5);
+      expect(result.outputs?.selected_drive_source_label).toBe('NORD Flexbloc');
+    });
+
+    it('should compute actual_belt_speed_fpm from selected gearmotor', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.FlexblocCatalog,
+        actual_gearmotor_output_rpm: 56.5,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      // Actual belt speed should be computed
+      // FPM = (RPM * PI * Dia) / 12 = (56.5 * PI * 4) / 12 ≈ 59.1 FPM
+      expect(result.outputs?.actual_belt_speed_fpm).toBeCloseTo(59.1, 0);
+    });
+  });
+
+  describe('Custom Manual Mode', () => {
+    it('should produce selected_* outputs when manual fields are set', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.CustomManual,
+        manual_motor_hp: 1.5,
+        manual_output_rpm: 56.5,
+        manual_output_torque_lb_in: 1500,
+        manual_service_factor: 1.5,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+      expect(result.outputs).toBeDefined();
+
+      // Canonical outputs should be populated from manual_* values
+      expect(result.outputs?.selected_hp).toBe(1.5);
+      expect(result.outputs?.selected_output_rpm).toBe(56.5);
+      expect(result.outputs?.selected_output_torque_lb_in).toBe(1500);
+      expect(result.outputs?.selected_service_factor).toBe(1.5);
+      expect(result.outputs?.selected_drive_source_label).toBe('Manual Entry');
+    });
+
+    it('should compute actual_belt_speed_fpm from manual RPM', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.CustomManual,
+        manual_output_rpm: 56.5,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      // Actual belt speed should be computed
+      expect(result.outputs?.actual_belt_speed_fpm).toBeCloseTo(59.1, 0);
+    });
+
+    it('should not produce selected_* outputs when manual_output_rpm is missing', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.CustomManual,
+        manual_motor_hp: 1.5,
+        // manual_output_rpm is not set
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      // Canonical outputs should be null
+      expect(result.outputs?.selected_output_rpm).toBeNull();
+      expect(result.outputs?.actual_belt_speed_fpm).toBeNull();
+    });
+  });
+
+  describe('Equivalence Test (Critical - No Math Drift)', () => {
+    /**
+     * CRITICAL TEST: Proves that Flexbloc mode and Manual mode produce identical
+     * downstream outputs when given the same input values.
+     *
+     * This test is the proof that:
+     * 1. Manual mode uses the exact same downstream calculation path
+     * 2. Flexbloc logic didn't change (no math drift)
+     */
+    it('should produce identical downstream outputs in both modes with same values', () => {
+      // Define the gearmotor values to test
+      const outputRpm = 56.5;
+      const outputTorque = 1500;
+      const serviceFactor = 1.5;
+
+      // Test in Flexbloc catalog mode
+      const flexblocInputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.FlexblocCatalog,
+        actual_gearmotor_output_rpm: outputRpm,
+        actual_gearmotor_output_torque_inlbf: outputTorque,
+        actual_gearmotor_service_factor: serviceFactor,
+      };
+
+      // Test in Custom manual mode with same values
+      const manualInputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.CustomManual,
+        manual_output_rpm: outputRpm,
+        manual_output_torque_lb_in: outputTorque,
+        manual_service_factor: serviceFactor,
+      };
+
+      const flexblocResult = runCalculation({ inputs: flexblocInputs });
+      const manualResult = runCalculation({ inputs: manualInputs });
+
+      expect(flexblocResult.success).toBe(true);
+      expect(manualResult.success).toBe(true);
+
+      // CRITICAL ASSERTIONS: These outputs must be identical
+      // 1. Canonical selected_* outputs should have same values
+      expect(flexblocResult.outputs?.selected_output_rpm).toBe(
+        manualResult.outputs?.selected_output_rpm
+      );
+      expect(flexblocResult.outputs?.selected_output_torque_lb_in).toBe(
+        manualResult.outputs?.selected_output_torque_lb_in
+      );
+      expect(flexblocResult.outputs?.selected_service_factor).toBe(
+        manualResult.outputs?.selected_service_factor
+      );
+
+      // 2. Downstream actual belt speed should be identical
+      expect(flexblocResult.outputs?.actual_belt_speed_fpm).toBe(
+        manualResult.outputs?.actual_belt_speed_fpm
+      );
+
+      // 3. Actual drive shaft RPM should be identical
+      expect(flexblocResult.outputs?.actual_drive_shaft_rpm).toBe(
+        manualResult.outputs?.actual_drive_shaft_rpm
+      );
+
+      // 4. Speed delta should be identical
+      expect(flexblocResult.outputs?.actual_belt_speed_delta_pct).toBe(
+        manualResult.outputs?.actual_belt_speed_delta_pct
+      );
+
+      // Only the labels should differ
+      expect(flexblocResult.outputs?.selected_drive_source_label).toBe('NORD Flexbloc');
+      expect(manualResult.outputs?.selected_drive_source_label).toBe('Manual Entry');
+    });
+
+    it('should not affect other calculation outputs', () => {
+      // Define a reference fixture in Flexbloc mode
+      const flexblocInputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.FlexblocCatalog,
+        actual_gearmotor_output_rpm: 56.5,
+      };
+
+      const manualInputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.CustomManual,
+        manual_output_rpm: 56.5,
+      };
+
+      const flexblocResult = runCalculation({ inputs: flexblocInputs });
+      const manualResult = runCalculation({ inputs: manualInputs });
+
+      // All other outputs should be identical
+      expect(flexblocResult.outputs?.total_belt_pull_lb).toBe(
+        manualResult.outputs?.total_belt_pull_lb
+      );
+      expect(flexblocResult.outputs?.torque_drive_shaft_inlbf).toBe(
+        manualResult.outputs?.torque_drive_shaft_inlbf
+      );
+      expect(flexblocResult.outputs?.drive_shaft_rpm).toBe(
+        manualResult.outputs?.drive_shaft_rpm
+      );
+      expect(flexblocResult.outputs?.gear_ratio).toBe(
+        manualResult.outputs?.gear_ratio
+      );
+      expect(flexblocResult.outputs?.belt_speed_fpm).toBe(
+        manualResult.outputs?.belt_speed_fpm
+      );
+    });
+  });
+
+  describe('Mode Defaults', () => {
+    it('should default to Flexbloc catalog mode when drive_source_mode is not set', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        // drive_source_mode is not set
+        actual_gearmotor_output_rpm: 56.5,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      // Should behave as Flexbloc mode
+      expect(result.outputs?.selected_output_rpm).toBe(56.5);
+      expect(result.outputs?.selected_drive_source_label).toBe('NORD Flexbloc');
+    });
+
+    it('should ignore manual fields when in Flexbloc mode', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.FlexblocCatalog,
+        actual_gearmotor_output_rpm: 56.5,
+        // Manual fields should be ignored
+        manual_output_rpm: 100,
+        manual_output_torque_lb_in: 3000,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      // Should use Flexbloc values, not manual values
+      expect(result.outputs?.selected_output_rpm).toBe(56.5);
+    });
+
+    it('should ignore actual_gearmotor fields when in Custom mode', () => {
+      const inputs: SliderbedInputs = {
+        ...BASE_INPUTS,
+        drive_source_mode: DriveSourceMode.CustomManual,
+        manual_output_rpm: 100,
+        // Flexbloc fields should be ignored
+        actual_gearmotor_output_rpm: 56.5,
+      };
+
+      const result = runCalculation({ inputs });
+      expect(result.success).toBe(true);
+
+      // Should use manual values, not Flexbloc values
+      expect(result.outputs?.selected_output_rpm).toBe(100);
     });
   });
 });

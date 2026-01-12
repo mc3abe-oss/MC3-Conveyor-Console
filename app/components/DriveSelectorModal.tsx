@@ -378,19 +378,15 @@ export default function DriveSelectorModal({
 
       const data: GearmotorSelectionResult = await response.json();
       setResult(data);
-
-      // Auto-select first candidate if none selected and candidates exist
-      // Note: Backend already filters to passing candidates only
-      if (data.candidates.length > 0 && !selectedCandidate) {
-        handleSelectCandidate(data.candidates[0]);
-      }
+      // NOTE: Do NOT auto-select any candidate on modal open.
+      // Selection must only happen via explicit user action (clicking "Select").
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Unknown error');
       setResult(null);
     } finally {
       setLoading(false);
     }
-  }, [hasValidInputs, requiredOutputRpm, requiredOutputTorqueLbIn, activeSf, speedTolerance, selectedCandidate, sfOverrideInput, sfOverrideValidation.valid, sfOverrideValidation.error]);
+  }, [hasValidInputs, requiredOutputRpm, requiredOutputTorqueLbIn, activeSf, speedTolerance, sfOverrideInput, sfOverrideValidation.valid, sfOverrideValidation.error]);
 
   // Query when modal opens or params change
   useEffect(() => {

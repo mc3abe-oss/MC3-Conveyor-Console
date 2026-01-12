@@ -1,5 +1,5 @@
 /**
- * SLIDERBED CONVEYOR v1.29 - CALCULATION FORMULAS
+ * SLIDERBED CONVEYOR v1.49 - CALCULATION FORMULAS
  *
  * All formulas match Excel behavior exactly.
  * Units are explicit in variable names and comments.
@@ -8,6 +8,12 @@
  * Execution order matters - formulas must be called in dependency order.
  *
  * CHANGELOG:
+ * v1.49 (2026-01-12): Drive source mode - Flexbloc catalog vs Custom manual entry
+ *                     New inputs: drive_source_mode, manual_motor_hp, manual_output_rpm,
+ *                                 manual_output_torque_lb_in, manual_service_factor
+ *                     New outputs: selected_hp, selected_output_rpm, selected_output_torque_lb_in,
+ *                                  selected_service_factor, selected_drive_source_label
+ *                     Canonical mapping: downstream uses selected_* instead of actual_gearmotor_*
  * v1.29 (2026-01-01): Product Definition vNext - PARTS vs BULK material support
  *                     New BULK load formula using residence-time method
  *                     New canonical outputs: mass_flow_lbs_per_hr, time_on_belt_min
@@ -56,6 +62,8 @@ import {
   // v1.29: Return Support
   ReturnFrameStyle,
   ReturnSnubMode,
+  // v1.49: Drive Source Mode
+  DriveSourceMode,
 } from './schema';
 import { buildCleatsSummary } from './migrate';
 import { getCleatSpacingMultiplier, roundUpToIncrement } from '../../lib/belt-catalog';
@@ -2039,21 +2047,60 @@ export function calculate(
   // Total drive ratio = gear_ratio * chain_ratio
   const totalDriveRatio = gearRatio * chainRatio;
 
+  // v1.49: Canonical selected drive outputs
+  // Map from either Flexbloc catalog or custom manual entry to unified selected_* values
+  const driveSourceMode = inputs.drive_source_mode ?? DriveSourceMode.FlexblocCatalog;
+  const isCustomManualMode =
+    driveSourceMode === DriveSourceMode.CustomManual ||
+    driveSourceMode === 'custom_manual';
+
+  let selectedHp: number | null = null;
+  let selectedOutputRpm: number | null = null;
+  let selectedOutputTorqueLbIn: number | null = null;
+  let selectedServiceFactor: number | null = null;
+  let selectedDriveSourceLabel: string | null = null;
+
+  if (isCustomManualMode) {
+    // Custom manual mode: use manual_* inputs directly
+    if (
+      inputs.manual_output_rpm !== undefined &&
+      inputs.manual_output_rpm !== null &&
+      inputs.manual_output_rpm > 0
+    ) {
+      selectedHp = inputs.manual_motor_hp ?? null;
+      selectedOutputRpm = inputs.manual_output_rpm;
+      selectedOutputTorqueLbIn = inputs.manual_output_torque_lb_in ?? null;
+      selectedServiceFactor = inputs.manual_service_factor ?? null;
+      selectedDriveSourceLabel = 'Manual Entry';
+    }
+  } else {
+    // Flexbloc catalog mode (default): use actual_gearmotor_* inputs
+    // These are populated when user selects from the Drive Selector
+    if (
+      inputs.actual_gearmotor_output_rpm !== undefined &&
+      inputs.actual_gearmotor_output_rpm !== null
+    ) {
+      // Note: HP is not currently stored from catalog selection - could be added later
+      selectedHp = null; // TODO: Could populate from selection if available
+      selectedOutputRpm = inputs.actual_gearmotor_output_rpm;
+      selectedOutputTorqueLbIn = inputs.actual_gearmotor_output_torque_inlbf ?? null;
+      selectedServiceFactor = inputs.actual_gearmotor_service_factor ?? null;
+      selectedDriveSourceLabel = 'NORD Flexbloc';
+    }
+  }
+
   // v1.38: Actual belt speed from selected gearmotor
-  // Only computed when a gearmotor has been selected (actual_gearmotor_output_rpm is set)
+  // Now uses canonical selectedOutputRpm (from either mode)
   let actualBeltSpeedFpm: number | null = null;
   let actualBeltSpeedDeltaPct: number | null = null;
   let speedDifferenceFpm: number | null = null; // v1.39: FPM difference (informational only)
   let actualDriveShaftRpm: number | null = null;
   let actualSpeedWarningCode: string | null = null;
 
-  if (
-    inputs.actual_gearmotor_output_rpm !== undefined &&
-    inputs.actual_gearmotor_output_rpm !== null
-  ) {
+  if (selectedOutputRpm !== null) {
     // Calculate actual belt speed - function handles all guards and returns warning codes
     const actualSpeedResult = calculateActualBeltSpeed(
-      inputs.actual_gearmotor_output_rpm,
+      selectedOutputRpm,
       drivePulleyDiameterIn,
       inputs.gm_sprocket_teeth,
       inputs.drive_shaft_sprocket_teeth,
@@ -2497,6 +2544,13 @@ export function calculate(
     speed_difference_fpm: speedDifferenceFpm,
     actual_drive_shaft_rpm: actualDriveShaftRpm,
     actual_speed_warning_code: actualSpeedWarningCode,
+
+    // v1.49: Canonical selected drive outputs (from Flexbloc or manual)
+    selected_hp: selectedHp,
+    selected_output_rpm: selectedOutputRpm,
+    selected_output_torque_lb_in: selectedOutputTorqueLbIn,
+    selected_service_factor: selectedServiceFactor,
+    selected_drive_source_label: selectedDriveSourceLabel,
 
     safety_factor_used: safetyFactor,
     starting_belt_pull_lb_used: startingBeltPullLb,

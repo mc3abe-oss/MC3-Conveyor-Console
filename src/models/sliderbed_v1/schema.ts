@@ -558,6 +558,17 @@ export enum GearmotorMountingStyle {
 }
 
 /**
+ * Drive source mode (v1.49)
+ * Determines how the gearmotor/drive values are obtained.
+ */
+export enum DriveSourceMode {
+  /** Select from NORD Flexbloc catalog (default) */
+  FlexblocCatalog = 'flexbloc_catalog',
+  /** Manual entry of drive specifications */
+  CustomManual = 'custom_manual',
+}
+
+/**
  * Output shaft interface type (v1.41)
  * Derived from output_shaft_option to determine the shaft interface model:
  * - hollow_shaft: Uses the gear unit hollow shaft directly (bore = ID)
@@ -1784,6 +1795,50 @@ export interface SliderbedInputs {
    */
   hollow_shaft_bushing_bore_in?: number | null;
 
+  // =========================================================================
+  // v1.49: DRIVE SOURCE MODE (Flexbloc vs Custom/Manual)
+  // =========================================================================
+
+  /**
+   * Drive source mode (v1.49)
+   * Determines how drive values are obtained:
+   * - 'flexbloc_catalog': Select from NORD Flexbloc catalog (default)
+   * - 'custom_manual': Manual entry of drive specifications
+   */
+  drive_source_mode?: DriveSourceMode | string;
+
+  /**
+   * Manual motor HP (v1.49)
+   * Used only when drive_source_mode = 'custom_manual'.
+   * Motor horsepower for the custom drive.
+   */
+  manual_motor_hp?: number | null;
+
+  /**
+   * Manual output RPM (v1.49)
+   * Used only when drive_source_mode = 'custom_manual'.
+   * Gearmotor output shaft RPM.
+   */
+  manual_output_rpm?: number | null;
+
+  /**
+   * Manual output torque in lb-in (v1.49)
+   * Used only when drive_source_mode = 'custom_manual'.
+   * Gearmotor output torque at the specified RPM.
+   */
+  manual_output_torque_lb_in?: number | null;
+
+  /**
+   * Manual service factor (v1.49)
+   * Used only when drive_source_mode = 'custom_manual'.
+   * Applied service factor for the custom drive.
+   */
+  manual_service_factor?: number | null;
+
+  // =========================================================================
+  // ACTUAL GEARMOTOR VALUES (populated from selection or manual entry)
+  // =========================================================================
+
   /**
    * Actual gearmotor source (v1.38)
    * Indicates how the actual gearmotor values were obtained:
@@ -2440,6 +2495,50 @@ export interface SliderbedOutputs {
    * Null when calculation succeeded with no warnings.
    */
   actual_speed_warning_code?: string | null;
+
+  // =========================================================================
+  // v1.49: CANONICAL SELECTED DRIVE OUTPUTS
+  // Unified outputs from either Flexbloc catalog or custom manual entry.
+  // Downstream calculations should use these values.
+  // =========================================================================
+
+  /**
+   * Selected motor HP (v1.49)
+   * Populated from Flexbloc catalog selection or manual entry.
+   * Null when no drive is configured.
+   */
+  selected_hp?: number | null;
+
+  /**
+   * Selected gearmotor output RPM (v1.49)
+   * Populated from Flexbloc catalog selection or manual entry.
+   * Null when no drive is configured.
+   * This is the canonical value for downstream calculations.
+   */
+  selected_output_rpm?: number | null;
+
+  /**
+   * Selected gearmotor output torque in lb-in (v1.49)
+   * Populated from Flexbloc catalog selection or manual entry.
+   * Null when no drive is configured.
+   */
+  selected_output_torque_lb_in?: number | null;
+
+  /**
+   * Selected service factor (v1.49)
+   * Populated from Flexbloc catalog selection or manual entry.
+   * Null when no drive is configured.
+   */
+  selected_service_factor?: number | null;
+
+  /**
+   * Selected drive source label (v1.49)
+   * UI-only label describing the drive source.
+   * - 'NORD Flexbloc' when from catalog
+   * - 'Manual Entry' when custom
+   * - null when no drive is configured
+   */
+  selected_drive_source_label?: string | null;
 
   /** Safety factor used */
   safety_factor_used: number;
@@ -3113,6 +3212,13 @@ export const DEFAULT_INPUT_VALUES = {
   sprocket_shaft_diameter_in: null, // v1.42: DEPRECATED - use plug_in_shaft_style
   plug_in_shaft_style: null, // v1.43: Plug-in shaft style (single/double/flange_b5)
   hollow_shaft_bushing_bore_in: null, // v1.44: Hollow shaft bushing bore (optional)
+
+  // Drive source mode defaults (v1.49)
+  drive_source_mode: DriveSourceMode.FlexblocCatalog,
+  manual_motor_hp: null,
+  manual_output_rpm: null,
+  manual_output_torque_lb_in: null,
+  manual_service_factor: null,
 
   // Belt tracking & pulley defaults
   belt_tracking_method: BeltTrackingMethod.Crowned,

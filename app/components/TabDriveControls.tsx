@@ -14,12 +14,13 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   SliderbedInputs,
   SliderbedOutputs,
   GearmotorMountingStyle,
   DirectionMode,
+  DriveSourceMode,
 } from '../../src/models/sliderbed_v1/schema';
 import {
   calculateDriveShaftRpm,
@@ -30,7 +31,9 @@ import { useCatalog } from '../hooks/useCatalog';
 import { Issue, SectionCounts, SectionKey } from './useConfigureIssues';
 import DriveArrangementModal from './DriveArrangementModal';
 import AdvancedParametersModal from './AdvancedParametersModal';
-import DriveSelectorCard from './DriveSelectorCard';
+import DriveSelectorModal from './DriveSelectorModal';
+import ManualDriveModal from './ManualDriveModal';
+import { GearmotorCandidate } from '../../src/lib/gearmotor';
 
 interface TabDriveControlsProps {
   inputs: SliderbedInputs;
@@ -47,6 +50,91 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
   // Modal states
   const [isDriveArrangementModalOpen, setIsDriveArrangementModalOpen] = useState(false);
   const [isAdvancedModalOpen, setIsAdvancedModalOpen] = useState(false);
+  const [isDriveModalOpen, setIsDriveModalOpen] = useState(false);
+  const [isManualDriveModalOpen, setIsManualDriveModalOpen] = useState(false);
+
+  // Drive card state (no expand/collapse needed - both modes use modals)
+  const [selectedCandidate, setSelectedCandidate] = useState<GearmotorCandidate | null>(null);
+  const [driveServiceFactor, setDriveServiceFactor] = useState(1.5);
+
+  // Determine if drive is configured
+  const isFlexblocMode =
+    (inputs.drive_source_mode ?? DriveSourceMode.FlexblocCatalog) === DriveSourceMode.FlexblocCatalog ||
+    inputs.drive_source_mode === 'flexbloc_catalog';
+  const isManualMode =
+    inputs.drive_source_mode === DriveSourceMode.CustomManual ||
+    inputs.drive_source_mode === 'custom_manual';
+
+  const isDriveConfigured = isFlexblocMode
+    ? (outputs?.selected_output_rpm != null && selectedCandidate != null)
+    : (inputs.manual_output_rpm != null &&
+       inputs.manual_output_rpm > 0 &&
+       inputs.manual_output_torque_lb_in != null &&
+       inputs.manual_service_factor != null);
+
+  // Load saved Flexbloc selection on mount
+  useEffect(() => {
+    if (applicationId) {
+      loadSavedDriveSelection();
+    }
+  }, [applicationId]);
+
+  const loadSavedDriveSelection = async () => {
+    if (!applicationId) return;
+    try {
+      const response = await fetch(`/api/gearmotor/config?application_id=${applicationId}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.config?.vendor_performance_points) {
+          const point = data.config.vendor_performance_points;
+          const candidate: GearmotorCandidate = {
+            performance_point_id: point.id,
+            gear_unit_component_id: point.vendor_components?.id ?? '',
+            vendor: point.vendor,
+            series: point.series,
+            size_code: point.size_code,
+            gear_unit_part_number: point.vendor_components?.vendor_part_number ?? '',
+            gear_unit_description: point.vendor_components?.description ?? '',
+            motor_hp: point.motor_hp,
+            output_rpm: point.output_rpm,
+            output_torque_lb_in: point.output_torque_lb_in,
+            service_factor_catalog: point.service_factor_catalog,
+            source_ref: point.source_ref ?? '',
+            metadata_json: point.metadata_json ?? null,
+            adjusted_capacity: 0,
+            oversize_ratio: 1,
+            speed_delta: 0,
+            speed_delta_pct: 0,
+          };
+          setSelectedCandidate(candidate);
+          updateInput('actual_gearmotor_output_rpm', candidate.output_rpm ?? null);
+        }
+        if (data.config?.chosen_service_factor) {
+          setDriveServiceFactor(data.config.chosen_service_factor);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load drive config:', err);
+    }
+  };
+
+  const handleDriveSelect = (candidate: GearmotorCandidate | null) => {
+    setSelectedCandidate(candidate);
+    updateInput('actual_gearmotor_output_rpm', candidate?.output_rpm ?? null);
+  };
+
+  // Handle manual drive save from modal
+  const handleManualDriveSave = (values: {
+    motorHp: number | null;
+    outputRpm: number;
+    outputTorqueLbIn: number;
+    serviceFactor: number;
+  }) => {
+    updateInput('manual_motor_hp', values.motorHp);
+    updateInput('manual_output_rpm', values.outputRpm);
+    updateInput('manual_output_torque_lb_in', values.outputTorqueLbIn);
+    updateInput('manual_service_factor', values.serviceFactor);
+  };
 
   // Sensor selection state
   const [addSensorModel, setAddSensorModel] = useState('');
@@ -348,13 +436,19 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
                   </span>
                 </div>
               </div>
-              {/* Show selected RPM when gearmotor is selected */}
-              {inputs.actual_gearmotor_output_rpm != null && (
+              {/* Show selected drive info when configured (from either mode) */}
+              {outputs.selected_output_rpm != null && (
                 <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-2 sm:grid-cols-3 gap-4">
                   <div>
-                    <span className="text-xs text-gray-500 block">Selected GM Output RPM</span>
+                    <span className="text-xs text-gray-500 block">Selected Output RPM</span>
                     <span className="font-mono font-semibold text-gray-900">
-                      {inputs.actual_gearmotor_output_rpm.toFixed(1)}
+                      {outputs.selected_output_rpm.toFixed(1)}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-gray-500 block">Drive Source</span>
+                    <span className="font-mono font-semibold text-gray-900">
+                      {outputs.selected_drive_source_label ?? '—'}
                     </span>
                   </div>
                   <div>
@@ -425,33 +519,134 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
             )}
           </div>
 
-          {/* Drive Selector Card - Opens modal for gearmotor selection */}
-          <DriveSelectorCard
+          {/* v1.49: Compact Drive Card - Both modes use modals */}
+          <div className={`border rounded-lg ${isDriveConfigured ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}>
+            {/* Header with toggle and action */}
+            <div className="flex items-center justify-between p-4">
+              <div className="flex items-center gap-3">
+                {isDriveConfigured && (
+                  <svg className="w-5 h-5 text-green-500 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                )}
+                <h5 className="text-sm font-medium text-gray-900">Drive</h5>
+                {/* Inline Flexbloc/Manual toggle */}
+                <div className="flex rounded-md overflow-hidden border border-gray-200 bg-white">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateInput('drive_source_mode', DriveSourceMode.FlexblocCatalog);
+                      updateInput('manual_motor_hp', null);
+                      updateInput('manual_output_rpm', null);
+                      updateInput('manual_output_torque_lb_in', null);
+                      updateInput('manual_service_factor', null);
+                    }}
+                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                      isFlexblocMode
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    Flexbloc
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      updateInput('drive_source_mode', DriveSourceMode.CustomManual);
+                      updateInput('actual_gearmotor_output_rpm', null);
+                      updateInput('actual_gearmotor_output_torque_inlbf', null);
+                      updateInput('actual_gearmotor_service_factor', null);
+                      setSelectedCandidate(null);
+                    }}
+                    className={`px-2.5 py-1 text-xs font-medium transition-colors ${
+                      isManualMode
+                        ? 'bg-primary-600 text-white'
+                        : 'bg-white text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    Manual
+                  </button>
+                </div>
+              </div>
+              {/* Header action - opens appropriate modal */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (isFlexblocMode) {
+                    setIsDriveModalOpen(true);
+                  } else {
+                    setIsManualDriveModalOpen(true);
+                  }
+                }}
+                className="px-3 py-1 text-sm font-medium text-blue-600 hover:text-blue-700 hover:bg-blue-50 rounded transition-colors"
+              >
+                {isFlexblocMode
+                  ? (selectedCandidate ? 'Edit...' : 'Choose...')
+                  : (isDriveConfigured ? 'Edit...' : 'Set...')}
+              </button>
+            </div>
+
+            {/* Compact summary row */}
+            <div className="px-4 pb-3 text-xs text-gray-600">
+              <span className="text-gray-500">Required:</span>{' '}
+              <span className="font-mono">{outputs?.gearmotor_output_rpm?.toFixed(1) ?? outputs?.drive_shaft_rpm?.toFixed(1) ?? '—'}</span> RPM ·{' '}
+              <span className="font-mono">{outputs?.torque_drive_shaft_inlbf ? Math.round(outputs.torque_drive_shaft_inlbf) : '—'}</span> lb-in
+              <span className="mx-2 text-gray-300">|</span>
+              <span className="text-gray-500">Selected:</span>{' '}
+              {isFlexblocMode && (
+                selectedCandidate ? (
+                  <span className={isDriveConfigured ? 'text-green-700 font-medium' : ''}>
+                    FLEXBLOC-{selectedCandidate.motor_hp}HP · {selectedCandidate.output_rpm} RPM · {Math.round(selectedCandidate.output_torque_lb_in ?? 0)} lb-in · SF {driveServiceFactor}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 italic">None (click Choose…)</span>
+                )
+              )}
+              {isManualMode && (
+                isDriveConfigured ? (
+                  <span className="text-green-700 font-medium">
+                    MANUAL{inputs.manual_motor_hp ? `-${inputs.manual_motor_hp}HP` : ''} · {inputs.manual_output_rpm} RPM · {inputs.manual_output_torque_lb_in} lb-in · SF {inputs.manual_service_factor}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 italic">None (click Set…)</span>
+                )
+              )}
+            </div>
+          </div>
+
+          {/* Flexbloc Selector Modal */}
+          <DriveSelectorModal
+            isOpen={isDriveModalOpen}
+            onClose={() => setIsDriveModalOpen(false)}
             requiredOutputRpm={outputs?.gearmotor_output_rpm ?? outputs?.drive_shaft_rpm ?? null}
             requiredOutputTorqueLbIn={outputs?.torque_drive_shaft_inlbf ?? null}
             applicationId={applicationId}
+            initialServiceFactor={driveServiceFactor}
             gearmotorMountingStyle={inputs.gearmotor_mounting_style}
             outputShaftOption={inputs.output_shaft_option}
             outputShaftBoreIn={inputs.output_shaft_bore_in}
             sprocketShaftDiameterIn={inputs.sprocket_shaft_diameter_in}
             plugInShaftStyle={inputs.plug_in_shaft_style}
             hollowShaftBushingBoreIn={inputs.hollow_shaft_bushing_bore_in}
-            onGearmotorOutputRpmChange={(outputRpm) => {
-              // v1.38: Persist actual gearmotor output RPM for actual belt speed calculation
-              updateInput('actual_gearmotor_output_rpm', outputRpm);
-            }}
-            onSprocketShaftDiameterChange={(diameter) => {
-              // v1.42: Sprocket shaft diameter for output shaft kit PN lookup (deprecated)
-              updateInput('sprocket_shaft_diameter_in', diameter);
-            }}
-            onPlugInShaftStyleChange={(style) => {
-              // v1.43: Plug-in shaft style for output shaft kit PN lookup
-              updateInput('plug_in_shaft_style', style);
-            }}
-            onHollowShaftBushingBoreChange={(bore) => {
-              // v1.44: Hollow shaft bushing bore for BOM resolution
-              updateInput('hollow_shaft_bushing_bore_in', bore);
-            }}
+            selectedCandidate={selectedCandidate}
+            onSelect={handleDriveSelect}
+            onServiceFactorChange={setDriveServiceFactor}
+            onSprocketShaftDiameterChange={(diameter) => updateInput('sprocket_shaft_diameter_in', diameter)}
+            onPlugInShaftStyleChange={(style) => updateInput('plug_in_shaft_style', style)}
+            onHollowShaftBushingBoreChange={(bore) => updateInput('hollow_shaft_bushing_bore_in', bore)}
+          />
+
+          {/* Manual Drive Modal */}
+          <ManualDriveModal
+            isOpen={isManualDriveModalOpen}
+            onClose={() => setIsManualDriveModalOpen(false)}
+            requiredOutputRpm={outputs?.gearmotor_output_rpm ?? outputs?.drive_shaft_rpm ?? null}
+            requiredOutputTorqueLbIn={outputs?.torque_drive_shaft_inlbf ?? null}
+            motorHp={inputs.manual_motor_hp ?? null}
+            outputRpm={inputs.manual_output_rpm ?? null}
+            outputTorqueLbIn={inputs.manual_output_torque_lb_in ?? null}
+            serviceFactor={inputs.manual_service_factor ?? null}
+            onSave={handleManualDriveSave}
           />
 
           {/* Advanced Parameters Card - Always show fields + values */}
