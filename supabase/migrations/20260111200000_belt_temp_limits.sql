@@ -50,10 +50,17 @@ UPDATE public.belt_catalog
 SET temp_min_f = 14, temp_max_f = 250
 WHERE catalog_key = 'beltservice:139C:26568';
 
--- Step 3: Add constraint to ensure min < max when both are set
-ALTER TABLE public.belt_catalog
-  ADD CONSTRAINT belt_catalog_temp_range_valid
-  CHECK (temp_min_f IS NULL OR temp_max_f IS NULL OR temp_min_f < temp_max_f);
+-- Step 3: Add constraint to ensure min < max when both are set (idempotent)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'belt_catalog_temp_range_valid'
+  ) THEN
+    ALTER TABLE public.belt_catalog
+      ADD CONSTRAINT belt_catalog_temp_range_valid
+      CHECK (temp_min_f IS NULL OR temp_max_f IS NULL OR temp_min_f < temp_max_f);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- END MIGRATION
