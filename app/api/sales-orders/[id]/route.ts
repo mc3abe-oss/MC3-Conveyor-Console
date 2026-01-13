@@ -137,20 +137,89 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     const { id } = await params;
     const supabase = await createClient();
 
-    // Soft delete
-    const { data: salesOrder, error } = await supabase
+    // Fetch the sales order to check if it exists and is deletable
+    const { data: salesOrder, error: fetchError } = await supabase
       .from('sales_orders')
-      .update({ deleted_at: new Date().toISOString() })
+      .select('id, base_number, suffix_line, origin_quote_id')
       .eq('id', id)
       .is('deleted_at', null)
-      .select()
       .single();
 
-    if (error || !salesOrder) {
+    if (fetchError || !salesOrder) {
       return NextResponse.json({ error: 'Sales order not found' }, { status: 404 });
     }
 
-    return NextResponse.json({ success: true, id });
+    // Check if SO is linked to a Quote (origin_quote_id is set when converted from a Quote)
+    // If linked to quote, deletion is NOT allowed - this is a converted SO
+    if (salesOrder.origin_quote_id) {
+      return NextResponse.json(
+        {
+          error: 'Cannot delete this Sales Order because it was converted from a Quote.',
+          code: 'LINKED_TO_QUOTE',
+          origin_quote_id: salesOrder.origin_quote_id,
+        },
+        { status: 400 }
+      );
+    }
+
+    // =========================================================================
+    // HARD DELETE - Sales Order is NOT linked to a Quote, proceed with deletion
+    // =========================================================================
+
+    // Step 1: Delete all applications (calc_recipes) linked to this SO
+    // First, get all application IDs for cascading deletes
+    const { data: linkedApps } = await supabase
+      .from('calc_recipes')
+      .select('id')
+      .eq('sales_order_id', id);
+
+    const appIds = (linkedApps || []).map(a => a.id);
+
+    // Step 2: Delete child entities of those applications
+    if (appIds.length > 0) {
+      await Promise.all([
+        supabase.from('specs').delete().in('application_id', appIds),
+        supabase.from('notes').delete().in('application_id', appIds),
+        supabase.from('attachments').delete().in('application_id', appIds),
+        supabase.from('scope_lines').delete().in('application_id', appIds),
+      ]);
+
+      // Step 3: Hard delete the applications themselves
+      await supabase
+        .from('calc_recipes')
+        .delete()
+        .in('id', appIds);
+    }
+
+    // Step 4: Delete SO-level entities (not linked to applications)
+    await Promise.all([
+      supabase.from('specs').delete().eq('parent_type', 'sales_order').eq('parent_id', id),
+      supabase.from('notes').delete().eq('parent_type', 'sales_order').eq('parent_id', id),
+      supabase.from('attachments').delete().eq('parent_type', 'sales_order').eq('parent_id', id),
+      supabase.from('scope_lines').delete().eq('parent_type', 'sales_order').eq('parent_id', id),
+    ]);
+
+    // Step 5: Hard delete the Sales Order itself
+    const { error: deleteError } = await supabase
+      .from('sales_orders')
+      .delete()
+      .eq('id', id);
+
+    if (deleteError) {
+      console.error('Sales order hard delete error:', deleteError);
+      return NextResponse.json(
+        { error: 'Failed to delete sales order', details: deleteError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      id,
+      mode: 'hard_deleted',
+      message: `Sales Order ${salesOrder.base_number}${salesOrder.suffix_line ? '.' + salesOrder.suffix_line : ''} permanently deleted.`,
+      deleted_apps_count: appIds.length,
+    });
   } catch (error) {
     console.error('Sales order DELETE error:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -306,16 +306,16 @@ export default function BeltConveyorCalculatorApp() {
             return;
           }
 
-          // If loading by SO reference fails with 404, the SO exists but has no application yet
-          // Set up a blank context linked to that SO so user can start working
+          // If loading by SO reference fails with 404, check if SO itself exists
           if (res.status === 404 && soBase && data.error?.includes('No Application found')) {
             console.log('[Load] No application for SO, fetching SO details to set up blank context');
             const soRes = await fetch(`/api/sales-orders?base_number=${encodeURIComponent(soBase)}`);
             if (soRes.ok) {
-              const soList = await soRes.json();
-              const so = soList.find((s: { base_number: number }) => String(s.base_number) === soBase);
+              const soData = await soRes.json();
+              const soList = soData.data || soData; // Handle both paginated and array response
+              const so = (Array.isArray(soList) ? soList : []).find((s: { base_number: number }) => String(s.base_number) === soBase);
               if (so) {
-                // Set up blank context linked to this SO
+                // SO exists but has no application - set up blank context
                 setContext({
                   type: 'sales_order',
                   id: so.id,
@@ -330,6 +330,11 @@ export default function BeltConveyorCalculatorApp() {
                 return;
               }
             }
+            // SO not found (deleted or doesn't exist) - redirect to SO list
+            console.log('[Load] SO not found, redirecting to sales orders list');
+            showToast(`Sales Order ${soBase} not found.`);
+            router.push('/console/sales-orders');
+            return;
           }
 
           // Same for quotes
@@ -337,10 +342,11 @@ export default function BeltConveyorCalculatorApp() {
             console.log('[Load] No application for Quote, fetching Quote details to set up blank context');
             const quoteRes = await fetch(`/api/quotes?base_number=${encodeURIComponent(quoteBase)}`);
             if (quoteRes.ok) {
-              const quoteList = await quoteRes.json();
-              const quote = quoteList.find((q: { base_number: number }) => String(q.base_number) === quoteBase);
+              const quoteData = await quoteRes.json();
+              const quoteList = quoteData.data || quoteData; // Handle both paginated and array response
+              const quote = (Array.isArray(quoteList) ? quoteList : []).find((q: { base_number: number }) => String(q.base_number) === quoteBase);
               if (quote) {
-                // Set up blank context linked to this Quote
+                // Quote exists but has no application - set up blank context
                 setContext({
                   type: 'quote',
                   id: quote.id,
@@ -355,6 +361,11 @@ export default function BeltConveyorCalculatorApp() {
                 return;
               }
             }
+            // Quote not found (deleted or doesn't exist) - redirect to quotes list
+            console.log('[Load] Quote not found, redirecting to quotes list');
+            showToast(`Quote ${quoteBase} not found.`);
+            router.push('/console/quotes');
+            return;
           }
 
           throw new Error(data.error || 'Failed to load application');

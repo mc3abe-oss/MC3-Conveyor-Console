@@ -67,9 +67,13 @@ export default function ApplicationContextHeader({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
-  const [canHardDelete, setCanHardDelete] = useState<boolean | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [_canHardDelete, setCanHardDelete] = useState<boolean | null>(null);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
   const [isDeletingDraft, setIsDeletingDraft] = useState(false);
+  // SO-specific delete eligibility (for draft SO that's linked to a Quote)
+  const [soCanDelete, setSoCanDelete] = useState<boolean | null>(null);
+  const [soDeleteBlockReason, setSoDeleteBlockReason] = useState<string | null>(null);
 
   // Derived state
   const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
@@ -85,7 +89,7 @@ export default function ApplicationContextHeader({
     return () => document.removeEventListener('click', handleClick);
   }, [showSaveMenu]);
 
-  // Fetch delete eligibility
+  // Fetch delete eligibility for applications
   useEffect(() => {
     if (!loadedConfigurationId) {
       setCanHardDelete(null);
@@ -104,6 +108,30 @@ export default function ApplicationContextHeader({
       .catch(() => setCanHardDelete(false))
       .finally(() => setIsCheckingEligibility(false));
   }, [loadedConfigurationId]);
+
+  // Fetch SO delete eligibility (for unsaved drafts linked to an SO)
+  useEffect(() => {
+    if (!context || context.type !== 'sales_order' || !context.id) {
+      setSoCanDelete(null);
+      setSoDeleteBlockReason(null);
+      return;
+    }
+    fetch(`/api/sales-orders/${context.id}/delete-eligibility`)
+      .then(async (res) => {
+        if (res.ok) {
+          const data = await res.json();
+          setSoCanDelete(data.canDelete);
+          setSoDeleteBlockReason(data.reason || null);
+        } else {
+          setSoCanDelete(false);
+          setSoDeleteBlockReason('Unable to check delete eligibility');
+        }
+      })
+      .catch(() => {
+        setSoCanDelete(false);
+        setSoDeleteBlockReason('Unable to check delete eligibility');
+      });
+  }, [context]);
 
   // Handlers
   const handleClearClick = () => setShowClearConfirm(true);
@@ -358,15 +386,24 @@ export default function ApplicationContextHeader({
               </button>
             )}
 
-            {/* Delete Draft */}
+            {/* Delete Draft - only show if SO is deletable (not linked to quote) */}
             {isDraftWithContext && onDeleteDraft && (
-              <button
-                type="button"
-                className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors hidden md:inline-flex"
-                onClick={handleDeleteDraftClick}
-              >
-                Delete
-              </button>
+              context?.type === 'sales_order' && soCanDelete === false ? (
+                <span
+                  className="px-3 py-1.5 text-sm font-medium text-gray-400 cursor-not-allowed hidden md:inline-flex"
+                  title={soDeleteBlockReason || 'Cannot delete'}
+                >
+                  Delete
+                </span>
+              ) : (
+                <button
+                  type="button"
+                  className="px-3 py-1.5 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors hidden md:inline-flex"
+                  onClick={handleDeleteDraftClick}
+                >
+                  Delete
+                </button>
+              )
             )}
 
             {/* Delete Line */}
@@ -437,14 +474,8 @@ export default function ApplicationContextHeader({
       {showDeleteConfirm && (
         <ConfirmModal
           title="Delete?"
-          message={`This will remove the ${isQuoteContext ? 'Quote' : 'Sales Order'} line.`}
-          subMessage={
-            canHardDelete === false
-              ? `This application is also linked to a ${isQuoteContext ? 'Sales Order' : 'Quote'}, so it will be deactivated (not permanently deleted).`
-              : canHardDelete
-                ? 'The application will be permanently deleted. This cannot be undone.'
-                : undefined
-          }
+          message={`This will permanently delete the ${isQuoteContext ? 'Quote' : 'Sales Order'} line and its application data.`}
+          subMessage="This cannot be undone."
           error={deleteError}
           confirmLabel={isDeleting ? 'Deleting...' : 'Delete'}
           confirmDestructive
@@ -457,9 +488,10 @@ export default function ApplicationContextHeader({
       {/* Delete Draft Confirmation Modal */}
       {showDeleteDraftConfirm && (
         <ConfirmModal
-          title="Delete Draft?"
-          message={`This will permanently delete the ${context?.type === 'quote' ? 'Quote' : 'Sales Order'} record and return to a new application.`}
-          confirmLabel={isDeletingDraft ? 'Deleting...' : 'Delete Draft'}
+          title="Delete?"
+          message={`This will permanently delete the ${context?.type === 'quote' ? 'Quote' : 'Sales Order'} and all associated application data.`}
+          subMessage="This cannot be undone."
+          confirmLabel={isDeletingDraft ? 'Deleting...' : 'Delete'}
           confirmDestructive
           onConfirm={handleConfirmDeleteDraft}
           onCancel={() => setShowDeleteDraftConfirm(false)}
