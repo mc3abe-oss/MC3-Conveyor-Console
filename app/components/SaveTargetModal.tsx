@@ -230,7 +230,7 @@ export default function SaveTargetModal({
       type: activeTab as 'quote' | 'sales_order',
       id: selectedExisting.id,
       base: selectedExisting.base_number,
-      line: null, // Existing records don't have suffix line from selection
+      line: selectedExisting.suffix_line ?? null, // Preserve suffix line from existing record (e.g., .2)
       jobLine: jobLine,
       quantity: quantity,
       customer_name: selectedExisting.customer_name,
@@ -336,6 +336,9 @@ export default function SaveTargetModal({
                       Will save as: <span className="font-medium">{formatRef('sales_order', getParsedNumber()?.base || 0, getParsedNumber()?.line)}</span>
                     </p>
                   )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    You can use a dot (.) to create release numbers, e.g. 32884.1, 32884.2
+                  </p>
                 </div>
 
                 {/* Customer Name */}
@@ -424,7 +427,7 @@ export default function SaveTargetModal({
                               <div className="flex items-center justify-between">
                                 <div>
                                   <p className="font-medium text-gray-900">
-                                    {formatRef('sales_order', so.base_number)}
+                                    {formatRef('sales_order', so.base_number, so.suffix_line)}
                                   </p>
                                   <p className="text-sm text-gray-500">
                                     {so.customer_name || 'No customer'}
@@ -459,7 +462,7 @@ export default function SaveTargetModal({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-900">
-                          {formatRef('sales_order', selectedExisting.base_number)}
+                          {formatRef('sales_order', selectedExisting.base_number, selectedExisting.suffix_line)}
                         </p>
                         <p className="text-sm text-gray-600">
                           {selectedExisting.customer_name || 'No customer'}
@@ -534,6 +537,9 @@ export default function SaveTargetModal({
                       Will save as: <span className="font-medium">{preview}</span>
                     </p>
                   )}
+                  <p className="mt-1 text-xs text-gray-500">
+                    You can use a dot (.) to create release numbers, e.g. 32884.1, 32884.2
+                  </p>
                 </div>
 
                 {/* Customer Name */}
@@ -631,7 +637,7 @@ export default function SaveTargetModal({
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <p className="font-medium text-gray-900">
-                                      {formatRef('quote', quote.base_number)}
+                                      {formatRef('quote', quote.base_number, quote.suffix_line)}
                                     </p>
                                     <p className="text-sm text-gray-500">
                                       {quote.customer_name || 'No customer'}
@@ -667,7 +673,7 @@ export default function SaveTargetModal({
                                 <div className="flex items-center justify-between">
                                   <div>
                                     <p className="font-medium text-gray-900">
-                                      {formatRef('sales_order', so.base_number)}
+                                      {formatRef('sales_order', so.base_number, so.suffix_line)}
                                     </p>
                                     <p className="text-sm text-gray-500">
                                       {so.customer_name || 'No customer'}
@@ -705,7 +711,7 @@ export default function SaveTargetModal({
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium text-gray-900">
-                          {formatRef(activeTab, selectedExisting.base_number)}
+                          {formatRef(activeTab, selectedExisting.base_number, selectedExisting.suffix_line)}
                         </p>
                         <p className="text-sm text-gray-600">
                           {selectedExisting.customer_name || 'No customer'}

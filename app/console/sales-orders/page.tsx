@@ -288,7 +288,7 @@ export default function ConsoleSalesOrdersPage() {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-mc3-blue font-medium">
-                      {formatRef('sales_order', so.base_number)}
+                      {formatRef('sales_order', so.base_number, so.suffix_line)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">

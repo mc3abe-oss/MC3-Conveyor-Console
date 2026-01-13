@@ -168,17 +168,19 @@ export async function POST(request: NextRequest) {
       ? `Q${base_number}.${suffix_line}`
       : `Q${base_number}`;
 
-    // Check if quote_number already exists
-    const { data: existing } = await supabase
+    // Check for duplicate base_number + suffix_line combination
+    // Same base with different suffix is allowed (e.g., 62633 and 62633.1)
+    let dupQuery = supabase
       .from('quotes')
       .select('id')
       .eq('quote_number', quoteNumber)
-      .is('deleted_at', null)
-      .maybeSingle();
+      .is('deleted_at', null);
+
+    const { data: existing } = await dupQuery.maybeSingle();
 
     if (existing) {
       return NextResponse.json(
-        { error: `Quote ${quoteNumber} already exists` },
+        { error: 'This number already exists.' },
         { status: 409 }
       );
     }

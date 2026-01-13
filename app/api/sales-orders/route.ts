@@ -236,17 +236,26 @@ export async function POST(request: NextRequest) {
       }
       finalBaseNumber = parsed;
 
-      // Check for duplicate base_number
-      const { data: existing } = await supabase
+      // Check for duplicate base_number + suffix_line combination
+      // Same base with different suffix is allowed (e.g., 32884 and 32884.1)
+      let dupQuery = supabase
         .from('sales_orders')
         .select('id')
         .eq('base_number', finalBaseNumber)
-        .is('deleted_at', null)
-        .maybeSingle();
+        .is('deleted_at', null);
+
+      // Match suffix_line exactly (null vs number matters)
+      if (suffix_line != null) {
+        dupQuery = dupQuery.eq('suffix_line', suffix_line);
+      } else {
+        dupQuery = dupQuery.is('suffix_line', null);
+      }
+
+      const { data: existing } = await dupQuery.maybeSingle();
 
       if (existing) {
         return NextResponse.json(
-          { error: `Sales Order number '${finalBaseNumber}' already exists.` },
+          { error: 'This number already exists.' },
           { status: 409 }
         );
       }
@@ -289,7 +298,7 @@ export async function POST(request: NextRequest) {
       // Check for unique constraint violation
       if (soError.code === '23505') {
         return NextResponse.json(
-          { error: `Sales Order number '${finalBaseNumber}' already exists.` },
+          { error: 'This number already exists.' },
           { status: 409 }
         );
       }

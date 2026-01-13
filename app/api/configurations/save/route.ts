@@ -100,6 +100,13 @@ export async function POST(request: NextRequest) {
       parsedAppCode = parseApplicationCode(combinedCode);
     }
 
+    // If parsing succeeded as base-only but we have a separate reference_suffix,
+    // re-parse with combined code to get the full normalized form
+    if (!isApplicationCodeError(parsedAppCode) && parsedAppCode.releaseIndex == null && reference_suffix != null) {
+      const combinedCode = `${parsedAppCode.base}.${reference_suffix}`;
+      parsedAppCode = parseApplicationCode(combinedCode);
+    }
+
     if (isApplicationCodeError(parsedAppCode)) {
       return NextResponse.json(
         { error: `Invalid reference number: ${parsedAppCode.error}. ${APPLICATION_CODE_HELP}` },
