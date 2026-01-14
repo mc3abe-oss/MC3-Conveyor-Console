@@ -127,21 +127,26 @@ export async function GET(request: NextRequest) {
       // Fetch applications linked to these sales orders (include updated_at for revision tracking)
       const { data: apps } = await supabase
         .from('calc_recipes')
-        .select('id, sales_order_id, created_by, created_by_display, updated_at')
+        .select('id, sales_order_id, created_by, created_by_display, updated_at, inputs')
         .in('sales_order_id', soIds)
         .is('deleted_at', null)
         .eq('is_active', true);
 
-      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at)
+      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at, job_line)
       const enrichmentMap = new Map<string, {
         created_by: string | null;
         created_by_display: string | null;
         revision_count: number;
         latest_updated_at: string | null;
+        job_line: number | null;
       }>();
 
       for (const app of apps || []) {
         if (!app.sales_order_id) continue;
+
+        // Extract job_line from inputs._config (config is stored inside inputs JSON)
+        const inputs = app.inputs as { _config?: { reference_line?: number } } | null;
+        const jobLine = inputs?._config?.reference_line ?? null;
 
         const existing = enrichmentMap.get(app.sales_order_id);
         if (!existing) {
@@ -150,12 +155,17 @@ export async function GET(request: NextRequest) {
             created_by_display: app.created_by_display,
             revision_count: 1,
             latest_updated_at: app.updated_at,
+            job_line: jobLine,
           });
         } else {
           existing.revision_count++;
           // Track most recent update
           if (app.updated_at && (!existing.latest_updated_at || new Date(app.updated_at) > new Date(existing.latest_updated_at))) {
             existing.latest_updated_at = app.updated_at;
+          }
+          // Use job_line from first app if not set
+          if (existing.job_line === null && jobLine !== null) {
+            existing.job_line = jobLine;
           }
         }
       }
@@ -195,9 +205,11 @@ export async function GET(request: NextRequest) {
             || null;
           (so as any).revision_count = enrichment.revision_count;
           (so as any).latest_updated_at = enrichment.latest_updated_at;
+          (so as any).job_line = enrichment.job_line;
         } else {
           (so as any).revision_count = 0;
           (so as any).latest_updated_at = null;
+          (so as any).job_line = null;
         }
       }
     }

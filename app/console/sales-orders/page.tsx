@@ -4,13 +4,18 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { SalesOrder } from '../../../src/lib/database/quote-types';
-import { formatRef } from '../../../src/lib/quote-identifiers';
 
 // ============================================================================
 // TYPES
 // ============================================================================
 
 type DateRangeOption = '30' | '90' | 'all';
+type ScopeStatus = 'draft' | 'set';
+
+const SCOPE_STATUS_BADGE_COLORS: Record<ScopeStatus, string> = {
+  draft: 'bg-amber-100 text-amber-800',
+  set: 'bg-green-100 text-green-800',
+};
 
 interface PaginatedResponse {
   data: SalesOrder[];
@@ -260,6 +265,12 @@ export default function ConsoleSalesOrdersPage() {
                   SO #
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Line
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Status
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -288,7 +299,17 @@ export default function ConsoleSalesOrdersPage() {
                 >
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-mc3-blue font-medium">
-                      {formatRef('sales_order', so.base_number, so.suffix_line)}
+                      SO{so.base_number}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className="text-gray-900 font-medium">
+                      {(so as any).job_line ?? <span className="text-gray-400">—</span>}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${SCOPE_STATUS_BADGE_COLORS[(so as any).scope_status as ScopeStatus] || 'bg-gray-100 text-gray-800'}`}>
+                      {((so as any).scope_status || 'draft').charAt(0).toUpperCase() + ((so as any).scope_status || 'draft').slice(1)}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
