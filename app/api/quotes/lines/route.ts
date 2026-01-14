@@ -29,6 +29,7 @@ interface QuoteLineRow {
   job_line: number;
   customer_name: string | null;
   quote_status: string;
+  scope_status: string;
   revision_count: number;
   created_at: string;
   latest_updated_at: string;
@@ -179,6 +180,7 @@ export async function GET(request: NextRequest) {
         job_line: group.job_line,
         customer_name: latest.config.customer_name || quoteRecord?.customer_name || null,
         quote_status: quoteRecord?.quote_status || 'draft',
+        scope_status: quoteRecord?.scope_status || 'draft',
         revision_count: group.revisions.length,
         created_at: earliestCreatedAt,
         latest_updated_at: latest.updated_at,

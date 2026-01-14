@@ -17,6 +17,7 @@ interface QuoteLine {
   job_line: number;
   customer_name: string | null;
   quote_status: string;
+  scope_status: string;
   revision_count: number;
   created_at: string;
   latest_updated_at: string;
@@ -37,6 +38,13 @@ const STATUS_BADGE_COLORS: Record<QuoteStatus, string> = {
   won: 'bg-green-100 text-green-800',
   lost: 'bg-red-100 text-red-800',
   converted: 'bg-purple-100 text-purple-800',
+};
+
+type ScopeStatus = 'draft' | 'set';
+
+const SCOPE_STATUS_BADGE_COLORS: Record<ScopeStatus, string> = {
+  draft: 'bg-amber-100 text-amber-800',
+  set: 'bg-green-100 text-green-800',
 };
 
 const STATUS_OPTIONS = [
@@ -355,7 +363,10 @@ export default function ConsoleQuotesPage() {
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
+                  Scope
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Quote Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created by
@@ -390,6 +401,11 @@ export default function ConsoleQuotesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {line.customer_name || <span className="text-gray-400 italic">No customer</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${SCOPE_STATUS_BADGE_COLORS[line.scope_status as ScopeStatus] || 'bg-gray-100 text-gray-800'}`}>
+                      {line.scope_status.charAt(0).toUpperCase() + line.scope_status.slice(1)}
+                    </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${STATUS_BADGE_COLORS[line.quote_status as QuoteStatus] || 'bg-gray-100 text-gray-800'}`}>
