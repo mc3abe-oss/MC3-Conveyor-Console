@@ -6,7 +6,7 @@ import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
 import DesignLogicPanel from './DesignLogicPanel';
 import ApplicationContextHeader from './ApplicationContextHeader';
-import ScopeStatusBanner from './ScopeStatusBanner';
+import { ScopeStatusBannerFromContext } from './ScopeStatusBanner';
 import { ScopeProvider, OutputGate, OutputDisabledBanner } from './ScopeContext';
 import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
@@ -1283,6 +1283,7 @@ export default function BeltConveyorCalculatorApp() {
       {/* ============================================================ */}
       {/* DOCUMENT HEADER - Card with context info and mode selector   */}
       {/* ============================================================ */}
+      <ScopeProvider entityType={context?.type ?? null} entityId={context?.id ?? null}>
       <div className="bg-white rounded-lg shadow-sm border border-gray-400 mb-4">
         {/* Application Context Header */}
         <ApplicationContextHeader
@@ -1310,12 +1311,7 @@ export default function BeltConveyorCalculatorApp() {
         />
 
         {/* Scope Status Banner - Draft/Set toggle for linked Quote/SO */}
-        {context && (
-          <ScopeStatusBanner
-            entityType={context.type}
-            entityId={context.id}
-          />
-        )}
+        <ScopeStatusBannerFromContext />
 
         {/* Mode Selector - Segmented Button Group */}
         <div className="px-5 pb-4">
@@ -1552,37 +1548,34 @@ export default function BeltConveyorCalculatorApp() {
         {/* Outputs V2 Mode - v1.42: gated to abek@mc3mfg.com only */}
         {showOutputsV2 && (
           <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
-            <ScopeProvider entityType={context?.type ?? null} entityId={context?.id ?? null}>
-              <OutputDisabledBanner />
-              {outputsV2 ? (
-                <OutputGate>
-                  <OutputsV2Tabs outputs={outputsV2} />
-                </OutputGate>
-              ) : (
-                <div className="bg-white rounded-lg shadow p-8 text-center">
-                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Outputs Available</h3>
-                  <p className="text-gray-500 mb-4">Calculate your conveyor configuration to generate Outputs V2</p>
-                  <button
-                    type="button"
-                    onClick={() => setViewMode('configure')}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                  >
-                    Go to Configure
-                  </button>
-                </div>
-              )}
-            </ScopeProvider>
+            <OutputDisabledBanner />
+            {outputsV2 ? (
+              <OutputGate>
+                <OutputsV2Tabs outputs={outputsV2} />
+              </OutputGate>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-8 text-center">
+                <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">No Outputs Available</h3>
+                <p className="text-gray-500 mb-4">Calculate your conveyor configuration to generate Outputs V2</p>
+                <button
+                  type="button"
+                  onClick={() => setViewMode('configure')}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                >
+                  Go to Configure
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* Commercial Scope Mode - Superuser only */}
         {showCommercialScope && (
           <div className={viewMode === 'commercial_scope' ? '' : 'hidden'}>
-            <ScopeProvider entityType={context?.type ?? null} entityId={context?.id ?? null}>
-              <OutputDisabledBanner />
+            <OutputDisabledBanner />
               {inputs ? (
                 <OutputGate>
                   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -1609,7 +1602,6 @@ export default function BeltConveyorCalculatorApp() {
                   </button>
                 </div>
               )}
-            </ScopeProvider>
           </div>
         )}
 
@@ -1626,6 +1618,7 @@ export default function BeltConveyorCalculatorApp() {
         {/* Spacer for mobile bottom action bar */}
         <div className="h-24 md:hidden" aria-hidden="true" />
       </div>
+      </ScopeProvider>
 
       {/* Mobile Bottom Action Bar */}
       <div className="md:hidden">
