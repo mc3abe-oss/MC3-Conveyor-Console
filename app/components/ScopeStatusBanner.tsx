@@ -159,7 +159,7 @@ export default function ScopeStatusBanner({
           disabled={isTransitioning}
           className="flex-shrink-0 px-3 py-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors disabled:opacity-50"
         >
-          {isTransitioning ? 'Updating...' : 'Back to Draft'}
+          {isTransitioning ? 'Updating...' : 'Revise'}
         </button>
       </div>
 

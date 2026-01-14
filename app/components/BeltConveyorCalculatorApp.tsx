@@ -6,6 +6,8 @@ import CalculatorForm from './CalculatorForm';
 import CalculationResults from './CalculationResults';
 import DesignLogicPanel from './DesignLogicPanel';
 import ApplicationContextHeader from './ApplicationContextHeader';
+import ScopeStatusBanner from './ScopeStatusBanner';
+import { ScopeProvider, OutputGate, OutputDisabledBanner } from './ScopeContext';
 import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
 import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
@@ -1307,6 +1309,14 @@ export default function BeltConveyorCalculatorApp() {
           revisionCount={applicationRevisionCount}
         />
 
+        {/* Scope Status Banner - Draft/Set toggle for linked Quote/SO */}
+        {context && (
+          <ScopeStatusBanner
+            entityType={context.type}
+            entityId={context.id}
+          />
+        )}
+
         {/* Mode Selector - Segmented Button Group */}
         <div className="px-5 pb-4">
           <div className="inline-flex rounded-lg border border-gray-200 bg-gray-100 p-1" role="tablist" aria-label="View mode">
@@ -1542,54 +1552,64 @@ export default function BeltConveyorCalculatorApp() {
         {/* Outputs V2 Mode - v1.42: gated to abek@mc3mfg.com only */}
         {showOutputsV2 && (
           <div className={viewMode === 'outputs_v2' ? '' : 'hidden'}>
-            {outputsV2 ? (
-              <OutputsV2Tabs outputs={outputsV2} />
-          ) : (
-            <div className="bg-white rounded-lg shadow p-8 text-center">
-              <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              <h3 className="text-lg font-medium text-gray-900 mb-2">No Outputs Available</h3>
-              <p className="text-gray-500 mb-4">Calculate your conveyor configuration to generate Outputs V2</p>
-              <button
-                type="button"
-                onClick={() => setViewMode('configure')}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Go to Configure
-              </button>
-            </div>
-            )}
+            <ScopeProvider entityType={context?.type ?? null} entityId={context?.id ?? null}>
+              <OutputDisabledBanner />
+              {outputsV2 ? (
+                <OutputGate>
+                  <OutputsV2Tabs outputs={outputsV2} />
+                </OutputGate>
+              ) : (
+                <div className="bg-white rounded-lg shadow p-8 text-center">
+                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Outputs Available</h3>
+                  <p className="text-gray-500 mb-4">Calculate your conveyor configuration to generate Outputs V2</p>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('configure')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Go to Configure
+                  </button>
+                </div>
+              )}
+            </ScopeProvider>
           </div>
         )}
 
         {/* Commercial Scope Mode - Superuser only */}
         {showCommercialScope && (
           <div className={viewMode === 'commercial_scope' ? '' : 'hidden'}>
-            {inputs ? (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <CommercialScopeOutput
-                  inputs={inputs}
-                  outputs={result?.outputs}
-                  outputsV2={outputsV2}
-                />
-              </div>
-            ) : (
-              <div className="bg-white rounded-lg shadow p-8 text-center">
-                <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                </svg>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No Configuration Available</h3>
-                <p className="text-gray-500 mb-4">Configure your conveyor to generate Commercial Scope output</p>
-                <button
-                  type="button"
-                  onClick={() => setViewMode('configure')}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Go to Configure
-                </button>
-              </div>
-            )}
+            <ScopeProvider entityType={context?.type ?? null} entityId={context?.id ?? null}>
+              <OutputDisabledBanner />
+              {inputs ? (
+                <OutputGate>
+                  <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                    <CommercialScopeOutput
+                      inputs={inputs}
+                      outputs={result?.outputs}
+                      outputsV2={outputsV2}
+                    />
+                  </div>
+                </OutputGate>
+              ) : (
+                <div className="bg-white rounded-lg shadow p-8 text-center">
+                  <svg className="w-12 h-12 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">No Configuration Available</h3>
+                  <p className="text-gray-500 mb-4">Configure your conveyor to generate Commercial Scope output</p>
+                  <button
+                    type="button"
+                    onClick={() => setViewMode('configure')}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    Go to Configure
+                  </button>
+                </div>
+              )}
+            </ScopeProvider>
           </div>
         )}
 
