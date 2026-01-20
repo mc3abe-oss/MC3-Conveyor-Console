@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Route } from 'next';
@@ -26,6 +26,24 @@ interface AdminPage {
 }
 
 export default function ConsoleAdminPage() {
+  return (
+    <Suspense fallback={<AdminPageLoading />}>
+      <AdminPageContent />
+    </Suspense>
+  );
+}
+
+function AdminPageLoading() {
+  return (
+    <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">Admin</h1>
+      <p className="text-gray-600 mb-8">Admin tools and configuration</p>
+      <p className="text-gray-500">Loading...</p>
+    </main>
+  );
+}
+
+function AdminPageContent() {
   const { isSuperAdmin, isLoading: isLoadingRole } = useCurrentUserRole();
   const searchParams = useSearchParams();
   const router = useRouter();
