@@ -11,6 +11,15 @@ export const metadata: Metadata = {
   description: APP_DESCRIPTION,
 };
 
+// Development banner - REMOVE THIS WHEN GOING TO PRODUCTION
+function DevBanner() {
+  return (
+    <div className="bg-amber-500 text-black text-center py-2 px-4 font-semibold text-sm fixed top-0 left-0 right-0 z-[9999] shadow-md">
+      ⚠️ DEVELOPMENT BUILD - NOT FOR PRODUCTION USE ⚠️
+    </div>
+  );
+}
+
 export default function RootLayout({
   children,
 }: {
@@ -19,7 +28,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
-        <div className="min-h-screen bg-gradient-to-b from-mc3-mist/60 to-white">
+        <DevBanner />
+        <div className="min-h-screen bg-gradient-to-b from-mc3-mist/60 to-white pt-10">
           {children}
         </div>
         <SpeedInsights />
