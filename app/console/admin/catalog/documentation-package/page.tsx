@@ -4,7 +4,7 @@
  * Manage documentation package dropdown options.
  */
 
-import CatalogAdmin from '../components/CatalogAdmin';
+import CatalogAdmin from '../../components/CatalogAdmin';
 
 export default function AdminDocumentationPackagePage() {
   return (

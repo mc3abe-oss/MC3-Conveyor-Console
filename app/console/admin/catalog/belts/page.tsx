@@ -14,8 +14,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { BeltCatalogItem } from '../../../api/belts/route';
-import { clearBeltCatalogCache } from '../../../hooks/useBeltCatalog';
+import { BeltCatalogItem } from '../../../../api/belts/route';
+import { clearBeltCatalogCache } from '../../../../hooks/useBeltCatalog';
 
 
 interface BeltFormData {

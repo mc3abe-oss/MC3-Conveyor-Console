@@ -4,7 +4,7 @@
  * Manage sensor model options for sensor selection with quantity.
  */
 
-import CatalogAdmin from '../components/CatalogAdmin';
+import CatalogAdmin from '../../components/CatalogAdmin';
 
 export default function AdminSensorModelsPage() {
   return (

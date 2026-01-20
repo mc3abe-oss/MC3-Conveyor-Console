@@ -19,8 +19,8 @@
 'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
-import { useCurrentUserRole, Role } from '../../../hooks/useCurrentUserRole';
-import DropdownPortal from '../../../components/DropdownPortal';
+import { useCurrentUserRole, Role } from '../../../../hooks/useCurrentUserRole';
+import DropdownPortal from '../../../../components/DropdownPortal';
 
 interface UserListItem {
   userId: string;

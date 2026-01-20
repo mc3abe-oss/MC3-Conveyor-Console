@@ -2,11 +2,11 @@
 
 ## Overview
 
-The User Admin page (`/console/admin/users`) allows SUPER_ADMIN users to manage user roles across the application. This page displays all authenticated users from `auth.users` and allows role assignment.
+The User Admin page (`/console/admin/system/users`) allows SUPER_ADMIN users to manage user roles across the application. This page displays all authenticated users from `auth.users` and allows role assignment.
 
 ## Access
 
-- **URL**: `/console/admin/users`
+- **URL**: `/console/admin/system/users`
 - **Required Role**: SUPER_ADMIN only
 - **Link Location**: Admin page → "User Admin" card (only visible to SUPER_ADMIN)
 

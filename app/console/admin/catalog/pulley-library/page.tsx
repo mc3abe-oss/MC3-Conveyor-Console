@@ -15,7 +15,7 @@ import {
   getAllThicknessOptions,
   getThicknessOption,
   getThicknessOptionByValue,
-} from '../../../../src/lib/thickness';
+} from '../../../../../src/lib/thickness';
 
 // ============================================================================
 // TYPES

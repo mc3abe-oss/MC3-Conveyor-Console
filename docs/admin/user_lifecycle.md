@@ -120,7 +120,7 @@ View audit log of all admin actions.
 
 ## User Admin UI
 
-The User Admin page (`/console/admin/users`) provides:
+The User Admin page (`/console/admin/system/users`) provides:
 
 1. **User Table** with columns:
    - Email

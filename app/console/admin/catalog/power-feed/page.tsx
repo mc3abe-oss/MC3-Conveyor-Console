@@ -4,7 +4,7 @@
  * Manage electrical power feed dropdown options.
  */
 
-import CatalogAdmin from '../components/CatalogAdmin';
+import CatalogAdmin from '../../components/CatalogAdmin';
 
 export default function AdminPowerFeedPage() {
   return (

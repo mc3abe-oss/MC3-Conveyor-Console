@@ -4,13 +4,13 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 /**
- * Redirect /admin/belts → /console/admin/belts
+ * Redirect /admin/belts → /console/admin/catalog/belts
  */
 export default function AdminBeltsRedirectPage() {
   const router = useRouter();
 
   useEffect(() => {
-    router.replace('/console/admin/belts');
+    router.replace('/console/admin/catalog/belts');
   }, [router]);
 
   return (

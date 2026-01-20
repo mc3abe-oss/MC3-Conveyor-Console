@@ -2,7 +2,7 @@
 
 Admin interface for viewing and analyzing NORD FLEXBLOC gearmotor catalog data.
 
-**Location:** `/console/admin/nord`
+**Location:** `/console/admin/catalog/gearmotors`
 
 ## Tabs
 
@@ -41,7 +41,7 @@ Each combination is classified as:
 
 #### How to Refresh Coverage
 
-1. Navigate to `/console/admin/nord` → Coverage tab
+1. Navigate to `/console/admin/catalog/gearmotors` → Coverage tab
 2. Click "Recalculate Coverage" button
 3. Wait for regeneration (typically a few seconds)
 4. Summary counts and case list will update

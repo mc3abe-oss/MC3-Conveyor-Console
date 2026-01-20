@@ -13,8 +13,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCurrentUserRole } from '../../../hooks/useCurrentUserRole';
-import { AdminReadOnlyBanner } from '../../../components/AdminReadOnlyBanner';
+import { useCurrentUserRole } from '../../../../hooks/useCurrentUserRole';
+import { AdminReadOnlyBanner } from '../../../../components/AdminReadOnlyBanner';
 
 import {
   CleatCatalogItem,
@@ -31,7 +31,7 @@ import {
   getCleatSizesForProfile,
   getCleatPatternsForProfileSize,
   isDrillSipedSupported,
-} from '../../../../src/lib/cleat-catalog';
+} from '../../../../../src/lib/cleat-catalog';
 
 interface CleatFormData {
   id: string;

@@ -13,7 +13,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCurrentUserRole } from '../../../hooks/useCurrentUserRole';
+import { useCurrentUserRole } from '../../../../hooks/useCurrentUserRole';
 
 // Types - matches transformed output from /api/admin/nord/parts
 interface NordPart {

@@ -20,8 +20,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useCurrentUserRole } from '../../../hooks/useCurrentUserRole';
-import { AdminReadOnlyBanner } from '../../../components/AdminReadOnlyBanner';
+import { useCurrentUserRole } from '../../../../hooks/useCurrentUserRole';
+import { AdminReadOnlyBanner } from '../../../../components/AdminReadOnlyBanner';
 
 interface VGuide {
   id: string;
