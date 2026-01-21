@@ -7,7 +7,7 @@
  * 2. Create /app/console/<product>/page.tsx
  */
 
-export type ProductKey = 'belt_conveyor_v1';
+export type ProductKey = 'belt_conveyor_v1' | 'magnetic_conveyor_v1';
 
 export type ProductStatus = 'active' | 'beta' | 'deprecated';
 
@@ -29,6 +29,13 @@ export const PRODUCTS: ProductDef[] = [
     description: 'Slider bed or roller bed configurations',
     href: '/console/belt',
     status: 'active',
+  },
+  {
+    key: 'magnetic_conveyor_v1',
+    name: 'Magnetic Conveyor',
+    description: 'Magnetic slider bed configurations',
+    href: '/console/magnetic',
+    status: 'beta',
   },
 ];
 

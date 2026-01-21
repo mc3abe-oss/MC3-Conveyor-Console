@@ -916,6 +916,16 @@ export type PulleyDiameterPreset = typeof PULLEY_DIAMETER_PRESETS[number] | 'cus
 // ============================================================================
 
 export interface SliderbedInputs {
+  // =========================================================================
+  // PRODUCT IDENTITY
+  // =========================================================================
+
+  /**
+   * Product family ID - links to product_families table
+   * Determines which product-specific calculations and templates to use.
+   */
+  product_family_id?: string;
+
   // BED TYPE (for belt_conveyor_v1 compatibility)
   /** Bed type - determines support method under belt (slider_bed or roller_bed) */
   bed_type?: string;

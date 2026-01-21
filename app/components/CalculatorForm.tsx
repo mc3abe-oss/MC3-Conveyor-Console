@@ -9,9 +9,10 @@ import {
   buildDefaultInputs,
 } from '../../src/models/sliderbed_v1/schema';
 import TabApplicationDemand from './TabApplicationDemand';
-import TabConveyorPhysical from './TabConveyorPhysical';
+import { PhysicalTab } from './configurator/physical';
 import TabDriveControls from './TabDriveControls';
 import TabBuildOptions from './TabBuildOptions';
+import { ProductKey } from '../../src/lib/products';
 import { useConfigureIssues, ConfigureTabKey, Issue, SectionKey, ValidationOptions } from './useConfigureIssues';
 import StatusLight from './StatusLight';
 import { ValidationError } from '../../src/models/sliderbed_v1/schema';
@@ -50,6 +51,8 @@ interface Props {
   showToast?: (message: string) => void;
   /** When true, skip paint/finish validation (for initial load before Calculate/Save) */
   skipPaintValidation?: boolean;
+  /** Product key for routing to product-specific Physical tab */
+  productKey?: ProductKey;
 }
 
 export default function CalculatorForm({
@@ -65,6 +68,7 @@ export default function CalculatorForm({
   outputs,
   showToast,
   skipPaintValidation = false,
+  productKey = 'belt_conveyor_v1',
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -243,7 +247,8 @@ export default function CalculatorForm({
             <TabApplicationDemand inputs={inputs} updateInput={updateInput} sectionCounts={sectionCounts} getIssuesForSection={getIssuesForSection} />
           )}
           {activeTab === 'physical' && (
-            <TabConveyorPhysical
+            <PhysicalTab
+              productKey={productKey}
               inputs={inputs}
               updateInput={updateInput}
               sectionCounts={mergedSectionCounts}

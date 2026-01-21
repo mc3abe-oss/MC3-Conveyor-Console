@@ -12,6 +12,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { requireAuth, requireSuperAdmin } from '../../../../src/lib/auth/require';
 
 interface ProductFamily {
@@ -98,7 +99,14 @@ export async function POST(request: NextRequest) {
       return authResult.response;
     }
 
-    const supabase = await createClient();
+    // Check if admin client is available (required for RLS bypass)
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Server configuration error: service role not available' },
+        { status: 503 }
+      );
+    }
+
     const body = (await request.json()) as CreateProductFamilyPayload;
 
     // Validate required fields
@@ -113,7 +121,7 @@ export async function POST(request: NextRequest) {
     const slug = body.slug?.trim() || generateSlug(body.name);
 
     // Check for duplicate slug
-    const { data: existing, error: checkError } = await supabase
+    const { data: existing, error: checkError } = await supabaseAdmin
       .from('product_families')
       .select('id')
       .eq('slug', slug)
@@ -135,7 +143,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert new product family
-    const { data: newFamily, error: insertError } = await supabase
+    const { data: newFamily, error: insertError } = await supabaseAdmin
       .from('product_families')
       .insert({
         name: body.name.trim(),
@@ -178,7 +186,14 @@ export async function PUT(request: NextRequest) {
       return authResult.response;
     }
 
-    const supabase = await createClient();
+    // Check if admin client is available (required for RLS bypass)
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Server configuration error: service role not available' },
+        { status: 503 }
+      );
+    }
+
     const body = (await request.json()) as UpdateProductFamilyPayload;
 
     // Validate required fields
@@ -190,7 +205,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Check that the product family exists
-    const { data: existing, error: findError } = await supabase
+    const { data: existing, error: findError } = await supabaseAdmin
       .from('product_families')
       .select('*')
       .eq('id', body.id)
@@ -224,7 +239,7 @@ export async function PUT(request: NextRequest) {
       const newSlug = body.slug.trim();
 
       // Check for duplicate slug (excluding current record)
-      const { data: duplicate, error: dupError } = await supabase
+      const { data: duplicate, error: dupError } = await supabaseAdmin
         .from('product_families')
         .select('id')
         .eq('slug', newSlug)
@@ -258,7 +273,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Update the product family
-    const { data: updated, error: updateError } = await supabase
+    const { data: updated, error: updateError } = await supabaseAdmin
       .from('product_families')
       .update(updates)
       .eq('id', body.id)

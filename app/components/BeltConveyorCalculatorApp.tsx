@@ -24,6 +24,7 @@ import { payloadsEqual } from '../../src/lib/payload-compare';
 import { MODEL_KEY } from '../../src/lib/model-identity';
 import { createClient } from '../../src/lib/supabase/browser';
 import { stripSoContextFromSearchParams } from '../../src/lib/strip-so-context';
+import { ProductKey } from '../../src/lib/products';
 
 type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'commercial_scope' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
@@ -39,13 +40,20 @@ function deepClonePayload<T>(payload: T): T {
   return JSON.parse(JSON.stringify(payload));
 }
 
+interface BeltConveyorCalculatorAppProps {
+  /** Product key for routing to product-specific components */
+  productKey?: ProductKey;
+}
+
 /**
  * BeltConveyorCalculatorApp - The main calculator application component.
  *
  * Supports both slider bed and roller bed configurations.
  * All internal state keys and logic remain unchanged.
  */
-export default function BeltConveyorCalculatorApp() {
+export default function BeltConveyorCalculatorApp({
+  productKey = 'belt_conveyor_v1',
+}: BeltConveyorCalculatorAppProps) {
   const [result, setResult] = useState<CalculationResult | null>(null);
   const [isCalculating, setIsCalculating] = useState(false);
   const [inputs, setInputs] = useState<SliderbedInputs | null>(null);
@@ -1462,6 +1470,7 @@ export default function BeltConveyorCalculatorApp() {
             causing an unwanted recalculation that switched back to Results tab. */}
         <div className={viewMode === 'configure' ? '' : 'hidden'}>
           <CalculatorForm
+            productKey={productKey}
             onCalculate={handleCalculate}
             isCalculating={isCalculating}
             initialInputs={inputs}
