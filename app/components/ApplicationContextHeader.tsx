@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { SaveTarget, formatSaveTarget } from './SaveTargetModal';
+import RenameApplicationModal from './RenameApplicationModal';
 
 interface ApplicationContextHeaderProps {
   context: SaveTarget | null;
@@ -30,6 +31,12 @@ interface ApplicationContextHeaderProps {
   lastUpdatedAt?: string | null;
   /** Number of saved revisions */
   revisionCount?: number;
+  /** Application name */
+  applicationName?: string | null;
+  /** Application ID for rename API */
+  applicationId?: string | null;
+  /** Callback when application is renamed */
+  onRename?: (newName: string) => void;
 }
 
 /**
@@ -60,6 +67,9 @@ export default function ApplicationContextHeader({
   createdAt,
   lastUpdatedAt,
   revisionCount,
+  applicationName,
+  applicationId,
+  onRename,
 }: ApplicationContextHeaderProps) {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -74,6 +84,10 @@ export default function ApplicationContextHeader({
   // SO-specific delete eligibility (for draft SO that's linked to a Quote)
   const [soCanDelete, setSoCanDelete] = useState<boolean | null>(null);
   const [soDeleteBlockReason, setSoDeleteBlockReason] = useState<string | null>(null);
+
+  // Rename modal state
+  const [showRenameModal, setShowRenameModal] = useState(false);
+  const [isRenaming, setIsRenaming] = useState(false);
 
   // Derived state
   const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
@@ -176,6 +190,34 @@ export default function ApplicationContextHeader({
       setDeleteError(error instanceof Error ? error.message : 'Failed to delete line');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  // Handle rename API call
+  const handleRename = async (newName: string) => {
+    if (!applicationId) {
+      throw new Error('No application to rename');
+    }
+
+    setIsRenaming(true);
+    try {
+      const response = await fetch(`/api/recipes/${applicationId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newName }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to rename application');
+      }
+
+      // Call the onRename callback to update parent state
+      if (onRename) {
+        onRename(newName);
+      }
+    } finally {
+      setIsRenaming(false);
     }
   };
 
@@ -420,9 +462,28 @@ export default function ApplicationContextHeader({
           </div>
         </div>
 
-        {/* ROW 2: Metadata */}
+        {/* ROW 2: Application Name + Metadata */}
         <div className="flex items-center justify-between mt-2">
           <div className="flex items-center gap-4 text-sm text-gray-500">
+            {/* Application Name with Edit Button */}
+            {isSavedApplication && (
+              <div className="flex items-center gap-1">
+                <span className="font-medium text-gray-700">
+                  {applicationName || 'Unnamed Application'}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowRenameModal(true)}
+                  className="p-1 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                  title="Rename application"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                  </svg>
+                </button>
+                <span className="text-gray-300">|</span>
+              </div>
+            )}
             <span>Line {context.jobLine}</span>
             <span>Qty {context.quantity}</span>
             {hasMetadata && (
@@ -498,6 +559,15 @@ export default function ApplicationContextHeader({
           disabled={isDeletingDraft}
         />
       )}
+
+      {/* Rename Application Modal */}
+      <RenameApplicationModal
+        isOpen={showRenameModal}
+        onClose={() => setShowRenameModal(false)}
+        onRename={handleRename}
+        currentName={applicationName || ''}
+        isRenaming={isRenaming}
+      />
     </>
   );
 }

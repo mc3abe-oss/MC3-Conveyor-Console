@@ -66,6 +66,7 @@ export default function BeltConveyorCalculatorApp({
   const [loadedConfigurationId, setLoadedConfigurationId] = useState<string | null>(null);
   const [loadedRevisionId, setLoadedRevisionId] = useState<string | null>(null);
   const [createdByDisplay, setCreatedByDisplay] = useState<string | null>(null);
+  const [applicationName, setApplicationName] = useState<string | null>(null);
   const [applicationCreatedAt, setApplicationCreatedAt] = useState<string | null>(null);
   const [applicationUpdatedAt, setApplicationUpdatedAt] = useState<string | null>(null);
   const [applicationRevisionCount, setApplicationRevisionCount] = useState<number | undefined>(undefined);
@@ -229,6 +230,9 @@ export default function BeltConveyorCalculatorApp({
 
     // Set creator display if available
     setCreatedByDisplay(application.created_by_display || null);
+
+    // Set application name if available
+    setApplicationName(application.name || null);
 
     // Set application metadata for header display
     setApplicationCreatedAt(application.created_at || null);
@@ -780,6 +784,12 @@ export default function BeltConveyorCalculatorApp({
     setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
   };
 
+  // Handle Rename callback from header
+  const handleRenameSuccess = (newName: string) => {
+    setApplicationName(newName);
+    showToast('Application renamed');
+  };
+
   // Handle Delete Draft callback from header (for unsaved drafts with context)
   // Draft = a Quote/Sales Order header row with no linked calc_recipes application
   const handleDeleteDraft = async () => {
@@ -1316,6 +1326,9 @@ export default function BeltConveyorCalculatorApp({
           createdAt={applicationCreatedAt}
           lastUpdatedAt={applicationUpdatedAt}
           revisionCount={applicationRevisionCount}
+          applicationName={applicationName}
+          applicationId={loadedConfigurationId}
+          onRename={handleRenameSuccess}
         />
 
         {/* Scope Status Banner - Draft/Set toggle for linked Quote/SO */}
