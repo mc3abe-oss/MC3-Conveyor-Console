@@ -36,6 +36,9 @@ interface QuoteLineRow {
   latest_application_id: string;
   created_by_display?: string | null;
   model_key: string | null;
+  product_family_id: string | null;
+  product_family_name: string;
+  product_href: string;
 }
 
 export async function GET(request: NextRequest) {
@@ -53,9 +56,11 @@ export async function GET(request: NextRequest) {
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get('pageSize') || '100', 10)));
 
     // Get all calc_recipes with QUOTE reference type
+    // Note: product_family_id may not exist if migration not applied, so we select *
+    // and access it safely later
     const { data: recipes, error: recipesError } = await supabase
       .from('calc_recipes')
-      .select('id, created_at, updated_at, inputs, created_by, created_by_display, model_key')
+      .select('*')
       .order('updated_at', { ascending: false });
 
     if (recipesError) {
@@ -64,6 +69,22 @@ export async function GET(request: NextRequest) {
         { error: 'Failed to fetch applications', details: recipesError.message },
         { status: 500 }
       );
+    }
+
+    // Get product families for name lookup (may fail if table doesn't exist)
+    let productFamilyMap = new Map<string, { slug: string; name: string }>();
+    try {
+      const { data: productFamilies } = await supabase
+        .from('product_families')
+        .select('id, slug, name');
+
+      // Build product family lookup map
+      for (const pf of productFamilies || []) {
+        productFamilyMap.set(pf.id, { slug: pf.slug, name: pf.name });
+      }
+    } catch (err) {
+      console.warn('Could not fetch product families (migration may not be applied):', err);
+      // Continue without product family info
     }
 
     // Filter to quotes only and extract config
@@ -77,6 +98,7 @@ export async function GET(request: NextRequest) {
         created_by: r.created_by,
         created_by_display: r.created_by_display as string | null,
         model_key: r.model_key as string | null,
+        product_family_id: r.product_family_id as string | null,
       }));
 
     // Build a map of user IDs to display names
@@ -175,6 +197,24 @@ export async function GET(request: NextRequest) {
         return new Date(rev.created_at) < new Date(earliest) ? rev.created_at : earliest;
       }, group.revisions[0].created_at);
 
+      // Get product family info for routing - with fallback inference from model_key
+      let productFamily = latest.product_family_id
+        ? productFamilyMap.get(latest.product_family_id)
+        : null;
+
+      // If no product_family_id, infer from model_key
+      let inferredSlug = 'belt-conveyor'; // safe default
+      if (!productFamily && latest.model_key) {
+        const modelKey = latest.model_key.toLowerCase();
+        if (modelKey.includes('magnetic')) {
+          inferredSlug = 'magnetic-conveyor';
+        }
+      }
+
+      const productSlug = productFamily?.slug ?? inferredSlug;
+      const productHref = productSlug === 'magnetic-conveyor' ? '/console/magnetic' : '/console/belt';
+      const productName = productFamily?.name ?? (productSlug === 'magnetic-conveyor' ? 'Magnetic Conveyor' : 'Belt Conveyor');
+
       allRows.push({
         quote_number: quoteNumber,
         base_number: group.base_number,
@@ -192,6 +232,10 @@ export async function GET(request: NextRequest) {
           || (latest.created_by ? creatorMap.get(latest.created_by) : null)
           || null,
         model_key: latest.model_key,
+        // Product family for column display and routing
+        product_family_id: latest.product_family_id,
+        product_family_name: productName,
+        product_href: productHref,
       });
     }
 

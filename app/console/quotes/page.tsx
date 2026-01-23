@@ -24,6 +24,9 @@ interface QuoteLine {
   latest_application_id: string;
   created_by_display?: string | null;
   model_key: string | null;
+  product_family_id: string | null;
+  product_family_name: string;
+  product_href: string;
 }
 
 interface PaginatedResponse {
@@ -180,6 +183,7 @@ export default function ConsoleQuotesPage() {
   }, [fetchQuoteLines]);
 
   // Navigate to Application with full quote context
+  // Uses product_href from the application's product_family for correct routing
   const handleRowClick = (line: QuoteLine) => {
     const params = new URLSearchParams();
     params.set('quote', String(line.base_number));
@@ -188,9 +192,10 @@ export default function ConsoleQuotesPage() {
     }
     // Always pass jobLine to skip the selection modal
     params.set('jobLine', String(line.job_line));
-    // Route to correct product page based on model_key
-    const targetPath = line.model_key ? (PRODUCT_TYPE_PATHS[line.model_key] || '/console/belt') : '/console/belt';
-    router.push(`${targetPath}?${params.toString()}`);
+    // Route to correct product UI based on application's product_family
+    // Falls back to model_key mapping if product_href not available
+    const productHref = line.product_href || (line.model_key ? (PRODUCT_TYPE_PATHS[line.model_key] || '/console/belt') : '/console/belt');
+    router.push(`${productHref}?${params.toString()}`);
   };
 
   // Format date as relative or absolute
@@ -380,6 +385,9 @@ export default function ConsoleQuotesPage() {
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Scope
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -421,6 +429,9 @@ export default function ConsoleQuotesPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {line.customer_name || <span className="text-gray-400 italic">No customer</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {line.product_family_name || 'Belt Conveyor'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${SCOPE_STATUS_BADGE_COLORS[line.scope_status as ScopeStatus] || 'bg-gray-100 text-gray-800'}`}>

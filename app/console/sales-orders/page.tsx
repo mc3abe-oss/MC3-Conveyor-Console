@@ -135,15 +135,18 @@ export default function ConsoleSalesOrdersPage() {
   }, [fetchSalesOrders]);
 
   // Navigate to Application with sales order context
+  // Uses product_href from the application's product_family for correct routing
   const handleRowClick = (so: SalesOrder) => {
     const params = new URLSearchParams();
     params.set('so', String(so.base_number));
     if (so.suffix_line) {
       params.set('suffix', String(so.suffix_line));
     }
-    // Route to correct product page based on model_key
+    // Route to correct product UI based on application's product_family
+    // Falls back to model_key mapping if product_href not available
+    const productHref = (so as any).product_href;
     const modelKey = (so as any).model_key as string | null;
-    const targetPath = modelKey ? (PRODUCT_TYPE_PATHS[modelKey] || '/console/belt') : '/console/belt';
+    const targetPath = productHref || (modelKey ? (PRODUCT_TYPE_PATHS[modelKey] || '/console/belt') : '/console/belt');
     router.push(`${targetPath}?${params.toString()}`);
   };
 
@@ -291,6 +294,9 @@ export default function ConsoleSalesOrdersPage() {
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Product
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Created by
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -334,6 +340,9 @@ export default function ConsoleSalesOrdersPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {so.customer_name || <span className="text-gray-400 italic">No customer</span>}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {(so as any).product_family_name || 'Belt Conveyor'}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     {(so as any).created_by_display || <span className="text-gray-400">—</span>}

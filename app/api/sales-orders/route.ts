@@ -125,14 +125,30 @@ export async function GET(request: NextRequest) {
       const soIds = salesOrders.map(so => so.id);
 
       // Fetch applications linked to these sales orders (include updated_at for revision tracking)
+      // Note: product_family_id may not exist if migration not applied, so we select *
       const { data: apps } = await supabase
         .from('calc_recipes')
-        .select('id, sales_order_id, created_by, created_by_display, updated_at, inputs, model_key')
+        .select('*')
         .in('sales_order_id', soIds)
         .is('deleted_at', null)
         .eq('is_active', true);
 
-      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at, job_line, model_key)
+      // Fetch product families for name lookup (may fail if table doesn't exist)
+      let productFamilyMap = new Map<string, { slug: string; name: string }>();
+      try {
+        const { data: productFamilies } = await supabase
+          .from('product_families')
+          .select('id, slug, name');
+
+        for (const pf of productFamilies || []) {
+          productFamilyMap.set(pf.id, { slug: pf.slug, name: pf.name });
+        }
+      } catch (err) {
+        console.warn('Could not fetch product families (migration may not be applied):', err);
+        // Continue without product family info
+      }
+
+      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at, job_line, model_key, product)
       const enrichmentMap = new Map<string, {
         created_by: string | null;
         created_by_display: string | null;
@@ -140,6 +156,9 @@ export async function GET(request: NextRequest) {
         latest_updated_at: string | null;
         job_line: number | null;
         model_key: string | null;
+        product_family_id: string | null;
+        product_family_name: string;
+        product_href: string;
       }>();
 
       for (const app of apps || []) {
@@ -148,6 +167,24 @@ export async function GET(request: NextRequest) {
         // Extract job_line from inputs._config (config is stored inside inputs JSON)
         const inputs = app.inputs as { _config?: { reference_line?: number } } | null;
         const jobLine = inputs?._config?.reference_line ?? null;
+
+        // Get product family info - with fallback inference from model_key
+        let productFamily = app.product_family_id
+          ? productFamilyMap.get(app.product_family_id)
+          : null;
+
+        // If no product_family_id, infer from model_key
+        let inferredSlug = 'belt-conveyor'; // safe default
+        if (!productFamily && app.model_key) {
+          const modelKey = (app.model_key as string).toLowerCase();
+          if (modelKey.includes('magnetic')) {
+            inferredSlug = 'magnetic-conveyor';
+          }
+        }
+
+        const productSlug = productFamily?.slug ?? inferredSlug;
+        const productHref = productSlug === 'magnetic-conveyor' ? '/console/magnetic' : '/console/belt';
+        const productName = productFamily?.name ?? (productSlug === 'magnetic-conveyor' ? 'Magnetic Conveyor' : 'Belt Conveyor');
 
         const existing = enrichmentMap.get(app.sales_order_id);
         if (!existing) {
@@ -158,6 +195,9 @@ export async function GET(request: NextRequest) {
             latest_updated_at: app.updated_at,
             job_line: jobLine,
             model_key: app.model_key as string | null,
+            product_family_id: app.product_family_id,
+            product_family_name: productName,
+            product_href: productHref,
           });
         } else {
           existing.revision_count++;
@@ -211,11 +251,18 @@ export async function GET(request: NextRequest) {
           (so as any).latest_updated_at = enrichment.latest_updated_at;
           (so as any).job_line = enrichment.job_line;
           (so as any).model_key = enrichment.model_key;
+          // Product family info for column display and routing
+          (so as any).product_family_id = enrichment.product_family_id;
+          (so as any).product_family_name = enrichment.product_family_name;
+          (so as any).product_href = enrichment.product_href;
         } else {
           (so as any).revision_count = 0;
           (so as any).latest_updated_at = null;
           (so as any).job_line = null;
           (so as any).model_key = null;
+          (so as any).product_family_id = null;
+          (so as any).product_family_name = 'Unknown';
+          (so as any).product_href = '/console/belt';
         }
       }
     }

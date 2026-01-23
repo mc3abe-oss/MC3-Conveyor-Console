@@ -22,6 +22,38 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { getCreatorDisplayOrNull } from '../../../../src/lib/user-display';
 
+/**
+ * Product routing configuration
+ * Maps product family slugs to their routing keys and URLs
+ */
+const PRODUCT_ROUTES: Record<string, { key: string; href: string; name: string }> = {
+  'belt-conveyor': { key: 'belt_conveyor_v1', href: '/console/belt', name: 'Belt Conveyor' },
+  'magnetic-conveyor': { key: 'magnetic_conveyor_v1', href: '/console/magnetic', name: 'Magnetic Conveyor' },
+};
+
+const DEFAULT_PRODUCT_ROUTE = PRODUCT_ROUTES['belt-conveyor'];
+
+/**
+ * Get product routing info from application's product_family_id
+ */
+async function getProductRouting(supabase: any, productFamilyId: string | null): Promise<{ key: string; href: string; name: string }> {
+  if (!productFamilyId) {
+    return DEFAULT_PRODUCT_ROUTE;
+  }
+
+  const { data: productFamily } = await supabase
+    .from('product_families')
+    .select('slug, name')
+    .eq('id', productFamilyId)
+    .single();
+
+  if (!productFamily?.slug) {
+    return DEFAULT_PRODUCT_ROUTE;
+  }
+
+  return PRODUCT_ROUTES[productFamily.slug] ?? DEFAULT_PRODUCT_ROUTE;
+}
+
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
@@ -64,10 +96,15 @@ export async function GET(request: NextRequest) {
       // Enrich with creator display if missing
       await enrichCreatorDisplay(app);
 
+      // Get product routing info for correct UI navigation
+      const productRouting = await getProductRouting(supabase, app.product_family_id);
+
       return NextResponse.json({
         application: app,
         context: buildContextFromApp(app),
         revision_count: revisionCount,
+        // Product routing info for navigation
+        product: productRouting,
       });
     }
 
@@ -159,10 +196,12 @@ export async function GET(request: NextRequest) {
       const latestApp = matchingApps[0];
       const revisionCount = matchingApps.length;
       await enrichCreatorDisplay(latestApp);
+      const productRouting = await getProductRouting(supabase, latestApp.product_family_id);
       return NextResponse.json({
         application: latestApp,
         context: buildContextFromApp(latestApp),
         revision_count: revisionCount,
+        product: productRouting,
       });
     }
 
@@ -176,10 +215,12 @@ export async function GET(request: NextRequest) {
       const latestApp = filteredApps[0];
       const revisionCount = filteredApps.length;
       await enrichCreatorDisplay(latestApp);
+      const productRouting = await getProductRouting(supabase, latestApp.product_family_id);
       return NextResponse.json({
         application: latestApp,
         context: buildContextFromApp(latestApp),
         revision_count: revisionCount,
+        product: productRouting,
       });
     }
 

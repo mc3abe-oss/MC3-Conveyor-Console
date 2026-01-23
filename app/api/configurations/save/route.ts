@@ -218,6 +218,29 @@ export async function POST(request: NextRequest) {
     const quoteId = (reference_type === 'QUOTE' && reference_id) ? reference_id : null;
     const salesOrderId = (reference_type === 'SALES_ORDER' && reference_id) ? reference_id : null;
 
+    // Determine product family based on model_key
+    // This is the authoritative source for routing to the correct product UI
+    let productFamilySlug = 'belt-conveyor'; // Safe default
+    if (model_key.toLowerCase().includes('magnetic')) {
+      productFamilySlug = 'magnetic-conveyor';
+    }
+    // Note: belt, sliderbed, rollerbed all map to belt-conveyor (default)
+
+    // Look up product_family_id
+    const { data: productFamily, error: productFamilyError } = await supabase
+      .from('product_families')
+      .select('id')
+      .eq('slug', productFamilySlug)
+      .single();
+
+    if (productFamilyError || !productFamily) {
+      console.error('Product family lookup error:', productFamilyError);
+      return NextResponse.json(
+        { error: 'Failed to resolve product family', details: productFamilyError?.message },
+        { status: 500 }
+      );
+    }
+
     // Build the recipe row
     const recipeRow: Record<string, unknown> = {
       slug,
@@ -237,6 +260,8 @@ export async function POST(request: NextRequest) {
       // FK linkage columns (determines delete eligibility)
       quote_id: quoteId,
       sales_order_id: salesOrderId,
+      // Product family (determines routing to correct product UI)
+      product_family_id: productFamily.id,
       // Calculation status tracking (v1.21)
       calculation_status: isCalculated ? 'calculated' : 'draft',
       is_calculated: isCalculated,
