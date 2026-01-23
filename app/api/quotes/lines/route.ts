@@ -35,6 +35,7 @@ interface QuoteLineRow {
   latest_updated_at: string;
   latest_application_id: string;
   created_by_display?: string | null;
+  model_key: string | null;
 }
 
 export async function GET(request: NextRequest) {
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
     // Get all calc_recipes with QUOTE reference type
     const { data: recipes, error: recipesError } = await supabase
       .from('calc_recipes')
-      .select('id, created_at, updated_at, inputs, created_by, created_by_display')
+      .select('id, created_at, updated_at, inputs, created_by, created_by_display, model_key')
       .order('updated_at', { ascending: false });
 
     if (recipesError) {
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
         config: r.inputs._config,
         created_by: r.created_by,
         created_by_display: r.created_by_display as string | null,
+        model_key: r.model_key as string | null,
       }));
 
     // Build a map of user IDs to display names
@@ -189,6 +191,7 @@ export async function GET(request: NextRequest) {
         created_by_display: latest.created_by_display
           || (latest.created_by ? creatorMap.get(latest.created_by) : null)
           || null,
+        model_key: latest.model_key,
       });
     }
 

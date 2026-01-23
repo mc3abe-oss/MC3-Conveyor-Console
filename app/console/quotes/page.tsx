@@ -23,6 +23,7 @@ interface QuoteLine {
   latest_updated_at: string;
   latest_application_id: string;
   created_by_display?: string | null;
+  model_key: string | null;
 }
 
 interface PaginatedResponse {
@@ -54,6 +55,17 @@ const STATUS_OPTIONS = [
   { value: 'lost', label: 'Lost' },
   { value: 'converted', label: 'Converted' },
 ];
+
+// Product type mappings
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  'belt_conveyor_v1': 'Belt',
+  'magnetic_conveyor_v1': 'Magnetic',
+};
+
+const PRODUCT_TYPE_PATHS: Record<string, string> = {
+  'belt_conveyor_v1': '/console/belt',
+  'magnetic_conveyor_v1': '/console/magnetic',
+};
 
 // ============================================================================
 // DEBOUNCE HOOK
@@ -176,7 +188,9 @@ export default function ConsoleQuotesPage() {
     }
     // Always pass jobLine to skip the selection modal
     params.set('jobLine', String(line.job_line));
-    router.push(`/console/belt?${params.toString()}`);
+    // Route to correct product page based on model_key
+    const targetPath = line.model_key ? (PRODUCT_TYPE_PATHS[line.model_key] || '/console/belt') : '/console/belt';
+    router.push(`${targetPath}?${params.toString()}`);
   };
 
   // Format date as relative or absolute
@@ -360,6 +374,9 @@ export default function ConsoleQuotesPage() {
                   Line
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Customer
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -398,6 +415,9 @@ export default function ConsoleQuotesPage() {
                     <span className="text-gray-900 font-medium">
                       {line.job_line}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {line.model_key ? (PRODUCT_TYPE_LABELS[line.model_key] || line.model_key) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {line.customer_name || <span className="text-gray-400 italic">No customer</span>}

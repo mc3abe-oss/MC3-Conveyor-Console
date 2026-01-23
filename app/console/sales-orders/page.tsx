@@ -17,6 +17,17 @@ const SCOPE_STATUS_BADGE_COLORS: Record<ScopeStatus, string> = {
   set: 'bg-green-100 text-green-800',
 };
 
+// Product type mappings
+const PRODUCT_TYPE_LABELS: Record<string, string> = {
+  'belt_conveyor_v1': 'Belt',
+  'magnetic_conveyor_v1': 'Magnetic',
+};
+
+const PRODUCT_TYPE_PATHS: Record<string, string> = {
+  'belt_conveyor_v1': '/console/belt',
+  'magnetic_conveyor_v1': '/console/magnetic',
+};
+
 interface PaginatedResponse {
   data: SalesOrder[];
   total: number;
@@ -130,7 +141,10 @@ export default function ConsoleSalesOrdersPage() {
     if (so.suffix_line) {
       params.set('suffix', String(so.suffix_line));
     }
-    router.push(`/console/belt?${params.toString()}`);
+    // Route to correct product page based on model_key
+    const modelKey = (so as any).model_key as string | null;
+    const targetPath = modelKey ? (PRODUCT_TYPE_PATHS[modelKey] || '/console/belt') : '/console/belt';
+    router.push(`${targetPath}?${params.toString()}`);
   };
 
   // Pagination
@@ -268,6 +282,9 @@ export default function ConsoleSalesOrdersPage() {
                   Line
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   Status
                 </th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -306,6 +323,9 @@ export default function ConsoleSalesOrdersPage() {
                     <span className="text-gray-900 font-medium">
                       {(so as any).job_line ?? <span className="text-gray-400">—</span>}
                     </span>
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {(so as any).model_key ? (PRODUCT_TYPE_LABELS[(so as any).model_key] || (so as any).model_key) : <span className="text-gray-400">—</span>}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className={`inline-flex px-2 py-0.5 text-xs font-medium rounded ${SCOPE_STATUS_BADGE_COLORS[(so as any).scope_status as ScopeStatus] || 'bg-gray-100 text-gray-800'}`}>

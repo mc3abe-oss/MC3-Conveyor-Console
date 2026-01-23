@@ -727,9 +727,17 @@ interface CrossSectionProps {
   dimensions: MagneticConveyorInputs;
 }
 
+// Body height enum to numeric value mapping (inches)
+const BODY_HEIGHT_VALUES: Record<MagneticBodyHeight, number> = {
+  [MagneticBodyHeight.Standard]: 5,
+  [MagneticBodyHeight.Low]: 3.5,
+  [MagneticBodyHeight.High]: 7,
+};
+
 function CrossSection({ dimensions }: CrossSectionProps) {
   const effectiveWidth = dimensions.effectiveWidth || 10;
-  const bodyHeight = dimensions.bodyHeight || 5;
+  const bodyHeightEnum = dimensions.bodyHeight || MagneticBodyHeight.Standard;
+  const bodyHeight = BODY_HEIGHT_VALUES[bodyHeightEnum] || 5;
   const guideHeight = dimensions.infeedGuideHeight || 4;
   const guideAngle = dimensions.infeedGuideAngle || 0;
   const guideAngleRad = (guideAngle * Math.PI) / 180;

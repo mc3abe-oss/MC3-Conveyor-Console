@@ -21,7 +21,6 @@ import CommercialScopeOutput from './CommercialScopeOutput';
 import { useCurrentUserRole } from '../hooks/useCurrentUserRole';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
-import { MODEL_KEY } from '../../src/lib/model-identity';
 import { createClient } from '../../src/lib/supabase/browser';
 import { stripSoContextFromSearchParams } from '../../src/lib/strip-so-context';
 import { ProductKey } from '../../src/lib/products';
@@ -182,6 +181,32 @@ export default function BeltConveyorCalculatorApp({
       return;
     }
 
+    // Check if loaded application's model_key matches current productKey
+    // If not, redirect to the correct product page
+    const loadedModelKey = application.model_key;
+    if (loadedModelKey && loadedModelKey !== productKey) {
+      // Map model_key to console path
+      const productPaths: Record<string, string> = {
+        'belt_conveyor_v1': '/console/belt',
+        'magnetic_conveyor_v1': '/console/magnetic',
+      };
+      const targetPath = productPaths[loadedModelKey];
+      if (targetPath && typeof window !== 'undefined') {
+        // Preserve current query params in redirect
+        const currentParams = window.location.search;
+        const redirectUrl = `${targetPath}${currentParams}`;
+        if (process.env.NODE_ENV === 'development') {
+          console.log('[DEV][MODEL_KEY_MISMATCH] Redirecting', {
+            loadedModelKey,
+            currentProductKey: productKey,
+            redirectUrl,
+          });
+        }
+        router.push(redirectUrl);
+        return;
+      }
+    }
+
     // Extract inputs from the application (stored in inputs field, minus _config)
     const { _config, ...inputsData } = application.inputs || {};
 
@@ -248,7 +273,7 @@ export default function BeltConveyorCalculatorApp({
         metadata: {
           calculated_at: application.updated_at || new Date().toISOString(),
           model_version_id: application.model_version || 'unknown',
-          model_key: MODEL_KEY,
+          model_key: productKey,
         },
       });
       setCalcStatus('ok');
@@ -269,7 +294,7 @@ export default function BeltConveyorCalculatorApp({
       });
     }
     console.log('[Load] Application loaded:', application.id);
-  }, []);
+  }, [productKey, router]);
 
   // Effect: Load application based on URL params or localStorage
   useEffect(() => {
@@ -916,7 +941,7 @@ export default function BeltConveyorCalculatorApp({
       reference_id: context.id || undefined,       // UUID for FK linkage (quote_id or sales_order_id)
       customer_name: context.customer_name ?? undefined,
       quantity: context.quantity ?? conveyorQty,
-      model_key: 'belt_conveyor_v1',
+      model_key: productKey,
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, context.quantity ?? conveyorQty),
@@ -1061,7 +1086,7 @@ export default function BeltConveyorCalculatorApp({
       reference_id: target.id || undefined,        // UUID for FK linkage (quote_id or sales_order_id)
       customer_name: target.customer_name ?? undefined,
       quantity: target.quantity,
-      model_key: 'belt_conveyor_v1',
+      model_key: productKey,
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, target.quantity),

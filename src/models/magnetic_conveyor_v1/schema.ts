@@ -475,3 +475,164 @@ export interface MagneticOutputs {
   /** Validation errors */
   errors: ValidationError[];
 }
+
+// ============================================================================
+// UI-SPECIFIC TYPES
+// These types are for the configurator UI, separate from calculation types
+// ============================================================================
+
+/**
+ * Magnetic conveyor style for UI.
+ * Maps to ConveyorStyle but uses string literal for UI state.
+ */
+export type MagneticConveyorStyle = 'A' | 'B' | 'C' | 'D';
+
+/**
+ * Body height options for magnetic conveyor.
+ */
+export enum MagneticBodyHeight {
+  Standard = 'standard',
+  Low = 'low',
+  High = 'high',
+}
+
+/**
+ * UI input state for magnetic conveyor configurator.
+ * Different from MagneticInputs which is for the calculation engine.
+ */
+export interface MagneticConveyorInputs {
+  style: MagneticConveyorStyle;
+  infeedLength?: number;
+  inclineLength?: number;
+  dischargeLength?: number;
+  overallLength?: number;
+  inclineAngle?: number;
+  dischargeHeight?: number;
+  bodyHeight?: MagneticBodyHeight;
+  beltWidth?: number;
+  effectiveWidth?: number;
+}
+
+/**
+ * Style configuration for UI rendering.
+ */
+export interface MagneticStyleConfig {
+  code: string;
+  description: string;
+  dimensions: string[];
+  hasIncline: boolean;
+  hasDischarge: boolean;
+}
+
+/**
+ * Configuration for each magnetic conveyor style.
+ */
+export const MAGNETIC_STYLES: Record<MagneticConveyorStyle, MagneticStyleConfig> = {
+  A: {
+    code: 'Style A',
+    description: 'Horizontal infeed to incline to horizontal discharge',
+    dimensions: ['infeedLength', 'inclineLength', 'dischargeLength', 'inclineAngle'],
+    hasIncline: true,
+    hasDischarge: true,
+  },
+  B: {
+    code: 'Style B',
+    description: 'Horizontal infeed to incline (compact at 90°)',
+    dimensions: ['infeedLength', 'inclineLength', 'inclineAngle'],
+    hasIncline: true,
+    hasDischarge: false,
+  },
+  C: {
+    code: 'Style C',
+    description: 'Horizontal only (floor mounted)',
+    dimensions: ['overallLength'],
+    hasIncline: false,
+    hasDischarge: false,
+  },
+  D: {
+    code: 'Style D',
+    description: 'Incline primary with minimal infeed',
+    dimensions: ['inclineLength', 'dischargeLength', 'inclineAngle'],
+    hasIncline: true,
+    hasDischarge: true,
+  },
+};
+
+/**
+ * Default values for magnetic conveyor UI inputs.
+ */
+export const DEFAULT_MAGNETIC_INPUTS: MagneticConveyorInputs = {
+  style: 'B',
+  infeedLength: 52,
+  inclineLength: 50,
+  dischargeLength: 22,
+  overallLength: 100,
+  inclineAngle: 60,
+  dischargeHeight: 100,
+  bodyHeight: MagneticBodyHeight.Standard,
+  beltWidth: 12,
+  effectiveWidth: 10,
+};
+
+/**
+ * Derived values calculated from inputs.
+ */
+export interface MagneticDerivedValues {
+  calculatedOverallLength?: number;
+  calculatedInclineRun?: number;
+  calculatedDischargeHeight?: number;
+  calculatedRise?: number;
+  bodyWidth: number;
+  coverWidth: number;
+}
+
+/**
+ * Calculate derived geometry values from UI inputs.
+ */
+export function calculateMagneticDerived(inputs: MagneticConveyorInputs): MagneticDerivedValues {
+  // Calculate body and cover widths from effective width
+  const effectiveWidth = inputs.effectiveWidth ?? 10;
+  const bodyWidth = effectiveWidth + 1.5;
+  const coverWidth = bodyWidth + 1.5;
+
+  const derived: MagneticDerivedValues = {
+    bodyWidth,
+    coverWidth,
+  };
+
+  if (inputs.style === 'C') {
+    // Style C: horizontal only
+    derived.calculatedOverallLength = inputs.overallLength;
+    return derived;
+  }
+
+  const angleRad = ((inputs.inclineAngle || 60) * Math.PI) / 180;
+  const inclineLength = inputs.inclineLength || 0;
+
+  // Calculate incline run (horizontal projection)
+  derived.calculatedInclineRun = inclineLength * Math.cos(angleRad);
+
+  // Calculate discharge height (rise)
+  derived.calculatedDischargeHeight = inclineLength * Math.sin(angleRad);
+  derived.calculatedRise = derived.calculatedDischargeHeight;
+
+  // Calculate overall length based on style
+  switch (inputs.style) {
+    case 'A':
+      derived.calculatedOverallLength =
+        (inputs.infeedLength || 0) +
+        derived.calculatedInclineRun +
+        (inputs.dischargeLength || 0);
+      break;
+    case 'B':
+      derived.calculatedOverallLength =
+        (inputs.infeedLength || 0) + derived.calculatedInclineRun;
+      break;
+    case 'D':
+      derived.calculatedOverallLength =
+        derived.calculatedInclineRun + (inputs.dischargeLength || 0);
+      break;
+  }
+
+  return derived;
+}

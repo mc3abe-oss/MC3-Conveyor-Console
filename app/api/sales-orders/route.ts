@@ -127,18 +127,19 @@ export async function GET(request: NextRequest) {
       // Fetch applications linked to these sales orders (include updated_at for revision tracking)
       const { data: apps } = await supabase
         .from('calc_recipes')
-        .select('id, sales_order_id, created_by, created_by_display, updated_at, inputs')
+        .select('id, sales_order_id, created_by, created_by_display, updated_at, inputs, model_key')
         .in('sales_order_id', soIds)
         .is('deleted_at', null)
         .eq('is_active', true);
 
-      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at, job_line)
+      // Build map of sales_order_id -> enrichment info (creator, revisions, latest_updated_at, job_line, model_key)
       const enrichmentMap = new Map<string, {
         created_by: string | null;
         created_by_display: string | null;
         revision_count: number;
         latest_updated_at: string | null;
         job_line: number | null;
+        model_key: string | null;
       }>();
 
       for (const app of apps || []) {
@@ -156,12 +157,15 @@ export async function GET(request: NextRequest) {
             revision_count: 1,
             latest_updated_at: app.updated_at,
             job_line: jobLine,
+            model_key: app.model_key as string | null,
           });
         } else {
           existing.revision_count++;
           // Track most recent update
           if (app.updated_at && (!existing.latest_updated_at || new Date(app.updated_at) > new Date(existing.latest_updated_at))) {
             existing.latest_updated_at = app.updated_at;
+            // Update model_key to latest as well
+            existing.model_key = app.model_key as string | null;
           }
           // Use job_line from first app if not set
           if (existing.job_line === null && jobLine !== null) {
@@ -206,10 +210,12 @@ export async function GET(request: NextRequest) {
           (so as any).revision_count = enrichment.revision_count;
           (so as any).latest_updated_at = enrichment.latest_updated_at;
           (so as any).job_line = enrichment.job_line;
+          (so as any).model_key = enrichment.model_key;
         } else {
           (so as any).revision_count = 0;
           (so as any).latest_updated_at = null;
           (so as any).job_line = null;
+          (so as any).model_key = null;
         }
       }
     }
