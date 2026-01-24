@@ -147,7 +147,7 @@ export default function ConsoleSalesOrdersPage() {
     const productHref = (so as any).product_href;
     const modelKey = (so as any).model_key as string | null;
     const targetPath = productHref || (modelKey ? (PRODUCT_TYPE_PATHS[modelKey] || '/console/belt') : '/console/belt');
-    router.push(`${targetPath}?${params.toString()}`);
+    router.push(`${targetPath}?${params.toString()}` as '/console/belt');
   };
 
   // Pagination

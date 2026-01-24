@@ -195,7 +195,7 @@ export default function ConsoleQuotesPage() {
     // Route to correct product UI based on application's product_family
     // Falls back to model_key mapping if product_href not available
     const productHref = line.product_href || (line.model_key ? (PRODUCT_TYPE_PATHS[line.model_key] || '/console/belt') : '/console/belt');
-    router.push(`${productHref}?${params.toString()}`);
+    router.push(`${productHref}?${params.toString()}` as '/console/belt');
   };
 
   // Format date as relative or absolute

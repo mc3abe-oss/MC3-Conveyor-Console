@@ -202,7 +202,7 @@ export default function BeltConveyorCalculatorApp({
             redirectUrl,
           });
         }
-        router.push(redirectUrl);
+        router.push(redirectUrl as '/console/belt');
         return;
       }
     }

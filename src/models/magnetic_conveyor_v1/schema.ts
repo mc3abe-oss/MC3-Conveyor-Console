@@ -511,6 +511,10 @@ export interface MagneticConveyorInputs {
   bodyHeight?: MagneticBodyHeight;
   beltWidth?: number;
   effectiveWidth?: number;
+  /** Infeed guide height in inches (for visual rendering) */
+  infeedGuideHeight?: number;
+  /** Infeed guide angle in degrees (for visual rendering) */
+  infeedGuideAngle?: number;
 }
 
 /**

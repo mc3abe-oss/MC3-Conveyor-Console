@@ -1101,7 +1101,7 @@ function StyleThumb({ styleKey, isSelected, onClick }: StyleThumbProps) {
       <div
         className={`text-xs font-medium ${isSelected ? 'text-[#2B5D85]' : 'text-gray-600'}`}
       >
-        {style.name}
+        {style.code}
       </div>
     </button>
   );
@@ -1113,8 +1113,8 @@ function StyleThumb({ styleKey, isSelected, onClick }: StyleThumbProps) {
 
 interface DimensionInputProps {
   label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
   unit?: string;
 }
 
@@ -1133,7 +1133,7 @@ function DimensionInput({
         type="number"
         value={value ?? ''}
         onChange={(e) =>
-          onChange(e.target.value ? Number(e.target.value) : null)
+          onChange(e.target.value ? Number(e.target.value) : undefined)
         }
         className="w-20 px-2.5 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-right"
       />
@@ -1144,8 +1144,8 @@ function DimensionInput({
 
 interface AngleInputProps {
   label: string;
-  value: number | null;
-  onChange: (value: number | null) => void;
+  value: number | undefined;
+  onChange: (value: number | undefined) => void;
   includeZero?: boolean;
 }
 
@@ -1156,7 +1156,7 @@ function AngleInput({
   includeZero = false,
 }: AngleInputProps) {
   const options = includeZero ? [0, 45, 60, 90] : [45, 60, 90];
-  const isCustom = value !== null && !options.includes(value);
+  const isCustom = value !== undefined && !options.includes(value);
   const [showCustomInput, setShowCustomInput] = useState(isCustom);
 
   const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -1191,7 +1191,7 @@ function AngleInput({
           type="number"
           value={value ?? ''}
           onChange={(e) =>
-            onChange(e.target.value ? Number(e.target.value) : null)
+            onChange(e.target.value ? Number(e.target.value) : undefined)
           }
           className="w-16 px-2.5 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-right"
           placeholder="°"
@@ -1203,7 +1203,7 @@ function AngleInput({
 }
 
 interface BodyHeightInputProps {
-  value: MagneticBodyHeight;
+  value: MagneticBodyHeight | undefined;
   onChange: (value: MagneticBodyHeight) => void;
 }
 
@@ -1214,8 +1214,8 @@ function BodyHeightInput({ value, onChange }: BodyHeightInputProps) {
         Body Ht
       </label>
       <select
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) as MagneticBodyHeight)}
+        value={value ?? 5}
+        onChange={(e) => onChange(Number(e.target.value) as unknown as MagneticBodyHeight)}
         className="px-2.5 py-1.5 text-sm border border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
       >
         <option value={5}>5&quot;</option>

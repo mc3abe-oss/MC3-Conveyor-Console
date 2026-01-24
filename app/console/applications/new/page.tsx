@@ -91,7 +91,7 @@ export default function NewApplicationPage() {
     // Navigate to the product's calculator page with new=true param
     // The calculator will start in draft mode without a linked Quote/SO
     const productRoute = PRODUCT_ROUTES[selectedProduct.slug] || '/console/belt';
-    router.push(`${productRoute}?new=true`);
+    router.push(`${productRoute}?new=true` as '/console/belt');
   };
 
   // Get selected product for button text
