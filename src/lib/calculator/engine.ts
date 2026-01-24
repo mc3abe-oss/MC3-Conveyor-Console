@@ -54,6 +54,8 @@ export interface CalculationRequest {
   inputs: SliderbedInputs;
   parameters?: Partial<SliderbedParameters>;
   model_version_id?: string;
+  /** Product key for product-scoped validation (e.g., 'belt_conveyor_v1', 'magnetic_conveyor_v1') */
+  productKey?: string;
 }
 
 /**
@@ -67,6 +69,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
     inputs: rawInputs,
     parameters: parameterOverrides,
     model_version_id = MODEL_VERSION_ID,
+    productKey,
   } = request;
 
   // Normalize inputs for backward compatibility (legacy field names)
@@ -80,7 +83,8 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
   };
 
   // Step 1: Validate inputs and parameters
-  const { errors, warnings } = validate(inputs, parameters);
+  // Pass productKey for product-scoped validation (e.g., skip belt validation for magnetic)
+  const { errors, warnings } = validate(inputs, parameters, productKey);
 
   // Step 2: Execute calculations (even with errors)
   // The formulas use NaN for missing values and propagate gracefully.

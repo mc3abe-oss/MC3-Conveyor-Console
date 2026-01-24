@@ -107,11 +107,36 @@ export function parseCleatHeightFromSize(size: unknown): number | undefined {
 }
 
 // ============================================================================
+// PRODUCT TYPE HELPERS
+// ============================================================================
+
+/**
+ * Product keys that require belt selection.
+ * Magnetic conveyors use chain/magnets, not belts.
+ */
+const BELT_PRODUCT_KEYS = ['belt_conveyor_v1', 'sliderbed_conveyor_v1', 'rollerbed_conveyor_v1'];
+
+/**
+ * Determines if belt selection/validation is required for this product.
+ * Returns true for belt conveyor products, false for magnetic.
+ */
+export function requiresBeltValidation(productKey?: string): boolean {
+  if (!productKey) return true; // Default to belt validation for backward compatibility
+  return BELT_PRODUCT_KEYS.includes(productKey);
+}
+
+// ============================================================================
 // INPUT VALIDATION
 // ============================================================================
 
+/**
+ * Validate inputs.
+ * @param inputs - The sliderbed inputs
+ * @param productKey - Optional product key for product-scoped validation
+ */
 export function validateInputs(
-  inputs: SliderbedInputs
+  inputs: SliderbedInputs,
+  productKey?: string
 ): ValidationError[] {
   const errors: ValidationError[] = [];
 
@@ -640,25 +665,28 @@ export function validateInputs(
     });
   }
 
-  // v1.48: Belt selection is REQUIRED
+  // v1.48: Belt selection is REQUIRED (for belt conveyor products only)
+  // Magnetic conveyors use chain/magnets, not belts - skip belt validation for them.
   // Belt is considered "selected" if PIW/PIL coefficients are explicitly provided
   // through any of these sources:
   //   1. belt_catalog_key (belt from catalog lookup)
   //   2. belt_piw_override + belt_pil_override (user manual override)
   //   3. belt_piw + belt_pil (from catalog when belt is selected)
   //   4. belt_coeff_piw + belt_coeff_pil (advanced parameter mode)
-  const hasBeltSelection =
-    (inputs.belt_catalog_key !== undefined && inputs.belt_catalog_key !== null) ||
-    (inputs.belt_piw_override !== undefined && inputs.belt_pil_override !== undefined) ||
-    (inputs.belt_piw !== undefined && inputs.belt_pil !== undefined) ||
-    (inputs.belt_coeff_piw !== undefined && inputs.belt_coeff_pil !== undefined);
+  if (requiresBeltValidation(productKey)) {
+    const hasBeltSelection =
+      (inputs.belt_catalog_key !== undefined && inputs.belt_catalog_key !== null) ||
+      (inputs.belt_piw_override !== undefined && inputs.belt_pil_override !== undefined) ||
+      (inputs.belt_piw !== undefined && inputs.belt_pil !== undefined) ||
+      (inputs.belt_coeff_piw !== undefined && inputs.belt_coeff_pil !== undefined);
 
-  if (!hasBeltSelection) {
-    errors.push({
-      field: 'belt_catalog_key',
-      message: 'Belt selection is required. Please select a belt from the catalog or provide belt coefficients.',
+    if (!hasBeltSelection) {
+      errors.push({
+        field: 'belt_catalog_key',
+        message: 'Belt selection is required. Please select a belt from the catalog or provide belt coefficients.',
       severity: 'error',
-    });
+      });
+    }
   }
 
   // Shaft diameter range validation
@@ -1874,12 +1902,16 @@ function applyHeightWarnings(inputs: SliderbedInputs): ValidationWarning[] {
 
 /**
  * Validate inputs (draft mode - lenient for loading)
+ * @param inputs - The sliderbed inputs
+ * @param parameters - The sliderbed parameters
+ * @param productKey - Optional product key for product-scoped validation
  */
 export function validate(
   inputs: SliderbedInputs,
-  parameters: SliderbedParameters
+  parameters: SliderbedParameters,
+  productKey?: string
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
-  const inputErrors = validateInputs(inputs);
+  const inputErrors = validateInputs(inputs, productKey);
   const paramErrors = validateParameters(parameters);
   const { errors: ruleErrors, warnings: ruleWarnings } = applyApplicationRules(inputs);
 
@@ -1894,13 +1926,17 @@ export function validate(
 
 /**
  * Validate inputs for commit (strict mode - required for saving)
+ * @param inputs - The sliderbed inputs
+ * @param parameters - The sliderbed parameters
+ * @param productKey - Optional product key for product-scoped validation
  */
 export function validateForCommit(
   inputs: SliderbedInputs,
-  parameters: SliderbedParameters
+  parameters: SliderbedParameters,
+  productKey?: string
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   // Start with standard validation
-  const { errors, warnings } = validate(inputs, parameters);
+  const { errors, warnings } = validate(inputs, parameters, productKey);
 
   // Add commit-mode TOB validation
   const tobErrors = validateTob(inputs, 'commit');

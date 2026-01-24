@@ -106,14 +106,14 @@ export default function CalculatorForm({
   useEffect(() => {
     if (triggerCalculate !== undefined && triggerCalculate > 0 && triggerCalculate !== lastTriggerRef.current) {
       lastTriggerRef.current = triggerCalculate;
-      const result = runCalculation({ inputs });
+      const result = runCalculation({ inputs, productKey });
       onCalculate(result);
     }
-  }, [triggerCalculate, inputs, onCalculate]);
+  }, [triggerCalculate, inputs, productKey, onCalculate]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const result = runCalculation({ inputs });
+    const result = runCalculation({ inputs, productKey });
     onCalculate(result);
   };
 
