@@ -81,9 +81,17 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!reference_type || !reference_number || !model_key || !inputs_json) {
+    if (!reference_type || !reference_number || !inputs_json) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: reference_type, reference_number, and inputs_json are required' },
+        { status: 400 }
+      );
+    }
+
+    // Validate model_key is provided - this is required to identify the product
+    if (!model_key) {
+      return NextResponse.json(
+        { error: 'product_key is required to create an application. Please select a product first.' },
         { status: 400 }
       );
     }
@@ -218,26 +226,46 @@ export async function POST(request: NextRequest) {
     const quoteId = (reference_type === 'QUOTE' && reference_id) ? reference_id : null;
     const salesOrderId = (reference_type === 'SALES_ORDER' && reference_id) ? reference_id : null;
 
-    // Determine product family based on model_key
-    // This is the authoritative source for routing to the correct product UI
-    let productFamilySlug = 'belt-conveyor'; // Safe default
-    if (model_key.toLowerCase().includes('magnetic')) {
-      productFamilySlug = 'magnetic-conveyor';
-    }
-    // Note: belt, sliderbed, rollerbed all map to belt-conveyor (default)
+    // Look up product_family by model_key first, then fall back to slug inference
+    // This ensures we use the authoritative product registry
+    let productFamily: { id: string } | null = null;
+    let productFamilyError: Error | null = null;
 
-    // Look up product_family_id
-    const { data: productFamily, error: productFamilyError } = await supabase
+    // First try: Look up by model_key (preferred, uses product registry)
+    const { data: familyByModelKey, error: modelKeyError } = await supabase
       .from('product_families')
       .select('id')
-      .eq('slug', productFamilySlug)
-      .single();
+      .eq('model_key', model_key)
+      .maybeSingle();
 
-    if (productFamilyError || !productFamily) {
-      console.error('Product family lookup error:', productFamilyError);
+    if (familyByModelKey) {
+      productFamily = familyByModelKey;
+    } else {
+      // Fallback: Infer from model_key string (for backward compatibility)
+      let productFamilySlug = 'belt-conveyor'; // Safe default
+      if (model_key.toLowerCase().includes('magnetic')) {
+        productFamilySlug = 'magnetic-conveyor';
+      }
+      // Note: belt, sliderbed, rollerbed all map to belt-conveyor (default)
+
+      const { data: familyBySlug, error: slugError } = await supabase
+        .from('product_families')
+        .select('id')
+        .eq('slug', productFamilySlug)
+        .single();
+
+      if (slugError) {
+        productFamilyError = slugError;
+      } else {
+        productFamily = familyBySlug;
+      }
+    }
+
+    if (!productFamily) {
+      console.error('Product family lookup error:', productFamilyError || modelKeyError);
       return NextResponse.json(
-        { error: 'Failed to resolve product family', details: productFamilyError?.message },
-        { status: 500 }
+        { error: 'Failed to resolve product family for the given product_key', details: (productFamilyError || modelKeyError)?.message },
+        { status: 400 }
       );
     }
 

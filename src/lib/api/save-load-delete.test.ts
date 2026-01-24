@@ -31,6 +31,29 @@ const supabase = isSupabaseConfigured
 const TEST_PREFIX = `TEST_${Date.now()}`;
 const uniqueNumber = () => Math.floor(Math.random() * 900000) + 100000;
 
+// Helper to get product_family_id for Belt Conveyor (used by tests)
+async function getBeltConveyorProductFamilyId(): Promise<string> {
+  if (!supabase) throw new Error('Supabase not configured');
+
+  const { data, error } = await supabase
+    .from('product_families')
+    .select('id')
+    .eq('slug', 'belt-conveyor')
+    .single();
+
+  if (error || !data) {
+    // If not found, try to get any product family
+    const { data: anyFamily } = await supabase
+      .from('product_families')
+      .select('id')
+      .limit(1)
+      .single();
+    if (anyFamily) return anyFamily.id;
+    throw new Error('No product family found in database');
+  }
+  return data.id;
+}
+
 // Helper to create a minimal application record
 async function createTestApplication(overrides: Record<string, unknown> = {}) {
   if (!supabase) throw new Error('Supabase not configured');
@@ -38,6 +61,9 @@ async function createTestApplication(overrides: Record<string, unknown> = {}) {
   const baseNumber = uniqueNumber();
   const slug = `config:sales_order:${baseNumber}:1`;
   const name = `${TEST_PREFIX} App ${baseNumber}`;
+
+  // Get product_family_id (required field)
+  const productFamilyId = await getBeltConveyorProductFamilyId();
 
   const record = {
     slug,
@@ -47,6 +73,7 @@ async function createTestApplication(overrides: Record<string, unknown> = {}) {
     recipe_status: 'active',
     model_key: 'sliderbed_v1',
     model_version_id: 'v1.0.0',
+    product_family_id: productFamilyId,
     inputs: {
       belt_width_in: 24,
       _config: {

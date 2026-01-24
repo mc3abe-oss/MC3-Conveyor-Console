@@ -80,14 +80,14 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
             {/* Right: Global Actions */}
             <nav className="flex items-center space-x-1">
               <Link
-                href="/console/belt"
+                href="/console/applications/new"
                 className={`px-3 py-2 rounded text-sm font-medium transition-colors ${
-                  pathname.startsWith('/console/belt')
+                  pathname.startsWith('/console/applications')
                     ? 'bg-mc3-blue text-white'
                     : 'text-mc3-mist/80 hover:bg-mc3-blue/50 hover:text-white'
                 }`}
               >
-                Application
+                New Application
               </Link>
               <Link
                 href="/console/quotes"

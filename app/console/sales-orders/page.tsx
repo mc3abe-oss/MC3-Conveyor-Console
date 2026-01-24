@@ -158,11 +158,22 @@ export default function ConsoleSalesOrdersPage() {
   return (
     <div>
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Sales Orders</h1>
-        <p className="text-gray-600 mt-1">
-          View and search sales orders. Click a row to open the Application.
-        </p>
+      <div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900">Sales Orders</h1>
+          <p className="text-gray-600 mt-1">
+            View and search sales orders. Click a row to open the Application.
+          </p>
+        </div>
+        <button
+          onClick={() => router.push('/console/applications/new')}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-mc3-blue hover:bg-mc3-navy rounded-md transition-colors"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+          </svg>
+          New Application
+        </button>
       </div>
 
       {/* Filter Row */}
