@@ -33,6 +33,13 @@ import {
   THROUGHPUT_MARGIN_THRESHOLDS,
 } from './constants';
 
+// Rules Telemetry - Observability only, no behavior changes
+import {
+  emitRuleEvent,
+  createContext,
+  isEnabled,
+} from '../../lib/rules-telemetry';
+
 // ============================================================================
 // TYPES
 // ============================================================================
@@ -361,6 +368,23 @@ export function validate(
 
   const warnings = allMessages.filter((m) => m.type === 'warning');
   const errors = allMessages.filter((m) => m.type === 'error');
+
+  // Telemetry: Capture validation events (observability only)
+  if (isEnabled()) {
+    const ctx = createContext(
+      'src/models/magnetic_conveyor_v1/validation.ts:validate',
+      'magnetic_conveyor_v1',
+      inputs as unknown as Record<string, unknown>
+    );
+    for (const msg of allMessages) {
+      emitRuleEvent(
+        msg.type === 'error' ? 'error' : 'warning',
+        msg.message,
+        ctx,
+        msg.field
+      );
+    }
+  }
 
   return {
     warnings,

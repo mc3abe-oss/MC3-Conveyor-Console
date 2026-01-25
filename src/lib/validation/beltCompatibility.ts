@@ -75,6 +75,13 @@ export interface BeltCompatibilityResult {
 /** Warning margin for approaching maximum temperature */
 const TEMP_WARNING_MARGIN_F = 10;
 
+// Rules Telemetry - Observability only, no behavior changes
+import {
+  emitRuleEvent,
+  createContext,
+  isEnabled,
+} from '../rules-telemetry';
+
 // Issue codes
 export const ISSUE_CODES = {
   BELT_TEMP_EXCEEDED: 'BELT_TEMP_EXCEEDED',
@@ -238,6 +245,17 @@ export function checkBeltCompatibility(
 
   const errors = issues.filter((i) => i.severity === 'error');
   const warnings = issues.filter((i) => i.severity === 'warning');
+
+  // Telemetry: Capture belt compatibility events (observability only)
+  if (isEnabled() && issues.length > 0) {
+    const ctx = createContext(
+      'src/lib/validation/beltCompatibility.ts:checkBeltCompatibility',
+      'belt_conveyor_v1'
+    );
+    for (const issue of issues) {
+      emitRuleEvent(issue.severity, issue.message, ctx, issue.sectionKey);
+    }
+  }
 
   return {
     issues,

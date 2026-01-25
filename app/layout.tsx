@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import { APP_NAME, APP_DESCRIPTION } from '../src/lib/brand';
+import RulesDebugPanel from './components/RulesDebugPanel';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,6 +34,7 @@ export default function RootLayout({
           {children}
         </div>
         <SpeedInsights />
+        <RulesDebugPanel />
       </body>
     </html>
   );

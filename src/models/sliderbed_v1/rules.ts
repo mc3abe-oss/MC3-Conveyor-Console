@@ -91,6 +91,12 @@ import {
   getEffectiveCleatHeight,
 } from './formulas';
 
+// Rules Telemetry - Observability only, no behavior changes
+import {
+  wrapValidationResult,
+  createContext,
+} from '../../lib/rules-telemetry';
+
 /**
  * v1.24: Parse cleat height from cleat_size string.
  * UI derives cleat_height_in from cleat_size, but this provides a model-layer
@@ -1921,7 +1927,14 @@ export function validate(
   const allErrors = [...inputErrors, ...paramErrors, ...ruleErrors];
   const allWarnings = [...ruleWarnings, ...heightWarnings];
 
-  return { errors: allErrors, warnings: allWarnings };
+  const result = { errors: allErrors, warnings: allWarnings };
+
+  // Telemetry: Capture validation events (observability only)
+  return wrapValidationResult(result, createContext(
+    'src/models/sliderbed_v1/rules.ts:validate',
+    productKey,
+    inputs as unknown as Record<string, unknown>
+  ));
 }
 
 /**
@@ -1941,10 +1954,17 @@ export function validateForCommit(
   // Add commit-mode TOB validation
   const tobErrors = validateTob(inputs, 'commit');
 
-  return {
+  const result = {
     errors: [...errors, ...tobErrors],
     warnings,
   };
+
+  // Telemetry: Capture commit validation events (observability only)
+  return wrapValidationResult(result, createContext(
+    'src/models/sliderbed_v1/rules.ts:validateForCommit',
+    productKey,
+    inputs as unknown as Record<string, unknown>
+  ));
 }
 
 // ============================================================================
@@ -2037,7 +2057,14 @@ export function applyPciOutputRules(
     });
   }
 
-  return { errors, warnings };
+  const result = { errors, warnings };
+
+  // Telemetry: Capture PCI output validation events (observability only)
+  return wrapValidationResult(result, createContext(
+    'src/models/sliderbed_v1/rules.ts:applyPciOutputRules',
+    undefined,
+    inputs as unknown as Record<string, unknown>
+  ));
 }
 
 // ============================================================================
@@ -2086,6 +2113,15 @@ export function applyHubConnectionRules(
       severity: 'warning',
     });
   }
+
+  const result = { errors: [] as ValidationError[], warnings };
+
+  // Telemetry: Capture hub connection validation events (observability only)
+  wrapValidationResult(result, createContext(
+    'src/models/sliderbed_v1/rules.ts:applyHubConnectionRules',
+    undefined,
+    inputs as unknown as Record<string, unknown>
+  ));
 
   return { warnings };
 }

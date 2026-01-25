@@ -22,6 +22,13 @@ import {
   TobValueV2,
 } from './schema';
 
+// Rules Telemetry - Observability only, no behavior changes
+import {
+  emitRuleEvent,
+  createContext,
+  isEnabled,
+} from '../../../lib/rules-telemetry';
+
 // =============================================================================
 // THRESHOLD CONSTANTS (Phase 2: move to parameters)
 // =============================================================================
@@ -438,6 +445,18 @@ export function runAllWarningRules(ctx: WarningRuleContext): OutputMessageV2[] {
   // v1.49: Manual drive warnings
   allWarnings.push(...checkManualDriveSfLow(ctx));
   allWarnings.push(...checkManualDriveTorqueMismatch(ctx));
+
+  // Telemetry: Capture output warning events (observability only)
+  if (isEnabled() && allWarnings.length > 0) {
+    const telemetryCtx = createContext(
+      'src/models/sliderbed_v1/outputs_v2/warnings.ts:runAllWarningRules',
+      'belt_conveyor_v1',
+      ctx.inputs as unknown as Record<string, unknown>
+    );
+    for (const warning of allWarnings) {
+      emitRuleEvent(warning.severity, warning.message, telemetryCtx, warning.code);
+    }
+  }
 
   return allWarnings;
 }
