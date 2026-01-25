@@ -102,7 +102,7 @@ export default function NewApplicationPage() {
       {/* Back link */}
       <div className="mb-6">
         <Link
-          href="/console/quotes"
+          href="/console"
           className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700"
         >
           <svg
@@ -118,7 +118,7 @@ export default function NewApplicationPage() {
               d="M15 19l-7-7 7-7"
             />
           </svg>
-          Back to Applications
+          Back to Console
         </Link>
       </div>
 
@@ -283,7 +283,7 @@ export default function NewApplicationPage() {
           {/* Action buttons */}
           <div className="flex items-center justify-end gap-4 pt-4 border-t border-gray-200">
             <Link
-              href="/console/quotes"
+              href="/console"
               className="px-4 py-2 text-sm font-medium text-gray-700 hover:text-gray-900"
             >
               Cancel

@@ -9,6 +9,7 @@ import ApplicationContextHeader from './ApplicationContextHeader';
 import { ScopeStatusBannerFromContext } from './ScopeStatusBanner';
 import { ScopeProvider, OutputGate, OutputDisabledBanner } from './ScopeContext';
 import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
+import NewApplicationGateModal, { NewApplicationTarget } from './NewApplicationGateModal';
 import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
@@ -102,6 +103,9 @@ export default function BeltConveyorCalculatorApp({
 
   // Save Target Modal (for first save in draft mode)
   const [isSaveTargetModalOpen, setIsSaveTargetModalOpen] = useState(false);
+
+  // New Application Gate Modal (requires Quote/SO attachment before proceeding)
+  const [isNewAppGateOpen, setIsNewAppGateOpen] = useState(false);
 
   // Draft Vault (local state until first save)
   const [draftVault, setDraftVault] = useState<DraftVault>({
@@ -320,12 +324,19 @@ export default function BeltConveyorCalculatorApp({
       if (suffix) loadUrl += `&suffix=${encodeURIComponent(suffix)}`;
       if (jobLine) loadUrl += `&jobLine=${encodeURIComponent(jobLine)}`;
     }
-    // No URL params = start fresh (blank state)
-    // Removed auto-load from localStorage - user must explicitly navigate to an SO/Quote
+
+    // Check for ?new=true - requires Quote/SO attachment gate
+    const isNewApp = searchParams.get('new') === 'true';
 
     if (!loadUrl) {
-      // No app to load - start fresh (Draft Application)
-      setLoadState('loaded');
+      if (isNewApp) {
+        // New application flow - show gate modal to require Quote/SO attachment
+        setIsNewAppGateOpen(true);
+        setLoadState('awaiting-selection');
+        return;
+      }
+      // No app to load and not new - redirect to home (shouldn't be here without context)
+      router.push('/console');
       return;
     }
 
@@ -498,6 +509,36 @@ export default function BeltConveyorCalculatorApp({
         setLoadState('error');
       });
   };
+
+  // Handle new application gate modal selection (Quote/SO attachment)
+  const handleNewAppGateSelect = (target: NewApplicationTarget) => {
+    setIsNewAppGateOpen(false);
+
+    // Build new URL with the selected Quote/SO context
+    const paramName = target.type === 'quote' ? 'quote' : 'so';
+    const params = new URLSearchParams();
+    params.set(paramName, String(target.base));
+    if (target.suffix !== null) {
+      params.set('suffix', String(target.suffix));
+    }
+    params.set('jobLine', String(target.jobLine));
+
+    // Navigate to the new URL (this will trigger the load effect)
+    const newUrl = `${pathname}?${params.toString()}`;
+    // Reset load state to idle so the effect can run again
+    setLoadState('idle');
+    router.replace(newUrl as '/console/belt');
+  };
+
+  // Handle cancel from new application gate modal
+  const handleNewAppGateCancel = () => {
+    setIsNewAppGateOpen(false);
+    // Navigate back to console home
+    router.push('/console');
+  };
+
+  // Get product name for the gate modal
+  const productNameForGate = productKey === 'magnetic_conveyor_v1' ? 'Magnetic Conveyor' : 'Belt Conveyor';
 
   // Build application_json from inputs with all application fields
   // NOTE: conveyorQty is passed separately since it's line-level metadata, not a calculator input
@@ -1322,6 +1363,12 @@ export default function BeltConveyorCalculatorApp({
           onClose={() => setJobLineSelectModal(null)}
         />
       )}
+      <NewApplicationGateModal
+        isOpen={isNewAppGateOpen}
+        onSelect={handleNewAppGateSelect}
+        onCancel={handleNewAppGateCancel}
+        productName={productNameForGate}
+      />
 
       {/* ============================================================ */}
       {/* DOCUMENT HEADER - Card with context info and mode selector   */}

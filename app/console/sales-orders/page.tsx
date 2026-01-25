@@ -69,6 +69,9 @@ export default function ConsoleSalesOrdersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Product missing error state (fail-closed routing)
+  const [productMissingSO, setProductMissingSO] = useState<SalesOrder | null>(null);
+
   // Filter state
   const [search, setSearch] = useState('');
   const [dateRange, setDateRange] = useState<DateRangeOption>('30');
@@ -136,18 +139,40 @@ export default function ConsoleSalesOrdersPage() {
 
   // Navigate to Application with sales order context
   // Uses product_href from the application's product_family for correct routing
+  // FAIL-CLOSED: Does NOT default to /console/belt when product missing
   const handleRowClick = (so: SalesOrder) => {
+    // Determine product route - NO FALLBACK
+    const productHref = (so as any).product_href;
+    const modelKey = (so as any).model_key as string | null;
+    const targetPath = productHref || (modelKey ? PRODUCT_TYPE_PATHS[modelKey] : null);
+
+    // Fail-closed: If no product can be resolved, show error instead of navigating
+    if (!targetPath) {
+      setProductMissingSO(so);
+      return;
+    }
+
+    // Clear any previous error
+    setProductMissingSO(null);
+
     const params = new URLSearchParams();
     params.set('so', String(so.base_number));
     if (so.suffix_line) {
       params.set('suffix', String(so.suffix_line));
     }
-    // Route to correct product UI based on application's product_family
-    // Falls back to model_key mapping if product_href not available
-    const productHref = (so as any).product_href;
-    const modelKey = (so as any).model_key as string | null;
-    const targetPath = productHref || (modelKey ? (PRODUCT_TYPE_PATHS[modelKey] || '/console/belt') : '/console/belt');
     router.push(`${targetPath}?${params.toString()}` as '/console/belt');
+  };
+
+  // Handle creating application for a sales order that's missing product
+  const handleCreateApplication = (so: SalesOrder) => {
+    // Navigate to new application page with SO context so user can select product
+    const params = new URLSearchParams();
+    params.set('linkTo', 'so');
+    params.set('base', String(so.base_number));
+    if (so.suffix_line) {
+      params.set('suffix', String(so.suffix_line));
+    }
+    router.push(`/console/applications/new?${params.toString()}`);
   };
 
   // Pagination
@@ -222,6 +247,50 @@ export default function ConsoleSalesOrdersPage() {
           </span>
         )}
       </div>
+
+      {/* Product Missing Error Banner - Fail-closed routing */}
+      {productMissingSO && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <svg
+              className="w-6 h-6 text-amber-500 flex-shrink-0 mt-0.5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+              />
+            </svg>
+            <div className="flex-1">
+              <h3 className="text-amber-800 font-medium">
+                No Product Associated
+              </h3>
+              <p className="text-amber-700 text-sm mt-1">
+                Sales Order <strong>SO{productMissingSO.base_number}</strong> does not have a product type set.
+                Create an application to select a product.
+              </p>
+              <div className="flex items-center gap-3 mt-3">
+                <button
+                  onClick={() => handleCreateApplication(productMissingSO)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-mc3-blue hover:bg-mc3-navy rounded-md transition-colors"
+                >
+                  Create Application
+                </button>
+                <button
+                  onClick={() => setProductMissingSO(null)}
+                  className="px-4 py-2 text-sm font-medium text-gray-600 hover:text-gray-800"
+                >
+                  Dismiss
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Content */}
       {loading ? (

@@ -14,6 +14,9 @@ interface ConsoleLayoutProps {
   children: React.ReactNode;
 }
 
+// Calculator routes where product switching is locked
+const CALCULATOR_ROUTES = ['/console/belt', '/console/magnetic'];
+
 export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -21,6 +24,11 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
 
   // Determine current product from pathname
   const currentProduct = PRODUCTS.find((p) => pathname.startsWith(p.href));
+
+  // Check if we're on a calculator route (product switching locked)
+  const isCalculatorRoute = CALCULATOR_ROUTES.some((route) =>
+    pathname.startsWith(route)
+  );
 
   const handleLogout = async () => {
     clearCachedRole();
@@ -31,6 +39,8 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
   };
 
   const handleProductChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    // Only allow product change if not on calculator route
+    if (isCalculatorRoute) return;
     const href = e.target.value;
     if (href) {
       router.push(href as '/console/belt');
@@ -59,21 +69,49 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
                 <MC3Logo size={90} />
               </Link>
 
-              {/* Product Selector */}
+              {/* Product Selector / Read-only Chip */}
               <div className="flex items-center gap-2">
                 <span className="text-mc3-mist/70 text-sm">Product:</span>
-                <select
-                  value={currentProduct?.href || ''}
-                  onChange={handleProductChange}
-                  className="bg-mc3-ink/30 text-white text-sm rounded px-3 py-1.5 border border-mc3-mist/20 focus:outline-none focus:ring-2 focus:ring-mc3-gold"
-                >
-                  {PRODUCTS.map((product) => (
-                    <option key={product.key} value={product.href}>
-                      {product.name}
-                      {product.status === 'beta' ? ' (Beta)' : ''}
-                    </option>
-                  ))}
-                </select>
+                {isCalculatorRoute && currentProduct ? (
+                  // Read-only chip when on calculator route (product locked)
+                  <div className="flex items-center gap-2 bg-mc3-ink/30 text-white text-sm rounded px-3 py-1.5 border border-mc3-mist/20">
+                    <span>{currentProduct.name}</span>
+                    {currentProduct.status === 'beta' && (
+                      <span className="text-xs bg-amber-500/30 text-amber-200 px-1.5 py-0.5 rounded">
+                        Beta
+                      </span>
+                    )}
+                    <span title="Product is locked for this application">
+                      <svg
+                        className="w-4 h-4 text-mc3-mist/50"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+                        />
+                      </svg>
+                    </span>
+                  </div>
+                ) : (
+                  // Dropdown selector when not on calculator route
+                  <select
+                    value={currentProduct?.href || ''}
+                    onChange={handleProductChange}
+                    className="bg-mc3-ink/30 text-white text-sm rounded px-3 py-1.5 border border-mc3-mist/20 focus:outline-none focus:ring-2 focus:ring-mc3-gold"
+                  >
+                    {PRODUCTS.map((product) => (
+                      <option key={product.key} value={product.href}>
+                        {product.name}
+                        {product.status === 'beta' ? ' (Beta)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </div>
 
