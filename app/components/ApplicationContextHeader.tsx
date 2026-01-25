@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 import RenameApplicationModal from './RenameApplicationModal';
+import TypedConfirmDeleteModal from './TypedConfirmDeleteModal';
 
 interface ApplicationContextHeaderProps {
   context: SaveTarget | null;
@@ -78,8 +79,13 @@ export default function ApplicationContextHeader({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [showSaveMenu, setShowSaveMenu] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [_canHardDelete, setCanHardDelete] = useState<boolean | null>(null);
+  const [_canDelete, setCanDelete] = useState<boolean | null>(null);
   const [isCheckingEligibility, setIsCheckingEligibility] = useState(false);
+  const [deleteLinkageInfo, setDeleteLinkageInfo] = useState<{
+    hasCommercialLinkage: boolean;
+    linked_to_quote: boolean;
+    linked_to_sales_order: boolean;
+  } | null>(null);
   const [isDeletingDraft, setIsDeletingDraft] = useState(false);
   // SO-specific delete eligibility (for draft SO that's linked to a Quote)
   const [soCanDelete, setSoCanDelete] = useState<boolean | null>(null);
@@ -93,7 +99,6 @@ export default function ApplicationContextHeader({
   const isFullyCalculated = calculationStatus === 'calculated' && !outputsStale;
   const isSavedApplication = !!loadedConfigurationId;
   const isDraftWithContext = !!context && !isSavedApplication;
-  const isQuoteContext = context?.type === 'quote';
 
   // Close save menu on click outside
   useEffect(() => {
@@ -106,7 +111,8 @@ export default function ApplicationContextHeader({
   // Fetch delete eligibility for applications
   useEffect(() => {
     if (!loadedConfigurationId) {
-      setCanHardDelete(null);
+      setCanDelete(null);
+      setDeleteLinkageInfo(null);
       return;
     }
     setIsCheckingEligibility(true);
@@ -114,12 +120,26 @@ export default function ApplicationContextHeader({
       .then(async (res) => {
         if (res.ok) {
           const data = await res.json();
-          setCanHardDelete(data.canHardDelete);
+          setCanDelete(data.canDelete);
+          // Store linkage info for confirmation dialog
+          if (data.linkageInfo) {
+            setDeleteLinkageInfo({
+              hasCommercialLinkage: data.hasCommercialLinkage,
+              linked_to_quote: data.linkageInfo.linked_to_quote,
+              linked_to_sales_order: data.linkageInfo.linked_to_sales_order,
+            });
+          } else {
+            setDeleteLinkageInfo(null);
+          }
         } else {
-          setCanHardDelete(false);
+          setCanDelete(false);
+          setDeleteLinkageInfo(null);
         }
       })
-      .catch(() => setCanHardDelete(false))
+      .catch(() => {
+        setCanDelete(false);
+        setDeleteLinkageInfo(null);
+      })
       .finally(() => setIsCheckingEligibility(false));
   }, [loadedConfigurationId]);
 
@@ -174,20 +194,20 @@ export default function ApplicationContextHeader({
   };
 
   const handleConfirmDelete = async () => {
-    if (!loadedConfigurationId || !context) return;
+    if (!loadedConfigurationId) return;
     setIsDeleting(true);
     setDeleteError(null);
     try {
-      const endpoint = context.type === 'quote'
-        ? `/api/applications/${loadedConfigurationId}/delete-quote-line`
-        : `/api/applications/${loadedConfigurationId}/delete-so-line`;
-      const response = await fetch(endpoint, { method: 'DELETE' });
+      // Use the main delete endpoint (always hard delete)
+      const response = await fetch(`/api/applications/${loadedConfigurationId}`, {
+        method: 'DELETE',
+      });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Failed to delete line');
+      if (!response.ok) throw new Error(data.error || 'Failed to delete application');
       setShowDeleteConfirm(false);
       if (onDeleteLine) onDeleteLine();
     } catch (error) {
-      setDeleteError(error instanceof Error ? error.message : 'Failed to delete line');
+      setDeleteError(error instanceof Error ? error.message : 'Failed to delete application');
     } finally {
       setIsDeleting(false);
     }
@@ -531,20 +551,20 @@ export default function ApplicationContextHeader({
         />
       )}
 
-      {/* Delete Line Confirmation Modal */}
-      {showDeleteConfirm && (
-        <ConfirmModal
-          title="Delete?"
-          message={`This will permanently delete the ${isQuoteContext ? 'Quote' : 'Sales Order'} line and its application data.`}
-          subMessage="This cannot be undone."
-          error={deleteError}
-          confirmLabel={isDeleting ? 'Deleting...' : 'Delete'}
-          confirmDestructive
-          onConfirm={handleConfirmDelete}
-          onCancel={() => setShowDeleteConfirm(false)}
-          disabled={isDeleting}
-        />
-      )}
+      {/* Delete Application Confirmation Modal (Typed Confirmation) */}
+      <TypedConfirmDeleteModal
+        isOpen={showDeleteConfirm}
+        onConfirm={handleConfirmDelete}
+        onCancel={() => setShowDeleteConfirm(false)}
+        applicationName={applicationName || refDisplay}
+        isDeleting={isDeleting}
+        error={deleteError}
+        hasLinkage={deleteLinkageInfo?.hasCommercialLinkage || false}
+        linkageInfo={deleteLinkageInfo ? {
+          linked_to_quote: deleteLinkageInfo.linked_to_quote,
+          linked_to_sales_order: deleteLinkageInfo.linked_to_sales_order,
+        } : undefined}
+      />
 
       {/* Delete Draft Confirmation Modal */}
       {showDeleteDraftConfirm && (

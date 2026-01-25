@@ -10,6 +10,7 @@ import { ScopeStatusBannerFromContext } from './ScopeStatusBanner';
 import { ScopeProvider, OutputGate, OutputDisabledBanner } from './ScopeContext';
 import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
 import NewApplicationGateModal, { NewApplicationTarget } from './NewApplicationGateModal';
+import DuplicateApplicationModal from './DuplicateApplicationModal';
 import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
@@ -106,6 +107,23 @@ export default function BeltConveyorCalculatorApp({
 
   // New Application Gate Modal (requires Quote/SO attachment before proceeding)
   const [isNewAppGateOpen, setIsNewAppGateOpen] = useState(false);
+
+  // Duplicate Application Modal (shown when 409 returned on save)
+  const [duplicateInfo, setDuplicateInfo] = useState<{
+    identity: {
+      reference_type: string;
+      reference_number: string;
+      reference_line: number;
+      slug: string;
+    };
+    existing_application_id: string | null;
+    existing_details: {
+      id: string;
+      created_at: string;
+      created_by: string | null;
+      updated_at: string;
+    } | null;
+  } | null>(null);
 
   // Draft Vault (local state until first save)
   const [draftVault, setDraftVault] = useState<DraftVault>({
@@ -537,6 +555,26 @@ export default function BeltConveyorCalculatorApp({
     router.push('/console');
   };
 
+  // Handle "Open Existing" from duplicate application modal
+  const handleOpenExistingApp = () => {
+    if (!duplicateInfo?.existing_application_id) {
+      // Edge case: no ID available, just close modal
+      setDuplicateInfo(null);
+      return;
+    }
+
+    // Navigate to the existing application
+    const appId = duplicateInfo.existing_application_id;
+    setDuplicateInfo(null);
+    router.push(`${pathname}?app=${encodeURIComponent(appId)}` as '/console/belt');
+  };
+
+  // Handle "Cancel" from duplicate application modal
+  const handleCancelDuplicate = () => {
+    // Close modal and stay on current form (no state changes)
+    setDuplicateInfo(null);
+  };
+
   // Get product name for the gate modal
   const productNameForGate = productKey === 'magnetic_conveyor_v1' ? 'Magnetic Conveyor' : 'Belt Conveyor';
 
@@ -944,11 +982,14 @@ export default function BeltConveyorCalculatorApp({
 
   // Handle Save button click
   const handleSave = async () => {
+    console.log('[DEBUG][handleSave] CALLED', { context, isDirty, loadedConfigurationId });
+
     // Mark that user has attempted explicit action - enables paint validation
     setHasAttemptedExplicitAction(true);
 
     // If no context (draft), open modal to select target
     if (!context) {
+      console.log('[DEBUG][handleSave] No context - opening SaveTargetModal');
       // Draft saves allowed without calculation (v1.21)
       setIsSaveTargetModalOpen(true);
       return;
@@ -956,6 +997,7 @@ export default function BeltConveyorCalculatorApp({
 
     // Context exists - save to linked Quote/SO
     if (!isDirty) {
+      console.log('[DEBUG][handleSave] Not dirty - showing toast');
       showToast('No changes to save');
       return;
     }
@@ -1002,13 +1044,31 @@ export default function BeltConveyorCalculatorApp({
         body: JSON.stringify(payload),
       });
 
+      console.log('[DEBUG][handleSave] Response status:', response.status, response.ok);
+
       if (!response.ok) {
         const raw = await response.text();
+        console.log('[DEBUG][handleSave] Response NOT OK, raw:', raw);
         let errorMessage = 'Failed to save';
         try {
           const parsed = JSON.parse(raw);
+          console.log('[DEBUG][handleSave] Parsed response:', parsed);
+
+          // Handle duplicate application (409)
+          if (response.status === 409 && parsed.code === 'APPLICATION_DUPLICATE') {
+            console.log('[DEBUG][handleSave] 409 DUPLICATE DETECTED - setting duplicateInfo');
+            setDuplicateInfo({
+              identity: parsed.identity,
+              existing_application_id: parsed.existing_application_id,
+              existing_details: parsed.existing_details,
+            });
+            setIsSaving(false);
+            return; // Exit early - modal will handle next steps
+          }
+
           errorMessage = parsed.error || parsed.message || raw || errorMessage;
-        } catch {
+        } catch (parseErr) {
+          console.log('[DEBUG][handleSave] Parse error:', parseErr);
           errorMessage = raw || errorMessage;
         }
         throw new Error(errorMessage);
@@ -1094,6 +1154,7 @@ export default function BeltConveyorCalculatorApp({
 
   // Handle selecting a target from the modal
   const handleSelectSaveTarget = async (target: SaveTarget) => {
+    console.log('[DEBUG][handleSelectSaveTarget] CALLED with target:', target);
     setIsSaveTargetModalOpen(false);
 
     // DEV logging
@@ -1157,13 +1218,33 @@ export default function BeltConveyorCalculatorApp({
         body: JSON.stringify(payload),
       });
 
+      console.log('[DEBUG][handleSelectSaveTarget] Response status:', response.status, response.ok);
+
       if (!response.ok) {
         const raw = await response.text();
+        console.log('[DEBUG][handleSelectSaveTarget] Response NOT OK, raw:', raw);
         let errorMessage = 'Failed to save';
         try {
           const parsed = JSON.parse(raw);
+          console.log('[DEBUG][handleSelectSaveTarget] Parsed response:', parsed);
+
+          // Handle duplicate application (409)
+          if (response.status === 409 && parsed.code === 'APPLICATION_DUPLICATE') {
+            console.log('[DEBUG][handleSelectSaveTarget] 409 DUPLICATE DETECTED - setting duplicateInfo');
+            setDuplicateInfo({
+              identity: parsed.identity,
+              existing_application_id: parsed.existing_application_id,
+              existing_details: parsed.existing_details,
+            });
+            setIsSaving(false);
+            // Revert context on duplicate (don't keep the target)
+            setContext(null);
+            return; // Exit early - modal will handle next steps
+          }
+
           errorMessage = parsed.error || parsed.message || raw || errorMessage;
-        } catch {
+        } catch (parseErr) {
+          console.log('[DEBUG][handleSelectSaveTarget] Parse error:', parseErr);
           errorMessage = raw || errorMessage;
         }
         throw new Error(errorMessage);
@@ -1369,6 +1450,15 @@ export default function BeltConveyorCalculatorApp({
         onCancel={handleNewAppGateCancel}
         productName={productNameForGate}
       />
+      {duplicateInfo && (
+        <DuplicateApplicationModal
+          isOpen={!!duplicateInfo}
+          onOpenExisting={handleOpenExistingApp}
+          onCancel={handleCancelDuplicate}
+          identity={duplicateInfo.identity}
+          existingDetails={duplicateInfo.existing_details}
+        />
+      )}
 
       {/* ============================================================ */}
       {/* DOCUMENT HEADER - Card with context info and mode selector   */}

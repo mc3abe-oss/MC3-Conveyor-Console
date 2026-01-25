@@ -37,6 +37,7 @@ interface SaveRequestBody {
   warnings_json?: any;
   change_note?: string;
   outputs_stale?: boolean;       // True if outputs exist but inputs have changed since calculation
+  existing_application_id?: string;  // If provided, this is an UPDATE to an existing application
 }
 
 /**
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
       warnings_json,
       change_note,
       outputs_stale = false,
+      existing_application_id,  // If provided, this is an UPDATE to an existing application
     } = body;
 
     // Validate required fields
@@ -173,46 +175,73 @@ export async function POST(request: NextRequest) {
     // Compute inputs hash for deduplication
     const inputsHash = hashCanonical(combinedInputs);
 
-    // Check if recipe with this slug already exists
-    const { data: existingRecipe, error: fetchError } = await supabase
-      .from('calc_recipes')
-      .select('id, inputs_hash, updated_at')
-      .eq('slug', slug)
-      .maybeSingle();
+    // Determine if this is an UPDATE (existing_application_id provided) or CREATE (new)
+    let existingRecipe: { id: string; inputs_hash: string; updated_at: string; slug: string; created_at: string; created_by_display: string | null } | null = null;
+    const isUpdate = !!existing_application_id;
 
-    if (fetchError) {
-      console.error('Error fetching existing recipe:', fetchError);
-      return NextResponse.json(
-        { error: 'Failed to check existing configuration', details: fetchError.message },
-        { status: 500 }
-      );
-    }
+    if (isUpdate) {
+      // UPDATE mode: Fetch existing record by ID
+      const { data: fetchedRecipe, error: fetchError } = await supabase
+        .from('calc_recipes')
+        .select('id, inputs_hash, updated_at, slug, created_at, created_by_display')
+        .eq('id', existing_application_id)
+        .maybeSingle();
 
-    // Check for duplicate - if hash matches, no update needed
-    if (existingRecipe && existingRecipe.inputs_hash === inputsHash) {
-      return NextResponse.json({
-        status: 'no_change',
-        message: 'No changes detected.',
-        // TOP-LEVEL applicationId for easy access
-        applicationId: existingRecipe.id,
-        recipe: {
-          id: existingRecipe.id,
-          slug,
-          updated_at: existingRecipe.updated_at,
-        },
-        // Include configuration and revision for frontend compatibility
-        configuration: {
-          id: existingRecipe.id,
-          reference_type,
-          reference_number: parsedAppCode.code,
-          reference_line: lineNumber,
-        },
-        revision: {
-          id: existingRecipe.id,
-          revision_number: 1,
-        },
-      });
+      if (fetchError) {
+        console.error('Error fetching existing recipe:', fetchError);
+        return NextResponse.json(
+          { error: 'Failed to fetch existing application', details: fetchError.message },
+          { status: 500 }
+        );
+      }
+
+      if (!fetchedRecipe) {
+        return NextResponse.json(
+          { error: 'Application not found', details: `No application found with ID: ${existing_application_id}` },
+          { status: 404 }
+        );
+      }
+
+      // Verify the slug matches (can't change application identity)
+      if (fetchedRecipe.slug !== slug) {
+        return NextResponse.json(
+          {
+            error: 'Application identity mismatch',
+            details: 'Cannot change the Quote/SO linkage of an existing application. The reference type, number, or line has changed.',
+            expected_slug: fetchedRecipe.slug,
+            received_slug: slug,
+          },
+          { status: 400 }
+        );
+      }
+
+      existingRecipe = fetchedRecipe;
+
+      // Check for duplicate - if hash matches, no update needed
+      if (existingRecipe.inputs_hash === inputsHash) {
+        return NextResponse.json({
+          status: 'no_change',
+          message: 'No changes detected.',
+          applicationId: existingRecipe.id,
+          recipe: {
+            id: existingRecipe.id,
+            slug,
+            updated_at: existingRecipe.updated_at,
+          },
+          configuration: {
+            id: existingRecipe.id,
+            reference_type,
+            reference_number: parsedAppCode.code,
+            reference_line: lineNumber,
+          },
+          revision: {
+            id: existingRecipe.id,
+            revision_number: 1,
+          },
+        });
+      }
     }
+    // CREATE mode: No pre-query. We'll attempt INSERT and handle duplicate via constraint violation.
 
     // Build recipe name for display
     const recipeName = title || `${reference_type} ${parsedAppCode.code} Line ${lineNumber}`;
@@ -326,12 +355,14 @@ export async function POST(request: NextRequest) {
       recipeRow.created_by = userId;
 
       // Fetch user info to build display name
+      let creatorDisplay: string | null = null;
       if (supabaseAdmin) {
         try {
           const { data: userData } = await supabaseAdmin.auth.admin.getUserById(userId);
           if (userData?.user) {
             const metadata = userData.user.user_metadata as { first_name?: string; last_name?: string } | undefined;
-            recipeRow.created_by_display = formatCreatorDisplay(userData.user.email, metadata);
+            creatorDisplay = formatCreatorDisplay(userData.user.email, metadata);
+            recipeRow.created_by_display = creatorDisplay;
           }
         } catch (err) {
           console.error('Failed to fetch user info for creator display:', err);
@@ -347,6 +378,38 @@ export async function POST(request: NextRequest) {
 
       recipe = result.data;
       recipeError = result.error;
+
+      // Handle unique constraint violation (duplicate application)
+      // Postgres error code 23505 = unique_violation
+      if (recipeError && recipeError.code === '23505') {
+        // Fetch the existing record to return details
+        const { data: conflictingRecipe } = await supabase
+          .from('calc_recipes')
+          .select('id, slug, created_at, created_by_display, updated_at')
+          .eq('slug', slug)
+          .maybeSingle();
+
+        return NextResponse.json(
+          {
+            code: 'APPLICATION_DUPLICATE',
+            message: `An application for ${reference_type} ${parsedAppCode.code} Line ${lineNumber} already exists.`,
+            existing_application_id: conflictingRecipe?.id || null,
+            identity: {
+              reference_type,
+              reference_number: parsedAppCode.code,
+              reference_line: lineNumber,
+              slug,
+            },
+            existing_details: conflictingRecipe ? {
+              id: conflictingRecipe.id,
+              created_at: conflictingRecipe.created_at,
+              created_by: conflictingRecipe.created_by_display,
+              updated_at: conflictingRecipe.updated_at,
+            } : null,
+          },
+          { status: 409 }
+        );
+      }
     }
 
     if (recipeError) {

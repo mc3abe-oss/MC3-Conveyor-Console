@@ -2,14 +2,11 @@
  * GET /api/applications/:id/delete-eligibility
  *
  * Check if an application can be hard deleted.
- * Returns { canHardDelete: boolean, reasons: string[] }
+ * Returns { canDelete: boolean, hasLinkage: boolean, linkageInfo: {...} }
  *
- * Hard delete is allowed ONLY when ALL conditions are met:
- * 1. Application has NO quote_id (not linked to a Quote)
- * 2. Application has NO sales_order_id (not linked to a Sales Order)
- * 3. Application status is DRAFT (not FINALIZED or SO_CREATED)
- *
- * This is the SERVER TRUTH for delete eligibility.
+ * ALWAYS allows delete (canDelete: true) unless already deleted.
+ * Commercial linkage (Quote/SO) does NOT prevent deletion - user can always delete.
+ * Returns linkage info for UI to show in confirmation dialog.
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -41,44 +38,32 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
     // Already deleted?
     if (application.deleted_at || application.is_active === false) {
       return NextResponse.json({
-        canHardDelete: false,
-        reasons: ['already_deleted'],
+        canDelete: false,
+        canHardDelete: false, // Backward compat
+        reason: 'already_deleted',
       });
     }
 
-    const reasons: string[] = [];
-
-    // Check for Quote linkage (DB column)
-    if (application.quote_id) {
-      reasons.push('linked_to_quote');
-    }
-
-    // Check for Sales Order linkage (DB column)
-    if (application.sales_order_id) {
-      reasons.push('linked_to_sales_order');
-    }
-
-    // Check application status (v1.47)
+    // Determine linkage for UI display (does NOT block delete)
+    const hasQuoteLinkage = !!application.quote_id;
+    const hasSalesOrderLinkage = !!application.sales_order_id;
+    const hasCommercialLinkage = hasQuoteLinkage || hasSalesOrderLinkage;
     const status = application.application_status || 'DRAFT';
-    if (status === 'FINALIZED') {
-      reasons.push('status_finalized');
-    } else if (status === 'SO_CREATED') {
-      reasons.push('status_so_created');
-    }
 
-    // Can hard delete only if no linkage AND status is DRAFT
-    const canHardDelete = reasons.length === 0;
-
+    // ALWAYS allow delete regardless of linkage or status
     return NextResponse.json({
-      canHardDelete,
-      reasons,
-      application_status: status,
-      // Debug info
-      debug: {
+      canDelete: true,
+      canHardDelete: true, // Backward compat
+      // Linkage info for UI confirmation dialog
+      hasCommercialLinkage,
+      linkageInfo: {
         quote_id: application.quote_id || null,
         sales_order_id: application.sales_order_id || null,
-        application_status: status,
+        linked_to_quote: hasQuoteLinkage,
+        linked_to_sales_order: hasSalesOrderLinkage,
       },
+      application_status: status,
+      application_name: application.name,
     });
   } catch (error) {
     console.error('Delete eligibility check error:', error);

@@ -3,12 +3,10 @@
  * Fetch a single application by ID
  *
  * DELETE /api/applications/:id
- * Delete an application
- * - Hard delete only allowed if NO commercial linkage (not linked to Quote/SO)
- * - If linked, returns 409 with message to use deactivate instead
- *
- * Query params for DELETE:
- *   - mode: 'hard' (default) - only works if not linked to Quote/SO
+ * Delete an application (HARD DELETE)
+ * - Always performs hard delete regardless of commercial linkage
+ * - Deletes all vault items (specs, notes, attachments, scope_lines) first
+ * - No soft delete - once deleted, gone forever
  */
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -72,24 +70,10 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       );
     }
 
-    // Check for commercial linkage via DB FK columns (SERVER TRUTH)
-    const hasCommercialLinkage = !!(application.quote_id || application.sales_order_id);
+    // Note: Commercial linkage check removed - always allow hard delete (v1.x FIRE requirement)
+    // The application will be permanently deleted regardless of Quote/SO linkage
 
-    // Hard delete requested - only allowed if no commercial linkage
-    if (hasCommercialLinkage) {
-      const linkageType = application.quote_id ? 'Quote' : 'Sales Order';
-      return NextResponse.json(
-        {
-          error: `Application is linked to a ${linkageType} and cannot be deleted. Use deactivate instead.`,
-          hasCommercialLinkage: true,
-          quote_id: application.quote_id || null,
-          sales_order_id: application.sales_order_id || null,
-        },
-        { status: 409 }
-      );
-    }
-
-    // Check for vault references (additional safety check for hard delete)
+    // Check for vault references to clean up before delete
     const [specsResult, notesResult, attachmentsResult, scopeLinesResult] = await Promise.all([
       supabase.from('specs').select('id').eq('application_id', id).limit(1),
       supabase.from('notes').select('id').eq('application_id', id).limit(1),
