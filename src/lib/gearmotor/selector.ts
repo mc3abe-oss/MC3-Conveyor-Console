@@ -15,7 +15,7 @@
  * 3. Smallest motor HP
  */
 
-import { supabase, isSupabaseConfigured } from '../supabase/client';
+import { supabase, isSupabaseConfigured } from '../supabase/anon';
 
 // ============================================================================
 // TYPES

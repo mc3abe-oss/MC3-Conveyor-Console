@@ -10,7 +10,7 @@
  *   - "SK 2SI50 - 140TC - 182T/4"
  */
 
-import { supabase, isSupabaseConfigured } from '../supabase/client';
+import { supabase, isSupabaseConfigured } from '../supabase/anon';
 
 // ============================================================================
 // MOUNTING VARIANT CONFIGURATION
