@@ -6,6 +6,11 @@
  * - Public routes must be EXPLICITLY allowlisted
  * - Errors redirect to login (never allow through)
  * - Dev bypass ONLY when AUTH_BYPASS_DEV=true AND NODE_ENV=development
+ *
+ * SECURITY NOTE:
+ * All routes are protected by default.
+ * Only /login, /signup, /forgot-password, /reset-password
+ * and /api/auth/* are public.
  */
 
 import { type NextRequest, NextResponse } from 'next/server';

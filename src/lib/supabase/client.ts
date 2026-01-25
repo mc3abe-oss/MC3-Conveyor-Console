@@ -1,15 +1,17 @@
 /**
- * Supabase Client (Legacy)
+ * Supabase Admin Client (Server-Only)
+ *
+ * SECURITY: This module uses the service role key and MUST NEVER be imported
+ * into client-side code. The 'server-only' import enforces this at build time.
  *
  * NOTE: For new code, prefer using:
  * - src/lib/supabase/browser.ts for client components
  * - src/lib/supabase/server.ts for server components and API routes
  *
- * This file is kept for backward compatibility with existing API routes
- * that haven't been migrated yet. The `supabase` export here does NOT
- * have session context - use createClient from server.ts for auth-aware queries.
+ * The supabaseAdmin client bypasses RLS - use only in API routes for admin operations.
  */
 
+import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
