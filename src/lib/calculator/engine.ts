@@ -25,6 +25,37 @@ import {
 } from '../../models/belt_conveyor_v1';
 
 // ============================================================================
+// TELEMETRY HOOKS
+// ============================================================================
+
+/**
+ * Optional telemetry callbacks for observing calculation events.
+ * These are called by the engine but do not affect control flow.
+ */
+export interface CalcTelemetryHooks {
+  onCalcStart?: (calcKey: string, context: { productKey?: string; modelKey?: string }) => void;
+  onCalcSuccess?: (calcKey: string, durationMs: number, context: { productKey?: string; modelKey?: string }) => void;
+  onCalcError?: (calcKey: string, error: string, context: { productKey?: string; modelKey?: string; stack?: string }) => void;
+}
+
+let telemetryHooks: CalcTelemetryHooks = {};
+
+/**
+ * Set telemetry hooks for calculation events.
+ * Call this from client-side code to wire up telemetry.
+ */
+export function setCalcTelemetryHooks(hooks: CalcTelemetryHooks): void {
+  telemetryHooks = hooks;
+}
+
+/**
+ * Clear telemetry hooks.
+ */
+export function clearCalcTelemetryHooks(): void {
+  telemetryHooks = {};
+}
+
+// ============================================================================
 // INPUT NORMALIZATION
 // ============================================================================
 
@@ -72,51 +103,75 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
     productKey,
   } = request;
 
-  // Normalize inputs for backward compatibility (legacy field names)
-  const inputs = normalizeInputs(rawInputs);
+  const calcKey = `calc_${productKey || 'default'}`;
+  const telemetryContext = { productKey, modelKey: MODEL_KEY };
+  const startTime = Date.now();
 
-  // Merge default parameters with any overrides
-  // Use BeltConveyorParameters for bed-type-specific COF defaults
-  const parameters: BeltConveyorParameters = {
-    ...DEFAULT_PARAMETERS,
-    ...parameterOverrides,
-  };
+  // Emit calc start telemetry
+  telemetryHooks.onCalcStart?.(calcKey, telemetryContext);
 
-  // Step 1: Validate inputs and parameters
-  // Pass productKey for product-scoped validation (e.g., skip belt validation for magnetic)
-  const { errors, warnings } = validate(inputs, parameters, productKey);
+  try {
+    // Normalize inputs for backward compatibility (legacy field names)
+    const inputs = normalizeInputs(rawInputs);
 
-  // Step 2: Execute calculations (even with errors)
-  // The formulas use NaN for missing values and propagate gracefully.
-  // This allows users to see partial/calculated values while fixing errors.
-  const outputs = calculate(inputs, parameters);
+    // Merge default parameters with any overrides
+    // Use BeltConveyorParameters for bed-type-specific COF defaults
+    const parameters: BeltConveyorParameters = {
+      ...DEFAULT_PARAMETERS,
+      ...parameterOverrides,
+    };
 
-  // Step 3: Return result with both outputs and any errors/warnings
-  if (errors.length > 0) {
+    // Step 1: Validate inputs and parameters
+    // Pass productKey for product-scoped validation (e.g., skip belt validation for magnetic)
+    const { errors, warnings } = validate(inputs, parameters, productKey);
+
+    // Step 2: Execute calculations (even with errors)
+    // The formulas use NaN for missing values and propagate gracefully.
+    // This allows users to see partial/calculated values while fixing errors.
+    const outputs = calculate(inputs, parameters);
+
+    const durationMs = Date.now() - startTime;
+
+    // Step 3: Return result with both outputs and any errors/warnings
+    if (errors.length > 0) {
+      // Emit error telemetry for validation failures
+      telemetryHooks.onCalcError?.(calcKey, `Validation failed: ${errors.length} error(s)`, telemetryContext);
+
+      return {
+        success: false,
+        outputs, // Include outputs even on failure for partial results
+        errors,
+        warnings,
+        metadata: {
+          model_version_id,
+          calculated_at: new Date().toISOString(),
+          model_key: MODEL_KEY,
+        },
+      };
+    }
+
+    // Emit success telemetry
+    telemetryHooks.onCalcSuccess?.(calcKey, durationMs, telemetryContext);
+
+    // Step 4: Return successful result
     return {
-      success: false,
-      outputs, // Include outputs even on failure for partial results
-      errors,
-      warnings,
+      success: true,
+      outputs,
+      warnings: warnings.length > 0 ? warnings : undefined,
       metadata: {
         model_version_id,
         calculated_at: new Date().toISOString(),
         model_key: MODEL_KEY,
       },
     };
-  }
+  } catch (error) {
+    // Emit error telemetry for exceptions
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    telemetryHooks.onCalcError?.(calcKey, errorMessage, { ...telemetryContext, stack: errorStack });
 
-  // Step 4: Return successful result
-  return {
-    success: true,
-    outputs,
-    warnings: warnings.length > 0 ? warnings : undefined,
-    metadata: {
-      model_version_id,
-      calculated_at: new Date().toISOString(),
-      model_key: MODEL_KEY,
-    },
-  };
+    throw error;
+  }
 }
 
 /**

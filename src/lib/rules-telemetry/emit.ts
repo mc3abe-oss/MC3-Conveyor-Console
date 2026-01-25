@@ -11,6 +11,23 @@ import { RuleEvent, RuleEmitContext, RuleSeverity } from './types';
 import { addEvent, isEnabled } from './store';
 import { generateRuleId, registerRule, createRegistryEntry } from './registry';
 
+// Lazy import for telemetry client to avoid circular dependencies
+let telemetryClient: { trackRuleFired: (rule_id: string, severity: RuleSeverity, message: string, context?: Record<string, string | undefined>) => void } | null = null;
+
+function getTelemetryClient() {
+  if (telemetryClient === null && typeof window !== 'undefined') {
+    try {
+      // Dynamic import to bridge to main telemetry
+      const mod = require('../telemetry/client');
+      telemetryClient = mod.telemetry;
+    } catch {
+      // Telemetry module not available, that's okay
+      telemetryClient = { trackRuleFired: () => {} };
+    }
+  }
+  return telemetryClient;
+}
+
 /**
  * Generate a unique event ID.
  */
@@ -52,6 +69,14 @@ export function emitRuleEvent(
   }));
 
   addEvent(event);
+
+  // Bridge to main telemetry system
+  const client = getTelemetryClient();
+  if (client) {
+    client.trackRuleFired(ruleId, severity, message, {
+      product_key: context.product_key,
+    });
+  }
 }
 
 /**
