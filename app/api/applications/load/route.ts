@@ -150,21 +150,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Filter by suffix if specified (handle null vs undefined in JSONB)
-    let filteredApps = apps;
-    if (suffix !== null) {
-      const suffixNum = parseInt(suffix, 10);
-      filteredApps = apps.filter(app => {
-        const appSuffix = app.inputs?._config?.reference_suffix;
-        if (suffix) {
-          // Looking for specific suffix
-          return appSuffix === suffixNum || appSuffix === suffix;
-        } else {
-          // Looking for no suffix (null/undefined)
-          return appSuffix === null || appSuffix === undefined;
-        }
-      });
-    }
+    // ALWAYS filter by suffix - null/empty means "no suffix", not "any suffix"
+    const suffixNum = suffix ? parseInt(suffix, 10) : null;
+    const filteredApps = apps.filter(app => {
+      const appSuffix = app.inputs?._config?.reference_suffix;
+      if (suffix) {
+        // Looking for specific suffix
+        return appSuffix === suffixNum || appSuffix === suffix;
+      } else {
+        // Looking for no suffix (null/undefined)
+        // This prevents Q12345.2 from matching when searching for Q12345
+        return appSuffix === null || appSuffix === undefined;
+      }
+    });
 
     if (filteredApps.length === 0) {
       const refDisplay = referenceType === 'QUOTE'

@@ -41,18 +41,60 @@ export default function NewApplicationGateModal({
     e.preventDefault();
     setError(null);
 
-    // Validate base number
-    const base = parseInt(baseNumber, 10);
-    if (isNaN(base) || base <= 0) {
-      setError('Please enter a valid base number');
-      return;
+    // Normalize and parse the base number input
+    // Supports both "12345" and "12345.2" formats
+    const trimmedBase = baseNumber.trim();
+    let base: number;
+    let parsedSuffixFromBase: number | null = null;
+
+    if (trimmedBase.includes('.')) {
+      // User entered dotted format like "12345.2"
+      const parts = trimmedBase.split('.');
+      if (parts.length !== 2) {
+        setError('Invalid format. Use digits or digits.suffix (e.g., 12345 or 12345.2)');
+        return;
+      }
+      const [basePart, suffixPart] = parts;
+
+      base = parseInt(basePart, 10);
+      if (isNaN(base) || base <= 0) {
+        setError('Please enter a valid base number');
+        return;
+      }
+
+      // Parse suffix from the dotted format
+      parsedSuffixFromBase = parseInt(suffixPart, 10);
+      if (isNaN(parsedSuffixFromBase) || parsedSuffixFromBase < 1) {
+        setError('Suffix must be a positive number (e.g., .1, .2)');
+        return;
+      }
+    } else {
+      // Plain base number
+      base = parseInt(trimmedBase, 10);
+      if (isNaN(base) || base <= 0) {
+        setError('Please enter a valid base number');
+        return;
+      }
     }
 
-    // Parse optional suffix
-    const suffix = suffixNumber.trim() ? parseInt(suffixNumber, 10) : null;
-    if (suffixNumber.trim() && (isNaN(suffix as number) || (suffix as number) < 0)) {
-      setError('Please enter a valid suffix number');
-      return;
+    // Determine final suffix:
+    // - If suffix field is filled, use it (explicit override)
+    // - Else if base number had .X format, use that
+    // - Else null (no suffix)
+    let suffix: number | null = null;
+    if (suffixNumber.trim()) {
+      suffix = parseInt(suffixNumber, 10);
+      if (isNaN(suffix) || suffix < 0) {
+        setError('Please enter a valid suffix number');
+        return;
+      }
+      // If both dotted format and suffix field have values, warn if they conflict
+      if (parsedSuffixFromBase !== null && parsedSuffixFromBase !== suffix) {
+        setError(`Suffix mismatch: number field has .${parsedSuffixFromBase} but suffix field has ${suffix}. Please use one format.`);
+        return;
+      }
+    } else if (parsedSuffixFromBase !== null) {
+      suffix = parsedSuffixFromBase;
     }
 
     // Parse job line
@@ -148,7 +190,7 @@ export default function NewApplicationGateModal({
                   id="base-number"
                   value={baseNumber}
                   onChange={(e) => setBaseNumber(e.target.value)}
-                  placeholder={targetType === 'quote' ? 'e.g., 62633' : 'e.g., 12345'}
+                  placeholder={targetType === 'quote' ? 'e.g., 62633 or 62633.2' : 'e.g., 12345 or 12345.2'}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-mc3-blue focus:border-mc3-blue"
                   autoFocus
                 />

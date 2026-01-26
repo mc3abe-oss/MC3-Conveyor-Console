@@ -108,6 +108,9 @@ export default function BeltConveyorCalculatorApp({
   // New Application Gate Modal (requires Quote/SO attachment before proceeding)
   const [isNewAppGateOpen, setIsNewAppGateOpen] = useState(false);
 
+  // Gate navigation pending: prevents load effect from reopening modal during async router.replace
+  const gateNavPendingRef = useRef(false);
+
   // Duplicate Application Modal (shown when 409 returned on save)
   const [duplicateInfo, setDuplicateInfo] = useState<{
     identity: {
@@ -348,6 +351,12 @@ export default function BeltConveyorCalculatorApp({
 
     if (!loadUrl) {
       if (isNewApp) {
+        // If gate navigation is pending (user clicked Continue but URL hasn't updated yet),
+        // do NOT reopen the modal - wait for URL to update
+        if (gateNavPendingRef.current) {
+          console.log('[Load] Gate navigation pending, skipping modal reopen');
+          return;
+        }
         // New application flow - show gate modal to require Quote/SO attachment
         setIsNewAppGateOpen(true);
         setLoadState('awaiting-selection');
@@ -356,6 +365,12 @@ export default function BeltConveyorCalculatorApp({
       // No app to load and not new - redirect to home (shouldn't be here without context)
       router.push('/console');
       return;
+    }
+
+    // If we have a loadUrl and gate navigation was pending, clear the flag
+    if (gateNavPendingRef.current) {
+      console.log('[Load] URL updated after gate navigation, proceeding to load');
+      gateNavPendingRef.current = false;
     }
 
     // Load the application
@@ -479,6 +494,18 @@ export default function BeltConveyorCalculatorApp({
       return;
     }
 
+    // Handle gate navigation completion: URL changed after user selected target in gate modal
+    if (gateNavPendingRef.current && loadState === 'awaiting-selection') {
+      // Check if URL now has quote/so params (meaning navigation completed)
+      if (currentQuote || currentSo) {
+        console.log('[Load] Gate navigation completed, URL updated. Triggering load.');
+        gateNavPendingRef.current = false;
+        setLoadState('idle'); // This will trigger the main load effect
+        setLastLoadParams(currentParams);
+        return;
+      }
+    }
+
     if (lastLoadParams !== null && lastLoadParams !== currentParams && loadState === 'loaded') {
       console.log('[Load] URL params changed, resetting to reload new application');
       // DEV: LOADED_APP_ID_RESET
@@ -497,7 +524,7 @@ export default function BeltConveyorCalculatorApp({
       setInputs(null);
     }
     setLastLoadParams(currentParams);
-  }, [currentParams, lastLoadParams, loadState]);
+  }, [currentParams, lastLoadParams, loadState, currentQuote, currentSo]);
 
   // Handle job line selection
   const handleJobLineSelect = (selectedJobLine: number) => {
@@ -529,8 +556,46 @@ export default function BeltConveyorCalculatorApp({
   };
 
   // Handle new application gate modal selection (Quote/SO attachment)
-  const handleNewAppGateSelect = (target: NewApplicationTarget) => {
+  const handleNewAppGateSelect = async (target: NewApplicationTarget) => {
+    // Close modal immediately
     setIsNewAppGateOpen(false);
+
+    // Build reference info for exists check
+    const referenceType = target.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
+    const referenceNumber = target.suffix !== null
+      ? `${target.base}.${target.suffix}`
+      : String(target.base);
+
+    // Check if application already exists BEFORE navigating
+    try {
+      const existsUrl = `/api/applications/exists?reference_type=${encodeURIComponent(referenceType)}&reference_number=${encodeURIComponent(referenceNumber)}&job_line=${encodeURIComponent(String(target.jobLine))}`;
+      const existsRes = await fetch(existsUrl);
+      const existsData = await existsRes.json();
+
+      if (existsData.exists) {
+        // Application already exists - show duplicate modal
+        console.log('[Gate] Duplicate application found:', existsData);
+        setDuplicateInfo({
+          identity: {
+            reference_type: referenceType,
+            reference_number: referenceNumber,
+            reference_line: target.jobLine,
+            slug: `config:${referenceType.toLowerCase()}:${referenceNumber}:${target.jobLine}`,
+          },
+          existing_application_id: existsData.existing_application_id,
+          existing_details: existsData.existing_details,
+        });
+        // Stay in awaiting-selection state, don't navigate
+        return;
+      }
+    } catch (err) {
+      console.error('[Gate] Error checking for existing application:', err);
+      // On error, proceed with navigation (will fail later if duplicate)
+    }
+
+    // No duplicate found - proceed with navigation
+    // Set pending flag to prevent load effect from reopening modal
+    gateNavPendingRef.current = true;
 
     // Build new URL with the selected Quote/SO context
     const paramName = target.type === 'quote' ? 'quote' : 'so';
@@ -541,10 +606,9 @@ export default function BeltConveyorCalculatorApp({
     }
     params.set('jobLine', String(target.jobLine));
 
-    // Navigate to the new URL (this will trigger the load effect)
+    // Navigate to the new URL (this will trigger the load effect via URL change)
     const newUrl = `${pathname}?${params.toString()}`;
-    // Reset load state to idle so the effect can run again
-    setLoadState('idle');
+    // DON'T call setLoadState('idle') here - let URL change trigger it
     router.replace(newUrl as '/console/belt');
   };
 
@@ -566,13 +630,19 @@ export default function BeltConveyorCalculatorApp({
     // Navigate to the existing application
     const appId = duplicateInfo.existing_application_id;
     setDuplicateInfo(null);
+    // Reset load state to idle so the load effect runs after navigation
+    setLoadState('idle');
     router.push(`${pathname}?app=${encodeURIComponent(appId)}` as '/console/belt');
   };
 
   // Handle "Cancel" from duplicate application modal
   const handleCancelDuplicate = () => {
-    // Close modal and stay on current form (no state changes)
+    // Close duplicate modal and reopen gate modal to let user try different reference
     setDuplicateInfo(null);
+    // Only reopen gate modal if we're still in the new application flow
+    if (searchParams.get('new') === 'true') {
+      setIsNewAppGateOpen(true);
+    }
   };
 
   // Get product name for the gate modal
