@@ -3,7 +3,6 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import CalculatorForm from './CalculatorForm';
-import CalculationResults from './CalculationResults';
 import DesignLogicPanel from './DesignLogicPanel';
 import ApplicationContextHeader from './ApplicationContextHeader';
 import { ScopeStatusBannerFromContext } from './ScopeStatusBanner';
@@ -11,7 +10,6 @@ import { ScopeProvider, OutputGate, OutputDisabledBanner } from './ScopeContext'
 import SaveTargetModal, { SaveTarget } from './SaveTargetModal';
 import NewApplicationGateModal, { NewApplicationTarget } from './NewApplicationGateModal';
 import DuplicateApplicationModal from './DuplicateApplicationModal';
-import InputEcho from './InputEcho';
 import VaultTab, { DraftVault } from './VaultTab';
 import JobLineSelectModal from './JobLineSelectModal';
 import MobileBottomActionBar from './MobileBottomActionBar';
@@ -20,6 +18,8 @@ import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInp
 import { buildOutputsV2, OutputsV2 } from '../../src/models/sliderbed_v1/outputs_v2';
 import { OutputsV2Tabs } from './outputs_v2';
 import CommercialScopeOutput from './CommercialScopeOutput';
+import { MagneticOutputsTabs } from './outputs/magnetic';
+import { BeltOutputsTabs } from './outputs/belt';
 import { useCurrentUserRole } from '../hooks/useCurrentUserRole';
 import { CATALOG_KEYS } from '../../src/lib/catalogs';
 import { payloadsEqual } from '../../src/lib/payload-compare';
@@ -1779,18 +1779,27 @@ export default function BeltConveyorCalculatorApp({
             const hasResults = result && calculationStatus === 'calculated';
 
             if (hasResults) {
-              return (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                  {/* Main Results - Takes 2 columns */}
-                  <div className="lg:col-span-2">
-                    <CalculationResults result={result} inputs={inputs ?? undefined} />
-                  </div>
+              // Render product-specific outputs based on productKey
+              if (productKey === 'magnetic_conveyor_v1') {
+                // Magnetic conveyor uses dedicated output tabs
+                return (
+                  <MagneticOutputsTabs
+                    inputs={inputs as unknown as Record<string, unknown>}
+                    outputs={result.outputs as unknown as Record<string, unknown>}
+                    warnings={result.warnings as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
+                    errors={result.errors as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
+                  />
+                );
+              }
 
-                  {/* Input Echo - Summary of key inputs */}
-                  <div className="lg:col-span-1">
-                    <InputEcho inputs={inputs} outputs={result.outputs} />
-                  </div>
-                </div>
+              // Belt conveyor (default) uses dedicated output tabs
+              return (
+                <BeltOutputsTabs
+                  inputs={inputs as unknown as Record<string, unknown>}
+                  outputs={result.outputs as unknown as Record<string, unknown>}
+                  warnings={result.warnings as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
+                  errors={result.errors as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
+                />
               );
             }
 
