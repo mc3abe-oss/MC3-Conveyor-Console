@@ -413,7 +413,26 @@ export default function BeltConveyorCalculatorApp({
                 return;
               }
             }
-            // SO not found (deleted or doesn't exist) - redirect to SO list
+            // SO not found - check if we're in new app flow
+            if (isNewApp) {
+              // New app flow: set up blank context without existing SO record
+              // The SO will be created when the application is saved
+              const parsedJobLine = jobLine ? parseInt(jobLine, 10) : 1;
+              const parsedSuffix = suffix ? parseInt(suffix, 10) : null;
+              setContext({
+                type: 'sales_order',
+                id: undefined as any, // Will be created on save
+                base: parseInt(soBase, 10),
+                line: parsedSuffix,
+                jobLine: parsedJobLine,
+                quantity: 1,
+                customer_name: undefined,
+              });
+              setLoadState('loaded');
+              showToast(`New application for SO${soBase}. Fill in details and save.`);
+              return;
+            }
+            // Not new app flow - redirect to SO list
             console.log('[Load] SO not found, redirecting to sales orders list');
             showToast(`Sales Order ${soBase} not found.`);
             router.push('/console/sales-orders');
@@ -444,7 +463,26 @@ export default function BeltConveyorCalculatorApp({
                 return;
               }
             }
-            // Quote not found (deleted or doesn't exist) - redirect to quotes list
+            // Quote not found - check if we're in new app flow
+            if (isNewApp) {
+              // New app flow: set up blank context without existing Quote record
+              // The Quote will be created when the application is saved
+              const parsedJobLine = jobLine ? parseInt(jobLine, 10) : 1;
+              const parsedSuffix = suffix ? parseInt(suffix, 10) : null;
+              setContext({
+                type: 'quote',
+                id: undefined as any, // Will be created on save
+                base: parseInt(quoteBase, 10),
+                line: parsedSuffix,
+                jobLine: parsedJobLine,
+                quantity: 1,
+                customer_name: undefined,
+              });
+              setLoadState('loaded');
+              showToast(`New application for Q${quoteBase}. Fill in details and save.`);
+              return;
+            }
+            // Not new app flow - redirect to quotes list
             console.log('[Load] Quote not found, redirecting to quotes list');
             showToast(`Quote ${quoteBase} not found.`);
             router.push('/console/quotes');
@@ -605,6 +643,7 @@ export default function BeltConveyorCalculatorApp({
       params.set('suffix', String(target.suffix));
     }
     params.set('jobLine', String(target.jobLine));
+    params.set('new', 'true');  // Preserve new app context for load effect
 
     // Navigate to the new URL (this will trigger the load effect via URL change)
     const newUrl = `${pathname}?${params.toString()}`;
