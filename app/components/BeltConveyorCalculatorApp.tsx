@@ -26,6 +26,7 @@ import { payloadsEqual } from '../../src/lib/payload-compare';
 import { createClient } from '../../src/lib/supabase/browser';
 import { stripSoContextFromSearchParams } from '../../src/lib/strip-so-context';
 import { ProductKey } from '../../src/lib/products';
+import { getProduct } from '../../src/products';
 
 type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'commercial_scope' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
@@ -245,10 +246,39 @@ export default function BeltConveyorCalculatorApp({
       mountingStyle,
       inputsData.output_shaft_option
     );
-    const normalizedInputs = {
+    let normalizedInputs = {
       ...inputsData,
       output_shaft_option: normalizedOutputShaft,
     };
+
+    // Seed magnetic defaults when loading a magnetic app with missing keys
+    // This ensures the calculator receives valid inputs even for legacy apps
+    if (productKey === 'magnetic_conveyor_v1') {
+      const magneticProduct = getProduct('magnetic_conveyor_v1');
+      if (magneticProduct) {
+        const magneticDefaults = magneticProduct.getDefaultInputs() as Record<string, unknown>;
+        // Check for required magnetic keys that might be missing
+        const requiredMagneticKeys = [
+          'infeed_length_in',
+          'discharge_height_in',
+          'incline_angle_deg',
+          'magnet_width_in',
+          'belt_speed_fpm',
+          'conveyor_class',
+        ];
+        const hasMissingKeys = requiredMagneticKeys.some(
+          (key) => normalizedInputs[key] === undefined
+        );
+        if (hasMissingKeys) {
+          console.log('[Load] Seeding magnetic defaults for missing keys');
+          // Merge defaults for missing keys only (don't override existing values)
+          normalizedInputs = {
+            ...magneticDefaults,
+            ...normalizedInputs,
+          };
+        }
+      }
+    }
 
     // Set inputs
     setInputs(normalizedInputs as SliderbedInputs);
@@ -294,18 +324,32 @@ export default function BeltConveyorCalculatorApp({
 
     // Set outputs/results if available
     if (application.expected_outputs) {
-      // Detect legacy belt outputs on magnetic conveyor
-      // Belt-specific keys that should NOT be in magnetic outputs
-      const beltOnlyKeys = ['drive_T1_lbf', 'drive_T2_lbf', 'drive_pulley_diameter_in'];
+      // Detect legacy/invalid outputs on magnetic conveyor
       const outputs = application.expected_outputs as Record<string, unknown>;
-      const hasBeltKeys = beltOnlyKeys.some(key => outputs[key] !== undefined);
       const isMagneticProduct = productKey === 'magnetic_conveyor_v1';
 
-      if (isMagneticProduct && hasBeltKeys) {
-        // Legacy belt outputs detected on magnetic app - mark as stale
-        setHasLegacyBeltOutputs(true);
-        setOutputsStale(true);
-        console.log('[Load] Legacy belt outputs detected on magnetic conveyor - marked as stale');
+      if (isMagneticProduct) {
+        // Check for belt-specific keys that should NOT be in magnetic outputs
+        const beltOnlyKeys = ['drive_T1_lbf', 'drive_T2_lbf', 'drive_pulley_diameter_in'];
+        const hasBeltKeys = beltOnlyKeys.some(key => outputs[key] !== undefined);
+
+        // Also check for required magnetic keys that should be present
+        const magneticRequiredKeys = ['chain_length_in', 'qty_magnets', 'total_torque_in_lb'];
+        const hasMagneticKeys = magneticRequiredKeys.every(
+          key => outputs[key] !== undefined && !Number.isNaN(outputs[key])
+        );
+
+        if (hasBeltKeys || !hasMagneticKeys) {
+          // Legacy belt outputs or missing magnetic outputs - mark as stale
+          setHasLegacyBeltOutputs(true);
+          setOutputsStale(true);
+          console.log('[Load] Legacy/missing outputs detected on magnetic conveyor - marked as stale', {
+            hasBeltKeys,
+            hasMagneticKeys,
+          });
+        } else {
+          setHasLegacyBeltOutputs(false);
+        }
       } else {
         setHasLegacyBeltOutputs(false);
       }
