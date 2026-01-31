@@ -17,12 +17,13 @@ import {
 } from '../../models/sliderbed_v1/schema';
 import { validate } from '../../models/sliderbed_v1/rules';
 import { MODEL_KEY, MODEL_VERSION_ID } from '../model-identity';
-// Use belt_conveyor_v1 for COF resolution based on bed_type
+// Use belt_conveyor_v1 for default parameters and COF resolution
 import {
-  calculate,
   DEFAULT_PARAMETERS,
   BeltConveyorParameters,
 } from '../../models/belt_conveyor_v1';
+// Product registry for product-specific calculation dispatch
+import { getProduct, beltConveyorV1 } from '../../products';
 
 // ============================================================================
 // TELEMETRY HOOKS
@@ -78,6 +79,38 @@ function normalizeInputs(inputs: SliderbedInputs): SliderbedInputs {
 }
 
 // ============================================================================
+// PRODUCT RESOLVER
+// ============================================================================
+
+/**
+ * Resolve the product module for calculation dispatch.
+ * Falls back to belt conveyor if productKey is missing or unknown.
+ *
+ * @param productKey - Product key to look up
+ * @returns Product module with calculate function
+ */
+function resolveProductForCalculation(productKey?: string) {
+  // No productKey provided - fall back to belt (existing behavior)
+  if (!productKey) {
+    return beltConveyorV1;
+  }
+
+  // Look up product in registry
+  const product = getProduct(productKey);
+  if (product) {
+    return product;
+  }
+
+  // Unknown productKey - warn in dev, fall back to belt
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(
+      `[engine] Unknown productKey "${productKey}", falling back to belt_conveyor_v1`
+    );
+  }
+  return beltConveyorV1;
+}
+
+// ============================================================================
 // CALCULATION ENGINE
 // ============================================================================
 
@@ -128,7 +161,9 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
     // Step 2: Execute calculations (even with errors)
     // The formulas use NaN for missing values and propagate gracefully.
     // This allows users to see partial/calculated values while fixing errors.
-    const outputs = calculate(inputs, parameters);
+    // Dispatch to product-specific calculator based on productKey
+    const product = resolveProductForCalculation(productKey);
+    const outputs = product.calculate(inputs, parameters as unknown as Record<string, unknown>);
 
     const durationMs = Date.now() - startTime;
 
