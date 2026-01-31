@@ -82,6 +82,9 @@ export default function BeltConveyorCalculatorApp({
   const [calculationStatus, setCalculationStatus] = useState<'draft' | 'calculated'>('draft');
   const [outputsStale, setOutputsStale] = useState(false);
 
+  // Legacy outputs detection: detect belt outputs on magnetic conveyor
+  const [hasLegacyBeltOutputs, setHasLegacyBeltOutputs] = useState(false);
+
   // Auto-calc state: tracks if debounce is pending
   const [isAutoCalcPending, setIsAutoCalcPending] = useState(false);
   const autoCalcTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -291,6 +294,22 @@ export default function BeltConveyorCalculatorApp({
 
     // Set outputs/results if available
     if (application.expected_outputs) {
+      // Detect legacy belt outputs on magnetic conveyor
+      // Belt-specific keys that should NOT be in magnetic outputs
+      const beltOnlyKeys = ['drive_T1_lbf', 'drive_T2_lbf', 'drive_pulley_diameter_in'];
+      const outputs = application.expected_outputs as Record<string, unknown>;
+      const hasBeltKeys = beltOnlyKeys.some(key => outputs[key] !== undefined);
+      const isMagneticProduct = productKey === 'magnetic_conveyor_v1';
+
+      if (isMagneticProduct && hasBeltKeys) {
+        // Legacy belt outputs detected on magnetic app - mark as stale
+        setHasLegacyBeltOutputs(true);
+        setOutputsStale(true);
+        console.log('[Load] Legacy belt outputs detected on magnetic conveyor - marked as stale');
+      } else {
+        setHasLegacyBeltOutputs(false);
+      }
+
       setResult({
         success: true,
         outputs: application.expected_outputs,
@@ -893,6 +912,7 @@ export default function BeltConveyorCalculatorApp({
     // Update calculation status to 'calculated' (v1.21)
     setCalculationStatus('calculated');
     setOutputsStale(false);
+    setHasLegacyBeltOutputs(false); // Clear legacy flag after fresh calculation
 
     console.log('[Calculate] Success - payload snapshot saved', calculatedPayload);
     setIsCalculating(false);
@@ -1783,12 +1803,23 @@ export default function BeltConveyorCalculatorApp({
               if (productKey === 'magnetic_conveyor_v1') {
                 // Magnetic conveyor uses dedicated output tabs
                 return (
-                  <MagneticOutputsTabs
-                    inputs={inputs as unknown as Record<string, unknown>}
-                    outputs={result.outputs as unknown as Record<string, unknown>}
-                    warnings={result.warnings as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
-                    errors={result.errors as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
-                  />
+                  <>
+                    {/* Legacy outputs warning banner */}
+                    {hasLegacyBeltOutputs && (
+                      <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-2 text-sm text-amber-800">
+                        <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                        </svg>
+                        <span>Legacy outputs detected. Update an input to recalculate with magnetic-specific values.</span>
+                      </div>
+                    )}
+                    <MagneticOutputsTabs
+                      inputs={inputs as unknown as Record<string, unknown>}
+                      outputs={result.outputs as unknown as Record<string, unknown>}
+                      warnings={result.warnings as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
+                      errors={result.errors as Array<{ severity: 'error' | 'warning' | 'info'; field?: string; code?: string; message: string }>}
+                    />
+                  </>
                 );
               }
 

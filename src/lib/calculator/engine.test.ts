@@ -108,4 +108,58 @@ describe('Calculation Engine Dispatch', () => {
       expect(result.outputs.drive_pulley_diameter_in).toBeDefined();
     });
   });
+
+  describe('magnetic calculation responds to input changes', () => {
+    it('should produce different outputs when inputs change', () => {
+      // Arrange: Get default magnetic inputs
+      const magneticProduct = getProduct('magnetic_conveyor_v1');
+      expect(magneticProduct).toBeDefined();
+      const defaultInputs = magneticProduct!.getDefaultInputs();
+
+      // Act: Calculate with default inputs
+      const result1 = runCalculation({
+        inputs: defaultInputs,
+        productKey: 'magnetic_conveyor_v1',
+      });
+
+      // Modify inputs - increase infeed length
+      const modifiedInputs = {
+        ...defaultInputs,
+        infeed_length_in: (defaultInputs as any).infeed_length_in + 50,
+      };
+
+      const result2 = runCalculation({
+        inputs: modifiedInputs,
+        productKey: 'magnetic_conveyor_v1',
+      });
+
+      // Assert: Outputs should be different
+      expect(result1.outputs.chain_length_in).toBeDefined();
+      expect(result2.outputs.chain_length_in).toBeDefined();
+      // Chain length should increase with longer infeed
+      expect(result2.outputs.chain_length_in).toBeGreaterThan(
+        result1.outputs.chain_length_in as number
+      );
+    });
+
+    it('should produce valid numeric outputs for all geometry fields', () => {
+      // Arrange
+      const magneticProduct = getProduct('magnetic_conveyor_v1');
+      const inputs = magneticProduct!.getDefaultInputs();
+
+      // Act
+      const result = runCalculation({
+        inputs,
+        productKey: 'magnetic_conveyor_v1',
+      });
+
+      // Assert: All geometry outputs should be valid numbers (not NaN)
+      expect(Number.isFinite(result.outputs.incline_length_in)).toBe(true);
+      expect(Number.isFinite(result.outputs.incline_run_in)).toBe(true);
+      expect(Number.isFinite(result.outputs.horizontal_length_in)).toBe(true);
+      expect(Number.isFinite(result.outputs.path_length_ft)).toBe(true);
+      expect(Number.isFinite(result.outputs.belt_length_ft)).toBe(true);
+      expect(Number.isFinite(result.outputs.chain_length_in)).toBe(true);
+    });
+  });
 });
