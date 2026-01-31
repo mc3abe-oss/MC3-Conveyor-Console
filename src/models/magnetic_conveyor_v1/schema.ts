@@ -541,10 +541,10 @@ export const MAGNETIC_STYLES: Record<MagneticConveyorStyle, MagneticStyleConfig>
   },
   B: {
     code: 'Style B',
-    description: 'Horizontal infeed to incline (compact at 90°)',
-    dimensions: ['infeedLength', 'inclineLength', 'inclineAngle'],
+    description: 'Horizontal infeed to incline to horizontal discharge',
+    dimensions: ['infeedLength', 'inclineLength', 'dischargeLength', 'inclineAngle'],
     hasIncline: true,
-    hasDischarge: false,
+    hasDischarge: true,
   },
   C: {
     code: 'Style C',
