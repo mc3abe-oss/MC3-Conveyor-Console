@@ -1,5 +1,8 @@
 'use client';
 
+/** Save state values - matches useSaveState */
+export type SaveState = 'saved' | 'dirty' | 'saving' | 'error';
+
 interface MobileBottomActionBarProps {
   onCalculate: () => void;
   onSave: () => void;
@@ -9,6 +12,10 @@ interface MobileBottomActionBarProps {
   isDirty: boolean;
   // Auto-calc: only show calc button on error (manual retry)
   hasCalcError?: boolean;
+  /** Save state for button logic */
+  saveState?: SaveState;
+  /** Last save error message */
+  saveError?: string | null;
 }
 
 export default function MobileBottomActionBar({
@@ -16,10 +23,16 @@ export default function MobileBottomActionBar({
   onSave,
   isCalculating,
   isSaving,
-  canSave,
+  canSave: _canSaveFromProps, // Renamed - using saveState instead
   isDirty,
   hasCalcError = false,
+  saveState,
+  saveError,
 }: MobileBottomActionBarProps) {
+  // Derive button state from saveState if provided, otherwise use legacy props
+  const effectiveSaveState: SaveState = saveState ?? (isSaving ? 'saving' : isDirty ? 'dirty' : 'saved');
+  const saveButtonEnabled = effectiveSaveState === 'dirty' || effectiveSaveState === 'error';
+  const showSaving = effectiveSaveState === 'saving';
   return (
     <div className="fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200 shadow-lg">
       <div className="flex gap-3 p-4 pb-safe max-w-7xl mx-auto">
@@ -49,12 +62,15 @@ export default function MobileBottomActionBar({
         <button
           type="button"
           className={`btn flex-1 min-h-[48px] text-base ${
-            isDirty && canSave ? 'btn-primary' : 'btn-outline'
+            effectiveSaveState === 'error' ? 'bg-red-600 hover:bg-red-700 text-white'
+            : saveButtonEnabled ? 'btn-primary'
+            : 'btn-outline'
           }`}
           onClick={onSave}
-          disabled={!canSave || isSaving}
+          disabled={!saveButtonEnabled || showSaving}
+          title={effectiveSaveState === 'error' ? saveError || 'Save failed - tap to retry' : ''}
         >
-          {isSaving ? (
+          {showSaving ? (
             <span className="flex items-center justify-center gap-2">
               <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
@@ -64,9 +80,9 @@ export default function MobileBottomActionBar({
             </span>
           ) : (
             <span className="flex items-center justify-center gap-2">
-              Save
-              {isDirty && (
-                <span className="inline-block w-2 h-2 bg-gray-400 rounded-full" title="Unsaved changes" />
+              {effectiveSaveState === 'error' ? 'Retry Save' : 'Save'}
+              {effectiveSaveState === 'dirty' && (
+                <span className="inline-block w-2 h-2 bg-orange-500 rounded-full" title="Unsaved changes" />
               )}
             </span>
           )}

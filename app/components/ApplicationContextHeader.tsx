@@ -6,6 +6,9 @@ import { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 import RenameApplicationModal from './RenameApplicationModal';
 import TypedConfirmDeleteModal from './TypedConfirmDeleteModal';
 
+/** Save state values - matches useSaveState */
+export type SaveState = 'saved' | 'dirty' | 'saving' | 'error';
+
 interface ApplicationContextHeaderProps {
   context: SaveTarget | null;
   loadedConfigurationId?: string | null;
@@ -14,6 +17,10 @@ interface ApplicationContextHeaderProps {
   onDeleteDraft?: () => Promise<void> | void;
   isDirty?: boolean;
   isSaving?: boolean;
+  /** Save state for button/indicator logic */
+  saveState?: SaveState;
+  /** Last save error message */
+  saveError?: string | null;
   onSave?: () => void;
   onSaveAsRecipe?: () => void;
   canSaveAsRecipe?: boolean;
@@ -54,12 +61,14 @@ export default function ApplicationContextHeader({
   onDeleteDraft,
   isDirty = false,
   isSaving = false,
+  saveState,
+  saveError,
   onSave,
   onSaveAsRecipe,
   canSaveAsRecipe = false,
   onCalculate,
   isCalculating = false,
-  canSave = true,
+  canSave: _canSaveFromProps = true, // Renamed - using saveState instead
   needsRecalc = false,
   calculationStatus = 'draft',
   outputsStale = false,
@@ -72,6 +81,10 @@ export default function ApplicationContextHeader({
   applicationId,
   onRename,
 }: ApplicationContextHeaderProps) {
+  // Derive button state from saveState if provided, otherwise use legacy props
+  const effectiveSaveState: SaveState = saveState ?? (isSaving ? 'saving' : isDirty ? 'dirty' : 'saved');
+  const saveButtonEnabled = effectiveSaveState === 'dirty' || effectiveSaveState === 'error';
+  const showSaving = effectiveSaveState === 'saving';
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [showDeleteDraftConfirm, setShowDeleteDraftConfirm] = useState(false);
@@ -282,11 +295,16 @@ export default function ApplicationContextHeader({
               {onSave && (
                 <button
                   type="button"
-                  className="px-4 py-1.5 text-sm font-medium bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+                  className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${
+                    effectiveSaveState === 'error'
+                      ? 'bg-red-600 hover:bg-red-700 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
                   onClick={onSave}
-                  disabled={isSaving}
+                  disabled={showSaving}
+                  title={effectiveSaveState === 'error' ? saveError || 'Save failed' : ''}
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {showSaving ? 'Saving...' : effectiveSaveState === 'error' ? 'Retry Save' : 'Save'}
                 </button>
               )}
               {onClear && (
@@ -356,7 +374,7 @@ export default function ApplicationContextHeader({
               </span>
               {isDirty && (
                 <span
-                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-orange-500 text-white rounded-full animate-pulse"
+                  className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold bg-orange-500 text-white rounded-full"
                   title="You have unsaved changes"
                 >
                   <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -388,25 +406,30 @@ export default function ApplicationContextHeader({
                 <button
                   type="button"
                   className={`px-4 py-1.5 text-sm font-medium rounded-l-md transition-colors ${
-                    isDirty && canSave
+                    saveButtonEnabled
                       ? 'bg-blue-600 hover:bg-blue-700 text-white'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
+                  } ${effectiveSaveState === 'error' ? 'bg-red-600 hover:bg-red-700' : ''}`}
                   onClick={onSave}
-                  disabled={!canSave || isSaving}
-                  title={!isDirty ? 'No changes to save' : needsRecalc ? 'Will save as draft' : ''}
+                  disabled={!saveButtonEnabled || showSaving}
+                  title={
+                    effectiveSaveState === 'error' ? saveError || 'Save failed - click to retry'
+                    : effectiveSaveState === 'saved' ? 'No changes to save'
+                    : needsRecalc ? 'Will save as draft'
+                    : ''
+                  }
                 >
-                  {isSaving ? 'Saving...' : 'Save'}
+                  {showSaving ? 'Saving...' : effectiveSaveState === 'error' ? 'Retry Save' : 'Save'}
                 </button>
                 <button
                   type="button"
                   className={`px-2 py-1.5 text-sm font-medium rounded-r-md border-l transition-colors ${
-                    isDirty && canSave
+                    saveButtonEnabled
                       ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-500'
                       : 'bg-gray-100 text-gray-500 hover:bg-gray-200 border-gray-200'
-                  }`}
+                  } ${effectiveSaveState === 'error' ? 'bg-red-600 hover:bg-red-700 border-red-500' : ''}`}
                   onClick={(e) => { e.stopPropagation(); setShowSaveMenu(!showSaveMenu); }}
-                  disabled={isSaving}
+                  disabled={showSaving}
                 >
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -417,7 +440,7 @@ export default function ApplicationContextHeader({
                     <button
                       type="button"
                       onClick={() => { onSave(); setShowSaveMenu(false); }}
-                      disabled={!canSave || isSaving}
+                      disabled={!saveButtonEnabled || showSaving}
                       className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 disabled:text-gray-400"
                     >
                       Save
