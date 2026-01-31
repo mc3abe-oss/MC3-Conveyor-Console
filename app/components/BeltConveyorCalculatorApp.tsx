@@ -92,6 +92,11 @@ export default function BeltConveyorCalculatorApp({
   const autoCalcTimerRef = useRef<NodeJS.Timeout | null>(null);
   const AUTO_CALC_DEBOUNCE_MS = 300;
 
+  // Autosave state: auto-save dirty changes after debounce
+  const autosaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const handleSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const AUTOSAVE_DEBOUNCE_MS = 1000;
+
   // Paint validation state: skip paint validation until user explicitly attempts Calculate/Save
   // This prevents paint errors from appearing on initial load
   const [hasAttemptedExplicitAction, setHasAttemptedExplicitAction] = useState(false);
@@ -904,6 +909,42 @@ export default function BeltConveyorCalculatorApp({
     }
   }, [loadedRevisionId, inputs, initialLoadedPayload, buildCurrentPayload]);
 
+  // Effect: Autosave when dirty (with debounce)
+  // Only autosaves existing applications (with loadedConfigurationId)
+  // New applications require explicit first save to set context
+  useEffect(() => {
+    // Only autosave existing applications (not new/draft)
+    if (!loadedConfigurationId) return;
+    // Only autosave if we have a linked context
+    if (!context) return;
+    // Only autosave if dirty
+    if (!isDirty) return;
+    // Don't start autosave if already saving
+    if (isSaving) return;
+
+    // Clear any existing autosave timer
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    // Schedule autosave after debounce
+    console.log('[Autosave] Scheduling autosave in', AUTOSAVE_DEBOUNCE_MS, 'ms');
+    autosaveTimerRef.current = setTimeout(() => {
+      console.log('[Autosave] Triggering autosave');
+      if (handleSaveRef.current) {
+        handleSaveRef.current();
+      }
+    }, AUTOSAVE_DEBOUNCE_MS);
+
+    // Cleanup on unmount or dependency change
+    return () => {
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
+    };
+  }, [isDirty, loadedConfigurationId, context, isSaving]);
+
   // Effect: Auto-recalculate when inputs change (with debounce)
   // This replaces the old "invalidate and mark stale" approach
   useEffect(() => {
@@ -1302,6 +1343,9 @@ export default function BeltConveyorCalculatorApp({
       setIsSaving(false);
     }
   };
+
+  // Keep handleSaveRef in sync for autosave effect
+  handleSaveRef.current = handleSave;
 
   // Handle Save as Recipe
   const handleSaveRecipe = async (data: { name: string; recipe_type: 'golden' | 'reference'; notes: string }) => {
