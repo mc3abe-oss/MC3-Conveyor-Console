@@ -38,6 +38,8 @@ interface SaveRequestBody {
   change_note?: string;
   outputs_stale?: boolean;       // True if outputs exist but inputs have changed since calculation
   existing_application_id?: string;  // If provided, this is an UPDATE to an existing application
+  base_revision?: string;        // Revision timestamp for conflict detection (updated_at from load)
+  force_overwrite?: boolean;     // If true, skip conflict check and overwrite
 }
 
 /**
@@ -80,6 +82,8 @@ export async function POST(request: NextRequest) {
       change_note,
       outputs_stale = false,
       existing_application_id,  // If provided, this is an UPDATE to an existing application
+      base_revision,            // Revision timestamp for conflict detection
+      force_overwrite = false,  // Skip conflict check if true
     } = body;
 
     // Validate required fields
@@ -176,14 +180,14 @@ export async function POST(request: NextRequest) {
     const inputsHash = hashCanonical(combinedInputs);
 
     // Determine if this is an UPDATE (existing_application_id provided) or CREATE (new)
-    let existingRecipe: { id: string; inputs_hash: string; updated_at: string; slug: string; created_at: string; created_by_display: string | null } | null = null;
+    let existingRecipe: { id: string; inputs_hash: string; updated_at: string; slug: string; created_at: string; created_by_display: string | null; updated_by: string | null } | null = null;
     const isUpdate = !!existing_application_id;
 
     if (isUpdate) {
       // UPDATE mode: Fetch existing record by ID
       const { data: fetchedRecipe, error: fetchError } = await supabase
         .from('calc_recipes')
-        .select('id, inputs_hash, updated_at, slug, created_at, created_by_display')
+        .select('id, inputs_hash, updated_at, slug, created_at, created_by_display, updated_by')
         .eq('id', existing_application_id)
         .maybeSingle();
 
@@ -217,12 +221,50 @@ export async function POST(request: NextRequest) {
 
       existingRecipe = fetchedRecipe;
 
+      // CONFLICT DETECTION: Check if server version is newer than client's base_revision
+      // This prevents overwriting changes made by another user/session
+      if (base_revision && !force_overwrite) {
+        const clientRevision = new Date(base_revision).getTime();
+        const serverRevision = new Date(existingRecipe.updated_at).getTime();
+
+        // If server revision is newer than client's base revision, we have a conflict
+        if (serverRevision > clientRevision) {
+          // Fetch additional info about the conflicting edit
+          let conflictingUser: string | null = null;
+          if (supabaseAdmin && existingRecipe.updated_by) {
+            try {
+              const { data: userData } = await supabaseAdmin.auth.admin.getUserById(existingRecipe.updated_by);
+              if (userData?.user) {
+                const metadata = userData.user.user_metadata as { first_name?: string; last_name?: string } | undefined;
+                conflictingUser = formatCreatorDisplay(userData.user.email, metadata);
+              }
+            } catch {
+              // Ignore - we'll just show "another user"
+            }
+          }
+
+          return NextResponse.json(
+            {
+              code: 'REVISION_CONFLICT',
+              message: 'This application has been modified since you loaded it.',
+              applicationId: existingRecipe.id,
+              localRevision: base_revision,
+              serverRevision: existingRecipe.updated_at,
+              conflictingUser,
+              conflictingTimestamp: existingRecipe.updated_at,
+            },
+            { status: 409 }
+          );
+        }
+      }
+
       // Check for duplicate - if hash matches, no update needed
       if (existingRecipe.inputs_hash === inputsHash) {
         return NextResponse.json({
           status: 'no_change',
           message: 'No changes detected.',
           applicationId: existingRecipe.id,
+          revision: existingRecipe.updated_at,
           recipe: {
             id: existingRecipe.id,
             slug,
@@ -234,9 +276,10 @@ export async function POST(request: NextRequest) {
             reference_number: parsedAppCode.code,
             reference_line: lineNumber,
           },
-          revision: {
+          revision_info: {
             id: existingRecipe.id,
             revision_number: 1,
+            updated_at: existingRecipe.updated_at,
           },
         });
       }
@@ -434,6 +477,8 @@ export async function POST(request: NextRequest) {
       status: existingRecipe ? 'updated' : 'created',
       // TOP-LEVEL applicationId for easy access
       applicationId: recipe.id,
+      // TOP-LEVEL revision for conflict detection on next save
+      revision: recipe.updated_at,
       recipe: {
         id: recipe.id,
         slug: recipe.slug,
@@ -455,9 +500,11 @@ export async function POST(request: NextRequest) {
         reference_line: lineNumber,
         title: recipe.name,
       },
-      revision: {
+      // Backward compat: revision object
+      revision_info: {
         id: recipe.id,
         revision_number: 1, // calc_recipes doesn't track revisions
+        updated_at: recipe.updated_at,
       },
     });
   } catch (error) {
