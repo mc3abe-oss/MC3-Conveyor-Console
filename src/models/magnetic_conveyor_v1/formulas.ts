@@ -26,6 +26,7 @@ import {
   ValidationWarning,
   ValidationError,
   ConveyorStyle,
+  BarConfigurationInput,
 } from './schema';
 
 import {
@@ -38,6 +39,12 @@ import { calculateMagnets } from './magnets';
 import { calculateLoads } from './loads';
 import { calculateDrive } from './drive';
 import { validateInputs, validateOutputs } from './validation';
+import {
+  calculateBarCapacityFromCounts,
+  calculateConveyorCapacityFromValues,
+  PatternConfig,
+  BarPatternMode,
+} from './magnet-bar';
 
 // ============================================================================
 // PARAMETER RESOLUTION
@@ -87,11 +94,7 @@ export interface ThroughputResult {
 /**
  * Calculate throughput values.
  *
- * Note: Full throughput calculation requires removal_per_bar lookup tables
- * based on magnet width and Neo count. This is a simplified placeholder
- * that sets chip load to 0 and returns the requested throughput as achieved.
- *
- * TODO: Implement full throughput calculation with lookup tables:
+ * Formulas from reference doc:
  * - chipLoad = removalPerBar × qtyMagnets / 2
  * - achievedThroughput = removalPerBar × qtyMagnets × beltSpeed × 60 / magnetCenters
  * - throughputMargin = achievedThroughput / requiredThroughput
@@ -100,22 +103,33 @@ export interface ThroughputResult {
  * @param beltSpeedFpm - Belt speed in feet per minute
  * @param magnetCentersIn - Magnet pitch in inches
  * @param requiredThroughputLbsHr - Required throughput in lbs/hr
+ * @param barCapacityLb - Removal capacity per bar in lbs (from bar config or lookup)
  * @returns Throughput calculation results
  */
 export function calculateThroughput(
-  _qtyMagnets: number,
-  _beltSpeedFpm: number,
-  _magnetCentersIn: number,
-  requiredThroughputLbsHr: number
+  qtyMagnets: number,
+  beltSpeedFpm: number,
+  magnetCentersIn: number,
+  requiredThroughputLbsHr: number,
+  barCapacityLb: number = 0
 ): ThroughputResult {
-  // Placeholder: chip load set to 0 (requires removal_per_bar lookup table)
-  const chip_load_lb = 0;
+  // If no bar capacity, return placeholder values for backwards compatibility
+  if (barCapacityLb <= 0) {
+    return {
+      chip_load_lb: 0,
+      achieved_throughput_lbs_hr: requiredThroughputLbsHr,
+      throughput_margin: requiredThroughputLbsHr > 0 ? 1.0 : 0,
+    };
+  }
 
-  // Placeholder: return requested throughput as achieved
-  // Full implementation would use: removalPerBar × qtyMagnets × beltSpeed × 60 / magnetCenters
-  const achieved_throughput_lbs_hr = requiredThroughputLbsHr;
+  // chipLoad = removalPerBar × qtyMagnets / 2
+  const chip_load_lb = barCapacityLb * qtyMagnets / 2;
 
-  // Margin = achieved / required (1.0 when using placeholder)
+  // achievedThroughput = removalPerBar × qtyMagnets × beltSpeed × 60 / magnetCenters
+  const achieved_throughput_lbs_hr =
+    (barCapacityLb * qtyMagnets * beltSpeedFpm * 60) / magnetCentersIn;
+
+  // Margin = achieved / required
   const throughput_margin =
     requiredThroughputLbsHr > 0
       ? achieved_throughput_lbs_hr / requiredThroughputLbsHr
@@ -126,6 +140,100 @@ export function calculateThroughput(
     achieved_throughput_lbs_hr,
     throughput_margin,
   };
+}
+
+/**
+ * Get bar capacity from configuration or fallback lookup.
+ *
+ * @param barConfig - Bar configuration from bar builder (optional)
+ * @param magnetWidthIn - Magnet bar width in inches (for fallback)
+ * @returns Bar capacity in lbs
+ */
+export function getBarCapacity(
+  barConfig: BarConfigurationInput | undefined,
+  magnetWidthIn: number
+): { capacity: number; ceramicCount: number; neoCount: number } {
+  // Use bar configuration if provided
+  if (barConfig && barConfig.bar_capacity_lb > 0) {
+    return {
+      capacity: barConfig.bar_capacity_lb,
+      ceramicCount: barConfig.ceramic_count,
+      neoCount: barConfig.neo_count,
+    };
+  }
+
+  // Fallback: Use default ceramic-only configuration based on magnet width
+  // This provides backwards compatibility for configs without bar_configuration
+  const ceramicCount = estimateCeramicCount(magnetWidthIn);
+  const capacity = calculateBarCapacityFromCounts(ceramicCount, 0, magnetWidthIn);
+
+  return {
+    capacity,
+    ceramicCount,
+    neoCount: 0,
+  };
+}
+
+/**
+ * Estimate ceramic magnet count from bar width.
+ * Formula: count = floor((width + 0.25) / (3.5 + 0.25))
+ *
+ * @param magnetWidthIn - Bar width in inches
+ * @returns Estimated ceramic magnet count
+ */
+function estimateCeramicCount(magnetWidthIn: number): number {
+  const magnetLength = 3.5; // Standard ceramic length
+  const gap = 0.25; // Standard gap
+  return Math.floor((magnetWidthIn + gap) / (magnetLength + gap));
+}
+
+/**
+ * Calculate total conveyor capacity from bar config and pattern.
+ *
+ * @param barConfig - Bar configuration from bar builder
+ * @param qtyMagnets - Number of bars on conveyor
+ * @returns Total conveyor capacity in lbs
+ */
+export function calculateConveyorTotalCapacity(
+  barConfig: BarConfigurationInput | undefined,
+  qtyMagnets: number
+): number {
+  if (!barConfig || barConfig.bar_capacity_lb <= 0) {
+    return 0;
+  }
+
+  const patternMode = barConfig.pattern_mode ?? 'all_same';
+  const secondaryCapacity = barConfig.secondary_bar_capacity_lb ?? barConfig.bar_capacity_lb;
+  const intervalCount = barConfig.interval_count ?? 4;
+
+  // Convert pattern mode string to BarPatternMode enum
+  let mode: BarPatternMode;
+  switch (patternMode) {
+    case 'alternating':
+      mode = BarPatternMode.Alternating;
+      break;
+    case 'interval':
+      mode = BarPatternMode.Interval;
+      break;
+    default:
+      mode = BarPatternMode.AllSame;
+  }
+
+  const pattern: PatternConfig = {
+    mode,
+    primary_template_id: 'primary',
+    secondary_template_id: patternMode !== 'all_same' ? 'secondary' : undefined,
+    interval_count: intervalCount,
+  };
+
+  const result = calculateConveyorCapacityFromValues(
+    pattern,
+    qtyMagnets,
+    barConfig.bar_capacity_lb,
+    secondaryCapacity
+  );
+
+  return result.total_capacity_lb;
 }
 
 // ============================================================================
@@ -187,18 +295,34 @@ export function calculate(inputs: MagneticInputs): MagneticOutputs {
   );
 
   // =========================================================================
-  // Step 4: Calculate Throughput (for chip load)
+  // Step 4: Get Bar Capacity (from config or fallback)
+  // =========================================================================
+
+  const barCapacityInfo = getBarCapacity(
+    inputs.bar_configuration,
+    inputs.magnet_width_in
+  );
+
+  // Calculate total conveyor capacity if bar config provided
+  const totalConveyorCapacity = calculateConveyorTotalCapacity(
+    inputs.bar_configuration,
+    magnets.qty_magnets
+  );
+
+  // =========================================================================
+  // Step 5: Calculate Throughput (for chip load)
   // =========================================================================
 
   const throughput = calculateThroughput(
     magnets.qty_magnets,
     inputs.belt_speed_fpm,
     inputs.magnet_centers_in,
-    inputs.load_lbs_per_hr
+    inputs.load_lbs_per_hr,
+    barCapacityInfo.capacity
   );
 
   // =========================================================================
-  // Step 5: Calculate Loads
+  // Step 6: Calculate Loads
   // =========================================================================
 
   const loads = calculateLoads(
@@ -212,7 +336,7 @@ export function calculate(inputs: MagneticInputs): MagneticOutputs {
   );
 
   // =========================================================================
-  // Step 6: Calculate Drive
+  // Step 7: Calculate Drive
   // =========================================================================
 
   const drive = calculateDrive(
@@ -226,7 +350,7 @@ export function calculate(inputs: MagneticInputs): MagneticOutputs {
   );
 
   // =========================================================================
-  // Step 7: Build Output (before validation)
+  // Step 8: Build Output (before validation)
   // =========================================================================
 
   const outputsWithoutValidation: MagneticOutputs = {
@@ -261,6 +385,13 @@ export function calculate(inputs: MagneticInputs): MagneticOutputs {
     achieved_throughput_lbs_hr: throughput.achieved_throughput_lbs_hr,
     throughput_margin: throughput.throughput_margin,
 
+    // Bar Configuration outputs
+    bar_capacity_lb: barCapacityInfo.capacity,
+    bar_ceramic_count: barCapacityInfo.ceramicCount,
+    bar_neo_count: barCapacityInfo.neoCount,
+    bar_pattern_mode: inputs.bar_configuration?.pattern_mode,
+    total_conveyor_capacity_lb: totalConveyorCapacity > 0 ? totalConveyorCapacity : undefined,
+
     // Parameters used (echo for transparency)
     coefficient_of_friction_used: cof,
     safety_factor_used: sf,
@@ -273,7 +404,7 @@ export function calculate(inputs: MagneticInputs): MagneticOutputs {
   };
 
   // =========================================================================
-  // Step 8: Run Validation
+  // Step 9: Run Validation
   // =========================================================================
 
   const inputMessages = validateInputs(inputs);

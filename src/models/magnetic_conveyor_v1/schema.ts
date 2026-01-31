@@ -221,6 +221,39 @@ export interface ValidationWarning {
 export type ValidationResult = ValidationError | ValidationWarning;
 
 // ============================================================================
+// BAR CONFIGURATION TYPES
+// ============================================================================
+
+/**
+ * Pattern mode for bar repetition along the conveyor.
+ */
+export type BarPatternModeInput = 'all_same' | 'alternating' | 'interval';
+
+/**
+ * Bar configuration input for throughput calculations.
+ * This allows the bar builder UI to pass configuration to the calculator.
+ */
+export interface BarConfigurationInput {
+  /** Capacity per bar in lbs (from bar builder) */
+  bar_capacity_lb: number;
+
+  /** Number of ceramic magnets per bar */
+  ceramic_count: number;
+
+  /** Number of neo magnets per bar */
+  neo_count: number;
+
+  /** Pattern mode */
+  pattern_mode?: BarPatternModeInput;
+
+  /** Secondary bar capacity (for alternating/interval patterns) */
+  secondary_bar_capacity_lb?: number;
+
+  /** Interval count (for interval pattern) */
+  interval_count?: number;
+}
+
+// ============================================================================
 // INPUTS SCHEMA
 // ============================================================================
 
@@ -267,6 +300,13 @@ export interface MagneticInputs {
 
   /** Magnet centers (pitch) in inches (12, 18, 24, 36) */
   magnet_centers_in: number;
+
+  /**
+   * Bar configuration from bar builder (optional).
+   * When provided, uses configured capacity instead of lookup table.
+   * If not provided, falls back to legacy lookup based on magnet_width_in and magnet_type.
+   */
+  bar_configuration?: BarConfigurationInput;
 
   // =========================================================================
   // OPERATION
@@ -448,6 +488,25 @@ export interface MagneticOutputs {
 
   /** Throughput margin (achieved / required) */
   throughput_margin: number;
+
+  // =========================================================================
+  // BAR CONFIGURATION OUTPUTS (when bar_configuration is provided)
+  // =========================================================================
+
+  /** Capacity per bar in lbs (from bar config or lookup) */
+  bar_capacity_lb?: number;
+
+  /** Number of ceramic magnets per bar */
+  bar_ceramic_count?: number;
+
+  /** Number of neo magnets per bar */
+  bar_neo_count?: number;
+
+  /** Pattern mode used */
+  bar_pattern_mode?: BarPatternModeInput;
+
+  /** Total conveyor capacity in lbs (all bars combined) */
+  total_conveyor_capacity_lb?: number;
 
   // =========================================================================
   // PARAMETERS USED (echoed for transparency)

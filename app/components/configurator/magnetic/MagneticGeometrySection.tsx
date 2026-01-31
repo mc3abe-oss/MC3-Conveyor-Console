@@ -15,6 +15,13 @@ import {
   MAGNETIC_STYLES,
   calculateMagneticDerived,
 } from '../../../../src/models/magnetic_conveyor_v1/schema';
+import { BarBuilderPanel, BarConfiguration } from '../../magnetic/BarBuilderPanel';
+import { PatternSelector, TemplateOption } from '../../magnetic/PatternSelector';
+import {
+  BarPatternMode,
+  PatternConfig,
+  calculateConveyorCapacityFromValues,
+} from '../../../../src/models/magnetic_conveyor_v1/magnet-bar';
 
 // MC3 Brand Colors
 const MC3 = {
@@ -1265,8 +1272,68 @@ export default function MagneticGeometrySection({
 }: MagneticGeometrySectionProps) {
   const styleConfig = MAGNETIC_STYLES[inputs.style];
   const activeDimensions = styleConfig?.dimensions || [];
+  const [showBarBuilder, setShowBarBuilder] = useState(false);
+  const [barCapacity, setBarCapacity] = useState<number | null>(null);
+  const [, setBarConfig] = useState<BarConfiguration | null>(null);
+  const [configTab, setConfigTab] = useState<'bar' | 'pattern'>('bar');
+  const [pattern, setPattern] = useState<PatternConfig>({
+    mode: BarPatternMode.AllSame,
+    primary_template_id: 'current-bar',
+  });
 
   const derived = useMemo(() => calculateMagneticDerived(inputs), [inputs]);
+
+  // Handle bar capacity change from bar builder
+  const handleBarCapacityChange = (capacity: number) => {
+    setBarCapacity(capacity);
+  };
+
+  // Handle bar configuration change
+  const handleBarConfigChange = (config: BarConfiguration) => {
+    setBarConfig(config);
+  };
+
+  // Conveyor capacity calculation
+  const conveyorCapacity = useMemo(() => {
+    if (!barCapacity) return null;
+
+    // Estimate total bars based on a typical conveyor (50ft belt, 12" centers = ~49 bars)
+    const totalBars = 49;
+    const result = calculateConveyorCapacityFromValues(
+      pattern,
+      totalBars,
+      barCapacity,
+      barCapacity * 0.6 // Secondary template (e.g., sweeper) has ~60% capacity
+    );
+
+    return {
+      totalBars,
+      totalCapacity: result.total_capacity_lb,
+      avgPerBar: result.capacity_per_bar_avg,
+    };
+  }, [pattern, barCapacity]);
+
+  // Template options for pattern selector
+  const templateOptions: TemplateOption[] = useMemo(() => {
+    const options: TemplateOption[] = [
+      {
+        id: 'current-bar',
+        name: 'Current Bar Config',
+        capacity: barCapacity ?? 0,
+      },
+    ];
+
+    // Add a sweeper option
+    if (barCapacity) {
+      options.push({
+        id: 'sweeper',
+        name: 'Sweeper Bar',
+        capacity: barCapacity * 0.6,
+      });
+    }
+
+    return options;
+  }, [barCapacity]);
 
   return (
     <div className="flex flex-col h-full">
@@ -1392,6 +1459,115 @@ export default function MagneticGeometrySection({
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Bar Configuration Section */}
+      <div className="mt-4 border-t border-gray-200 pt-4">
+        <button
+          type="button"
+          onClick={() => setShowBarBuilder(!showBarBuilder)}
+          className="flex items-center gap-2 text-sm font-medium text-[#2B5D85] hover:text-[#2E364E] transition-colors"
+        >
+          <svg
+            className={`w-4 h-4 transition-transform ${showBarBuilder ? 'rotate-90' : ''}`}
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+          </svg>
+          <span>Magnet Bar Configuration</span>
+          {barCapacity !== null && (
+            <span className="ml-2 px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">
+              {barCapacity.toFixed(3)} lb/bar
+            </span>
+          )}
+          {conveyorCapacity && (
+            <span className="ml-1 px-2 py-0.5 text-xs bg-blue-100 text-blue-700 rounded-full">
+              {conveyorCapacity.totalCapacity.toFixed(1)} lb total
+            </span>
+          )}
+        </button>
+
+        {showBarBuilder && (
+          <div className="mt-3 space-y-4">
+            {/* Tabs */}
+            <div className="flex border-b border-gray-200">
+              <button
+                type="button"
+                onClick={() => setConfigTab('bar')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  configTab === 'bar'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Bar Template
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfigTab('pattern')}
+                className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                  configTab === 'pattern'
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Pattern
+              </button>
+            </div>
+
+            {/* Tab content */}
+            {configTab === 'bar' && (
+              <BarBuilderPanel
+                targetOal={inputs.effectiveWidth ?? 12}
+                familyCrossSection="1.00x1.38"
+                onCapacityChange={handleBarCapacityChange}
+                onConfigChange={handleBarConfigChange}
+              />
+            )}
+
+            {configTab === 'pattern' && (
+              <div className="bg-white border border-gray-200 rounded-lg p-4">
+                <PatternSelector
+                  pattern={pattern}
+                  onChange={setPattern}
+                  templates={templateOptions}
+                  totalBars={conveyorCapacity?.totalBars ?? 49}
+                />
+
+                {/* Conveyor capacity summary */}
+                {conveyorCapacity && (
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <h4 className="text-sm font-medium text-gray-700 mb-2">
+                      Conveyor Capacity Summary
+                    </h4>
+                    <div className="grid grid-cols-3 gap-4 text-center">
+                      <div>
+                        <div className="text-xs text-gray-500">Total Bars</div>
+                        <div className="text-lg font-semibold text-[#2E364E]">
+                          {conveyorCapacity.totalBars}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500">Avg per Bar</div>
+                        <div className="text-lg font-semibold text-blue-600">
+                          {conveyorCapacity.avgPerBar.toFixed(3)} lb
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-xs text-gray-500">Total Capacity</div>
+                        <div className="text-lg font-semibold text-green-600">
+                          {conveyorCapacity.totalCapacity.toFixed(2)} lb
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
