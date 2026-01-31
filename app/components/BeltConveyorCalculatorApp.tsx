@@ -272,7 +272,7 @@ export default function BeltConveyorCalculatorApp({
           'conveyor_class',
         ];
         const hasMissingKeys = requiredMagneticKeys.some(
-          (key) => normalizedInputs[key] === undefined
+          (key) => (normalizedInputs as Record<string, unknown>)[key] === undefined
         );
         if (hasMissingKeys) {
           console.log('[Load] Seeding magnetic defaults for missing keys');
