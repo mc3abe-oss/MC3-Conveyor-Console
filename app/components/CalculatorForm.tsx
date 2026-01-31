@@ -73,6 +73,10 @@ export default function CalculatorForm({
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
 
+  // Material validation deferral: starts false, becomes true when user leaves Application tab
+  // Once true, errors remain visible until resolved (no reset on tab return)
+  const [hasAttemptedLeaveMaterial, setHasAttemptedLeaveMaterial] = useState(false);
+
   // Use buildDefaultInputs() as single source of truth for initial form state
   const [inputs, setInputs] = useState<SliderbedInputs>(buildDefaultInputs);
 
@@ -85,6 +89,8 @@ export default function CalculatorForm({
     if (initialInputs && loadedRevisionId && loadedRevisionId !== lastLoadedRevisionIdRef.current) {
       lastLoadedRevisionIdRef.current = loadedRevisionId;
       setInputs(initialInputs);
+      // Reset material validation deferral when loading new config
+      setHasAttemptedLeaveMaterial(false);
     }
   }, [loadedRevisionId, initialInputs]);
 
@@ -106,6 +112,8 @@ export default function CalculatorForm({
   useEffect(() => {
     if (triggerCalculate !== undefined && triggerCalculate > 0 && triggerCalculate !== lastTriggerRef.current) {
       lastTriggerRef.current = triggerCalculate;
+      // When user explicitly triggers Calculate, enable all validation
+      setHasAttemptedLeaveMaterial(true);
       const result = runCalculation({ inputs, productKey });
       onCalculate(result);
     }
@@ -113,6 +121,8 @@ export default function CalculatorForm({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // When user explicitly triggers Calculate, enable all validation
+    setHasAttemptedLeaveMaterial(true);
     const result = runCalculation({ inputs, productKey });
     onCalculate(result);
   };
@@ -126,7 +136,11 @@ export default function CalculatorForm({
 
   // Compute validation issues (includes pre-calc tracking, min pulley, and belt compatibility checks)
   // skipPaintValidation suppresses paint errors until user explicitly attempts Calculate/Save
-  const validationOptions: ValidationOptions = { skipPaintValidation };
+  // skipMaterialValidation suppresses part dimension errors until user leaves Material section
+  const validationOptions: ValidationOptions = {
+    skipPaintValidation,
+    skipMaterialValidation: !hasAttemptedLeaveMaterial,
+  };
   const { sectionCounts, tabCounts, getTrackingIssue, getMinPulleyIssues, getIssuesForSection } = useConfigureIssues(inputs, selectedBelt, validationOptions);
 
   // Convert post-calc ValidationErrors to Issues and organize by section
@@ -221,7 +235,13 @@ export default function CalculatorForm({
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    // When user navigates away from Application tab, trigger material validation
+                    if (activeTab === 'application' && tab.id !== 'application') {
+                      setHasAttemptedLeaveMaterial(true);
+                    }
+                    setActiveTab(tab.id);
+                  }}
                   className={`
                     flex-1 py-3 px-4 text-center text-sm font-medium transition-colors
                     focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500

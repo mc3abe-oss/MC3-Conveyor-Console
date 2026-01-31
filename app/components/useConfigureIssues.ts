@@ -134,8 +134,9 @@ export interface IssueAggregation {
 /**
  * Compute validation issues from inputs and optional belt information
  * @param skipPaintValidation When true, skip paint/finish validation (for initial load)
+ * @param skipMaterialValidation When true, skip Material section validation (for deferred validation)
  */
-function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem | null, skipPaintValidation = false): Issue[] {
+function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem | null, skipPaintValidation = false, skipMaterialValidation = false): Issue[] {
   const issues: Issue[] = [];
 
   // ---------------------------------------------------------------------------
@@ -159,9 +160,10 @@ function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem |
 
   // ---------------------------------------------------------------------------
   // APPLICATION TAB - Product Definition (PARTS mode only)
+  // Validation is deferred until user leaves the Material section (skipMaterialValidation)
   // ---------------------------------------------------------------------------
 
-  if (isPartsMode) {
+  if (isPartsMode && !skipMaterialValidation) {
     if (!inputs.part_weight_lbs || inputs.part_weight_lbs <= 0) {
       issues.push({
         severity: 'error',
@@ -712,6 +714,12 @@ export interface ValidationOptions {
    * Used to suppress paint errors on initial load before user attempts Calculate/Save.
    */
   skipPaintValidation?: boolean;
+  /**
+   * When true, skip Material section validation errors (part dimensions, etc.).
+   * Used to suppress errors until user attempts to leave the Material section
+   * (navigates to another tab or clicks Save/Calculate).
+   */
+  skipMaterialValidation?: boolean;
 }
 
 // ============================================================================
@@ -724,9 +732,10 @@ export function useConfigureIssues(
   options?: ValidationOptions
 ): IssueAggregation {
   const skipPaintValidation = options?.skipPaintValidation ?? false;
+  const skipMaterialValidation = options?.skipMaterialValidation ?? false;
 
   return useMemo(() => {
-    const issues = computeIssues(inputs, selectedBelt, skipPaintValidation);
+    const issues = computeIssues(inputs, selectedBelt, skipPaintValidation, skipMaterialValidation);
 
     // Aggregate by section (info severity doesn't count toward warnings)
     const sectionCounts = initSectionCounts();
@@ -778,7 +787,7 @@ export function useConfigureIssues(
       getTrackingIssue,
       getMinPulleyIssues,
     };
-  }, [inputs, selectedBelt, skipPaintValidation]);
+  }, [inputs, selectedBelt, skipPaintValidation, skipMaterialValidation]);
 }
 
 // ============================================================================

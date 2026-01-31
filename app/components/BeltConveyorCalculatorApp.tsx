@@ -15,6 +15,7 @@ import JobLineSelectModal from './JobLineSelectModal';
 import MobileBottomActionBar from './MobileBottomActionBar';
 import SaveRecipeModal from './SaveRecipeModal';
 import { CalculationResult, SliderbedInputs, DEFAULT_PARAMETERS, buildDefaultInputs, normalizeOutputShaftOption, GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
+import { migrateInputs } from '../../src/models/sliderbed_v1/migrate';
 import { buildOutputsV2, OutputsV2 } from '../../src/models/sliderbed_v1/outputs_v2';
 import { OutputsV2Tabs } from './outputs_v2';
 import CommercialScopeOutput from './CommercialScopeOutput';
@@ -239,15 +240,19 @@ export default function BeltConveyorCalculatorApp({
     // Extract inputs from the application (stored in inputs field, minus _config)
     const { _config, ...inputsData } = application.inputs || {};
 
+    // Run migration to ensure all required fields have sensible defaults
+    // This handles legacy configs that may be missing newer fields like material_form
+    const migratedInputs = migrateInputs(inputsData as Partial<SliderbedInputs>);
+
     // Normalize output_shaft_option to inch-only based on mounting style (v1.45)
     // This coerces any legacy metric selections or null values to the correct inch-only value
-    const mountingStyle = inputsData.gearmotor_mounting_style as GearmotorMountingStyle | undefined;
+    const mountingStyle = migratedInputs.gearmotor_mounting_style as GearmotorMountingStyle | undefined;
     const normalizedOutputShaft = normalizeOutputShaftOption(
       mountingStyle,
-      inputsData.output_shaft_option
+      migratedInputs.output_shaft_option
     );
     let normalizedInputs = {
-      ...inputsData,
+      ...migratedInputs,
       output_shaft_option: normalizedOutputShaft,
     };
 
