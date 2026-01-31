@@ -1309,8 +1309,12 @@ export default function BeltConveyorCalculatorApp({
         calculation_status?: 'draft' | 'calculated';
         is_calculated?: boolean;
         outputs_stale?: boolean;
+        quote_id?: string | null;
+        sales_order_id?: string | null;
       };
-      const { status, configuration, revision, message, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale } = data;
+      const { status, configuration, revision, message, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale, quote_id, sales_order_id } = data;
+
+      console.log('[Save] Response received:', { status, quote_id, sales_order_id, currentContextId: context?.id });
 
       if (status === 'no_change') {
         showToast(message || 'No changes to save');
@@ -1320,6 +1324,25 @@ export default function BeltConveyorCalculatorApp({
       // Update loaded IDs
       setLoadedConfigurationId(configuration.id);
       setLoadedRevisionId(revision.id);
+
+      // Update context.id if a new Quote/SO was created during save
+      // This ensures ScopeProvider gets the correct entityId
+      const newReferenceId = quote_id || sales_order_id;
+      console.log('[Save] Checking context.id update:', { newReferenceId, hasContext: !!context, currentContextId: context?.id });
+      if (newReferenceId && context && !context.id) {
+        console.log('[Save] Updating context.id with newly created reference:', newReferenceId);
+        setContext({
+          ...context,
+          id: newReferenceId,
+        });
+      } else if (newReferenceId && context && context.id !== newReferenceId) {
+        // Also update if context.id exists but differs (shouldn't happen, but safety)
+        console.log('[Save] Updating context.id (was different):', { old: context.id, new: newReferenceId });
+        setContext({
+          ...context,
+          id: newReferenceId,
+        });
+      }
 
       // Update calculation status (v1.21)
       if (newCalcStatus) setCalculationStatus(newCalcStatus);
@@ -1705,6 +1728,8 @@ export default function BeltConveyorCalculatorApp({
             <span className={loadedConfigurationId ? 'text-green-600 font-bold' : 'text-red-600'}>{loadedConfigurationId || 'null (CREATE mode)'}</span>
             <span>context.type:</span>
             <span>{context?.type || 'null'}</span>
+            <span>context.id (Quote/SO UUID):</span>
+            <span className={context?.id ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{context?.id || 'null (no scope)'}</span>
             <span>context.base:</span>
             <span>{context?.base || 'null'}</span>
             <span>context.jobLine:</span>

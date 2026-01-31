@@ -295,8 +295,117 @@ export async function POST(request: NextRequest) {
 
     // Determine FK linkage based on reference_type and reference_id
     // These FKs are the SERVER TRUTH for delete eligibility
-    const quoteId = (reference_type === 'QUOTE' && reference_id) ? reference_id : null;
-    const salesOrderId = (reference_type === 'SALES_ORDER' && reference_id) ? reference_id : null;
+    // If reference_id is not provided, try to find or create the Quote/SO record
+    let quoteId: string | null = null;
+    let salesOrderId: string | null = null;
+
+    if (reference_type === 'QUOTE') {
+      if (reference_id) {
+        quoteId = reference_id;
+      } else {
+        // Auto-create or find the Quote record
+        const baseNumber = parseInt(parsedAppCode.base, 10);
+        const suffixLine = reference_suffix ?? null;
+        const quoteNumber = suffixLine ? `Q${baseNumber}.${suffixLine}` : `Q${baseNumber}`;
+
+        // First, try to find existing quote by base_number + suffix_line
+        let findQuoteQuery = supabase
+          .from('quotes')
+          .select('id')
+          .eq('base_number', baseNumber)
+          .is('deleted_at', null);
+
+        // Handle null suffix_line correctly (eq doesn't match null, need to use is)
+        if (suffixLine === null) {
+          findQuoteQuery = findQuoteQuery.is('suffix_line', null);
+        } else {
+          findQuoteQuery = findQuoteQuery.eq('suffix_line', suffixLine);
+        }
+
+        const { data: existingQuote } = await findQuoteQuery.maybeSingle();
+
+        if (existingQuote) {
+          quoteId = existingQuote.id;
+          console.log('[Save] Found existing quote:', quoteId);
+        } else {
+          // Create new quote record
+          const { data: newQuote, error: createError } = await supabase
+            .from('quotes')
+            .insert({
+              quote_number: quoteNumber,
+              base_number: baseNumber,
+              suffix_line: suffixLine,
+              quote_status: 'draft',
+              is_read_only: false,
+              customer_name: customer_name || null,
+              created_by: userId,
+            })
+            .select('id')
+            .single();
+
+          if (createError) {
+            console.error('[Save] Failed to create quote:', createError);
+            // Non-fatal: continue without FK linkage
+          } else {
+            quoteId = newQuote.id;
+            console.log('[Save] Created new quote:', quoteId);
+          }
+        }
+      }
+    } else if (reference_type === 'SALES_ORDER') {
+      if (reference_id) {
+        salesOrderId = reference_id;
+      } else {
+        // Auto-create or find the Sales Order record
+        const baseNumber = parseInt(parsedAppCode.base, 10);
+        const suffixLine = reference_suffix ?? null;
+        const soNumber = suffixLine ? `SO${baseNumber}.${suffixLine}` : `SO${baseNumber}`;
+
+        // First, try to find existing sales order by base_number + suffix_line
+        let findSoQuery = supabase
+          .from('sales_orders')
+          .select('id')
+          .eq('base_number', baseNumber)
+          .is('deleted_at', null);
+
+        // Handle null suffix_line correctly (eq doesn't match null, need to use is)
+        if (suffixLine === null) {
+          findSoQuery = findSoQuery.is('suffix_line', null);
+        } else {
+          findSoQuery = findSoQuery.eq('suffix_line', suffixLine);
+        }
+
+        const { data: existingSo } = await findSoQuery.maybeSingle();
+
+        if (existingSo) {
+          salesOrderId = existingSo.id;
+          console.log('[Save] Found existing sales order:', salesOrderId);
+        } else {
+          // Create new sales order record
+          const { data: newSo, error: createError } = await supabase
+            .from('sales_orders')
+            .insert({
+              so_number: soNumber,
+              base_number: baseNumber,
+              suffix_line: suffixLine,
+              so_status: 'draft',
+              is_read_only: false,
+              customer_name: customer_name || null,
+              created_by: userId,
+            })
+            .select('id')
+            .single();
+
+          if (createError) {
+            console.error('[Save] Failed to create sales order:', createError);
+            // Non-fatal: continue without FK linkage
+          } else {
+            salesOrderId = newSo.id;
+            console.log('[Save] Created new sales order:', salesOrderId);
+          }
+        }
+      }
+    }
 
     // Look up product_family by model_key first, then fall back to slug inference
     // This ensures we use the authoritative product registry
@@ -479,6 +588,9 @@ export async function POST(request: NextRequest) {
       applicationId: recipe.id,
       // TOP-LEVEL revision for conflict detection on next save
       revision: recipe.updated_at,
+      // Quote/SO FK IDs (for client to update context.id)
+      quote_id: quoteId,
+      sales_order_id: salesOrderId,
       recipe: {
         id: recipe.id,
         slug: recipe.slug,

@@ -273,6 +273,19 @@ function buildContextFromApp(app: any): {
   // Return the FK reference ID (quote_id or sales_order_id), NOT the application ID
   const referenceId = type === 'quote' ? app.quote_id : app.sales_order_id;
 
+  // Log warning if FK is null - this means scope management won't work
+  if (!referenceId) {
+    console.warn('[Load] Application missing FK linkage:', {
+      applicationId: app.id,
+      referenceType: type,
+      base,
+      suffix,
+      quote_id: app.quote_id,
+      sales_order_id: app.sales_order_id,
+      message: 'This application was saved before FK columns were added. Scope management will not work until re-saved.',
+    });
+  }
+
   return {
     type,
     id: referenceId || null,

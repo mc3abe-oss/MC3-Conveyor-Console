@@ -250,9 +250,32 @@ export function ScopeStatusBannerFromContext({
     );
   }
 
-  // No entity linked - don't show banner
+  // No entity linked - show helpful message instead of silently hiding
   if (!scope.entityType || !scope.entityId) {
-    return null;
+    return (
+      <div className={`${compact ? 'py-2' : 'py-3'} px-4 bg-slate-50 border-b border-slate-200`}>
+        <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
+            <svg
+              className="w-5 h-5 text-slate-400"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"
+              />
+            </svg>
+          </div>
+          <span className="text-sm text-slate-600">
+            Link this application to a Quote or Sales Order to enable scope management.
+          </span>
+        </div>
+      </div>
+    );
   }
 
   // Draft state - prominent warning banner
