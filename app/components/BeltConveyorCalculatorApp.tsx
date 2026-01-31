@@ -1194,6 +1194,11 @@ export default function BeltConveyorCalculatorApp({
     // Map context.type to reference_type enum (v1: must be Quote or SO)
     const referenceType = context.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
 
+    // CRITICAL: If we have a loadedConfigurationId, this is an UPDATE, not a CREATE
+    // Without existing_application_id, the API will try to CREATE and hit duplicate error
+    const saveAction = loadedConfigurationId ? 'UPDATE' : 'CREATE';
+    console.log('[Save] Action:', saveAction, { loadedConfigurationId, context });
+
     const payload: Record<string, unknown> = {
       reference_type: referenceType,
       reference_number: String(context.base),
@@ -1206,6 +1211,8 @@ export default function BeltConveyorCalculatorApp({
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, context.quantity ?? conveyorQty),
+      // CRITICAL: Pass existing_application_id for UPDATE mode
+      existing_application_id: loadedConfigurationId || undefined,
       // Include outputs only if we have results (v1.21)
       ...(result ? {
         outputs_json: result.outputs,
@@ -1349,7 +1356,10 @@ export default function BeltConveyorCalculatorApp({
     const willSaveAsDraft = !result || needsRecalc;
     const isStale = result && needsRecalc;
 
-    console.log('[SaveTarget] Selected:', target, { willSaveAsDraft, isStale });
+    // Note: handleSelectSaveTarget is for first-time saves from the modal
+    // If loadedConfigurationId exists, this is unusual but we should handle it
+    const saveAction = loadedConfigurationId ? 'UPDATE' : 'CREATE';
+    console.log('[SaveTarget] Selected:', target, { willSaveAsDraft, isStale, saveAction, loadedConfigurationId });
 
     // Set context (link to selected Quote/SO)
     setContext(target);
@@ -1370,6 +1380,8 @@ export default function BeltConveyorCalculatorApp({
       inputs_json: inputs,
       parameters_json: DEFAULT_PARAMETERS,
       application_json: buildApplicationJson(inputs, target.quantity),
+      // Pass existing_application_id if we somehow have one (rare for modal flow)
+      existing_application_id: loadedConfigurationId || undefined,
       // Include outputs only if we have results (v1.21)
       ...(result ? {
         outputs_json: result.outputs,
@@ -1636,6 +1648,33 @@ export default function BeltConveyorCalculatorApp({
           identity={duplicateInfo.identity}
           existingDetails={duplicateInfo.existing_details}
         />
+      )}
+
+      {/* ============================================================ */}
+      {/* DEV DEBUG PANEL - Shows save state info (remove for production) */}
+      {/* ============================================================ */}
+      {process.env.NODE_ENV === 'development' && (
+        <div className="mb-2 p-2 bg-yellow-50 border border-yellow-300 rounded text-xs font-mono">
+          <div className="font-bold text-yellow-800 mb-1">DEV: Save State Debug</div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-yellow-700">
+            <span>application_id:</span>
+            <span className={loadedConfigurationId ? 'text-green-600 font-bold' : 'text-red-600'}>{loadedConfigurationId || 'null (CREATE mode)'}</span>
+            <span>context.type:</span>
+            <span>{context?.type || 'null'}</span>
+            <span>context.base:</span>
+            <span>{context?.base || 'null'}</span>
+            <span>context.jobLine:</span>
+            <span>{context?.jobLine || 'null'}</span>
+            <span>isDirty:</span>
+            <span className={isDirty ? 'text-orange-600 font-bold' : 'text-green-600'}>{String(isDirty)}</span>
+            <span>isSaving:</span>
+            <span className={isSaving ? 'text-blue-600 font-bold' : ''}>{String(isSaving)}</span>
+            <span>saveAction:</span>
+            <span className={loadedConfigurationId ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>{loadedConfigurationId ? 'UPDATE' : 'CREATE'}</span>
+            <span>loadedRevisionId:</span>
+            <span className="truncate max-w-[150px]">{loadedRevisionId || 'null'}</span>
+          </div>
+        </div>
       )}
 
       {/* ============================================================ */}

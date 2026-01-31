@@ -158,6 +158,36 @@ export default function MagneticConveyorPhysical({
       return;
     }
 
+    // Handle special case: Style C uses overallLength as infeed_length_in
+    // For Style C (horizontal only), the entire conveyor length IS the infeed length
+    if (field === 'overallLength') {
+      const newOverallLength = value as number | undefined;
+      // Store in UI-only field for display
+      updateInput('_ui_overall_length' as keyof SliderbedInputs, newOverallLength);
+      // For Style C, also update infeed_length_in so calculator gets correct value
+      if (magneticUIInputs.style === 'C') {
+        updateInput('infeed_length_in' as keyof SliderbedInputs, newOverallLength);
+      }
+      return;
+    }
+
+    // Handle special case: when switching to Style C, sync overallLength to infeed_length_in
+    // and clear discharge height/angle since Style C is horizontal only
+    if (field === 'style') {
+      const newStyle = value as MagneticConveyorStyle;
+      updateInput('style' as keyof SliderbedInputs, newStyle);
+
+      if (newStyle === 'C') {
+        // Style C: use overallLength as infeed_length_in, zero out incline values
+        const overallLen = magneticUIInputs.overallLength ?? 100;
+        updateInput('infeed_length_in' as keyof SliderbedInputs, overallLen);
+        updateInput('discharge_height_in' as keyof SliderbedInputs, 0);
+        updateInput('incline_angle_deg' as keyof SliderbedInputs, 0);
+        updateInput('discharge_length_in' as keyof SliderbedInputs, 0);
+      }
+      return;
+    }
+
     // Standard mapping
     updateInput(calcKey as keyof SliderbedInputs, value);
   };
