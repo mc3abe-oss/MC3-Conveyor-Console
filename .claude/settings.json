@@ -13,7 +13,8 @@
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(head:*)",
-      "Bash(tail:*)"
+      "Bash(tail:*)",
+      "Read(~/*)"
     ]
   },
   "hooks": {
