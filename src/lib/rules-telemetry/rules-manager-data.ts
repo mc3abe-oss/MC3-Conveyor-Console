@@ -15,7 +15,6 @@
 import {
   RULE_DEFINITIONS,
   CATEGORY_LABELS,
-  type RuleDefinition,
   type RuleCategory,
 } from './rule-definitions';
 
