@@ -22,7 +22,8 @@ import type {
 } from '../../models/belt_conveyor_v1/schema';
 
 import { calculate } from '../../models/belt_conveyor_v1/formulas';
-import { validate } from '../../models/belt_conveyor_v1/rules';
+// Phase 2 dedup: belt_conveyor_v1/rules.ts deleted — use shared sliderbed rules with product key
+import { validate } from '../../models/sliderbed_v1/rules';
 import {
   DEFAULT_PARAMETERS,
   DEFAULT_INPUT_VALUES,
@@ -247,7 +248,7 @@ function getDefaultInputs(): BeltConveyorInputs {
 // =============================================================================
 
 function validateWrapper(inputs: BeltConveyorInputs): ValidationResult[] {
-  const result = validate(inputs, DEFAULT_PARAMETERS);
+  const result = validate(inputs as any, DEFAULT_PARAMETERS as any, 'belt_conveyor_v1');
   const results: ValidationResult[] = [];
 
   // Convert errors

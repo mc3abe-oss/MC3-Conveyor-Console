@@ -97,6 +97,9 @@ import {
   createContext,
 } from '../../lib/rules-telemetry';
 
+// Phase 2 dedup: Premium flags moved from belt_conveyor_v1/rules.ts (belt-only rule)
+import { calculatePremiumFlags } from '../belt_conveyor_v1/premium-flags';
+
 /**
  * v1.24: Parse cleat height from cleat_size string.
  * UI derives cleat_height_in from cleat_size, but this provides a model-layer
@@ -254,6 +257,9 @@ export function validateInputs(
 
   // =========================================================================
   // v1.6: SPEED MODE VALIDATION
+  // TODO: Engineering review — belt_conveyor_v1/rules.ts had a simpler check: just `drive_rpm <= 0`.
+  //   Sliderbed evolved to speed_mode branching (belt_speed_fpm vs drive_rpm_input).
+  //   Belt version was legacy. See docs/rules-dedup-analysis.md
   // =========================================================================
 
   const speedMode = inputs.speed_mode ?? SpeedMode.BeltSpeed;
@@ -380,6 +386,10 @@ export function validateInputs(
 
   // =========================================================================
   // v1.48: PARTS MODE VALIDATION - explicit dimensional entry required
+  // TODO: Engineering review — belt_conveyor_v1/rules.ts treated part_weight_lbs, part_length_in,
+  //   and part_width_in as optional (`!== undefined && <= 0`). Sliderbed requires them in PARTS
+  //   mode (`=== undefined || <= 0`). Sliderbed version is the evolved/correct one with material
+  //   form gating. See docs/rules-dedup-analysis.md
   // =========================================================================
 
   if (isPartsMode) {
@@ -1103,10 +1113,14 @@ export function validateParameters(parameters: SliderbedParameters): ValidationE
 // ============================================================================
 
 export function applyApplicationRules(
-  inputs: SliderbedInputs
+  inputs: SliderbedInputs,
+  productKey?: string
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   const errors: ValidationError[] = [];
   const warnings: ValidationWarning[] = [];
+
+  // Product name for templated messages (Phase 2 dedup)
+  const productName = productKey === 'belt_conveyor_v1' ? 'belt conveyor' : 'sliderbed conveyor';
 
   // v1.48: Material form check for conditional validation
   const materialForm = inputs.material_form as MaterialForm | string | undefined;
@@ -1116,7 +1130,7 @@ export function applyApplicationRules(
   if (inputs.part_temperature_class === 'RED_HOT' || inputs.part_temperature_class === PartTemperatureClass.RedHot) {
     errors.push({
       field: 'part_temperature_class',
-      message: 'Do not use sliderbed conveyor for red hot parts',
+      message: `Do not use ${productName} for red hot parts`,
       severity: 'error',
     });
   }
@@ -1173,7 +1187,7 @@ export function applyApplicationRules(
   if (inclineDeg > 45) {
     errors.push({
       field: 'conveyor_incline_deg',
-      message: 'Incline exceeds 45°. Sliderbed conveyor without positive engagement is not supported by this model.',
+      message: `Incline exceeds 45°. ${productName === 'belt conveyor' ? 'Belt conveyor' : 'Sliderbed conveyor'} without positive engagement is not supported by this model.`,
       severity: 'error',
     });
   }
@@ -1430,6 +1444,9 @@ export function applyApplicationRules(
 
   // Pulley diameter vs belt minimum (v1.3: check both drive and tail)
   // v1.24: Changed to warnings only - not hard stops
+  // TODO: Engineering review — belt_conveyor_v1/rules.ts had this as ERROR (not WARNING).
+  //   Belt checked a single pulley_diameter_in; sliderbed checks drive and tail independently.
+  //   Evaluate whether belt products should escalate to ERROR. See docs/rules-dedup-analysis.md
   if (inputs.belt_catalog_key) {
     const isVGuidedBelt = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
                           inputs.belt_tracking_method === 'V-guided';
@@ -1768,6 +1785,23 @@ export function applyApplicationRules(
     }
   }
 
+  // =========================================================================
+  // PREMIUM FEATURE INFO MESSAGES (belt_conveyor_v1 only)
+  // Phase 2 dedup: Moved from belt_conveyor_v1/rules.ts
+  // =========================================================================
+  if (productKey === 'belt_conveyor_v1') {
+    const premiumFlags = calculatePremiumFlags(inputs as any);
+    if (premiumFlags.is_premium) {
+      for (const reason of premiumFlags.premium_reasons) {
+        warnings.push({
+          field: 'premium',
+          message: `Premium feature: ${reason}`,
+          severity: 'info',
+        });
+      }
+    }
+  }
+
   return { errors, warnings };
 }
 
@@ -1929,7 +1963,7 @@ export function validate(
 ): { errors: ValidationError[]; warnings: ValidationWarning[] } {
   const inputErrors = validateInputs(inputs, productKey);
   const paramErrors = validateParameters(parameters);
-  const { errors: ruleErrors, warnings: ruleWarnings } = applyApplicationRules(inputs);
+  const { errors: ruleErrors, warnings: ruleWarnings } = applyApplicationRules(inputs, productKey);
 
   // v1.4: Add height warnings
   const heightWarnings = applyHeightWarnings(inputs);
