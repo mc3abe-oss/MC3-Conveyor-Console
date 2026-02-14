@@ -4,6 +4,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import './globals.css';
 import { APP_NAME, APP_DESCRIPTION } from '../src/lib/brand';
 import RulesDebugPanel from './components/RulesDebugPanel';
+import RulesAuditPanel from './components/RulesAuditPanel';
 import { TelemetryBootstrap } from '../src/components/telemetry/TelemetryBootstrap';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -36,6 +37,7 @@ export default function RootLayout({
         </div>
         <SpeedInsights />
         <RulesDebugPanel />
+        <RulesAuditPanel />
         <TelemetryBootstrap />
       </body>
     </html>

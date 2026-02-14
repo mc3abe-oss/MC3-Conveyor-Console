@@ -10,6 +10,7 @@
 import { RuleEvent, RuleEmitContext, RuleSeverity } from './types';
 import { addEvent, isEnabled } from './store';
 import { generateRuleId, registerRule, createRegistryEntry } from './registry';
+import { captureValidationSnapshot } from './audit';
 
 // Lazy import for telemetry client to avoid circular dependencies
 let telemetryClient: { trackRuleFired: (rule_id: string, severity: RuleSeverity, message: string, context?: Record<string, string | undefined>) => void } | null = null;
@@ -134,6 +135,9 @@ export function wrapValidationResult<T extends {
 
   wrapValidationErrors(result.errors, context);
   wrapValidationWarnings(result.warnings, context);
+
+  // Capture snapshot for audit diffing (Phase 3.1)
+  captureValidationSnapshot(result.errors, result.warnings, context.product_key);
 
   return result;
 }
