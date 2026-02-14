@@ -671,12 +671,12 @@ export default function BeltConveyorPhysical({
               </select>
               {isHeavySideLoad && (
                 <p className="text-xs text-blue-700 mt-1">
-                  Auto-selected: Heavy side loading requires V-guided tracking.
+                  V-guided tracking required due to heavy side loading (configured on Application tab).
                 </p>
               )}
               {isModerateSideLoad && !isVGuided && (
                 <p className="text-xs text-amber-700 mt-1">
-                  V-guided tracking recommended for moderate side loading.
+                  Side loading detected on Application tab. V-guided tracking is recommended.
                 </p>
               )}
             </div>
