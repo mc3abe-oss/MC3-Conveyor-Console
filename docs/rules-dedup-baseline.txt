@@ -1,0 +1,19 @@
+Phase 2 Baseline Test Results
+Captured: 2026-02-14
+Branch: refactor/deduplicate-belt-rules (at merge point with main after Phase 1)
+
+Test Suites: 5 failed, 75 passed, 80 total
+Tests:       12 failed, 7 skipped, 2355 passed, 2374 total
+Snapshots:   0 total
+
+Pre-existing failures (all existed before Phase 1):
+1. src/models/magnetic_conveyor_v1/__tests__/formulas.test.ts — 8 failures (chip load, throughput placeholders)
+2. src/models/magnetic_conveyor_v1/__tests__/validation.test.ts — 1 failure (throughput placeholder)
+3. src/lib/validation/beltCompatibility.test.ts — vitest import incompatibility (suite fails to run)
+4. src/models/sliderbed_v1/outputs_v2/outputs_v2.test.ts — 1 failure (CSV column count 23 vs 22)
+5. src/lib/auth/middleware.test.ts — 1 failure (PUBLIC_ROUTES count 4 vs <=3)
+
+Phase 1 tests (all passing):
+- src/models/sliderbed_v1/__tests__/side-load-rules.test.ts — 8 passed
+- src/models/sliderbed_v1/__tests__/incline-threshold.test.ts — 13 passed
+- src/models/sliderbed_v1/__tests__/side-load-integration.test.ts — 5 passed

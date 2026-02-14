@@ -1,0 +1,185 @@
+{
+  "name": "09-belt-pulley-min-error",
+  "description": "Belt-specific: pulley too small for belt minimum (ERROR in belt, WARNING in sliderbed)",
+  "inputs": {
+    "conveyor_length_cc_in": 120,
+    "belt_width_in": 24,
+    "conveyor_incline_deg": 0,
+    "pulley_diameter_in": 2,
+    "drive_pulley_diameter_in": 2,
+    "tail_pulley_diameter_in": 2,
+    "belt_speed_fpm": 50,
+    "drive_rpm": 100,
+    "part_weight_lbs": 5,
+    "part_length_in": 12,
+    "part_width_in": 6,
+    "drop_height_in": 0,
+    "part_temperature_class": "Ambient",
+    "fluid_type": "None",
+    "orientation": "Lengthwise",
+    "part_spacing_in": 0,
+    "belt_catalog_key": "TEST_BELT",
+    "belt_piw": 0.109,
+    "belt_pil": 0.109,
+    "material_form": "PARTS",
+    "material_type": "Steel",
+    "process_type": "Assembly",
+    "parts_sharp": "No",
+    "environment_factors": [
+      "Indoor"
+    ],
+    "ambient_temperature": "Normal (60-90°F)",
+    "power_feed": "480V 3-Phase",
+    "controls_package": "Start/Stop",
+    "spec_source": "Standard",
+    "support_method": "external",
+    "field_wiring_required": "No",
+    "bearing_grade": "Standard",
+    "documentation_package": "Basic",
+    "finish_paint_system": "Powder Coat",
+    "labels_required": "Yes",
+    "send_to_estimating": "No",
+    "motor_brand": "Standard",
+    "bottom_covers": false,
+    "side_rails": "None",
+    "end_guards": "None",
+    "finger_safe": false,
+    "lacing_style": "Endless (no lacing)",
+    "side_skirts": false,
+    "pulley_surface_type": "Plain (bare steel)",
+    "start_stop_application": false,
+    "direction_mode": "One direction",
+    "side_loading_direction": "No side loading",
+    "drive_location": "Head",
+    "brake_motor": false,
+    "gearmotor_orientation": "Side mount",
+    "drive_hand": "Right-hand (RH)",
+    "belt_tracking_method": "Crowned",
+    "shaft_diameter_mode": "Calculated",
+    "belt_coeff_piw": 0.109,
+    "belt_coeff_pil": 0.109,
+    "belt_min_pulley_dia_no_vguide_in": 3
+  },
+  "sliderbed_v1": {
+    "validateInputs": {
+      "errors": [
+        {
+          "field": "drive_pulley_diameter_in",
+          "message": "Drive pulley diameter must be >= 2.5\"",
+          "severity": "error"
+        },
+        {
+          "field": "tail_pulley_diameter_in",
+          "message": "Tail pulley diameter must be >= 2.5\"",
+          "severity": "error"
+        }
+      ]
+    },
+    "applyApplicationRules": {
+      "errors": [],
+      "warnings": [
+        {
+          "field": "drive_pulley_diameter_in",
+          "message": "Drive pulley (2\") is below belt minimum (3\" for crowned tracking). Belt may not track properly or could be damaged.",
+          "severity": "warning"
+        },
+        {
+          "field": "tail_pulley_diameter_in",
+          "message": "Tail pulley (2\") is below belt minimum (3\" for crowned tracking). Belt may not track properly or could be damaged.",
+          "severity": "warning"
+        },
+        {
+          "field": "drive_pulley_diameter_in",
+          "message": "Drive pulley diameter (2\") is below the belt minimum (3\" for crowned tracking). This may cause belt damage or tracking issues.",
+          "severity": "warning"
+        },
+        {
+          "field": "tail_pulley_diameter_in",
+          "message": "Tail pulley diameter (2\") is below the belt minimum (3\" for crowned tracking). This may cause belt damage or tracking issues.",
+          "severity": "warning"
+        },
+        {
+          "field": "frame_height_mode",
+          "message": "Frame height (2.5\") is below 4\". Design review required.",
+          "severity": "warning"
+        },
+        {
+          "field": "frame_height_mode",
+          "message": "Frame height (2.5\") is below snub roller threshold (4.5\"). Snub rollers will be required at pulley ends.",
+          "severity": "info"
+        }
+      ]
+    },
+    "validate": {
+      "errors": [
+        {
+          "field": "drive_pulley_diameter_in",
+          "message": "Drive pulley diameter must be >= 2.5\"",
+          "severity": "error"
+        },
+        {
+          "field": "tail_pulley_diameter_in",
+          "message": "Tail pulley diameter must be >= 2.5\"",
+          "severity": "error"
+        }
+      ],
+      "warnings": [
+        {
+          "field": "drive_pulley_diameter_in",
+          "message": "Drive pulley (2\") is below belt minimum (3\" for crowned tracking). Belt may not track properly or could be damaged.",
+          "severity": "warning"
+        },
+        {
+          "field": "tail_pulley_diameter_in",
+          "message": "Tail pulley (2\") is below belt minimum (3\" for crowned tracking). Belt may not track properly or could be damaged.",
+          "severity": "warning"
+        },
+        {
+          "field": "drive_pulley_diameter_in",
+          "message": "Drive pulley diameter (2\") is below the belt minimum (3\" for crowned tracking). This may cause belt damage or tracking issues.",
+          "severity": "warning"
+        },
+        {
+          "field": "tail_pulley_diameter_in",
+          "message": "Tail pulley diameter (2\") is below the belt minimum (3\" for crowned tracking). This may cause belt damage or tracking issues.",
+          "severity": "warning"
+        },
+        {
+          "field": "frame_height_mode",
+          "message": "Frame height (2.5\") is below 4\". Design review required.",
+          "severity": "warning"
+        },
+        {
+          "field": "frame_height_mode",
+          "message": "Frame height (2.5\") is below snub roller threshold (4.5\"). Snub rollers will be required at pulley ends.",
+          "severity": "info"
+        }
+      ]
+    }
+  },
+  "belt_conveyor_v1": {
+    "validateInputs": {
+      "errors": []
+    },
+    "applyApplicationRules": {
+      "errors": [
+        {
+          "field": "pulley_diameter_in",
+          "message": "Pulley diameter (2\") is below the belt minimum (3\" for crowned tracking). Increase pulley diameter or select a different belt.",
+          "severity": "error"
+        }
+      ],
+      "warnings": []
+    },
+    "validate": {
+      "errors": [
+        {
+          "field": "pulley_diameter_in",
+          "message": "Pulley diameter (2\") is below the belt minimum (3\" for crowned tracking). Increase pulley diameter or select a different belt.",
+          "severity": "error"
+        }
+      ],
+      "warnings": []
+    }
+  }
+}
