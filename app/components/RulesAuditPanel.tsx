@@ -212,17 +212,9 @@ export function RulesAuditPanel() {
   const [filter, setFilter] = useState<FilterMode>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Don't render if not enabled
-  if (!isDebugEnabled || !enabled) {
-    return null;
-  }
-
-  if (!report) {
-    return null;
-  }
-
-  // Filter categories by search query
+  // Filter categories by search query — must be before early returns (Rules of Hooks)
   const filteredCategories = useMemo(() => {
+    if (!report) return [];
     if (!searchQuery.trim()) return report.by_category;
 
     const q = searchQuery.toLowerCase();
@@ -239,7 +231,12 @@ export function RulesAuditPanel() {
         ),
       }))
       .filter((g) => g.entries.length > 0);
-  }, [report.by_category, searchQuery]);
+  }, [report, searchQuery]);
+
+  // Don't render if not enabled
+  if (!isDebugEnabled || !enabled || !report) {
+    return null;
+  }
 
   return (
     <div className="fixed bottom-4 left-4 z-50 w-[520px] max-h-[70vh] flex flex-col bg-white rounded-lg shadow-xl border border-gray-300 overflow-hidden">
