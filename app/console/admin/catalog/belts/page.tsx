@@ -440,7 +440,7 @@ export default function AdminBeltsPage() {
                       )}
                     </div>
                     <div className="text-xs text-gray-500">
-                      {belt.material} | PIW: {belt.piw} | Min Pulley: {belt.min_pulley_dia_no_vguide_in}"
+                      {belt.material} | PIW: {belt.piw} | Min Pulley: {belt.min_pulley_dia_no_vguide_in}&quot;
                     </div>
                   </button>
                 ))}

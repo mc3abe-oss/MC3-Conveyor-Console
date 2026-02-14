@@ -322,7 +322,7 @@ export default function AdminVGuidesPage() {
                       )}
                     </div>
                     <div className="text-xs text-gray-500 mt-1">
-                      Solid: {vguide.min_pulley_dia_solid_in}" | Notched: {vguide.min_pulley_dia_notched_in}"
+                      Solid: {vguide.min_pulley_dia_solid_in}&quot; | Notched: {vguide.min_pulley_dia_notched_in}&quot;
                     </div>
                   </button>
                 ))}

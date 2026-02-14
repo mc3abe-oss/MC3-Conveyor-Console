@@ -580,10 +580,10 @@ function ModelsTab() {
                   >
                     <div className="font-medium text-gray-900">{model.display_name}</div>
                     <div className="text-xs text-gray-500">
-                      {model.shell_od_in}" OD | {model.style_key}
+                      {model.shell_od_in}&quot; OD | {model.style_key}
                     </div>
                     <div className="text-xs text-gray-400 mt-1">
-                      Face: {model.face_width_min_in}" – {model.face_width_max_in}"
+                      Face: {model.face_width_min_in}&quot; – {model.face_width_max_in}&quot;
                     </div>
                   </button>
                 </li>

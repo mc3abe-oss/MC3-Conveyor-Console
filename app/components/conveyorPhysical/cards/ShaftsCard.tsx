@@ -189,7 +189,7 @@ export default function ShaftsCard({
                     )}
                     {driveHasStepdown && (
                       <span className="text-xs text-blue-600 ml-1">
-                        → {inputs.drive_shaft_stepdown_to_dia_in ?? '?'}"
+                        → {inputs.drive_shaft_stepdown_to_dia_in ?? '?'}&quot;
                       </span>
                     )}
                   </>
@@ -205,7 +205,7 @@ export default function ShaftsCard({
                     )}
                     {tailHasStepdown && (
                       <span className="text-xs text-blue-600 ml-1">
-                        → {inputs.tail_shaft_stepdown_to_dia_in ?? '?'}"
+                        → {inputs.tail_shaft_stepdown_to_dia_in ?? '?'}&quot;
                       </span>
                     )}
                   </>

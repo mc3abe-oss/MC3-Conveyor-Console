@@ -50,12 +50,12 @@ export default function FrameHeightBreakdownCard({
         <div className="grid grid-cols-2 gap-4 border-b border-gray-200 pb-2">
           <div className="text-center">
             <div className="text-xs text-gray-500 uppercase">Required</div>
-            <div className="font-bold text-gray-900 text-lg">{requiredFrameHeight.toFixed(2)}"</div>
+            <div className="font-bold text-gray-900 text-lg">{requiredFrameHeight.toFixed(2)}&quot;</div>
             <div className="text-xs text-gray-400">(Physical envelope)</div>
           </div>
           <div className="text-center">
             <div className="text-xs text-gray-500 uppercase">Reference</div>
-            <div className="font-bold text-blue-600 text-lg">{referenceFrameHeight.toFixed(2)}"</div>
+            <div className="font-bold text-blue-600 text-lg">{referenceFrameHeight.toFixed(2)}&quot;</div>
             <div className="text-xs text-gray-400">({frameHeightMode ?? 'Standard'})</div>
           </div>
         </div>
@@ -64,7 +64,7 @@ export default function FrameHeightBreakdownCard({
         <div className="grid grid-cols-2 gap-x-4 gap-y-1">
           <div className="flex justify-between">
             <span className="text-gray-500">Largest Pulley OD:</span>
-            <span className="font-medium text-gray-700">{frameHeightBreakdown.largest_pulley_in.toFixed(2)}"</span>
+            <span className="font-medium text-gray-700">{frameHeightBreakdown.largest_pulley_in.toFixed(2)}&quot;</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Cleats (2×):</span>
@@ -76,11 +76,11 @@ export default function FrameHeightBreakdownCard({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Return Roller:</span>
-            <span className="font-medium text-gray-700">{frameHeightBreakdown.return_roller_in.toFixed(2)}"</span>
+            <span className="font-medium text-gray-700">{frameHeightBreakdown.return_roller_in.toFixed(2)}&quot;</span>
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Clearance:</span>
-            <span className="font-medium text-gray-700">+{frameHeightBreakdown.clearance_in.toFixed(2)}"</span>
+            <span className="font-medium text-gray-700">+{frameHeightBreakdown.clearance_in.toFixed(2)}&quot;</span>
           </div>
         </div>
 

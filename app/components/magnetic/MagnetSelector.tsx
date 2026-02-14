@@ -229,7 +229,7 @@ export function MagnetSelector({
                             {magnet.name}
                           </div>
                           <div className="text-xs text-gray-500 flex gap-2">
-                            <span>{magnet.length_in}"</span>
+                            <span>{magnet.length_in}&quot;</span>
                             <span>|</span>
                             <span>{MAGNET_MATERIAL_TYPE_LABELS[magnet.material_type]}</span>
                             <span>|</span>

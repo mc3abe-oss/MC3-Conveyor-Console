@@ -66,7 +66,7 @@ export default function LegacyPulleyOverrideCard({
               >
                 <option value="">Select...</option>
                 {PULLEY_DIAMETER_PRESETS.map((size) => (
-                  <option key={size} value={size.toString()}>{size}"</option>
+                  <option key={size} value={size.toString()}>{size}&quot;</option>
                 ))}
               </select>
             </div>
@@ -95,7 +95,7 @@ export default function LegacyPulleyOverrideCard({
               >
                 <option value="">Select...</option>
                 {PULLEY_DIAMETER_PRESETS.map((size) => (
-                  <option key={size} value={size.toString()}>{size}"</option>
+                  <option key={size} value={size.toString()}>{size}&quot;</option>
                 ))}
               </select>
             </div>

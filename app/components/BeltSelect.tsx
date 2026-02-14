@@ -112,7 +112,7 @@ export default function BeltSelect({
             <div className="flex justify-between">
               <span>Min Pulley (no V-guide):</span>
               <span className="font-mono">
-                {effectiveMin.noVguide}"
+                {effectiveMin.noVguide}&quot;
                 {hasProfile && (
                   <span className="ml-1 text-blue-600" title="From material profile">*</span>
                 )}
@@ -121,7 +121,7 @@ export default function BeltSelect({
             <div className="flex justify-between">
               <span>Min Pulley (V-guided):</span>
               <span className="font-mono">
-                {effectiveMin.withVguide}"
+                {effectiveMin.withVguide}&quot;
                 {hasProfile && (
                   <span className="ml-1 text-blue-600" title="From material profile">*</span>
                 )}
@@ -169,13 +169,13 @@ export default function BeltSelect({
                     {effectiveMin.banding.minNoVguide !== undefined && (
                       <div className="flex justify-between">
                         <span>With banding (no V-guide):</span>
-                        <span className="font-mono">{effectiveMin.banding.minNoVguide}"</span>
+                        <span className="font-mono">{effectiveMin.banding.minNoVguide}&quot;</span>
                       </div>
                     )}
                     {effectiveMin.banding.minWithVguide !== undefined && (
                       <div className="flex justify-between">
                         <span>With banding (V-guided):</span>
-                        <span className="font-mono">{effectiveMin.banding.minWithVguide}"</span>
+                        <span className="font-mono">{effectiveMin.banding.minWithVguide}&quot;</span>
                       </div>
                     )}
                   </div>

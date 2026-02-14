@@ -110,9 +110,9 @@ export default function VGuideSelect({
       {/* Show min pulley info when a v-guide is selected */}
       {selectedVGuide && (
         <div className="text-xs text-gray-500 mt-1">
-          <p>PVC: {selectedVGuide.min_pulley_dia_solid_in}" (solid) / {selectedVGuide.min_pulley_dia_notched_in}" (notched)</p>
+          <p>PVC: {selectedVGuide.min_pulley_dia_solid_in}&quot; (solid) / {selectedVGuide.min_pulley_dia_notched_in}&quot; (notched)</p>
           {selectedVGuide.min_pulley_dia_solid_pu_in != null && (
-            <p>PU: {selectedVGuide.min_pulley_dia_solid_pu_in}" (solid) / {selectedVGuide.min_pulley_dia_notched_pu_in}" (notched)</p>
+            <p>PU: {selectedVGuide.min_pulley_dia_solid_pu_in}&quot; (solid) / {selectedVGuide.min_pulley_dia_notched_pu_in}&quot; (notched)</p>
           )}
         </div>
       )}

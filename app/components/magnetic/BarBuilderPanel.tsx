@@ -272,7 +272,7 @@ export function BarBuilderPanel({
         <div>
           <h3 className="text-sm font-semibold text-[#2E364E]">Bar Configuration</h3>
           <p className="text-xs text-gray-500">
-            Target OAL: {targetOal}" | Cross-section: {familyCrossSection}
+            Target OAL: {targetOal}&quot; | Cross-section: {familyCrossSection}
           </p>
         </div>
 
@@ -445,7 +445,7 @@ export function OalSelector({ value, onChange, disabled }: OalSelectorProps) {
       >
         {SUPPORTED_OAL_VALUES_IN.filter(oal => oal <= 24).map((oal) => (
           <option key={oal} value={oal}>
-            {oal}"
+            {oal}&quot;
           </option>
         ))}
       </select>

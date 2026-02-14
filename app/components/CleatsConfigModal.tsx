@@ -451,7 +451,7 @@ export default function CleatsConfigModal({
                   placeholder="e.g., 6"
                 />
                 <p className="text-xs text-gray-500 mt-0.5">
-                  Bucket: <span className="font-medium text-blue-600">{currentBucket}"</span>
+                  Bucket: <span className="font-medium text-blue-600">{currentBucket}&quot;</span>
                 </p>
               </div>
 
@@ -674,9 +674,9 @@ export default function CleatsConfigModal({
                   {cleatsMinPulleyResult.success ? (
                     <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Base @ 12":</span>
+                        <span className="text-gray-600">Base @ 12&quot;:</span>
                         <span className="font-medium text-gray-900">
-                          {cleatsMinPulleyResult.baseMinDia12In?.toFixed(1)}"
+                          {cleatsMinPulleyResult.baseMinDia12In?.toFixed(1)}&quot;
                         </span>
                       </div>
                       <div className="flex justify-between">
@@ -688,7 +688,7 @@ export default function CleatsConfigModal({
                       <div className="col-span-2 flex justify-between border-t border-gray-200 pt-1 mt-1">
                         <span className="text-gray-700 font-medium">Min Pulley:</span>
                         <span className="font-bold text-blue-600">
-                          {cleatsMinPulleyResult.roundedMinDia?.toFixed(1)}"
+                          {cleatsMinPulleyResult.roundedMinDia?.toFixed(1)}&quot;
                         </span>
                       </div>
                     </div>
@@ -715,7 +715,7 @@ export default function CleatsConfigModal({
                     </div>
                     <div className="flex justify-between">
                       <span className="text-green-600">Actual Pitch:</span>
-                      <span className="font-medium text-green-900">{cleatWeightCalcs.layout.pitch_in.toFixed(2)}"</span>
+                      <span className="font-medium text-green-900">{cleatWeightCalcs.layout.pitch_in.toFixed(2)}&quot;</span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-green-600">Cleats/ft:</span>
@@ -769,11 +769,11 @@ export default function CleatsConfigModal({
                 <div className="grid grid-cols-2 gap-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-blue-600">Thickness:</span>
-                    <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.THICKNESS_IN}"</span>
+                    <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.THICKNESS_IN}&quot;</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Base Length:</span>
-                    <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.BASE_LENGTH_IN}"</span>
+                    <span className="font-medium text-blue-900">{CLEAT_GEOMETRY.BASE_LENGTH_IN}&quot;</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-blue-600">Material:</span>
@@ -811,7 +811,7 @@ export default function CleatsConfigModal({
                         className={row.isCurrent ? 'bg-blue-50' : 'bg-white'}
                       >
                         <td className="px-2 py-1 font-medium text-gray-900">
-                          {row.bucket}"
+                          {row.bucket}&quot;
                           {row.isCurrent && (
                             <span className="ml-1 text-[10px] px-1 py-0.5 bg-blue-600 text-white rounded">
                               Current
@@ -825,7 +825,7 @@ export default function CleatsConfigModal({
                         <td className="px-2 py-1 text-right font-medium">
                           {row.resultingMinDia !== null ? (
                             <span className={row.isCurrent ? 'text-blue-700' : 'text-gray-900'}>
-                              {row.resultingMinDia.toFixed(1)}"
+                              {row.resultingMinDia.toFixed(1)}&quot;
                             </span>
                           ) : (
                             <span className="text-gray-400">—</span>

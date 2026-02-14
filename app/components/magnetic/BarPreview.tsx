@@ -166,7 +166,7 @@ export function BarPreview({
                   >
                     {magnetWidth > 40 && (
                       <span className="truncate px-1">
-                        {slot.length}"
+                        {slot.length}&quot;
                       </span>
                     )}
                   </button>
@@ -210,7 +210,7 @@ export function BarPreview({
             <div className="flex items-center text-xs text-gray-500">
               <div className="w-1 h-3 border-l border-gray-400" />
               <div className="flex-1 border-t border-gray-400 mx-1" style={{ minWidth: 40 }} />
-              <span className="px-1 bg-white">{targetOal}" OAL</span>
+              <span className="px-1 bg-white">{targetOal}&quot; OAL</span>
               <div className="flex-1 border-t border-gray-400 mx-1" style={{ minWidth: 40 }} />
               <div className="w-1 h-3 border-r border-gray-400" />
             </div>
@@ -225,7 +225,7 @@ export function BarPreview({
           <div className="flex items-center gap-2">
             <span className="text-gray-500">Achieved:</span>
             <span className={`font-medium ${isOverfill ? 'text-red-600' : 'text-gray-900'}`}>
-              {computedOal.toFixed(2)}"
+              {computedOal.toFixed(2)}&quot;
             </span>
           </div>
 
@@ -241,7 +241,7 @@ export function BarPreview({
                   : 'text-yellow-600'
               }`}
             >
-              {remaining.toFixed(2)}"
+              {remaining.toFixed(2)}&quot;
             </span>
           </div>
 
@@ -282,7 +282,7 @@ export function BarPreview({
               d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
             />
           </svg>
-          Bar overfill: magnets exceed target OAL by {Math.abs(remaining).toFixed(2)}"
+          Bar overfill: magnets exceed target OAL by {Math.abs(remaining).toFixed(2)}&quot;
         </div>
       )}
     </div>

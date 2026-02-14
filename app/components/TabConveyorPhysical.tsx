@@ -773,7 +773,7 @@ export default function TabConveyorPhysical({
           {minPulleyRequired !== undefined && (
             <FootnoteRow>
               <span className="font-medium">Min pulley (Governing):</span>{' '}
-              <span className="text-blue-700 font-semibold">{minPulleyRequired.toFixed(1)}"</span>
+              <span className="text-blue-700 font-semibold">{minPulleyRequired.toFixed(1)}&quot;</span>
               <span className="ml-1 text-gray-500">
                 ({governingSource === 'vguide' ? 'V-guide' : governingSource === 'cleats' ? 'Cleats' : 'Belt'})
               </span>
@@ -786,12 +786,12 @@ export default function TabConveyorPhysical({
           {/* Pulley warnings - compact */}
           {minPulleyRequired !== undefined && drivePulley?.finished_od_in && drivePulley.finished_od_in < minPulleyRequired && (
             <FootnoteRow variant="warning">
-              Drive pulley ({drivePulley.finished_od_in}") below min ({minPulleyRequired.toFixed(1)}")
+              Drive pulley ({drivePulley.finished_od_in}&quot;) below min ({minPulleyRequired.toFixed(1)}&quot;)
             </FootnoteRow>
           )}
           {minPulleyRequired !== undefined && tailPulley?.finished_od_in && tailPulley.finished_od_in < minPulleyRequired && (
             <FootnoteRow variant="warning">
-              Tail pulley ({tailPulley.finished_od_in}") below min ({minPulleyRequired.toFixed(1)}")
+              Tail pulley ({tailPulley.finished_od_in}&quot;) below min ({minPulleyRequired.toFixed(1)}&quot;)
             </FootnoteRow>
           )}
 

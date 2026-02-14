@@ -338,7 +338,7 @@ export default function AdminCleatsPage() {
                     {item.cleat_profile} {item.cleat_size}
                   </div>
                   <div className="text-xs text-gray-500">
-                    {CLEAT_PATTERN_LABELS[item.cleat_pattern]} | Solid: {item.min_pulley_dia_12in_solid_in}"
+                    {CLEAT_PATTERN_LABELS[item.cleat_pattern]} | Solid: {item.min_pulley_dia_12in_solid_in}&quot;
                     {item.min_pulley_dia_12in_drill_siped_in && ` | D&S: ${item.min_pulley_dia_12in_drill_siped_in}"`}
                   </div>
                   {!item.is_active && (
@@ -418,7 +418,7 @@ export default function AdminCleatsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Min Pulley Dia @ 12" - Solid (in) *
+                    Min Pulley Dia @ 12&quot; - Solid (in) *
                   </label>
                   <input
                     type="number"
@@ -432,7 +432,7 @@ export default function AdminCleatsPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
-                    Min Pulley Dia @ 12" - Drill & Siped (in)
+                    Min Pulley Dia @ 12&quot; - Drill &amp; Siped (in)
                   </label>
                   <input
                     type="number"
@@ -604,7 +604,7 @@ export default function AdminCleatsPage() {
                     className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md"
                   >
                     {CLEAT_CENTERS_OPTIONS.map((c) => (
-                      <option key={c} value={c}>{c}"</option>
+                      <option key={c} value={c}>{c}&quot;</option>
                     ))}
                   </select>
                 </div>
@@ -617,11 +617,11 @@ export default function AdminCleatsPage() {
                     {previewResult.success ? (
                       <>
                         <div className="text-sm space-y-1">
-                          <div>Base @ 12": <strong>{previewResult.baseMinDia12In}"</strong></div>
+                          <div>Base @ 12&quot;: <strong>{previewResult.baseMinDia12In}&quot;</strong></div>
                           <div>Centers Factor: <strong>{previewResult.centersFactor}x</strong></div>
-                          <div>Adjusted: <strong>{previewResult.adjustedMinDia?.toFixed(2)}"</strong></div>
+                          <div>Adjusted: <strong>{previewResult.adjustedMinDia?.toFixed(2)}&quot;</strong></div>
                           <div className="text-lg font-bold text-green-800">
-                            Result: {previewResult.roundedMinDia}"
+                            Result: {previewResult.roundedMinDia}&quot;
                           </div>
                         </div>
                         <p className="text-xs text-gray-600 mt-2">{previewResult.ruleSource}</p>
@@ -655,7 +655,7 @@ export default function AdminCleatsPage() {
                     .filter((f) => f.material_family === 'PVC_HOT_WELDED')
                     .map((f) => (
                       <tr key={f.id} className="border-b">
-                        <td className="py-2">{f.centers_in}"</td>
+                        <td className="py-2">{f.centers_in}&quot;</td>
                         <td className="py-2">{f.factor}x</td>
                         <td className="py-2">
                           <span className={`text-xs px-2 py-1 rounded ${
@@ -669,7 +669,7 @@ export default function AdminCleatsPage() {
                 </tbody>
               </table>
               <p className="text-xs text-gray-500 mt-2">
-                Edit center factors via API. Standard values: 12"=1.0, 8"=1.15, 6"=1.25, 4"=1.35
+                Edit center factors via API. Standard values: 12&quot;=1.0, 8&quot;=1.15, 6&quot;=1.25, 4&quot;=1.35
               </p>
             </div>
 

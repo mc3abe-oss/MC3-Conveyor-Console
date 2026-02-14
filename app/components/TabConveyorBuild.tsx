@@ -298,7 +298,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
               Drive Pulley Diameter (in)
               {driveFromCatalog && (
                 <span className="ml-2 text-xs font-normal text-blue-600">
-                  ({drivePulleyDia}" from catalog)
+                  ({drivePulleyDia}&quot; from catalog)
                 </span>
               )}
             </label>
@@ -323,7 +323,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                   >
                     {PULLEY_DIAMETER_PRESETS.map((size) => (
                       <option key={size} value={size.toString()}>
-                        {size}"
+                        {size}&quot;
                       </option>
                     ))}
                     <option value="custom">Custom...</option>
@@ -349,7 +349,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                 </div>
                 {drivePulleyBelowMinimum && (
                   <p className="text-xs text-red-600 mt-1">
-                    Drive pulley is below the belt minimum ({minPulleyDia}" for{' '}
+                    Drive pulley is below the belt minimum ({minPulleyDia}&quot; for{' '}
                     {isVGuided ? 'V-guided' : 'crowned'} tracking).
                   </p>
                 )}
@@ -363,7 +363,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
               Tail Pulley Diameter (in)
               {tailFromCatalog && (
                 <span className="ml-2 text-xs font-normal text-blue-600">
-                  ({tailPulleyDia}" from catalog)
+                  ({tailPulleyDia}&quot; from catalog)
                 </span>
               )}
             </label>
@@ -388,7 +388,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                   >
                     {PULLEY_DIAMETER_PRESETS.map((size) => (
                       <option key={size} value={size.toString()}>
-                        {size}"
+                        {size}&quot;
                       </option>
                     ))}
                     <option value="custom">Custom...</option>
@@ -413,7 +413,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                 </div>
                 {tailPulleyBelowMinimum && (
                   <p className="text-xs text-red-600 mt-1">
-                    Tail pulley is below the belt minimum ({minPulleyDia}" for{' '}
+                    Tail pulley is below the belt minimum ({minPulleyDia}&quot; for{' '}
                     {isVGuided ? 'V-guided' : 'crowned'} tracking).
                   </p>
                 )}
@@ -517,7 +517,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
               <div className="flex justify-between">
                 <span className="text-gray-600">Frame Height:</span>
-                <span className="font-medium text-gray-900">{effectiveFrameHeight.toFixed(1)}"</span>
+                <span className="font-medium text-gray-900">{effectiveFrameHeight.toFixed(1)}&quot;</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-gray-600">Mode:</span>
@@ -534,7 +534,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
               <div className="flex justify-between">
                 <span className="text-gray-600">Gravity Rollers:</span>
                 <span className="font-medium text-gray-900">
-                  {gravityRollerQty} <span className="text-gray-500 text-xs">@ {GRAVITY_ROLLER_SPACING_IN}"</span>
+                  {gravityRollerQty} <span className="text-gray-500 text-xs">@ {GRAVITY_ROLLER_SPACING_IN}&quot;</span>
                 </span>
               </div>
             </div>
@@ -620,7 +620,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                     placeholder="e.g., 1"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Height of cleats (0.5" - 6")
+                    Height of cleats (0.5&quot; - 6&quot;)
                   </p>
                 </div>
 
@@ -643,7 +643,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                     placeholder="e.g., 12"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Center-to-center spacing between cleats (2" - 48")
+                    Center-to-center spacing between cleats (2&quot; - 48&quot;)
                   </p>
                 </div>
 
@@ -666,7 +666,7 @@ export default function TabConveyorBuild({ inputs, updateInput }: TabConveyorBui
                     placeholder="e.g., 0.5"
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    Distance from belt edge to cleat end (0" - 12")
+                    Distance from belt edge to cleat end (0&quot; - 12&quot;)
                   </p>
                 </div>
               </div>

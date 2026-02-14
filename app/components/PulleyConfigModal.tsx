@@ -711,7 +711,7 @@ export default function PulleyConfigModal({
                   <option value="">Select a model...</option>
                   {eligibleModels.map((model) => (
                     <option key={model.model_key} value={model.model_key}>
-                      {model.display_name} ({model.shell_od_in}" OD)
+                      {model.display_name} ({model.shell_od_in}&quot; OD)
                     </option>
                   ))}
                 </select>
@@ -720,7 +720,7 @@ export default function PulleyConfigModal({
                 )}
                 {selectedModel && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Face width: {selectedModel.face_width_min_in}" – {selectedModel.face_width_max_in}"
+                    Face width: {selectedModel.face_width_min_in}&quot; – {selectedModel.face_width_max_in}&quot;
                   </p>
                 )}
               </div>
@@ -796,7 +796,7 @@ export default function PulleyConfigModal({
                       </p>
                     )}
                     <p className="text-xs text-gray-500">
-                      Default allowance: {getDefaultAllowanceForTracking()}" for {trackingMode === 'CROWNED' ? 'crowned' : trackingMode === 'V_GUIDED' ? 'V-guided' : 'flat'} pulleys
+                      Default allowance: {getDefaultAllowanceForTracking()}&quot; for {trackingMode === 'CROWNED' ? 'crowned' : trackingMode === 'V_GUIDED' ? 'V-guided' : 'flat'} pulleys
                     </p>
                   </>
                 ) : (
@@ -817,9 +817,9 @@ export default function PulleyConfigModal({
                     {/* Show implied allowance for reference */}
                     {beltWidthIn != null && currentForm.face_width_in && (
                       <p className="text-xs text-gray-500">
-                        Implied allowance: {(parseFloat(currentForm.face_width_in) - beltWidthIn).toFixed(2)}"
+                        Implied allowance: {(parseFloat(currentForm.face_width_in) - beltWidthIn).toFixed(2)}&quot;
                         {parseFloat(currentForm.face_width_in) - beltWidthIn < getMinAllowanceIn() && (
-                          <span className="text-amber-600"> (below recommended {getDefaultAllowanceForTracking()}")</span>
+                          <span className="text-amber-600"> (below recommended {getDefaultAllowanceForTracking()}&quot;)</span>
                         )}
                       </p>
                     )}
@@ -894,7 +894,7 @@ export default function PulleyConfigModal({
 
                 {currentForm.wallValidationStatus === 'NOT_VALIDATED' && currentForm.model_key && (
                   <p className="mt-1 text-xs text-amber-600">
-                    Wall thickness not validated. Click "Validate" to check stress.
+                    Wall thickness not validated. Click &quot;Validate&quot; to check stress.
                   </p>
                 )}
               </div>
@@ -1041,7 +1041,7 @@ export default function PulleyConfigModal({
                   <div className="grid grid-cols-2 gap-2">
                     <div>
                       <span className="text-gray-500">Shell OD:</span>
-                      <span className="ml-2 font-medium">{selectedModel.shell_od_in}"</span>
+                      <span className="ml-2 font-medium">{selectedModel.shell_od_in}&quot;</span>
                     </div>
                     <div>
                       <span className="text-gray-500">Finished OD:</span>

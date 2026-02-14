@@ -237,7 +237,7 @@ export default function DiscretePartsConfigModal({
               <div className="flex justify-between">
                 <span className="text-gray-600">Dimensions:</span>
                 <span className="font-medium text-gray-900">
-                  {inputs.part_length_in || 0}" x {inputs.part_width_in || 0}"
+                  {inputs.part_length_in || 0}&quot; x {inputs.part_width_in || 0}&quot;
                 </span>
               </div>
               <div className="flex justify-between">
@@ -249,7 +249,7 @@ export default function DiscretePartsConfigModal({
               <div className="flex justify-between">
                 <span className="text-gray-600">Spacing:</span>
                 <span className="font-medium text-gray-900">
-                  {inputs.part_spacing_in || 0}" c-c
+                  {inputs.part_spacing_in || 0}&quot; c-c
                 </span>
               </div>
               <div className="flex justify-between">

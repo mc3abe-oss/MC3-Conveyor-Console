@@ -239,7 +239,7 @@ export default function ReturnSupportModal({
               </div>
               {isEndOffsetOutOfRange && (
                 <p className="mt-1 text-xs text-yellow-700">
-                  Typical range: 6" to 60"
+                  Typical range: 6&quot; to 60&quot;
                 </p>
               )}
             </div>
@@ -256,12 +256,12 @@ export default function ReturnSupportModal({
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-600">Span to support:</span>
                 <span className="text-sm font-mono font-medium text-gray-900">
-                  {returnSpan.toFixed(1)}"
+                  {returnSpan.toFixed(1)}&quot;
                 </span>
               </div>
               {snubsEnabled && (
                 <p className="mt-1 text-xs text-gray-500">
-                  Reduced by {totalReduction}" total ({endOffsetIn}" per end) for snub zones
+                  Reduced by {totalReduction}&quot; total ({endOffsetIn}&quot; per end) for snub zones
                 </p>
               )}
             </div>
@@ -312,12 +312,12 @@ export default function ReturnSupportModal({
               </div>
               {isCentersTooLarge && (
                 <p className="mt-1 text-xs text-yellow-700">
-                  Large spacing ({'>'}72") may cause belt sag
+                  Large spacing ({'>'}72&quot;) may cause belt sag
                 </p>
               )}
               {isCentersTooSmall && (
                 <p className="mt-1 text-xs text-yellow-700">
-                  Small spacing ({'<'}24") may be over-engineered
+                  Small spacing ({'<'}24&quot;) may be over-engineered
                 </p>
               )}
             </div>

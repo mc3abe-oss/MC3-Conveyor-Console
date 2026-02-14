@@ -175,7 +175,7 @@ function GeometryContent({ outputs }: { outputs: OutputsV2 }) {
             <div className="flex justify-between">
               <span className="text-gray-600">Top of Belt:</span>
               <span className="font-mono">
-                {design_geometry.top_of_belt_in.value?.toFixed(2) ?? '—'}"
+                {design_geometry.top_of_belt_in.value?.toFixed(2) ?? '—'}&quot;
                 {design_geometry.top_of_belt_in.reference_only && (
                   <span className="text-xs text-gray-500 ml-1">(ref only)</span>
                 )}
@@ -190,7 +190,7 @@ function GeometryContent({ outputs }: { outputs: OutputsV2 }) {
           <div className="flex justify-between">
             <span className="text-gray-600">Frame Height:</span>
             <span className="font-mono">
-              {design_geometry.frame_height_in.value?.toFixed(2) ?? '—'}"
+              {design_geometry.frame_height_in.value?.toFixed(2) ?? '—'}&quot;
               {design_geometry.frame_height_in.reference_only && (
                 <span className="text-xs text-gray-500 ml-1">(ref only)</span>
               )}
@@ -199,13 +199,13 @@ function GeometryContent({ outputs }: { outputs: OutputsV2 }) {
           {design_geometry.roller_spacing_in.carry != null && (
             <div className="flex justify-between">
               <span className="text-gray-600">Carry Roller Spacing:</span>
-              <span className="font-mono">{design_geometry.roller_spacing_in.carry.toFixed(1)}"</span>
+              <span className="font-mono">{design_geometry.roller_spacing_in.carry.toFixed(1)}&quot;</span>
             </div>
           )}
           {design_geometry.roller_spacing_in.return != null && (
             <div className="flex justify-between">
               <span className="text-gray-600">Return Roller Spacing:</span>
-              <span className="font-mono">{design_geometry.roller_spacing_in.return.toFixed(1)}"</span>
+              <span className="font-mono">{design_geometry.roller_spacing_in.return.toFixed(1)}&quot;</span>
             </div>
           )}
         </div>

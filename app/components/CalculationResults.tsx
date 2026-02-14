@@ -492,7 +492,7 @@ export default function CalculationResults({ result, inputs }: Props) {
                   <span className="font-mono font-semibold">
                     {outputs.gravity_roller_quantity} rollers
                     <span className="text-xs text-gray-500 ml-1">
-                      (spaced at {outputs.gravity_roller_spacing_in}")
+                      (spaced at {outputs.gravity_roller_spacing_in}&quot;)
                     </span>
                   </span>
                 </div>
