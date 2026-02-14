@@ -55,3 +55,29 @@ export {
 
 // React hooks (client-side only)
 export { useRuleTelemetry, useRulesDebugEnabled } from './useRuleTelemetry';
+export { useRulesAudit } from './useRulesAudit';
+
+// Audit system (Phase 3.1)
+export {
+  buildAuditReport,
+  getAuditReport,
+  getAuditSnapshot,
+  captureValidationSnapshot,
+  clearAuditSnapshot,
+  subscribeAudit,
+  RULE_DEFINITIONS,
+  RULE_DEFINITIONS_MAP,
+  TOTAL_RULE_COUNT,
+  CATEGORY_LABELS,
+} from './audit';
+
+export type {
+  AuditEntry,
+  AuditReport,
+  AuditSnapshot,
+  AuditStatus,
+  CategoryGroup,
+  CapturedMessage,
+  RuleDefinition,
+  RuleCategory,
+} from './audit';
