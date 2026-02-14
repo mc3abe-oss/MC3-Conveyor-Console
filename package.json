@@ -34,6 +34,9 @@
   "author": "MC3 Manufacturing Inc.",
   "license": "PROPRIETARY",
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/jest": "^29.5.11",
     "@types/node": "^20.10.6",
     "@typescript-eslint/eslint-plugin": "^6.17.0",
@@ -43,6 +46,7 @@
     "eslint": "^8.56.0",
     "eslint-config-next": "^15.5.12",
     "jest": "^29.7.0",
+    "jest-environment-jsdom": "^30.2.0",
     "kill-port": "^2.0.1",
     "prettier": "^3.1.1",
     "rimraf": "^6.1.2",

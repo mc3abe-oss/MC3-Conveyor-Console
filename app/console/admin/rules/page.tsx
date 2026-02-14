@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
+import Link from 'next/link';
 import {
   MANAGER_RULES,
   MANAGER_RULE_COUNT,
@@ -146,9 +147,17 @@ function RuleCard({
       }`}
     >
       {/* Collapsed header */}
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={() => setExpanded(!expanded)}
-        className="w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-zinc-800/40 transition-colors"
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
+        className="w-full px-4 py-3 flex items-start gap-3 text-left hover:bg-zinc-800/40 transition-colors cursor-pointer"
       >
         <span className="text-zinc-600 mt-0.5 text-sm shrink-0">
           {expanded ? '\u25BE' : '\u25B8'}
@@ -174,7 +183,7 @@ function RuleCard({
             onStatusChange(rule.id, STATUS_CYCLE[nextIdx]);
           }}
         />
-      </button>
+      </div>
 
       {/* Expanded detail */}
       {expanded && (
@@ -364,6 +373,15 @@ export default function RulesManagerPage() {
       {/* Header */}
       <div className="border-b border-zinc-800 bg-zinc-950/90 sticky top-0 z-20 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto px-6 py-4">
+          {/* Breadcrumb */}
+          <div className="mb-3">
+            <Link
+              href="/console/admin"
+              className="text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
+            >
+              {'\u2190'} Admin
+            </Link>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">

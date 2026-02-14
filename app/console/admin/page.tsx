@@ -198,6 +198,20 @@ function AdminPageContent() {
           <p>No catalog pages match the selected product filter.</p>
         </div>
       )}
+
+      {/* Engineering Tools */}
+      <section className="mt-8">
+        <h2 className="text-lg font-semibold text-gray-700 mb-4 uppercase tracking-wide">
+          Engineering Tools
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <AdminCard
+            name="Rules Manager"
+            href="/console/admin/rules"
+            variant="indigo"
+          />
+        </div>
+      </section>
     </main>
   );
 }
@@ -289,6 +303,7 @@ function getPageDescription(name: string): string {
     'Powder Colors': 'Manage powder coat color options',
     'Environment Factors': 'Manage environment factor options',
     'Process Types': 'Manage process type options for applications',
+    'Rules Manager': 'Review and audit all 157 belt conveyor validation rules',
   };
   return descriptions[name] || '';
 }
