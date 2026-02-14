@@ -257,13 +257,32 @@ function computeIssues(inputs: SliderbedInputs, selectedBelt?: BeltCatalogItem |
     });
   }
 
-  // Incline warning
+  // Incline warnings — thresholds match sliderbed_v1/rules.ts (strict >)
+  // TODO Phase 2: Import from shared constants — see docs/belt-rules-audit.md
   const inclineDeg = inputs.conveyor_incline_deg ?? 0;
-  if (inclineDeg > 15) {
+  if (inclineDeg > 45) {
+    issues.push({
+      severity: 'error',
+      message: 'Incline exceeds 45°. Sliderbed conveyor without positive engagement is not supported by this model.',
+      detail: `Incline of ${inclineDeg}° exceeds maximum for this conveyor type`,
+      tabKey: 'physical',
+      sectionKey: 'geometry',
+      fieldKeys: ['conveyor_incline_deg'],
+    });
+  } else if (inclineDeg > 35) {
     issues.push({
       severity: 'warning',
-      message: 'Steep incline may require cleats or textured belt',
-      detail: `Incline of ${inclineDeg}° exceeds typical limit for smooth belt`,
+      message: 'Incline exceeds 35°. Product retention by friction alone is unlikely. Cleats or positive engagement features are required for reliable operation.',
+      detail: `Incline of ${inclineDeg}° requires positive engagement features`,
+      tabKey: 'physical',
+      sectionKey: 'geometry',
+      fieldKeys: ['conveyor_incline_deg'],
+    });
+  } else if (inclineDeg > 20) {
+    issues.push({
+      severity: 'warning',
+      message: 'Incline exceeds 20°. Product retention by friction alone may be insufficient. Cleats or other retention features are typically required at this angle.',
+      detail: `Incline of ${inclineDeg}° may require cleats or textured belt`,
       tabKey: 'physical',
       sectionKey: 'geometry',
       fieldKeys: ['conveyor_incline_deg'],
