@@ -391,7 +391,7 @@ export default function DriveSelectorModal({
   // Query when modal opens or params change
   useEffect(() => {
     if (isOpen && hasValidInputs) {
-      queryCandidates();
+      void queryCandidates();
     }
   }, [isOpen, activeSf, speedTolerance]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -431,7 +431,7 @@ export default function DriveSelectorModal({
 
     // Save to backend
     if (applicationId) {
-      saveDriveConfig(candidate);
+      void saveDriveConfig(candidate);
     }
   };
 

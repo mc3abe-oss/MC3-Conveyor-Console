@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash -c 'FILE=\"$CLAUDE_TOOL_INPUT_FILE_PATH\"; if [[ \"$FILE\" =~ \\.(ts|tsx|js|jsx)$ ]]; then BLOCKED=\"\"; WARNED=\"\"; if grep -nE \"\\beval\\(|\\bnew Function\\(\" \"$FILE\" 2>/dev/null; then BLOCKED=\"${BLOCKED}BLOCKED: eval() or new Function() detected. Use safe alternatives.\\n\"; fi; if grep -nE \"\\$queryRawUnsafe\" \"$FILE\" 2>/dev/null; then BLOCKED=\"${BLOCKED}BLOCKED: \\$queryRawUnsafe detected. Use parameterized queries.\\n\"; fi; if grep -l \"dangerouslySetInnerHTML\" \"$FILE\" 2>/dev/null | head -1 | while read f; do ! grep -q \"DOMPurify\" \"$f\" && echo \"found\"; done | grep -q found; then BLOCKED=\"${BLOCKED}BLOCKED: dangerouslySetInnerHTML without DOMPurify sanitization.\\n\"; fi; if grep -nE \"AKIA[0-9A-Z]{16}|sk_live_|sk-[a-zA-Z0-9]{32,}|ghp_[a-zA-Z0-9]{36}\" \"$FILE\" 2>/dev/null; then BLOCKED=\"${BLOCKED}BLOCKED: Hardcoded API key detected. Use environment variables.\\n\"; fi; SECRETS=$(grep -nE \"(password|secret|api_key|private_key|token)\\s*[:=]\\s*[\\x27\\\"][^\\x27\\\"]{8,}[\\x27\\\"]\" \"$FILE\" 2>/dev/null | grep -vE \"process\\.env|import|type |interface |placeholder|example|TODO|CHANGEME|productKey|calcKey|modelKey|catalogKey|formKey\" || true); if [ -n \"$SECRETS\" ]; then WARNED=\"WARNING: Possible hardcoded secret — verify these are not real credentials:\\n${SECRETS}\\n\"; fi; if [ -n \"$BLOCKED\" ]; then echo -e \"$BLOCKED\"; echo \"{\\\"decision\\\": \\\"block\\\", \\\"reason\\\": \\\"Security violation detected\\\"}\"; elif [ -n \"$WARNED\" ]; then echo -e \"$WARNED\"; fi; fi'"
+          }
+        ]
+      }
+    ]
+  }
+}

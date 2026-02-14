@@ -166,7 +166,7 @@ export default function BeltConveyorCalculatorApp({
         setUserEmail(null);
       }
     };
-    fetchUserEmail();
+    void fetchUserEmail();
   }, []);
 
   // v1.42: Outputs v2 is only visible to abek@mc3mfg.com
@@ -932,7 +932,7 @@ export default function BeltConveyorCalculatorApp({
     autosaveTimerRef.current = setTimeout(() => {
       console.log('[Autosave] Triggering autosave');
       if (handleSaveRef.current) {
-        handleSaveRef.current();
+        void handleSaveRef.current();
       }
     }, AUTOSAVE_DEBOUNCE_MS);
 

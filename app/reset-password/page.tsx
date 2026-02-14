@@ -48,7 +48,7 @@ export default function ResetPasswordPage() {
       }, 1000);
     };
 
-    checkSession();
+    void checkSession();
 
     return () => {
       if (cleanupFn) cleanupFn();

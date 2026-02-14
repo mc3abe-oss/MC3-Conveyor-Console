@@ -106,7 +106,7 @@ export default function LibraryPage() {
         console.error('Failed to fetch tags:', err);
       }
     };
-    fetchTags();
+    void fetchTags();
   }, []);
 
   // Fetch documents
@@ -159,7 +159,7 @@ export default function LibraryPage() {
 
   // Fetch when dependencies change
   useEffect(() => {
-    fetchDocuments();
+    void fetchDocuments();
   }, [fetchDocuments]);
 
   // Format date

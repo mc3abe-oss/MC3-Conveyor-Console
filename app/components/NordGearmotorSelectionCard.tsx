@@ -96,14 +96,14 @@ export default function NordGearmotorSelectionCard({
   // Query on mount and when inputs change
   useEffect(() => {
     if (hasValidInputs) {
-      queryCandidates();
+      void queryCandidates();
     }
   }, [serviceFactor, speedTolerance]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initial query
   useEffect(() => {
     if (hasValidInputs) {
-      queryCandidates();
+      void queryCandidates();
     }
   }, [hasValidInputs]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -114,7 +114,7 @@ export default function NordGearmotorSelectionCard({
 
     // Save to backend if we have an application ID
     if (applicationId) {
-      saveDriveConfig(candidate);
+      void saveDriveConfig(candidate);
     }
   };
 

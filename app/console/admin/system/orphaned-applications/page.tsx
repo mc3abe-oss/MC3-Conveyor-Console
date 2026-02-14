@@ -36,7 +36,7 @@ export default function OrphanedApplicationsPage() {
   };
 
   useEffect(() => {
-    fetchOrphaned();
+    void fetchOrphaned();
   }, []);
 
   const handleDelete = async (id: string, name: string) => {

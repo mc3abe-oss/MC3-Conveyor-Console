@@ -39,7 +39,7 @@ export default function SalesOrderDetailPage() {
       }
     }
 
-    loadAndRedirect();
+    void loadAndRedirect();
   }, [salesOrderId, router]);
 
   if (error) {

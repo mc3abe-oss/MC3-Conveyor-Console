@@ -54,7 +54,7 @@ export default function AdminEnvironmentFactorsPage() {
 
   // Load factors on mount
   useEffect(() => {
-    loadFactors();
+    void loadFactors();
   }, []);
 
   async function loadFactors() {

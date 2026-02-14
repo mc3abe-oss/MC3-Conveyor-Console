@@ -221,7 +221,7 @@ export default function TelemetryAdminPage() {
   }, [severity, eventType, productKey, search]);
 
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, [fetchData]);
 
   return (

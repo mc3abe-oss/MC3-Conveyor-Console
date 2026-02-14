@@ -136,7 +136,7 @@ export default function ConsoleRecipeDetailPage() {
   };
 
   useEffect(() => {
-    fetchRecipe();
+    void fetchRecipe();
   }, [id]);
 
   // Open edit modal

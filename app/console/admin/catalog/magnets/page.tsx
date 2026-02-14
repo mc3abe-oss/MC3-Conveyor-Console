@@ -108,7 +108,7 @@ export default function AdminMagnetsPage() {
 
   // Load magnets on mount and when filters change
   useEffect(() => {
-    loadMagnets();
+    void loadMagnets();
   }, [filterMaterialType, filterCrossSection, showInactive]);
 
   async function loadMagnets() {

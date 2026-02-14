@@ -120,7 +120,7 @@ export default function UserAdminPage() {
   // Load users on mount
   useEffect(() => {
     if (!isLoadingRole && isSuperAdmin) {
-      loadUsers();
+      void loadUsers();
     }
   }, [isLoadingRole, isSuperAdmin]);
 
@@ -631,12 +631,12 @@ export default function UserAdminPage() {
                           >
                             <ul className="w-52 bg-white border border-gray-300 rounded-lg shadow-xl py-2 list-none">
                               <li>
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleSendMagicLink(user.email); setOpenMenuUserId(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="#" onClick={(e) => { e.preventDefault(); void handleSendMagicLink(user.email); setOpenMenuUserId(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                   Send Magic Link
                                 </a>
                               </li>
                               <li>
-                                <a href="#" onClick={(e) => { e.preventDefault(); handleSendPasswordReset(user.email); setOpenMenuUserId(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                                <a href="#" onClick={(e) => { e.preventDefault(); void handleSendPasswordReset(user.email); setOpenMenuUserId(null); }} className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
                                   Send Password Reset
                                 </a>
                               </li>

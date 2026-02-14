@@ -58,7 +58,7 @@ export default function NewApplicationPage() {
   }, []);
 
   useEffect(() => {
-    fetchProducts();
+    void fetchProducts();
   }, [fetchProducts]);
 
   // Handle product selection

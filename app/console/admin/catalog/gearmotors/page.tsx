@@ -189,7 +189,7 @@ function CoverageTab() {
   const [selectedCase, setSelectedCase] = useState<CoverageCase | null>(null);
 
   useEffect(() => {
-    loadCoverage();
+    void loadCoverage();
   }, [statusFilter]);
 
   async function loadCoverage() {
@@ -558,7 +558,7 @@ function CatalogTab() {
   const [filterSeries, setFilterSeries] = useState('');
 
   useEffect(() => {
-    loadParts();
+    void loadParts();
   }, []);
 
   async function loadParts() {

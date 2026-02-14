@@ -79,7 +79,7 @@ export default function DriveSelectorCard({
   // Load saved selection on mount
   useEffect(() => {
     if (applicationId) {
-      loadSavedSelection();
+      void loadSavedSelection();
     }
   }, [applicationId]);
 

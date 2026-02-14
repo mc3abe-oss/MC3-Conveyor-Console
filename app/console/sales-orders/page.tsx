@@ -134,7 +134,7 @@ export default function ConsoleSalesOrdersPage() {
 
   // Fetch when dependencies change
   useEffect(() => {
-    fetchSalesOrders();
+    void fetchSalesOrders();
   }, [fetchSalesOrders]);
 
   // Navigate to Application with sales order context

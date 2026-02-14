@@ -81,7 +81,7 @@ export default function AdminVGuidesPage() {
 
   // Load v-guides on mount
   useEffect(() => {
-    loadVGuides();
+    void loadVGuides();
   }, []);
 
   async function loadVGuides() {

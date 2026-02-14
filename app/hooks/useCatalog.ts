@@ -45,7 +45,7 @@ export function useCatalog(catalogKey: string) {
       }
     }
 
-    loadCatalog();
+    void loadCatalog();
 
     return () => {
       cancelled = true;

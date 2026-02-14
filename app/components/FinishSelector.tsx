@@ -109,7 +109,7 @@ export default function FinishSelector({
       }
     }
 
-    fetchColors();
+    void fetchColors();
   }, [category]);
 
   // NOTE: Auto-selection of default color has been removed (paint logic fix).

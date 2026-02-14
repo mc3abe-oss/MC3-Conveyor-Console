@@ -39,7 +39,7 @@ export default function QuoteDetailPage() {
       }
     }
 
-    loadAndRedirect();
+    void loadAndRedirect();
   }, [quoteId, router]);
 
   if (error) {

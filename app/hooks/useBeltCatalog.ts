@@ -59,7 +59,7 @@ export function useBeltCatalog() {
       }
     }
 
-    loadBelts();
+    void loadBelts();
 
     return () => {
       cancelled = true;

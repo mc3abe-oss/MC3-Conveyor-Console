@@ -77,7 +77,7 @@ export default function ConsoleRecipesPage() {
   };
 
   useEffect(() => {
-    fetchRecipes();
+    void fetchRecipes();
   }, []);
 
   // Filter recipes by role

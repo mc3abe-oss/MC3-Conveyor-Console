@@ -56,7 +56,7 @@ export default function AdminCasterModelsPage() {
 
   // Load models on mount
   useEffect(() => {
-    loadModels();
+    void loadModels();
   }, []);
 
   async function loadModels() {

@@ -158,7 +158,7 @@ export default function PulleyConfigModal({
   // Load models and existing pulley configs when modal opens
   useEffect(() => {
     if (isOpen && applicationLineId) {
-      loadData();
+      void loadData();
     }
   }, [isOpen, applicationLineId]);
 

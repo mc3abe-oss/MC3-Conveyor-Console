@@ -141,7 +141,7 @@ function StylesTab() {
   const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
-    loadStyles();
+    void loadStyles();
   }, [showInactive]);
 
   async function loadStyles() {
@@ -233,7 +233,7 @@ function StylesTab() {
             style={selectedStyle}
             isCreating={isCreating}
             onSaved={() => {
-              loadStyles();
+              void loadStyles();
               setIsCreating(false);
             }}
             onCancel={() => {
@@ -511,7 +511,7 @@ function ModelsTab() {
   const [showInactive, setShowInactive] = useState(false);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [showInactive]);
 
   async function loadData() {
@@ -610,7 +610,7 @@ function ModelsTab() {
             styles={styles}
             isCreating={isCreating}
             onSaved={() => {
-              loadData();
+              void loadData();
               setIsCreating(false);
             }}
             onCancel={() => {

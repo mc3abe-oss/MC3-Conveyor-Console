@@ -71,7 +71,7 @@ export function useCleatCatalog(): UseCleatCatalogResult {
       }
     };
 
-    fetchCleatCatalog();
+    void fetchCleatCatalog();
   }, []);
 
   return { cleatCatalog, cleatCenterFactors, isLoading, error };

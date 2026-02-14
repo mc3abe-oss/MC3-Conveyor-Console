@@ -65,7 +65,7 @@ export default function AdminPowderColorsPage() {
 
   // Load items on mount
   useEffect(() => {
-    loadItems();
+    void loadItems();
   }, []);
 
   const loadItems = useCallback(async () => {

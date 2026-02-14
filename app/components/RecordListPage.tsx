@@ -351,7 +351,7 @@ export default function RecordListPage<T>({
 
   // Fetch when dependencies change
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, [fetchData]);
 
   // Handle date range change - reset search hint when user explicitly selects

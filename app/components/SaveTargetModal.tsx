@@ -103,7 +103,7 @@ export default function SaveTargetModal({
   useEffect(() => {
     if (isOpen) {
       setLoading(true);
-      Promise.all([fetchQuotes(), fetchSalesOrders()]).finally(() => setLoading(false));
+      void Promise.all([fetchQuotes(), fetchSalesOrders()]).finally(() => setLoading(false));
     }
   }, [isOpen, fetchQuotes, fetchSalesOrders]);
 

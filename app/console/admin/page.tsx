@@ -57,7 +57,7 @@ function AdminPageContent() {
   const currentFilter = searchParams.get('product') || '';
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   async function loadData() {

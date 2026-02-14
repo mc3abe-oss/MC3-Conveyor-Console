@@ -72,7 +72,7 @@ export default function HistoryPage() {
       }
     };
 
-    loadData();
+    void loadData();
   }, [configId]);
 
   const handleViewDetails = (revision: Revision) => {

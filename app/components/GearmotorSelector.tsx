@@ -101,14 +101,14 @@ export default function GearmotorSelector({
   // Query on mount and when inputs change
   useEffect(() => {
     if (hasValidInputs) {
-      queryCandidates();
+      void queryCandidates();
     }
   }, [serviceFactor, speedTolerance]); // Intentionally not including queryCandidates to avoid loops
 
   // Initial query
   useEffect(() => {
     if (hasValidInputs) {
-      queryCandidates();
+      void queryCandidates();
     }
   }, [hasValidInputs]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -119,7 +119,7 @@ export default function GearmotorSelector({
 
     // Save to backend if we have an application ID
     if (applicationId) {
-      saveDriveConfig(candidate);
+      void saveDriveConfig(candidate);
     }
   };
 

@@ -59,7 +59,7 @@ export default function ProductFamiliesAdminPage() {
 
   useEffect(() => {
     if (!isLoadingRole && isSuperAdmin) {
-      loadFamilies();
+      void loadFamilies();
     }
   }, [isLoadingRole, isSuperAdmin]);
 

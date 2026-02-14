@@ -109,7 +109,7 @@ export function useScopeStatus(
 
   // Initial fetch
   useEffect(() => {
-    fetchStatus();
+    void fetchStatus();
   }, [fetchStatus]);
 
   // Transition to Set

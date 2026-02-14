@@ -38,7 +38,7 @@ export default function FindConfigModal({ isOpen, onClose, onSelect }: FindConfi
   // Load recent configs when modal opens
   useEffect(() => {
     if (isOpen) {
-      loadRecent();
+      void loadRecent();
       setSearchQuery('');
       setSearchResults([]);
       setHasSearched(false);
@@ -135,7 +135,7 @@ export default function FindConfigModal({ isOpen, onClose, onSelect }: FindConfi
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyPress={(e) => {
                   if (e.key === 'Enter') {
-                    handleSearch();
+                    void handleSearch();
                   }
                 }}
               />

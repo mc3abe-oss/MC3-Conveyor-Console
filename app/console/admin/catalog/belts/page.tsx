@@ -96,7 +96,7 @@ export default function AdminBeltsPage() {
 
   // Load belts on mount (include inactive for admin)
   useEffect(() => {
-    loadBelts();
+    void loadBelts();
   }, []);
 
   async function loadBelts() {
@@ -163,7 +163,7 @@ export default function AdminBeltsPage() {
     setShowDeactivateConfirm(false);
 
     // Fetch usage for this belt
-    fetchUsage(belt.id);
+    void fetchUsage(belt.id);
   }
 
   function createNewBelt() {

@@ -70,7 +70,7 @@ export default function CatalogAdmin({
 
   // Load items on mount
   useEffect(() => {
-    loadItems();
+    void loadItems();
   }, [catalogKey]);
 
   const loadItems = useCallback(async () => {
@@ -275,7 +275,7 @@ export default function CatalogAdmin({
       setTimeout(() => setSaveMessage(null), 2000);
     } catch (err) {
       setSaveMessage({ type: 'error', text: 'Failed to save order' });
-      loadItems(); // Reload to reset
+      void loadItems(); // Reload to reset
     }
   }
 
@@ -314,7 +314,7 @@ export default function CatalogAdmin({
         });
       }
     } catch (err) {
-      loadItems(); // Reload on error
+      void loadItems(); // Reload on error
     }
   }
 
@@ -407,7 +407,7 @@ export default function CatalogAdmin({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        moveItem(index, 'up');
+                        void moveItem(index, 'up');
                       }}
                       disabled={index === 0}
                       className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"
@@ -419,7 +419,7 @@ export default function CatalogAdmin({
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        moveItem(index, 'down');
+                        void moveItem(index, 'down');
                       }}
                       disabled={index === items.length - 1}
                       className="p-1 text-gray-400 hover:text-gray-600 disabled:opacity-30"

@@ -61,7 +61,7 @@ export default function VGuideSelect({
         setIsLoading(false);
       }
     }
-    fetchVGuides();
+    void fetchVGuides();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {

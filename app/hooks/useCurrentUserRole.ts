@@ -98,7 +98,7 @@ export function useCurrentUserRole(): UserRoleState {
       }
     }
 
-    fetchRole();
+    void fetchRole();
 
     return () => {
       cancelled = true;

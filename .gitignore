@@ -46,3 +46,9 @@ next-env.d.ts
 # OS
 .DS_Store
 Thumbs.db
+
+# Private keys
+*.key
+
+# Claude local overrides (personal, not shared)
+CLAUDE.local.md

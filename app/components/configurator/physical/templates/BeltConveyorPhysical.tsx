@@ -230,7 +230,7 @@ export default function BeltConveyorPhysical({
         setPulleysLoading(false);
       }
     }
-    loadPulleys();
+    void loadPulleys();
   }, [applicationLineId]);
 
   const drivePulley = applicationPulleys.find((p) => p.position === 'DRIVE');

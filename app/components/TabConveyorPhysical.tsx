@@ -272,7 +272,7 @@ export default function TabConveyorPhysical({
         setPulleysLoading(false);
       }
     }
-    loadPulleys();
+    void loadPulleys();
   }, [applicationLineId]);
 
   // Get pulley by position

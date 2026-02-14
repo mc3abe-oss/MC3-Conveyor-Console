@@ -53,7 +53,7 @@ export default function AdminLegModelsPage() {
 
   // Load models on mount
   useEffect(() => {
-    loadModels();
+    void loadModels();
   }, []);
 
   async function loadModels() {

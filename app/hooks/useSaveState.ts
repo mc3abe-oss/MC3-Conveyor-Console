@@ -234,7 +234,7 @@ export function useSaveState(options: UseSaveStateOptions): UseSaveStateReturn {
 
     // Schedule new autosave
     autosaveTimerRef.current = setTimeout(() => {
-      performSave();
+      void performSave();
     }, autosaveDebounceMs);
 
     return () => {

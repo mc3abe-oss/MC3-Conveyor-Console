@@ -102,7 +102,7 @@ export default function LibraryDocumentPage({ params }: PageProps) {
       }
     };
 
-    fetchDocument();
+    void fetchDocument();
   }, [id]);
 
   // Fetch PDF URL for preview
@@ -128,7 +128,7 @@ export default function LibraryDocumentPage({ params }: PageProps) {
   // Fetch PDF URL when version changes
   useEffect(() => {
     if (document && selectedVersion) {
-      fetchPdfUrl(selectedVersion);
+      void fetchPdfUrl(selectedVersion);
     }
   }, [document, selectedVersion, id]);
 

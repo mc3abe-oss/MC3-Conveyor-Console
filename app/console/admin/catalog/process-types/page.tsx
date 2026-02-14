@@ -54,7 +54,7 @@ export default function AdminProcessTypesPage() {
 
   // Load types on mount
   useEffect(() => {
-    loadTypes();
+    void loadTypes();
   }, []);
 
   async function loadTypes() {

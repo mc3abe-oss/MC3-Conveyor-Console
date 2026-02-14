@@ -182,7 +182,7 @@ export default function ConsoleQuotesPage() {
 
   // Fetch when dependencies change
   useEffect(() => {
-    fetchQuoteLines();
+    void fetchQuoteLines();
   }, [fetchQuoteLines]);
 
   // Navigate to Application with full quote context

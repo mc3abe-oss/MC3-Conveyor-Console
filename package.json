@@ -21,7 +21,9 @@
     "type-check": "tsc --noEmit",
     "example": "npm run build:lib && node dist/examples/basic-usage.js",
     "recipes:test": "npx ts-node scripts/recipes-test.ts",
-    "recipes:drift": "npx ts-node scripts/recipes-drift.ts"
+    "recipes:drift": "npx ts-node scripts/recipes-drift.ts",
+    "check": "npm run type-check && npm run lint && npm test",
+    "lint:fix": "next lint --fix"
   },
   "keywords": [
     "conveyor",
@@ -39,6 +41,7 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.2.3",
     "eslint": "^8.56.0",
+    "eslint-config-next": "^15.5.12",
     "jest": "^29.7.0",
     "kill-port": "^2.0.1",
     "prettier": "^3.1.1",

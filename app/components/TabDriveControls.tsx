@@ -75,7 +75,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
   // Load saved Flexbloc selection on mount
   useEffect(() => {
     if (applicationId) {
-      loadSavedDriveSelection();
+      void loadSavedDriveSelection();
     }
   }, [applicationId]);
 

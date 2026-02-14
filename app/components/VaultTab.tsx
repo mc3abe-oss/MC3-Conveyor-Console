@@ -87,7 +87,7 @@ export default function VaultTab({ applicationId, onOpenSaveModal, draftVault, o
 
   useEffect(() => {
     if (applicationId) {
-      loadVaultData();
+      void loadVaultData();
     }
   }, [applicationId, loadVaultData]);
 
@@ -128,7 +128,7 @@ export default function VaultTab({ applicationId, onOpenSaveModal, draftVault, o
       }
 
       setNewNote('');
-      loadVaultData();
+      void loadVaultData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add note');
     } finally {
@@ -188,7 +188,7 @@ export default function VaultTab({ applicationId, onOpenSaveModal, draftVault, o
       setNewSpecValue('');
       setNewSpecUnits('');
       setNewSpecConfidence('estimated');
-      loadVaultData();
+      void loadVaultData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add spec');
     } finally {
@@ -236,7 +236,7 @@ export default function VaultTab({ applicationId, onOpenSaveModal, draftVault, o
       }
 
       setNewScopeText('');
-      loadVaultData();
+      void loadVaultData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add scope line');
     } finally {
@@ -284,7 +284,7 @@ export default function VaultTab({ applicationId, onOpenSaveModal, draftVault, o
 
       setNewAttachmentName('');
       setNewAttachmentTag('other');
-      loadVaultData();
+      void loadVaultData();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to add attachment');
     } finally {

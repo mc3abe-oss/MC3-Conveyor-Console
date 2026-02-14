@@ -87,7 +87,7 @@ function UploadPageInner() {
         console.error('Failed to fetch tags:', err);
       }
     };
-    fetchTags();
+    void fetchTags();
   }, []);
 
   // Redirect non-admins

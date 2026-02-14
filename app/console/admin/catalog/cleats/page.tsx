@@ -87,7 +87,7 @@ export default function AdminCleatsPage() {
 
   // Load data on mount
   useEffect(() => {
-    loadData();
+    void loadData();
   }, []);
 
   async function loadData() {
