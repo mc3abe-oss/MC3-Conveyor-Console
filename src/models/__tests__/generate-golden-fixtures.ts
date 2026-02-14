@@ -45,17 +45,12 @@ import {
   ShaftDiameterMode,
 } from '../sliderbed_v1/schema';
 
+// Phase 2 dedup: All rules consolidated in sliderbed_v1/rules.ts
 import {
-  validate as sliderbedValidate,
-  applyApplicationRules as sliderbedAppRules,
-  validateInputs as sliderbedValidateInputs,
+  validate,
+  applyApplicationRules,
+  validateInputs,
 } from '../sliderbed_v1/rules';
-
-import {
-  validate as beltValidate,
-  applyApplicationRules as beltAppRules,
-  validateInputs as beltValidateInputs,
-} from '../belt_conveyor_v1/rules';
 
 import { DEFAULT_PARAMETERS } from '../belt_conveyor_v1';
 
@@ -232,19 +227,20 @@ fs.mkdirSync(outputDir, { recursive: true });
 for (const fixture of fixtures) {
   const params = DEFAULT_PARAMETERS;
 
+  // Phase 2 dedup: Both paths now use shared rules with productKey
   const golden: GoldenFixture = {
     name: fixture.name,
     description: fixture.description,
     inputs: fixture.inputs as unknown as Record<string, unknown>,
     sliderbed_v1: {
-      validateInputs: { errors: sliderbedValidateInputs(fixture.inputs) },
-      applyApplicationRules: sliderbedAppRules(fixture.inputs),
-      validate: sliderbedValidate(fixture.inputs, params),
+      validateInputs: { errors: validateInputs(fixture.inputs) },
+      applyApplicationRules: applyApplicationRules(fixture.inputs),
+      validate: validate(fixture.inputs, params),
     },
     belt_conveyor_v1: {
-      validateInputs: { errors: beltValidateInputs(fixture.inputs as any) },
-      applyApplicationRules: beltAppRules(fixture.inputs as any),
-      validate: beltValidate(fixture.inputs as any, params as any),
+      validateInputs: { errors: validateInputs(fixture.inputs, 'belt_conveyor_v1') },
+      applyApplicationRules: applyApplicationRules(fixture.inputs, 'belt_conveyor_v1'),
+      validate: validate(fixture.inputs, params as any, 'belt_conveyor_v1'),
     },
   };
 

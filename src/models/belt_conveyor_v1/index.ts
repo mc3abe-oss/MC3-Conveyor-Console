@@ -137,7 +137,8 @@ export {
 // RULES EXPORTS
 // ============================================================================
 
-export { validate, validateInputs, validateParameters, applyApplicationRules } from './rules';
+// Phase 2 dedup: belt_conveyor_v1/rules.ts deleted — use shared sliderbed rules
+export { validate, validateInputs, validateParameters, applyApplicationRules } from '../sliderbed_v1/rules';
 
 // ============================================================================
 // PREMIUM FLAGS EXPORTS
@@ -168,7 +169,7 @@ export {
 // ============================================================================
 
 import { calculate } from './formulas';
-import { validate } from './rules';
+import { validate } from '../sliderbed_v1/rules';
 import type { BeltConveyorInputs, BeltConveyorParameters, CalculationResult } from './schema';
 import { DEFAULT_PARAMETERS } from './schema';
 import { MODEL_KEY, MODEL_VERSION_ID } from '../../lib/model-identity';
@@ -185,7 +186,7 @@ export function calculateBeltConveyor(
   parameters: BeltConveyorParameters = DEFAULT_PARAMETERS
 ): CalculationResult {
   // Run validation
-  const { errors, warnings } = validate(inputs, parameters);
+  const { errors, warnings } = validate(inputs, parameters, 'belt_conveyor_v1');
 
   // If validation errors, return early
   if (errors.length > 0) {

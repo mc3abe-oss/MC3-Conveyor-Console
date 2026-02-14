@@ -68,6 +68,8 @@ import {
  * Standard legacy sliderbed config (no bed_type field)
  */
 const LEGACY_SLIDERBED_INPUTS: SliderbedInputs = {
+  // Phase 2 dedup: material_form required by shared sliderbed rules
+  material_form: 'PARTS',
   // Geometry
   conveyor_length_cc_in: 120,
   belt_width_in: 24,
