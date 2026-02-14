@@ -14,7 +14,9 @@
       "Bash(grep:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
-      "Read(~/*)"
+      "Read(~/*)",
+      "Bash(git:*)",
+      "Bash(rm:*)"
     ]
   },
   "hooks": {
