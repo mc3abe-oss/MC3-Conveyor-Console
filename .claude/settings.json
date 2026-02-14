@@ -25,7 +25,9 @@
       "Bash(grep:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
-      "Bash(rm:*)"
+      "Bash(rm:*)",
+      "Bash(npx eslint:*)",
+      "Bash(python3:*)"
     ]
   },
   "hooks": {
