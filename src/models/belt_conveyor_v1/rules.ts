@@ -557,15 +557,26 @@ export function applyApplicationRules(
   }
 
   // SIDE LOADING SEVERITY - moderate/heavy without V-guide
-  const severity = inputs.side_loading_severity;
+  // V-guide auto-select enforced in BeltConveyorPhysical.tsx
+  const sideLoadSeverity = inputs.side_loading_severity;
+  const isVGuidedTracking = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+                            inputs.belt_tracking_method === 'V-guided';
   if (inputs.side_loading_direction !== SideLoadingDirection.None) {
-    if (severity === SideLoadingSeverity.Heavy) {
+    if (sideLoadSeverity === SideLoadingSeverity.Heavy) {
+      if (!isVGuidedTracking) {
+        // Safety backstop: Heavy side load without V-guided is a blocking error
+        errors.push({
+          field: 'belt_tracking_method',
+          message: 'Heavy side loading requires V-guided tracking. Change tracking method to V-guided.',
+          severity: 'error',
+        });
+      }
       warnings.push({
         field: 'side_loading_severity',
         message: 'Heavy side loading typically requires a V-guide for reliable tracking.',
         severity: 'warning',
       });
-    } else if (severity === SideLoadingSeverity.Moderate) {
+    } else if (sideLoadSeverity === SideLoadingSeverity.Moderate) {
       warnings.push({
         field: 'side_loading_severity',
         message: 'Moderate side loading may require a V-guide for reliable tracking.',

@@ -25,6 +25,8 @@ import {
   STRUCTURAL_CHANNEL_SERIES_LABELS,
   LacingStyle,
   LacingMaterial,
+  SideLoadingDirection,
+  SideLoadingSeverity,
 } from '../../../../../src/models/sliderbed_v1/schema';
 import {
   calculateFrameHeightWithBreakdown,
@@ -304,6 +306,27 @@ export default function BeltConveyorPhysical({
       showToast?.('Switched to Standard: Low Profile not allowed with cleats.');
     }
   }, [inputs.cleats_enabled, inputs.frame_height_mode]);
+
+  // A1: Heavy side load → auto-select V-guided tracking
+  // When side loading is Heavy, force V-guided tracking for belt safety.
+  // Does NOT auto-revert when Heavy is removed — user keeps control.
+  const hasSideLoad = inputs.side_loading_direction !== SideLoadingDirection.None &&
+                      inputs.side_loading_direction !== 'No side loading';
+  const isHeavySideLoad = hasSideLoad &&
+    (inputs.side_loading_severity === SideLoadingSeverity.Heavy || inputs.side_loading_severity === 'Heavy');
+  const isModerateSideLoad = hasSideLoad &&
+    (inputs.side_loading_severity === SideLoadingSeverity.Moderate || inputs.side_loading_severity === 'Moderate');
+
+  useEffect(() => {
+    if (isHeavySideLoad) {
+      const isAlreadyVGuided = inputs.belt_tracking_method === BeltTrackingMethod.VGuided ||
+                                inputs.belt_tracking_method === 'V-guided';
+      if (!isAlreadyVGuided) {
+        updateInput('belt_tracking_method', BeltTrackingMethod.VGuided);
+        showToast?.('Switched to V-guided: Heavy side loading requires V-guided tracking.');
+      }
+    }
+  }, [isHeavySideLoad, inputs.belt_tracking_method]);
 
   const actualDriveOd = drivePulley?.finished_od_in ?? inputs.drive_pulley_diameter_in ?? safeDrivePulleyDia;
   const actualTailOd = tailPulley?.finished_od_in ?? inputs.tail_pulley_diameter_in ?? safeTailPulleyDia;
@@ -634,11 +657,28 @@ export default function BeltConveyorPhysical({
                 className="input text-sm py-1.5"
                 value={inputs.belt_tracking_method}
                 onChange={(e) => updateInput('belt_tracking_method', e.target.value)}
+                disabled={isHeavySideLoad}
               >
                 {Object.values(BeltTrackingMethod).map((option) => (
-                  <option key={option} value={option}>{option}</option>
+                  <option
+                    key={option}
+                    value={option}
+                    disabled={isHeavySideLoad && option !== BeltTrackingMethod.VGuided}
+                  >
+                    {option}{isHeavySideLoad && option !== BeltTrackingMethod.VGuided ? ' (disabled — heavy side load)' : ''}
+                  </option>
                 ))}
               </select>
+              {isHeavySideLoad && (
+                <p className="text-xs text-blue-700 mt-1">
+                  Auto-selected: Heavy side loading requires V-guided tracking.
+                </p>
+              )}
+              {isModerateSideLoad && !isVGuided && (
+                <p className="text-xs text-amber-700 mt-1">
+                  V-guided tracking recommended for moderate side loading.
+                </p>
+              )}
             </div>
 
             <VGuideSelectCard
