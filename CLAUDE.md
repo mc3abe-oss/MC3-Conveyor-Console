@@ -67,3 +67,58 @@ Supabase for auth and Postgres. Clients in `src/lib/supabase/` (browser, server,
 - **Pure functions** for all calculation code — no side effects, no database calls in formulas
 - **Units in variable names** (e.g., `belt_width_in`, `belt_speed_fpm`, `part_weight_lbs`)
 - Adding a new product type: follow `docs/ADDING_NEW_PRODUCTS.md` — create product module, register it, create output components, wire to calculator app
+
+## Logging
+
+- Use the structured logger (`src/lib/logger`) for all logging — never `console.log`/`warn`/`error`
+- Log start/complete/fail ONLY on orchestrator-level operations:
+  - Calculation orchestrators (belt, magnetic, future products)
+  - Drive selection / gearmotor selection
+  - Supabase mutations (insert, update, delete — not reads)
+  - API route entry points
+- Do NOT add start/complete/fail logging to: utility functions, helpers, React hooks, map/filter operations, or simple Supabase select queries
+- Use dot-notation message names: `'calculation.started'`, `'supabase.mutation.completed'`, `'drive.selection.failed'`
+- Always include relevant entity IDs (`jobId`, `configId`, `productFamily`)
+- Every `.catch()` must log the error with full context before handling
+- Never write `.catch(() => {})`, `.catch(() => null)`, or `.catch(() => ({}))`
+- Log duration (`Date.now() - startTime`) on every completed and failed entry
+- Do not log full document content, passwords, tokens, or Supabase service keys
+- Always include an `errorCode` from `src/lib/logger/error-codes.ts` on error and warn entries
+- Never invent ad-hoc error strings — use or add a constant in `error-codes.ts`
+
+## Error Handling
+
+- Never write `.catch(() => {})`, `.catch(() => null)`, or `.catch(() => ({}))`
+- Every catch block must: 1) log the error with context, 2) either re-throw or return an explicit error result
+- Never return an empty object or default that could be mistaken for success
+- In calculation engines and drive selection: always re-throw — wrong data is worse than no data
+- If using a fallback, log a warning explaining what failed and why the fallback is safe
+- Prefer `try/catch` over `.catch()` for readability
+- Use `OperationResult<T>` from `src/lib/logger/operation-result.ts` as the return type for significant operations
+- Use `operationSuccess()` and `operationFailure()` helpers — never construct the shape manually
+
+## Input Validation
+
+- Every API route validates request body with a Zod schema before any processing
+- Zod schemas live in `src/lib/schemas/` — one file per domain entity
+- TypeScript types derived from schemas (`z.infer<>`) — don't create duplicate interfaces
+- Use `.safeParse()` at API boundaries, `.parse()` at startup/config validation
+- When validation fails, log specific errors with context, return 400
+- Calculation engine configs must be validated before any math runs
+
+## Testing Requirements
+
+- Every new module gets tests before it's considered complete
+- Boundary tests (bad input, missing fields, wrong types) outnumber happy-path tests
+- Calculation tests must validate against real job data (PTC, NUCAP, Nova Steel reference jobs)
+- Error handling tests verify: error is logged, error is surfaced (not swallowed), downstream side effects don't occur
+- Use `expectNoSideEffects()` from `src/lib/test-utils/` to verify no mutations after error paths
+- Run `npm run check` after every phase — zero regressions tolerated
+
+## Banned Patterns — Never Write These
+
+- `.catch(() => {})` — silent error swallowing
+- `.catch(() => null)` — silent failure
+- `.catch(() => ({}))` — fake success
+- `console.log`/`warn`/`error` — use structured logger
+- `try { ... } catch { }` — empty catch block
