@@ -1,6 +1,14 @@
 {
   "permissions": {
     "allow": [
+      "Read(~/*)",
+      "Grep(~/*)",
+      "Glob(~/*)",
+      "Edit(~/*)",
+      "Write(~/*)",
+      "Task",
+      "WebFetch",
+      "WebSearch",
       "Bash(npm test:*)",
       "Bash(npm run lint:*)",
       "Bash(npm run build:*)",
@@ -9,13 +17,14 @@
       "Bash(npm run format:*)",
       "Bash(npm run check:*)",
       "Bash(npx jest:*)",
+      "Bash(npx:*)",
+      "Bash(git:*)",
+      "Bash(ls:*)",
       "Bash(cat:*)",
       "Bash(find:*)",
       "Bash(grep:*)",
       "Bash(head:*)",
       "Bash(tail:*)",
-      "Read(~/*)",
-      "Bash(git:*)",
       "Bash(rm:*)"
     ]
   },
