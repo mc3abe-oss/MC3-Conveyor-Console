@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { createLogger } from '../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+import { ApplicationIdSchema } from '../../../../src/lib/schemas/api/application-id.schema';
 
 const logger = createLogger().child({ module: 'api.applications-id' });
 
@@ -23,6 +24,19 @@ interface RouteParams {
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+
+    const parsed = ApplicationIdSchema.safeParse(id);
+    if (!parsed.success) {
+      logger.warn('api.applications-id.get.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
     const supabase = await createClient();
 
     const { data: application, error } = await supabase
@@ -50,6 +64,19 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+
+    const parsed = ApplicationIdSchema.safeParse(id);
+    if (!parsed.success) {
+      logger.warn('api.applications-id.delete.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
     const supabase = await createClient();
 
     // Fetch the application with linkage columns

@@ -28,6 +28,11 @@ import {
 } from '../../models/belt_conveyor_v1';
 // Product registry for product-specific calculation dispatch
 import { getProduct, beltConveyorV1 } from '../../products';
+// Observe-mode Zod validation (logs warnings, never blocks)
+import { validateConfig } from '../schemas/validate-config';
+import { BeltConfigSchema } from '../schemas/belt-conveyor.schema';
+import { MagneticConfigSchema } from '../schemas/magnetic-conveyor.schema';
+import { CalculationRequestSchema } from '../schemas/calculation-request.schema';
 
 // ============================================================================
 // TELEMETRY HOOKS
@@ -141,6 +146,14 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
   const calcKey = `calc_${productKey || 'default'}`;
   const telemetryContext = { productKey, modelKey: MODEL_KEY };
   const startTime = Date.now();
+
+  // OBSERVE MODE: Validate request envelope and product-specific inputs
+  // Logs warnings but NEVER blocks — calculations still run even on failure
+  validateConfig(request, 'CalculationRequest', CalculationRequestSchema);
+  const inputSchema = productKey === 'magnetic_conveyor_v1'
+    ? MagneticConfigSchema
+    : BeltConfigSchema;
+  validateConfig(rawInputs, `${productKey || 'belt_conveyor_v1'}.inputs`, inputSchema);
 
   // Emit calc start telemetry
   telemetryHooks.onCalcStart?.(calcKey, telemetryContext);

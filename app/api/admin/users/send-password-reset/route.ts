@@ -12,6 +12,7 @@ import { supabaseAdmin } from '../../../../../src/lib/supabase/client';
 import { logAuditAction } from '../../../../../src/lib/auth/audit';
 import { createLogger } from '../../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+import { UsersPasswordResetSchema } from '../../../../../src/lib/schemas/api/users-password-reset.schema';
 
 const logger = createLogger().child({ module: 'api.users-send-password-reset' });
 
@@ -37,6 +38,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json() as RequestBody;
+
+    const parsed = UsersPasswordResetSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warn('api.users-send-password-reset.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
 
     if (!body.email) {
       return NextResponse.json(
