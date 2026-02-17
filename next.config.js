@@ -1,9 +1,30 @@
+const { execSync } = require('child_process');
+
+/** Resolve the current git commit SHA at build time. */
+function getGitSha() {
+  // Vercel injects this automatically
+  if (process.env.VERCEL_GIT_COMMIT_SHA) {
+    return process.env.VERCEL_GIT_COMMIT_SHA;
+  }
+  try {
+    return execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+  } catch {
+    return 'unknown';
+  }
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // Enable typed routes (moved from experimental in Next.js 15.5.9)
   typedRoutes: true,
   // Use app directory (Next.js 13+)
   reactStrictMode: true,
+
+  env: {
+    NEXT_PUBLIC_APP_VERSION: process.env.npm_package_version || '0.0.0',
+    NEXT_PUBLIC_BUILD_TIMESTAMP: new Date().toISOString(),
+    NEXT_PUBLIC_GIT_SHA: getGitSha(),
+  },
 
   async redirects() {
     return [

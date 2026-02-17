@@ -9,6 +9,7 @@ import { clearCachedRole } from '../hooks/useCurrentUserRole';
 import MC3Logo from '../components/MC3Logo';
 import MobileNavDrawer from '../components/MobileNavDrawer';
 import UserAccountMenu from '../components/UserAccountMenu';
+import VersionBadge from '../../src/components/ui/VersionBadge';
 
 interface ConsoleLayoutProps {
   children: React.ReactNode;
@@ -247,6 +248,11 @@ export default function ConsoleLayout({ children }: ConsoleLayoutProps) {
           {children}
         </div>
       </main>
+
+      {/* Footer */}
+      <footer className="bg-gray-50 border-t border-mc3-line py-2 px-4 text-center">
+        <VersionBadge />
+      </footer>
     </div>
   );
 }
