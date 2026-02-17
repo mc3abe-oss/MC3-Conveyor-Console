@@ -21,6 +21,7 @@ import {
 import { formatCreatorDisplay } from '../../../../src/lib/user-display';
 import { createLogger } from '../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+import { ConfigurationSaveSchema } from '../../../../src/lib/schemas/api/configurations-save.schema';
 
 const logger = createLogger().child({ module: 'api.configurations-save' });
 
@@ -67,6 +68,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json() as SaveRequestBody;
+
+    const parsed = ConfigurationSaveSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warn('api.configurations-save.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
 
     const {
       reference_type,

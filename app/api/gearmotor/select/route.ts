@@ -19,12 +19,25 @@ import { NextRequest, NextResponse } from 'next/server';
 import { selectGearmotor, GearmotorSelectionInputs } from '../../../../src/lib/gearmotor';
 import { createLogger } from '../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+import { GearmotorSelectSchema } from '../../../../src/lib/schemas/api/gearmotor-select.schema';
 
 const logger = createLogger().child({ module: 'api.gearmotor-select' });
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
+
+    const parsed = GearmotorSelectSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warn('api.gearmotor-select.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
 
     const {
       required_output_rpm,

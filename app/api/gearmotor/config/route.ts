@@ -20,6 +20,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { createLogger } from '../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+import { GearmotorConfigSchema } from '../../../../src/lib/schemas/api/gearmotor-config.schema';
 
 const logger = createLogger().child({ module: 'api.gearmotor-config' });
 
@@ -90,6 +91,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
+
+    const parsed = GearmotorConfigSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warn('api.gearmotor-config.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
 
     const {
       application_id,

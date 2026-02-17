@@ -14,6 +14,7 @@ import { logAuditAction } from '../../../../../src/lib/auth/audit';
 import { Role, DEFAULT_ROLE } from '../../../../../src/lib/auth/rbac';
 import { createLogger } from '../../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+import { UsersInviteSchema } from '../../../../../src/lib/schemas/api/users-invite.schema';
 
 const logger = createLogger().child({ module: 'api.users-invite' });
 
@@ -42,6 +43,18 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json() as RequestBody;
+
+    const parsed = UsersInviteSchema.safeParse(body);
+    if (!parsed.success) {
+      logger.warn('api.users-invite.validation.failed', {
+        errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED,
+        issues: parsed.error.issues.slice(0, 5),
+      });
+      return NextResponse.json(
+        { error: 'Validation failed', details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
 
     if (!body.email) {
       return NextResponse.json(
