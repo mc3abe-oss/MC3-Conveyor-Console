@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'library-page' });
+
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useCurrentUserRole } from '../../hooks/useCurrentUserRole';
@@ -103,7 +108,7 @@ export default function LibraryPage() {
           setTags(data.data || []);
         }
       } catch (err) {
-        console.error('Failed to fetch tags:', err);
+        logger.error('library.tags.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error: err });
       }
     };
     void fetchTags();

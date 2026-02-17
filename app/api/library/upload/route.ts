@@ -28,6 +28,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 import crypto from 'crypto';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-upload' });
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
 
@@ -107,7 +111,7 @@ export async function POST(request: NextRequest) {
         .single();
 
       if (docError) {
-        console.error('Document creation error:', docError);
+        logger.error('api.library-upload.document-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: docError });
         return NextResponse.json(
           { error: 'Failed to create document', details: docError.message },
           { status: 500 }
@@ -153,7 +157,7 @@ export async function POST(request: NextRequest) {
       });
 
     if (uploadError) {
-      console.error('Storage upload error:', uploadError);
+      logger.error('api.library-upload.storage.failed', { errorCode: ErrorCodes.LIBRARY_UPLOAD_FAILED, error: uploadError });
       return NextResponse.json(
         { error: 'Failed to upload file', details: uploadError.message },
         { status: 500 }
@@ -178,7 +182,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (versionError) {
-      console.error('Version creation error:', versionError);
+      logger.error('api.library-upload.version-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: versionError });
       // Try to clean up uploaded file
       await supabase.storage.from('pdf-library').remove([storagePath]);
       return NextResponse.json(
@@ -198,7 +202,7 @@ export async function POST(request: NextRequest) {
       .eq('id', documentId);
 
     if (updateError) {
-      console.error('Document update error:', updateError);
+      logger.error('api.library-upload.document-update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       // Version was created, so don't fail completely
     }
 
@@ -208,7 +212,7 @@ export async function POST(request: NextRequest) {
       version,
     }, { status: 201 });
   } catch (error) {
-    console.error('Upload API error:', error);
+    logger.error('api.library-upload.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

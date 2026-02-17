@@ -16,6 +16,10 @@ import {
   type ResolveBomOptions,
   type BomResolution,
 } from '../gearmotor/bom';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'nord-coverage' });
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type SupabaseClientAny = any;
@@ -236,7 +240,7 @@ export async function enumerateCoverageInputs(
 
       // Guardrail: stop if we exceed max
       if (inputs.length >= MAX_COVERAGE_CASES) {
-        console.warn(`Coverage enumeration capped at ${MAX_COVERAGE_CASES} cases`);
+        logger.warn('nord.coverage.capped', { maxCases: MAX_COVERAGE_CASES, currentCount: inputs.length });
         return inputs;
       }
     }
@@ -352,12 +356,12 @@ export async function runCoverageCase(
 export async function generateCoverage(
   supabase: SupabaseClientAny
 ): Promise<CoverageGenerationResult> {
-  console.log('[Coverage] Starting coverage generation...');
+  logger.info('nord.coverage.starting');
   const errors: string[] = [];
 
   // Step 1: Enumerate inputs
   const inputs = await enumerateCoverageInputs(supabase);
-  console.log(`[Coverage] Enumerated ${inputs.length} test cases`);
+  logger.info('nord.coverage.enumerated', { testCaseCount: inputs.length });
 
   // Step 2: Clear existing coverage data
   const { error: deleteError } = await supabase
@@ -366,7 +370,7 @@ export async function generateCoverage(
     .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
 
   if (deleteError) {
-    console.error('[Coverage] Failed to clear existing data:', deleteError.message);
+    logger.error('nord.coverage.failed', { errorCode: ErrorCodes.NORD_COVERAGE_FAILED, error: deleteError.message, phase: 'clear' });
     throw new Error(`Failed to clear coverage data: ${deleteError.message}`);
   }
 
@@ -421,13 +425,13 @@ export async function generateCoverage(
       .insert(rows);
 
     if (insertError) {
-      console.error(`[Coverage] Batch insert error at ${i}:`, insertError.message);
+      logger.error('nord.coverage.failed', { errorCode: ErrorCodes.NORD_COVERAGE_FAILED, error: insertError.message, phase: 'batch-insert', batchOffset: i });
       errors.push(insertError.message);
       // Continue with other batches
     }
   }
 
-  console.log('[Coverage] Generation complete:', summary);
+  logger.info('nord.coverage.complete', { ...summary });
   return { summary, errors };
 }
 
@@ -509,7 +513,7 @@ export async function getCoverageCases(
   const { data, error } = await query;
 
   if (error) {
-    console.error('[Coverage] Query error:', error.message);
+    logger.error('nord.coverage.failed', { errorCode: ErrorCodes.NORD_COVERAGE_FAILED, error: error.message, phase: 'query' });
     return [];
   }
 

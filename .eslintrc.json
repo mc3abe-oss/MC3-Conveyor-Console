@@ -6,16 +6,30 @@
   },
   "plugins": ["@typescript-eslint"],
   "rules": {
-    "@typescript-eslint/no-floating-promises": "error"
+    "@typescript-eslint/no-floating-promises": "error",
+    "no-console": "error"
   },
   "overrides": [
     {
-      "files": ["**/*.test.ts", "**/*.test.tsx"],
+      "files": ["**/*.test.ts", "**/*.test.tsx", "**/__tests__/**"],
       "parserOptions": {
         "project": null
       },
       "rules": {
-        "@typescript-eslint/no-floating-promises": "off"
+        "@typescript-eslint/no-floating-promises": "off",
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["src/lib/logger/**"],
+      "rules": {
+        "no-console": "off"
+      }
+    },
+    {
+      "files": ["jest.setup.*"],
+      "rules": {
+        "no-console": "off"
       }
     }
   ]

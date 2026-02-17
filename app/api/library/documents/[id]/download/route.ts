@@ -11,6 +11,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../../src/lib/supabase/server';
 import { requireAuth, requireBeltAdmin } from '../../../../../../src/lib/auth/require';
+import { createLogger } from '../../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-download' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -83,7 +87,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       .createSignedUrl(version.storage_path, SIGNED_URL_EXPIRY);
 
     if (signedUrlError || !signedUrlData) {
-      console.error('Signed URL error:', signedUrlError);
+      logger.error('api.library-download.signed-url.failed', { errorCode: ErrorCodes.LIBRARY_DOCUMENT_NOT_FOUND, error: signedUrlError });
       return NextResponse.json(
         { error: 'Failed to generate download URL' },
         { status: 500 }
@@ -97,7 +101,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
       expiresIn: SIGNED_URL_EXPIRY,
     });
   } catch (error) {
-    console.error('Download API error:', error);
+    logger.error('api.library-download.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

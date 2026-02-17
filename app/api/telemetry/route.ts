@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
 import { scrubEvent, LIMITS } from '../../../src/lib/telemetry/scrub';
 import type { TelemetryEvent, TelemetryIngestPayload } from '../../../src/lib/telemetry/types';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.telemetry' });
 
 /**
  * POST /api/telemetry
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
       .insert(scrubbedEvents);
 
     if (error) {
-      console.error('Telemetry insert error:', error);
+      logger.error('api.telemetry.insert.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to insert events' },
         { status: 500 }
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ inserted: scrubbedEvents.length });
   } catch (error) {
-    console.error('Telemetry insert exception:', error);
+    logger.error('api.telemetry.insert-exception.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Failed to insert events' },
       { status: 500 }

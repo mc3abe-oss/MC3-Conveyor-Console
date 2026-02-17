@@ -57,6 +57,9 @@ import {
   SheetMetalGauge,
   MaterialForm,
 } from './schema';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger().child({ module: 'sliderbed-migrate' });
 import { horizontalFromAxis, normalizeGeometry, DerivedGeometry } from './geometry';
 // PHASE 0: Legacy pulley catalog import removed - will be replaced by application_pulleys in Phase 2
 // Stub function to maintain API compatibility during transition
@@ -333,7 +336,7 @@ export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
 
   // Warn if catalog key was provided but lookup failed (stub returns undefined)
   if (migrated.head_pulley_catalog_key && catalogDriveDia === undefined && process.env.NODE_ENV !== 'production') {
-    console.warn(`[Migrate] Drive pulley catalog key "${migrated.head_pulley_catalog_key}" not found. Using fallback: ${drivePulleyDiameterIn}"`);
+    logger.warn('sliderbed.migrate.drive-pulley-catalog-miss', { catalogKey: migrated.head_pulley_catalog_key, fallbackDiameter: drivePulleyDiameterIn });
   }
 
   // For tail: check tail_pulley_catalog_key first
@@ -343,7 +346,7 @@ export function normalizeInputsForCalculation(inputs: SliderbedInputs): {
 
   // Warn if catalog key was provided but lookup failed
   if (migrated.tail_pulley_catalog_key && catalogTailDia === undefined && process.env.NODE_ENV !== 'production') {
-    console.warn(`[Migrate] Tail pulley catalog key "${migrated.tail_pulley_catalog_key}" not found. Using fallback: ${tailPulleyDiameterIn}"`);
+    logger.warn('sliderbed.migrate.tail-pulley-catalog-miss', { catalogKey: migrated.tail_pulley_catalog_key, fallbackDiameter: tailPulleyDiameterIn });
   }
 
   return { drivePulleyDiameterIn, tailPulleyDiameterIn };
@@ -376,7 +379,7 @@ export function normalizeInputsForCalculationV2(inputs: SliderbedInputs): {
 
   // Warn if catalog key was provided but lookup failed (stub returns undefined)
   if (migrated.head_pulley_catalog_key && catalogDriveDia === undefined && process.env.NODE_ENV !== 'production') {
-    console.warn(`[Migrate] Drive pulley catalog key "${migrated.head_pulley_catalog_key}" not found. Using fallback: ${drivePulleyDiameterIn}"`);
+    logger.warn('sliderbed.migrate.drive-pulley-catalog-miss', { catalogKey: migrated.head_pulley_catalog_key, fallbackDiameter: drivePulleyDiameterIn });
   }
 
   // For tail: check tail_pulley_catalog_key first
@@ -386,7 +389,7 @@ export function normalizeInputsForCalculationV2(inputs: SliderbedInputs): {
 
   // Warn if catalog key was provided but lookup failed
   if (migrated.tail_pulley_catalog_key && catalogTailDia === undefined && process.env.NODE_ENV !== 'production') {
-    console.warn(`[Migrate] Tail pulley catalog key "${migrated.tail_pulley_catalog_key}" not found. Using fallback: ${tailPulleyDiameterIn}"`);
+    logger.warn('sliderbed.migrate.tail-pulley-catalog-miss', { catalogKey: migrated.tail_pulley_catalog_key, fallbackDiameter: tailPulleyDiameterIn });
   }
 
   // Normalize geometry (v1.10)

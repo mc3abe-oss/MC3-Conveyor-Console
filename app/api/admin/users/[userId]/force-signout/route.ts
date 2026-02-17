@@ -12,6 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '../../../../../../src/lib/auth/require';
 import { supabaseAdmin } from '../../../../../../src/lib/supabase/client';
 import { logAuditAction } from '../../../../../../src/lib/auth/audit';
+import { createLogger } from '../../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.users-force-signout' });
 
 interface RouteParams {
   params: Promise<{ userId: string }>;
@@ -83,7 +87,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     });
 
     if (updateError) {
-      console.error('[Admin] Force sign-out error:', updateError);
+      logger.error('api.users-force-signout.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to sign out user', details: updateError.message },
         { status: 500 }
@@ -102,7 +106,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       note: 'Session invalidation takes effect on next token refresh.',
     });
   } catch (error) {
-    console.error('[Admin] Force sign-out error:', error);
+    logger.error('api.users-force-signout.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

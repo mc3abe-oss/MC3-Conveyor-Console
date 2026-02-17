@@ -9,6 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
 import { requireAuth } from '../../../../../src/lib/auth/require';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.password-change' });
 
 interface RequestBody {
   newPassword: string;
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (error) {
-      console.error('[Auth] Password change error:', error);
+      logger.error('api.password-change.update.failed', { errorCode: ErrorCodes.AUTH_UNAUTHORIZED, error });
       return NextResponse.json(
         { error: error.message || 'Failed to change password' },
         { status: 400 }
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
       message: 'Password changed successfully',
     });
   } catch (error) {
-    console.error('[Auth] Password change error:', error);
+    logger.error('api.password-change.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

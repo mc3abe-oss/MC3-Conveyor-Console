@@ -11,6 +11,10 @@ import {
   getCoverageCases,
   type CoverageStatus,
 } from '../../../../../src/lib/nord/coverage';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.nord-coverage' });
 
 export async function GET(request: Request) {
   try {
@@ -36,7 +40,7 @@ export async function GET(request: Request) {
       cases,
     });
   } catch (err) {
-    console.error('[NORD Coverage API] GET exception:', err);
+    logger.error('api.nord-coverage.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error: err });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

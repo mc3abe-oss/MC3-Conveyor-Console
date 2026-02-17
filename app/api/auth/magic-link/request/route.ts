@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.magic-link' });
 
 interface RequestBody {
   email: string;
@@ -51,7 +55,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       // Log error but don't expose to client to prevent email enumeration
-      console.error('[Auth] Magic link request error:', error);
+      logger.error('api.magic-link.send.failed', { errorCode: ErrorCodes.AUTH_UNAUTHORIZED, error });
     }
 
     // Always return success to prevent email enumeration
@@ -60,7 +64,7 @@ export async function POST(request: NextRequest) {
       message: 'If an account exists with this email, a magic link has been sent.',
     });
   } catch (error) {
-    console.error('[Auth] Magic link request error:', error);
+    logger.error('api.magic-link.request.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

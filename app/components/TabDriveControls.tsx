@@ -14,6 +14,11 @@
 
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'tab-drive-controls' });
+
 import { useState, useEffect } from 'react';
 import {
   SliderbedInputs,
@@ -114,7 +119,7 @@ export default function TabDriveControls({ inputs, updateInput, sectionCounts, g
         }
       }
     } catch (err) {
-      console.error('Failed to load drive config:', err);
+      logger.error('drive.config.load.failed', { errorCode: ErrorCodes.DRIVE_NO_MATCH, error: err });
     }
   };
 

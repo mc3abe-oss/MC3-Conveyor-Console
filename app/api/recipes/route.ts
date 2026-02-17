@@ -28,6 +28,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
 import { hashCanonical, stripUndefined } from '../../../src/lib/recipes/hash';
 import { canonicalizeRecipeInputs } from '../../../src/lib/recipes/canon/canonicalize-inputs';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.recipes' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
     // Fallback: if is_fixture column doesn't exist, fetch all and filter client-side
     // This handles the case where migration hasn't been applied yet
     if (error?.message?.includes('is_fixture')) {
-      console.warn('is_fixture column not found, falling back to unfiltered query');
+      logger.warn('api.recipes.is-fixture-column-missing.warning', { errorCode: ErrorCodes.DB_QUERY_FAILED });
 
       // Re-run query without is_fixture filter
       let fallbackQuery = supabase
@@ -104,7 +108,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (error) {
-      console.error('Recipes fetch error:', error);
+      logger.error('api.recipes.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch recipes', details: error.message },
         { status: 500 }
@@ -113,7 +117,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(recipes || []);
   } catch (error) {
-    console.error('Recipes API error:', error);
+    logger.error('api.recipes.list.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -163,7 +167,7 @@ export async function POST(request: NextRequest) {
 
     // Log removed keys for debugging (in development)
     if (removedKeys.length > 0 && process.env.NODE_ENV === 'development') {
-      console.log('Recipe inputs canonicalization removed keys:', removedKeys);
+      logger.info('api.recipes.canonicalization.removed-keys', { removedKeys });
     }
 
     // Build the recipe row
@@ -200,7 +204,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Recipe create error:', error);
+      logger.error('api.recipes.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create recipe', details: error.message },
         { status: 500 }
@@ -209,7 +213,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(recipe, { status: 201 });
   } catch (error) {
-    console.error('Recipe POST error:', error);
+    logger.error('api.recipes.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

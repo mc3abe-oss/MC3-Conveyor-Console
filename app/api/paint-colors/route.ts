@@ -11,6 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.paint-colors' });
 
 export interface PowderColorOption {
   id: string;
@@ -69,7 +73,7 @@ export async function GET(request: NextRequest) {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Powder colors fetch error:', error);
+      logger.error('api.paint-colors.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch powder color options', details: error.message },
         { status: 500 }
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
     // Return array of powder color options
     return NextResponse.json(transformed);
   } catch (error) {
-    console.error('Powder colors API error:', error);
+    logger.error('api.paint-colors.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

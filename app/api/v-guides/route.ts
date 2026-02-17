@@ -17,6 +17,10 @@
 
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.v-guides' });
 
 // Re-export VGuideItem type for consumers
 export interface VGuideItem {
@@ -51,7 +55,7 @@ export async function GET() {
       .order('sort_order', { ascending: true });
 
     if (error) {
-      console.error('V-guides fetch error:', error);
+      logger.error('api.v-guides.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch v-guides', details: error.message },
         { status: 500 }
@@ -60,7 +64,7 @@ export async function GET() {
 
     return NextResponse.json(items || []);
   } catch (error) {
-    console.error('V-guides API error:', error);
+    logger.error('api.v-guides.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

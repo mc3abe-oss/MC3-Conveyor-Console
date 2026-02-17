@@ -21,6 +21,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { getCreatorDisplayOrNull } from '../../../../src/lib/user-display';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.applications-load' });
 
 /**
  * Product routing configuration
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
         .maybeSingle();
 
       if (error) {
-        console.error('Application load error:', error);
+        logger.error('api.applications-load.fetch-by-id.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
         return NextResponse.json(
           { error: 'Failed to load application', details: error.message },
           { status: 500 }
@@ -133,7 +137,7 @@ export async function GET(request: NextRequest) {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('Application lookup error:', error);
+      logger.error('api.applications-load.lookup.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to lookup application', details: error.message },
         { status: 500 }
@@ -232,7 +236,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Application load error:', error);
+    logger.error('api.applications-load.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -275,7 +279,8 @@ function buildContextFromApp(app: any): {
 
   // Log warning if FK is null - this means scope management won't work
   if (!referenceId) {
-    console.warn('[Load] Application missing FK linkage:', {
+    logger.warn('api.applications-load.missing-fk-linkage', {
+      errorCode: ErrorCodes.CONFIG_MISSING_REQUIRED,
       applicationId: app.id,
       referenceType: type,
       base,
@@ -325,7 +330,7 @@ async function getRevisionCount(supabase: any, app: any): Promise<number> {
     .eq('is_active', true);
 
   if (error) {
-    console.error('Error counting revisions:', error);
+    logger.error('api.applications-load.count-revisions.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
     return 1;
   }
 
@@ -362,6 +367,6 @@ async function enrichCreatorDisplay(app: any): Promise<void> {
       }
     }
   } catch (err) {
-    console.error('Error fetching creator info:', err);
+    logger.error('api.applications-load.enrich-creator.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
   }
 }

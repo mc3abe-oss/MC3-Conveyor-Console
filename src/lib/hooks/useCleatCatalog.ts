@@ -8,6 +8,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'use-cleat-catalog' });
 import {
   CleatCatalogItem,
   CleatCenterFactor,
@@ -64,7 +68,7 @@ export function useCleatCatalog(): UseCleatCatalogResult {
           setError('Failed to fetch cleat catalog');
         }
       } catch (err) {
-        console.error('Failed to fetch cleat catalog:', err);
+        logger.error('catalog.cleat.fetch.failed', { errorCode: ErrorCodes.CATALOG_CLEAT_NOT_FOUND, error: err });
         setError(err instanceof Error ? err.message : 'Unknown error');
       } finally {
         setIsLoading(false);

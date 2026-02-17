@@ -18,6 +18,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.gearmotor-config' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -65,7 +69,7 @@ export async function GET(request: NextRequest) {
         // No config exists yet
         return NextResponse.json({ config: null });
       }
-      console.error('Drive config fetch error:', error);
+      logger.error('api.gearmotor-config.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch drive config', details: error.message },
         { status: 500 }
@@ -74,7 +78,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ config });
   } catch (error) {
-    console.error('Drive config GET error:', error);
+    logger.error('api.gearmotor-config.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -152,7 +156,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Drive config upsert error:', error);
+      logger.error('api.gearmotor-config.upsert.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to save drive config', details: error.message },
         { status: 500 }
@@ -184,7 +188,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ config });
   } catch (error) {
-    console.error('Drive config POST error:', error);
+    logger.error('api.gearmotor-config.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

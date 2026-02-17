@@ -12,6 +12,10 @@ import { requireSuperAdmin } from '../../../../../src/lib/auth/require';
 import { supabaseAdmin } from '../../../../../src/lib/supabase/client';
 import { logAuditAction } from '../../../../../src/lib/auth/audit';
 import { Role, DEFAULT_ROLE } from '../../../../../src/lib/auth/rbac';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.users-invite' });
 
 interface RequestBody {
   email: string;
@@ -72,7 +76,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (inviteError) {
-      console.error('[Admin] Invite user error:', inviteError);
+      logger.error('api.users-invite.invite.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error: inviteError });
       return NextResponse.json(
         { error: inviteError.message || 'Failed to invite user' },
         { status: 400 }
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
         });
 
       if (profileError) {
-        console.error('[Admin] Create profile error:', profileError);
+        logger.error('api.users-invite.create-profile.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: profileError });
         // Don't fail the invite, just log the error
       }
 
@@ -110,7 +114,7 @@ export async function POST(request: NextRequest) {
       userId: newUserId,
     });
   } catch (error) {
-    console.error('[Admin] Invite user error:', error);
+    logger.error('api.users-invite.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

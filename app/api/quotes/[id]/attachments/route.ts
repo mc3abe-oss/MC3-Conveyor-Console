@@ -9,6 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
 import { AttachmentTag } from '../../../../../src/lib/database/quote-types';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes-attachments' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -28,7 +32,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Attachments fetch error:', error);
+      logger.error('api.quotes-attachments.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch attachments', details: error.message },
         { status: 500 }
@@ -37,7 +41,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(attachments || []);
   } catch (error) {
-    console.error('Attachments GET error:', error);
+    logger.error('api.quotes-attachments.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -104,7 +108,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Attachment create error:', error);
+      logger.error('api.quotes-attachments.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create attachment', details: error.message },
         { status: 500 }
@@ -113,7 +117,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(attachment, { status: 201 });
   } catch (error) {
-    console.error('Attachments POST error:', error);
+    logger.error('api.quotes-attachments.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -156,7 +160,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       .eq('parent_id', id);
 
     if (error) {
-      console.error('Attachment delete error:', error);
+      logger.error('api.quotes-attachments.delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to delete attachment', details: error.message },
         { status: 500 }
@@ -165,7 +169,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Attachments DELETE error:', error);
+    logger.error('api.quotes-attachments.delete-handler.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

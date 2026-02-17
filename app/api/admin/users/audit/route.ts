@@ -9,6 +9,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '../../../../../src/lib/auth/require';
 import { getAuditLog, AuditAction } from '../../../../../src/lib/auth/audit';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.users-audit' });
 
 const VALID_ACTIONS: AuditAction[] = [
   'INVITE',
@@ -66,7 +70,7 @@ export async function GET(request: NextRequest) {
       offset,
     });
   } catch (error) {
-    console.error('[Admin] Get audit log error:', error);
+    logger.error('api.users-audit.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

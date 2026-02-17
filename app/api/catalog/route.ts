@@ -9,6 +9,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.catalog' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -44,7 +48,7 @@ export async function GET(request: NextRequest) {
       .order('label', { ascending: true });
 
     if (error) {
-      console.error('Catalog fetch error:', error);
+      logger.error('api.catalog.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch catalog items', details: error.message },
         { status: 500 }
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest) {
     // Return array of { item_key, label }
     return NextResponse.json(items || []);
   } catch (error) {
-    console.error('Catalog API error:', error);
+    logger.error('api.catalog.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

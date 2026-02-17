@@ -16,6 +16,10 @@
  */
 
 import { supabase, isSupabaseConfigured } from '../supabase/anon';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'gearmotor-selector' });
 
 // ============================================================================
 // TYPES
@@ -208,7 +212,7 @@ async function queryCandidates(
     .lte('output_rpm', maxRpm);
 
   if (error) {
-    console.error('Gearmotor query error:', error);
+    logger.error('drive.selection.query.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, series, error });
     return [];
   }
 

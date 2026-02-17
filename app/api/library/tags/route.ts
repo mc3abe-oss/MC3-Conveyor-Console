@@ -8,6 +8,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireAuth, requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-tags' });
 
 export async function GET(_request: NextRequest) {
   try {
@@ -27,7 +31,7 @@ export async function GET(_request: NextRequest) {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Tags fetch error:', error);
+      logger.error('api.library-tags.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch tags', details: error.message },
         { status: 500 }
@@ -36,7 +40,7 @@ export async function GET(_request: NextRequest) {
 
     return NextResponse.json({ data: data || [] });
   } catch (error) {
-    console.error('Tags API error:', error);
+    logger.error('api.library-tags.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -85,7 +89,7 @@ export async function POST(request: NextRequest) {
           { status: 409 }
         );
       }
-      console.error('Tag creation error:', error);
+      logger.error('api.library-tags.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create tag', details: error.message },
         { status: 500 }
@@ -94,7 +98,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(tag, { status: 201 });
   } catch (error) {
-    console.error('Create tag API error:', error);
+    logger.error('api.library-tags.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

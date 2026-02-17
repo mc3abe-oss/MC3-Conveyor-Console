@@ -16,6 +16,10 @@ import {
   RecipeStatus,
 } from '../../../../src/lib/recipes/types';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.recipes-detail' });
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -58,7 +62,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       if (recipeError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Recipe not found' }, { status: 404 });
       }
-      console.error('Recipe fetch error:', recipeError);
+      logger.error('api.recipes-detail.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: recipeError });
       return NextResponse.json(
         { error: 'Failed to fetch recipe', details: recipeError.message },
         { status: 500 }
@@ -74,7 +78,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       .limit(20);
 
     if (runsError) {
-      console.error('Recipe runs fetch error:', runsError);
+      logger.error('api.recipes-detail.runs-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: runsError });
       // Don't fail the whole request, just log it
     }
 
@@ -89,7 +93,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       runs: runs || [],
     });
   } catch (error) {
-    console.error('Recipe detail API error:', error);
+    logger.error('api.recipes-detail.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -216,7 +220,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (updateError) {
-      console.error('Recipe update error:', updateError);
+      logger.error('api.recipes-detail.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to update recipe', details: updateError.message },
         { status: 500 }
@@ -228,7 +232,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       role: getEffectiveRole(updatedRecipe),
     });
   } catch (error) {
-    console.error('Recipe PATCH error:', error);
+    logger.error('api.recipes-detail.patch.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -278,18 +282,18 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Recipe delete error:', deleteError);
+      logger.error('api.recipes-detail.delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: deleteError });
       return NextResponse.json(
         { error: 'Failed to delete recipe', details: deleteError.message },
         { status: 500 }
       );
     }
 
-    console.log(`[DELETE] Recipe ${id} (${currentRecipe.name}) deleted by ${auth.user.email}`);
+    logger.info('api.recipes-detail.delete.completed', { recipeId: id, recipeName: currentRecipe.name, deletedBy: auth.user.email });
 
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error('Recipe DELETE error:', error);
+    logger.error('api.recipes-detail.delete-handler.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

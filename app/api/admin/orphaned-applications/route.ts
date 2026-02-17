@@ -11,6 +11,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.orphaned-applications' });
 
 export async function GET() {
   try {
@@ -31,7 +35,7 @@ export async function GET() {
       .order('updated_at', { ascending: false });
 
     if (error) {
-      console.error('Error fetching orphaned applications:', error);
+      logger.error('api.orphaned-applications.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch orphaned applications' },
         { status: 500 }
@@ -43,7 +47,7 @@ export async function GET() {
       count: orphaned?.length || 0,
     });
   } catch (error) {
-    console.error('Orphaned applications error:', error);
+    logger.error('api.orphaned-applications.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

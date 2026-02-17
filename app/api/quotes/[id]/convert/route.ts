@@ -20,6 +20,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes-convert' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -70,7 +74,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     const { data: baseNumber, error: genError } = await supabase.rpc('next_sales_order_base_number');
 
     if (genError) {
-      console.error('SO base number generation error:', genError);
+      logger.error('api.quotes-convert.base-number-generate.failed', { errorCode: ErrorCodes.DB_RPC_FAILED, error: genError });
       return NextResponse.json(
         { error: 'Failed to generate sales order base number', details: genError.message },
         { status: 500 }
@@ -92,7 +96,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (soError) {
-      console.error('Sales order creation error:', soError);
+      logger.error('api.quotes-convert.sales-order-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: soError });
       return NextResponse.json(
         { error: 'Failed to create sales order', details: soError.message },
         { status: 500 }
@@ -127,7 +131,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         .insert(attachmentCopies);
 
       if (attachError) {
-        console.error('Attachment copy error:', attachError);
+        logger.error('api.quotes-convert.attachment-copy.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: attachError });
         // Rollback: delete the sales order
         await supabase.from('sales_orders').delete().eq('id', salesOrderId);
         return NextResponse.json(
@@ -158,7 +162,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         .insert(noteCopies);
 
       if (noteError) {
-        console.error('Note copy error:', noteError);
+        logger.error('api.quotes-convert.note-copy.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: noteError });
         // Rollback
         await supabase.from('attachments').delete().eq('parent_id', salesOrderId);
         await supabase.from('sales_orders').delete().eq('id', salesOrderId);
@@ -197,7 +201,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         .insert(specCopies);
 
       if (specError) {
-        console.error('Spec copy error:', specError);
+        logger.error('api.quotes-convert.spec-copy.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: specError });
         // Rollback
         await supabase.from('notes').delete().eq('parent_id', salesOrderId);
         await supabase.from('attachments').delete().eq('parent_id', salesOrderId);
@@ -235,7 +239,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
         .insert(scopeCopies);
 
       if (scopeError) {
-        console.error('Scope line copy error:', scopeError);
+        logger.error('api.quotes-convert.scope-line-copy.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: scopeError });
         // Rollback
         await supabase.from('specs').delete().eq('parent_id', salesOrderId);
         await supabase.from('notes').delete().eq('parent_id', salesOrderId);
@@ -291,11 +295,11 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
           .eq('id', recipe.id);
 
         if (recipeUpdateError) {
-          console.error('Recipe re-link error:', recipeUpdateError);
+          logger.error('api.quotes-convert.recipe-relink.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: recipeUpdateError, recipeId: recipe.id });
           // Don't fail the conversion, just log the error
         }
       }
-      console.log(`Re-linked ${linkedRecipes.length} application(s) from Quote Q${quote.base_number} to SO${baseNumber}`);
+      logger.info('api.quotes-convert.recipe-relink.completed', { count: linkedRecipes.length, quoteBase: quote.base_number, soBase: baseNumber });
     }
 
     // 9. Update the quote: status = 'converted', is_read_only = true, link to SO
@@ -310,7 +314,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       .eq('id', quoteId);
 
     if (updateError) {
-      console.error('Quote update error:', updateError);
+      logger.error('api.quotes-convert.quote-update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       // Rollback everything
       await supabase.from('scope_lines').delete().eq('parent_id', salesOrderId);
       await supabase.from('specs').delete().eq('parent_id', salesOrderId);
@@ -332,7 +336,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
     }, { status: 201 });
 
   } catch (error) {
-    console.error('Quote conversion error:', error);
+    logger.error('api.quotes-convert.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

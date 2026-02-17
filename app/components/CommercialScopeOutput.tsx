@@ -24,6 +24,11 @@
 
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'commercial-scope-output' });
+
 import { useMemo, useState, useCallback } from 'react';
 import {
   SliderbedInputs,
@@ -538,7 +543,7 @@ export default function CommercialScopeOutput({
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      logger.error('scope.copy.failed', { errorCode: ErrorCodes.UNKNOWN_ERROR, error: err });
     }
   }, [scopeText]);
 

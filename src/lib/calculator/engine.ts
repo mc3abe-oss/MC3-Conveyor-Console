@@ -15,6 +15,10 @@ import {
   SliderbedParameters,
   CalculationResult,
 } from '../../models/sliderbed_v1/schema';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'calculation-engine' });
 import { validate } from '../../models/sliderbed_v1/rules';
 import { MODEL_KEY, MODEL_VERSION_ID } from '../model-identity';
 // Use belt_conveyor_v1 for default parameters and COF resolution
@@ -103,9 +107,7 @@ function resolveProductForCalculation(productKey?: string) {
 
   // Unknown productKey - warn in dev, fall back to belt
   if (process.env.NODE_ENV !== 'production') {
-    console.warn(
-      `[engine] Unknown productKey "${productKey}", falling back to belt_conveyor_v1`
-    );
+    logger.warn('calculation.engine.fallback', { errorCode: ErrorCodes.CALC_PRODUCT_NOT_FOUND, productKey, fallback: 'belt_conveyor_v1' });
   }
   return beltConveyorV1;
 }

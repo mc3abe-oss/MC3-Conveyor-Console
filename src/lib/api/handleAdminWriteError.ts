@@ -12,6 +12,10 @@
 
 import { NextResponse } from 'next/server';
 import { PostgrestError } from '@supabase/supabase-js';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'admin-write-error' });
 
 /**
  * Standard 403 response payload for admin permission denials
@@ -77,14 +81,14 @@ export function handleAdminWriteError(
 ): NextResponse<AdminForbiddenPayload | { error: string; details?: string }> {
   if (isRLSError(error)) {
     // Log permission denial at WARN level
-    console.warn(
-      `[RBAC] Permission denied: ${context.action} on ${context.table}`,
-      {
-        route: context.route,
-        userId: context.userId || '(unknown)',
-        code: error.code,
-      }
-    );
+    logger.warn('admin.write.permission-denied', {
+      errorCode: ErrorCodes.AUTH_FORBIDDEN,
+      action: context.action,
+      table: context.table,
+      route: context.route,
+      userId: context.userId || '(unknown)',
+      code: error.code,
+    });
 
     return NextResponse.json(
       {
@@ -96,7 +100,7 @@ export function handleAdminWriteError(
   }
 
   // Not an RLS error - return 500 with original error details
-  console.error(`[Admin API] ${context.route} ${context.action} error:`, error);
+  logger.error('admin.write.error', { errorCode: ErrorCodes.API_INTERNAL_ERROR, route: context.route, action: context.action, table: context.table, error });
 
   return NextResponse.json(
     {

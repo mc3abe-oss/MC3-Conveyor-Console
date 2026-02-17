@@ -19,6 +19,10 @@ import {
   APPLICATION_CODE_HELP,
 } from '../../../../src/lib/applicationCode';
 import { formatCreatorDisplay } from '../../../../src/lib/user-display';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.configurations-save' });
 
 interface SaveRequestBody {
   reference_type: 'QUOTE' | 'SALES_ORDER';  // v1: Every application must be linked to Quote or SO
@@ -192,7 +196,7 @@ export async function POST(request: NextRequest) {
         .maybeSingle();
 
       if (fetchError) {
-        console.error('Error fetching existing recipe:', fetchError);
+        logger.error('api.configurations-save.fetch-existing.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: fetchError });
         return NextResponse.json(
           { error: 'Failed to fetch existing application', details: fetchError.message },
           { status: 500 }
@@ -326,7 +330,7 @@ export async function POST(request: NextRequest) {
 
         if (existingQuote) {
           quoteId = existingQuote.id;
-          console.log('[Save] Found existing quote:', quoteId);
+          logger.info('api.configurations-save.quote-found', { quoteId });
         } else {
           // Create new quote record
           const { data: newQuote, error: createError } = await supabase
@@ -344,11 +348,11 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (createError) {
-            console.error('[Save] Failed to create quote:', createError);
+            logger.error('api.configurations-save.quote-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: createError });
             // Non-fatal: continue without FK linkage
           } else {
             quoteId = newQuote.id;
-            console.log('[Save] Created new quote:', quoteId);
+            logger.info('api.configurations-save.quote-created', { quoteId });
           }
         }
       }
@@ -379,7 +383,7 @@ export async function POST(request: NextRequest) {
 
         if (existingSo) {
           salesOrderId = existingSo.id;
-          console.log('[Save] Found existing sales order:', salesOrderId);
+          logger.info('api.configurations-save.sales-order-found', { salesOrderId });
         } else {
           // Create new sales order record
           const { data: newSo, error: createError } = await supabase
@@ -397,11 +401,11 @@ export async function POST(request: NextRequest) {
             .single();
 
           if (createError) {
-            console.error('[Save] Failed to create sales order:', createError);
+            logger.error('api.configurations-save.sales-order-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: createError });
             // Non-fatal: continue without FK linkage
           } else {
             salesOrderId = newSo.id;
-            console.log('[Save] Created new sales order:', salesOrderId);
+            logger.info('api.configurations-save.sales-order-created', { salesOrderId });
           }
         }
       }
@@ -443,7 +447,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (!productFamily) {
-      console.error('Product family lookup error:', productFamilyError || modelKeyError);
+      logger.error('api.configurations-save.product-family-lookup.failed', { errorCode: ErrorCodes.CONFIG_PRODUCT_FAMILY_NOT_FOUND, error: productFamilyError || modelKeyError });
       return NextResponse.json(
         { error: 'Failed to resolve product family for the given product_key', details: (productFamilyError || modelKeyError)?.message },
         { status: 400 }
@@ -517,7 +521,7 @@ export async function POST(request: NextRequest) {
             recipeRow.created_by_display = creatorDisplay;
           }
         } catch (err) {
-          console.error('Failed to fetch user info for creator display:', err);
+          logger.error('api.configurations-save.user-info-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
           // Continue without display name - it can be derived at read time
         }
       }
@@ -565,7 +569,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (recipeError) {
-      console.error('Recipe save error:', recipeError);
+      logger.error('api.configurations-save.save.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: recipeError });
       return NextResponse.json(
         { error: 'Failed to save configuration', details: recipeError.message },
         { status: 500 }
@@ -620,7 +624,7 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
-    console.error('Save configuration error:', error);
+    logger.error('api.configurations-save.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

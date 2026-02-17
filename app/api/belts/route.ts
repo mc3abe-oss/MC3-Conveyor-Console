@@ -14,6 +14,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
 import { validateMaterialProfile } from '../../../src/lib/belt-catalog';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.belts' });
 
 // Re-export types for backward compatibility
 export type { BeltCatalogItem, BeltMaterialProfile } from '../../../src/lib/belt-catalog';
@@ -46,7 +50,7 @@ export async function GET(request: NextRequest) {
     const { data: belts, error } = await query;
 
     if (error) {
-      console.error('Belt catalog fetch error:', error);
+      logger.error('api.belts.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch belt catalog', details: error.message },
         { status: 500 }
@@ -55,7 +59,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(belts || []);
   } catch (error) {
-    console.error('Belt catalog API error:', error);
+    logger.error('api.belts.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -112,7 +116,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Belt catalog upsert error:', error);
+      logger.error('api.belts.upsert.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to save belt', details: error.message },
         { status: 500 }
@@ -121,7 +125,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Belt catalog POST error:', error);
+    logger.error('api.belts.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

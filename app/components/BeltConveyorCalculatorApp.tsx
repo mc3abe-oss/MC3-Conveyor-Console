@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'belt-calculator-app' });
+
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
 import CalculatorForm from './CalculatorForm';
@@ -196,23 +201,11 @@ export default function BeltConveyorCalculatorApp({
 
   // Load application from API response
   const loadApplicationFromResponse = useCallback((data: any) => {
-    // DEV: LOAD_APP_START
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][LOAD_APP_START]', {
-        receivedData: data,
-        hasApplication: !!data?.application,
-        applicationId: data?.application?.id,
-      });
-    }
-
     const { application, context: loadedContext } = data;
 
     if (!application) {
       setLoadError('Invalid application data');
       setLoadState('error');
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEV][LOAD_APP_END] FAILED - no application in data');
-      }
       return;
     }
 
@@ -230,13 +223,6 @@ export default function BeltConveyorCalculatorApp({
         // Preserve current query params in redirect
         const currentParams = window.location.search;
         const redirectUrl = `${targetPath}${currentParams}`;
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DEV][MODEL_KEY_MISMATCH] Redirecting', {
-            loadedModelKey,
-            currentProductKey: productKey,
-            redirectUrl,
-          });
-        }
         router.push(redirectUrl as '/console/belt');
         return;
       }
@@ -280,7 +266,6 @@ export default function BeltConveyorCalculatorApp({
           (key) => (normalizedInputs as Record<string, unknown>)[key] === undefined
         );
         if (hasMissingKeys) {
-          console.log('[Load] Seeding magnetic defaults for missing keys');
           // Merge defaults for missing keys only (don't override existing values)
           normalizedInputs = {
             ...magneticDefaults,
@@ -311,13 +296,6 @@ export default function BeltConveyorCalculatorApp({
     }
 
     // Set loaded IDs
-    // DEV: SET_LOADED_APP_ID
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][SET_LOADED_APP_ID]', {
-        newValue: application.id,
-        source: 'loadApplicationFromResponse',
-      });
-    }
     setLoadedConfigurationId(application.id);
     setLoadedRevisionId(application.id);
 
@@ -353,10 +331,6 @@ export default function BeltConveyorCalculatorApp({
           // Legacy belt outputs or missing magnetic outputs - mark as stale
           setHasLegacyBeltOutputs(true);
           setOutputsStale(true);
-          console.log('[Load] Legacy/missing outputs detected on magnetic conveyor - marked as stale', {
-            hasBeltKeys,
-            hasMagneticKeys,
-          });
         } else {
           setHasLegacyBeltOutputs(false);
         }
@@ -383,15 +357,7 @@ export default function BeltConveyorCalculatorApp({
     }
 
     setLoadState('loaded');
-    // DEV: LOAD_APP_END
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][LOAD_APP_END] SUCCESS', {
-        applicationId: application.id,
-        hasContext: !!loadedContext,
-        hasOutputs: !!application.expected_outputs,
-      });
-    }
-    console.log('[Load] Application loaded:', application.id);
+    logger.debug('app.loaded', { applicationId: application.id });
   }, [productKey, router]);
 
   // Effect: Load application based on URL params or localStorage
@@ -427,7 +393,6 @@ export default function BeltConveyorCalculatorApp({
         // If gate navigation is pending (user clicked Continue but URL hasn't updated yet),
         // do NOT reopen the modal - wait for URL to update
         if (gateNavPendingRef.current) {
-          console.log('[Load] Gate navigation pending, skipping modal reopen');
           return;
         }
         // New application flow - show gate modal to require Quote/SO attachment
@@ -442,7 +407,6 @@ export default function BeltConveyorCalculatorApp({
 
     // If we have a loadUrl and gate navigation was pending, clear the flag
     if (gateNavPendingRef.current) {
-      console.log('[Load] URL updated after gate navigation, proceeding to load');
       gateNavPendingRef.current = false;
     }
 
@@ -464,7 +428,6 @@ export default function BeltConveyorCalculatorApp({
 
           // If loading by SO reference fails with 404, check if SO itself exists
           if (res.status === 404 && soBase && data.error?.includes('No Application found')) {
-            console.log('[Load] No application for SO, fetching SO details to set up blank context');
             const soRes = await fetch(`/api/sales-orders?base_number=${encodeURIComponent(soBase)}`);
             if (soRes.ok) {
               const soData = await soRes.json();
@@ -506,7 +469,6 @@ export default function BeltConveyorCalculatorApp({
               return;
             }
             // Not new app flow - redirect to SO list
-            console.log('[Load] SO not found, redirecting to sales orders list');
             showToast(`Sales Order ${soBase} not found.`);
             router.push('/console/sales-orders');
             return;
@@ -514,7 +476,6 @@ export default function BeltConveyorCalculatorApp({
 
           // Same for quotes
           if (res.status === 404 && quoteBase && data.error?.includes('No Application found')) {
-            console.log('[Load] No application for Quote, fetching Quote details to set up blank context');
             const quoteRes = await fetch(`/api/quotes?base_number=${encodeURIComponent(quoteBase)}`);
             if (quoteRes.ok) {
               const quoteData = await quoteRes.json();
@@ -556,7 +517,6 @@ export default function BeltConveyorCalculatorApp({
               return;
             }
             // Not new app flow - redirect to quotes list
-            console.log('[Load] Quote not found, redirecting to quotes list');
             showToast(`Quote ${quoteBase} not found.`);
             router.push('/console/quotes');
             return;
@@ -581,7 +541,7 @@ export default function BeltConveyorCalculatorApp({
         loadApplicationFromResponse(data);
       })
       .catch((err) => {
-        console.error('[Load] Error:', err);
+        logger.error('app.load.failed', { errorCode: ErrorCodes.CONFIG_NOT_FOUND, error: err });
         setLoadError(err.message);
         setLoadState('error');
       });
@@ -600,7 +560,6 @@ export default function BeltConveyorCalculatorApp({
   useEffect(() => {
     // Skip if we're in the middle of a deliberate Clear operation
     if (isClearingRef.current) {
-      console.log('[Load] Skipping URL change effect - clearing in progress');
       setLastLoadParams(currentParams);
       return;
     }
@@ -609,7 +568,6 @@ export default function BeltConveyorCalculatorApp({
     if (gateNavPendingRef.current && loadState === 'awaiting-selection') {
       // Check if URL now has quote/so params (meaning navigation completed)
       if (currentQuote || currentSo) {
-        console.log('[Load] Gate navigation completed, URL updated. Triggering load.');
         gateNavPendingRef.current = false;
         setLoadState('idle'); // This will trigger the main load effect
         setLastLoadParams(currentParams);
@@ -618,15 +576,6 @@ export default function BeltConveyorCalculatorApp({
     }
 
     if (lastLoadParams !== null && lastLoadParams !== currentParams && loadState === 'loaded') {
-      console.log('[Load] URL params changed, resetting to reload new application');
-      // DEV: LOADED_APP_ID_RESET
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEV][LOADED_APP_ID_RESET]', {
-          reason: 'URL_PARAMS_CHANGED',
-          oldParams: lastLoadParams,
-          newParams: currentParams,
-        });
-      }
       setLoadState('idle');
       setLoadedConfigurationId(null);
       setLoadedRevisionId(null);
@@ -660,7 +609,7 @@ export default function BeltConveyorCalculatorApp({
         loadApplicationFromResponse(data);
       })
       .catch((err) => {
-        console.error('[Load] Error after job line selection:', err);
+        logger.error('app.load.job-line-selection.failed', { errorCode: ErrorCodes.CONFIG_NOT_FOUND, error: err });
         setLoadError(err.message);
         setLoadState('error');
       });
@@ -685,7 +634,6 @@ export default function BeltConveyorCalculatorApp({
 
       if (existsData.exists) {
         // Application already exists - show duplicate modal
-        console.log('[Gate] Duplicate application found:', existsData);
         setDuplicateInfo({
           identity: {
             reference_type: referenceType,
@@ -700,7 +648,7 @@ export default function BeltConveyorCalculatorApp({
         return;
       }
     } catch (err) {
-      console.error('[Gate] Error checking for existing application:', err);
+      logger.error('app.gate.exists-check.failed', { errorCode: ErrorCodes.CONFIG_DUPLICATE, error: err });
       // On error, proceed with navigation (will fail later if duplicate)
     }
 
@@ -812,62 +760,33 @@ export default function BeltConveyorCalculatorApp({
   // Compute isDirty
   const isDirty = useMemo(() => {
     if (!initialLoadedPayload || !inputs) {
-      console.log('[isDirty] false - missing payload or inputs', { hasPayload: !!initialLoadedPayload, hasInputs: !!inputs });
       return false;
     }
 
     const currentPayload = buildCurrentPayload();
     if (!currentPayload) {
-      console.log('[isDirty] false - currentPayload is null');
       return false;
     }
 
-    const dirty = !payloadsEqual(currentPayload, initialLoadedPayload);
-    console.log('[isDirty]', dirty, { currentPayload, initialLoadedPayload });
-    return dirty;
+    return !payloadsEqual(currentPayload, initialLoadedPayload);
   }, [initialLoadedPayload, buildCurrentPayload, inputs]);
-
-  // Compute isCalculatedFresh - true if current payload matches last calculated payload
-  const isCalculatedFresh = useMemo(() => {
-    if (!lastCalculatedPayload || !inputs) {
-      console.log('[isCalculatedFresh] false - missing lastCalculatedPayload or inputs');
-      return false;
-    }
-
-    const currentPayload = buildCurrentPayload();
-    if (!currentPayload) {
-      console.log('[isCalculatedFresh] false - currentPayload is null');
-      return false;
-    }
-
-    const fresh = payloadsEqual(currentPayload, lastCalculatedPayload);
-    console.log('[isCalculatedFresh]', fresh, { currentPayload, lastCalculatedPayload });
-    return fresh;
-  }, [lastCalculatedPayload, buildCurrentPayload, inputs]);
 
   // Compute needsRecalc - true if inputs changed since last calculation OR never calculated
   const needsRecalc = useMemo(() => {
-    // If no result/outputs yet, need to calculate
     if (!result) {
-      console.log('[needsRecalc] true - no result yet');
       return true;
     }
 
-    // If we have a lastCalculatedPayload, check if current differs
     if (lastCalculatedPayload && inputs) {
       const currentPayload = buildCurrentPayload();
       if (!currentPayload) {
-        console.log('[needsRecalc] true - currentPayload is null');
         return true;
       }
 
-      const changed = !payloadsEqual(currentPayload, lastCalculatedPayload);
-      console.log('[needsRecalc]', changed, { currentPayload, lastCalculatedPayload });
-      return changed;
+      return !payloadsEqual(currentPayload, lastCalculatedPayload);
     }
 
     // No lastCalculatedPayload but have result - shouldn't happen, but assume needs recalc
-    console.log('[needsRecalc] true - have result but no lastCalculatedPayload');
     return true;
   }, [lastCalculatedPayload, buildCurrentPayload, inputs, result]);
 
@@ -879,7 +798,7 @@ export default function BeltConveyorCalculatorApp({
     try {
       return buildOutputsV2({ inputs, outputs_v1: result.outputs });
     } catch (e) {
-      console.error('[outputsV2] Build failed:', e);
+      logger.error('outputs-v2.build.failed', { errorCode: ErrorCodes.UNKNOWN_ERROR, error: e });
       return null;
     }
   }, [inputs, result]);
@@ -889,22 +808,14 @@ export default function BeltConveyorCalculatorApp({
   // 2) If no context: allow save (will open modal to select target)
   const canSave = context ? isDirty : true;
 
-  // Calculate button always enabled
-  const canCalculate = true;
-
-  // Debug: Log state changes
-  console.log('[state]', { context, loadedConfigurationId, isDirty, needsRecalc, isCalculatedFresh, canSave, canCalculate });
-
   // Effect: Set initial payload after load completes
   // This ensures we snapshot the payload AFTER inputs are populated from load
   useEffect(() => {
     if (loadedRevisionId && inputs && !initialLoadedPayload) {
-      console.log('[Effect] Setting initial payload after load', { loadedRevisionId });
       const payload = buildCurrentPayload();
       if (payload) {
         // Deep clone to ensure immutable snapshot (no shared references)
         setInitialLoadedPayload(deepClonePayload(payload));
-        console.log('[Effect] Initial payload set:', payload);
       }
     }
   }, [loadedRevisionId, inputs, initialLoadedPayload, buildCurrentPayload]);
@@ -928,9 +839,7 @@ export default function BeltConveyorCalculatorApp({
     }
 
     // Schedule autosave after debounce
-    console.log('[Autosave] Scheduling autosave in', AUTOSAVE_DEBOUNCE_MS, 'ms');
     autosaveTimerRef.current = setTimeout(() => {
-      console.log('[Autosave] Triggering autosave');
       if (handleSaveRef.current) {
         void handleSaveRef.current();
       }
@@ -971,11 +880,9 @@ export default function BeltConveyorCalculatorApp({
 
     // Mark as pending (for UI status indicator)
     setIsAutoCalcPending(true);
-    console.log('[AutoCalc] Inputs changed - scheduling recalc in', AUTO_CALC_DEBOUNCE_MS, 'ms');
 
     // Schedule auto-calc with debounce
     autoCalcTimerRef.current = setTimeout(() => {
-      console.log('[AutoCalc] Debounce complete - triggering calculation');
       setIsAutoCalcPending(false);
       setTriggerCalculate(prev => prev + 1);
     }, AUTO_CALC_DEBOUNCE_MS);
@@ -1004,7 +911,6 @@ export default function BeltConveyorCalculatorApp({
     setOutputsStale(false);
     setHasLegacyBeltOutputs(false); // Clear legacy flag after fresh calculation
 
-    console.log('[Calculate] Success - payload snapshot saved', calculatedPayload);
     setIsCalculating(false);
     // Note: No toast - auto-calc is silent. User sees status indicator instead.
   };
@@ -1014,18 +920,8 @@ export default function BeltConveyorCalculatorApp({
   }, []);
 
   const handleClear = () => {
-    console.log('[Clear] Resetting all state to new application');
-
     // Set clearing flag to prevent URL-change effect from double-resetting state
     isClearingRef.current = true;
-
-    // DEV: LOADED_APP_ID_RESET
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][LOADED_APP_ID_RESET]', {
-        reason: 'HANDLE_CLEAR',
-        previousId: loadedConfigurationId,
-      });
-    }
 
     // Reset context (unlink from Quote/SO)
     setContext(null);
@@ -1080,8 +976,6 @@ export default function BeltConveyorCalculatorApp({
 
   // Handle Delete Line callback from header
   const handleDeleteLine = () => {
-    console.log('[DeleteLine] Line deleted, clearing state');
-
     // Show appropriate toast
     const lineType = context?.type === 'quote' ? 'Quote' : 'Sales Order';
     showToast(`${lineType} line deleted`);
@@ -1117,37 +1011,14 @@ export default function BeltConveyorCalculatorApp({
   // Draft = a Quote/Sales Order header row with no linked calc_recipes application
   const handleDeleteDraft = async () => {
     if (!context) {
-      console.warn('[DeleteDraft] No context to delete');
+      logger.warn('delete-draft.no-context', { message: 'No context to delete' });
       return;
-    }
-
-    // DEV: Log all identity fields for debugging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][DELETE_DRAFT_CLICK]', {
-        reference_type: context.type,
-        reference_number: context.type === 'quote' ? `Q${context.base}` : `SO${context.base}`,
-        reference_id: context.id,
-        base: context.base,
-        line: context.line,
-        jobLine: context.jobLine,
-        applicationId: loadedConfigurationId,
-        // These should all be null for a true draft (unsaved)
-        loadedConfigurationId,
-        loadedRevisionId,
-      });
     }
 
     // Determine the DELETE endpoint based on context type
     const endpoint = context.type === 'quote'
       ? `/api/quotes/${context.id}`
       : `/api/sales-orders/${context.id}`;
-
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][DELETE_DRAFT_API_CALL]', {
-        method: 'DELETE',
-        url: endpoint,
-      });
-    }
 
     try {
       const response = await fetch(endpoint, {
@@ -1156,16 +1027,8 @@ export default function BeltConveyorCalculatorApp({
 
       const data = await response.json();
 
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEV][DELETE_DRAFT_API_RESPONSE]', {
-          status: response.status,
-          ok: response.ok,
-          body: data,
-        });
-      }
-
       if (!response.ok) {
-        console.error('[DeleteDraft] API error:', data);
+        logger.error('delete-draft.api-error', { errorCode: ErrorCodes.DB_DELETE_FAILED, status: response.status, data });
         showToast(data.error || 'Failed to delete draft');
         return;
       }
@@ -1194,21 +1057,18 @@ export default function BeltConveyorCalculatorApp({
       setLoadState('loaded');
       setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
     } catch (error) {
-      console.error('[DeleteDraft] Network error:', error);
+      logger.error('delete-draft.network-error', { errorCode: ErrorCodes.DB_DELETE_FAILED, error });
       showToast('Failed to delete draft');
     }
   };
 
   // Handle Save button click
   const handleSave = async () => {
-    console.log('[DEBUG][handleSave] CALLED', { context, isDirty, loadedConfigurationId });
-
     // Mark that user has attempted explicit action - enables paint validation
     setHasAttemptedExplicitAction(true);
 
     // If no context (draft), open modal to select target
     if (!context) {
-      console.log('[DEBUG][handleSave] No context - opening SaveTargetModal');
       // Draft saves allowed without calculation (v1.21)
       setIsSaveTargetModalOpen(true);
       return;
@@ -1216,7 +1076,6 @@ export default function BeltConveyorCalculatorApp({
 
     // Context exists - save to linked Quote/SO
     if (!isDirty) {
-      console.log('[DEBUG][handleSave] Not dirty - showing toast');
       showToast('No changes to save');
       return;
     }
@@ -1227,19 +1086,13 @@ export default function BeltConveyorCalculatorApp({
     }
 
     // Determine if this is a draft save or calculated save (v1.21)
-    const willSaveAsDraft = !result || needsRecalc;
     const isStale = result && needsRecalc;
-
-    console.log('[Save] Saving to context:', context, { willSaveAsDraft, isStale });
 
     // Map context.type to reference_type enum (v1: must be Quote or SO)
     const referenceType = context.type === 'quote' ? 'QUOTE' : 'SALES_ORDER';
 
     // CRITICAL: If we have a loadedConfigurationId, this is an UPDATE, not a CREATE
     // Without existing_application_id, the API will try to CREATE and hit duplicate error
-    const saveAction = loadedConfigurationId ? 'UPDATE' : 'CREATE';
-    console.log('[Save] Action:', saveAction, { loadedConfigurationId, context });
-
     const payload: Record<string, unknown> = {
       reference_type: referenceType,
       reference_number: String(context.base),
@@ -1270,19 +1123,14 @@ export default function BeltConveyorCalculatorApp({
         body: JSON.stringify(payload),
       });
 
-      console.log('[DEBUG][handleSave] Response status:', response.status, response.ok);
-
       if (!response.ok) {
         const raw = await response.text();
-        console.log('[DEBUG][handleSave] Response NOT OK, raw:', raw);
         let errorMessage = 'Failed to save';
         try {
           const parsed = JSON.parse(raw);
-          console.log('[DEBUG][handleSave] Parsed response:', parsed);
 
           // Handle duplicate application (409)
           if (response.status === 409 && parsed.code === 'APPLICATION_DUPLICATE') {
-            console.log('[DEBUG][handleSave] 409 DUPLICATE DETECTED - setting duplicateInfo');
             setDuplicateInfo({
               identity: parsed.identity,
               existing_application_id: parsed.existing_application_id,
@@ -1294,7 +1142,6 @@ export default function BeltConveyorCalculatorApp({
 
           errorMessage = parsed.error || parsed.message || raw || errorMessage;
         } catch (parseErr) {
-          console.log('[DEBUG][handleSave] Parse error:', parseErr);
           errorMessage = raw || errorMessage;
         }
         throw new Error(errorMessage);
@@ -1314,8 +1161,6 @@ export default function BeltConveyorCalculatorApp({
       };
       const { status, configuration, revision, message, save_message, calculation_status: newCalcStatus, outputs_stale: newOutputsStale, quote_id, sales_order_id } = data;
 
-      console.log('[Save] Response received:', { status, quote_id, sales_order_id, currentContextId: context?.id });
-
       if (status === 'no_change') {
         showToast(message || 'No changes to save');
         return;
@@ -1328,16 +1173,13 @@ export default function BeltConveyorCalculatorApp({
       // Update context.id if a new Quote/SO was created during save
       // This ensures ScopeProvider gets the correct entityId
       const newReferenceId = quote_id || sales_order_id;
-      console.log('[Save] Checking context.id update:', { newReferenceId, hasContext: !!context, currentContextId: context?.id });
       if (newReferenceId && context && !context.id) {
-        console.log('[Save] Updating context.id with newly created reference:', newReferenceId);
         setContext({
           ...context,
           id: newReferenceId,
         });
       } else if (newReferenceId && context && context.id !== newReferenceId) {
         // Also update if context.id exists but differs (shouldn't happen, but safety)
-        console.log('[Save] Updating context.id (was different):', { old: context.id, new: newReferenceId });
         setContext({
           ...context,
           id: newReferenceId,
@@ -1360,7 +1202,7 @@ export default function BeltConveyorCalculatorApp({
       // Show save feedback message from API (v1.21)
       showToast(save_message || `Saved Rev ${revision.revision_number}`);
     } catch (error) {
-      console.error('[Save] Error:', error);
+      logger.error('save.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       showToast(error instanceof Error ? error.message : 'Failed to save');
     } finally {
       setIsSaving(false);
@@ -1406,13 +1248,7 @@ export default function BeltConveyorCalculatorApp({
 
   // Handle selecting a target from the modal
   const handleSelectSaveTarget = async (target: SaveTarget) => {
-    console.log('[DEBUG][handleSelectSaveTarget] CALLED with target:', target);
     setIsSaveTargetModalOpen(false);
-
-    // DEV logging
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][SaveTarget] Target received:', target);
-    }
 
     if (!inputs) {
       showToast('No inputs to save');
@@ -1420,14 +1256,10 @@ export default function BeltConveyorCalculatorApp({
     }
 
     // Determine if this is a draft save or calculated save (v1.21)
-    const willSaveAsDraft = !result || needsRecalc;
     const isStale = result && needsRecalc;
 
     // Note: handleSelectSaveTarget is for first-time saves from the modal
     // If loadedConfigurationId exists, this is unusual but we should handle it
-    const saveAction = loadedConfigurationId ? 'UPDATE' : 'CREATE';
-    console.log('[SaveTarget] Selected:', target, { willSaveAsDraft, isStale, saveAction, loadedConfigurationId });
-
     // Set context (link to selected Quote/SO)
     setContext(target);
 
@@ -1457,16 +1289,6 @@ export default function BeltConveyorCalculatorApp({
       } : {}),
     };
 
-    // DEV: SAVE_CLICK
-    if (process.env.NODE_ENV === 'development') {
-      console.log('[DEV][SAVE_CLICK]', {
-        payload,
-        currentLoadedConfigurationId: loadedConfigurationId,
-        currentRoute: typeof window !== 'undefined' ? window.location.href : 'unknown',
-        target,
-      });
-    }
-
     setIsSaving(true);
     try {
       const response = await fetch('/api/configurations/save', {
@@ -1475,19 +1297,14 @@ export default function BeltConveyorCalculatorApp({
         body: JSON.stringify(payload),
       });
 
-      console.log('[DEBUG][handleSelectSaveTarget] Response status:', response.status, response.ok);
-
       if (!response.ok) {
         const raw = await response.text();
-        console.log('[DEBUG][handleSelectSaveTarget] Response NOT OK, raw:', raw);
         let errorMessage = 'Failed to save';
         try {
           const parsed = JSON.parse(raw);
-          console.log('[DEBUG][handleSelectSaveTarget] Parsed response:', parsed);
 
           // Handle duplicate application (409)
           if (response.status === 409 && parsed.code === 'APPLICATION_DUPLICATE') {
-            console.log('[DEBUG][handleSelectSaveTarget] 409 DUPLICATE DETECTED - setting duplicateInfo');
             setDuplicateInfo({
               identity: parsed.identity,
               existing_application_id: parsed.existing_application_id,
@@ -1501,7 +1318,6 @@ export default function BeltConveyorCalculatorApp({
 
           errorMessage = parsed.error || parsed.message || raw || errorMessage;
         } catch (parseErr) {
-          console.log('[DEBUG][handleSelectSaveTarget] Parse error:', parseErr);
           errorMessage = raw || errorMessage;
         }
         throw new Error(errorMessage);
@@ -1525,16 +1341,6 @@ export default function BeltConveyorCalculatorApp({
       const configId = topLevelId || configuration?.id || recipe?.id;
       const revisionId = revision?.id || recipe?.id;
 
-      // DEV: SAVE_RESPONSE
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEV][SAVE_RESPONSE]', {
-          statusCode: response.status,
-          fullResponse: data,
-          derivedConfigId: configId,
-          derivedRevisionId: revisionId,
-        });
-      }
-
       if (!configId) {
         throw new Error('Save succeeded but no application ID returned');
       }
@@ -1546,41 +1352,18 @@ export default function BeltConveyorCalculatorApp({
 
       // CRITICAL: Reload the application from server to get fresh truth
       // This ensures we exit Draft mode and have consistent state
-      if (process.env.NODE_ENV === 'development') {
-        console.log('[DEV][SaveTarget] Reloading application from server:', configId);
-      }
-
       const reloadResponse = await fetch(`/api/applications/load?app=${encodeURIComponent(configId)}`);
       if (reloadResponse.ok) {
         const reloadData = await reloadResponse.json();
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DEV][POST_SAVE_HYDRATION] About to call loadApplicationFromResponse', {
-            configId,
-            reloadData,
-            currentLastLoadParams: lastLoadParams,
-            currentParams,
-          });
-        }
         // IMPORTANT: Update lastLoadParams BEFORE calling loadApplicationFromResponse
         // This prevents the URL params change effect from immediately resetting our state
         // because loadApplicationFromResponse sets loadState='loaded' which could trigger the effect
         setLastLoadParams(currentParams);
         loadApplicationFromResponse(reloadData);
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DEV][POST_SAVE_HYDRATION] loadApplicationFromResponse completed');
-        }
         showToast(save_message || 'Saved successfully');
       } else {
         // Fallback: just set the IDs if reload fails
-        console.warn('[SaveTarget] Reload failed, using local state');
-        // DEV: SET_LOADED_APP_ID (fallback)
-        if (process.env.NODE_ENV === 'development') {
-          console.log('[DEV][SET_LOADED_APP_ID]', {
-            newValue: configId,
-            source: 'handleSelectSaveTarget_fallback',
-            reloadStatus: reloadResponse.status,
-          });
-        }
+        logger.warn('save-target.reload-failed', { message: 'Reload failed, using local state', status: reloadResponse.status });
         if (configId) setLoadedConfigurationId(configId);
         if (revisionId) setLoadedRevisionId(revisionId);
         if (newCalcStatus) setCalculationStatus(newCalcStatus);
@@ -1590,7 +1373,6 @@ export default function BeltConveyorCalculatorApp({
 
       // Persist draft vault entries to the database
       if (configId && (draftVault.notes.length > 0 || draftVault.specs.length > 0 || draftVault.scopeLines.length > 0 || draftVault.attachments.length > 0)) {
-        console.log('[SaveTarget] Persisting draft vault entries...');
         try {
           // Persist notes
           for (const note of draftVault.notes) {
@@ -1640,9 +1422,8 @@ export default function BeltConveyorCalculatorApp({
           }
           // Clear draft vault after persistence
           setDraftVault({ notes: [], specs: [], scopeLines: [], attachments: [] });
-          console.log('[SaveTarget] Draft vault entries persisted');
         } catch (vaultErr) {
-          console.error('[SaveTarget] Failed to persist vault entries:', vaultErr);
+          logger.error('save-target.vault-persist.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: vaultErr });
           // Don't fail the save, just log the error
         }
       }
@@ -1651,7 +1432,7 @@ export default function BeltConveyorCalculatorApp({
       const currentPayload = buildCurrentPayload();
       setInitialLoadedPayload(deepClonePayload(currentPayload));
     } catch (error) {
-      console.error('[SaveTarget] Error:', error);
+      logger.error('save-target.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       showToast(error instanceof Error ? error.message : 'Failed to save');
       // Revert context on error
       setContext(null);
@@ -1662,7 +1443,6 @@ export default function BeltConveyorCalculatorApp({
 
   // Wrapper to trigger Calculate from header button
   const handleCalculateClick = () => {
-    console.log('[CalculateClick] User clicked Calculate in header');
     // Mark that user has attempted explicit action - enables paint validation
     setHasAttemptedExplicitAction(true);
     setTriggerCalculate(prev => prev + 1);

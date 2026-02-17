@@ -106,6 +106,9 @@ import {
   CleatCenters,
   DEFAULT_CLEAT_MATERIAL_FAMILY,
 } from '../../lib/cleat-catalog';
+import { createLogger } from '../../lib/logger';
+
+const logger = createLogger().child({ module: 'sliderbed-formulas' });
 
 // ============================================================================
 // NAN DETECTION (dev/test only)
@@ -1827,7 +1830,7 @@ export function calculate(
 
   // Log pulley resolution warnings in dev/test mode
   if (process.env.NODE_ENV !== 'production' && pulleyResolutionWarnings.length > 0) {
-    pulleyResolutionWarnings.forEach((w) => console.warn('[Pulley Resolution]', w));
+    pulleyResolutionWarnings.forEach((w) => logger.warn('sliderbed.pulley.resolution.warning', { message: w }));
   }
 
   const drivePulleyDiameterIn = effectiveDrivePulleyDiameterIn ?? NaN;

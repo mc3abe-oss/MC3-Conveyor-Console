@@ -12,6 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { normalizeEnvironmentFactors } from '../../../../src/models/sliderbed_v1/schema';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.configurations-revision' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -49,7 +53,7 @@ export async function GET(request: NextRequest) {
           { status: 404 }
         );
       }
-      console.error('Recipe fetch error:', error);
+      logger.error('api.configurations-revision.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to load revision', details: error.message },
         { status: 500 }
@@ -87,7 +91,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ revision });
   } catch (error) {
-    console.error('Get revision error:', error);
+    logger.error('api.configurations-revision.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

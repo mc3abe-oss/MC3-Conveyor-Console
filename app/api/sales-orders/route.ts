@@ -27,6 +27,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
 import { getCreatorDisplayOrNull } from '../../../src/lib/user-display';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.sales-orders' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -102,7 +106,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (countResult.error) {
-      console.error('Sales orders count error:', countResult.error);
+      logger.error('api.sales-orders.count.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: countResult.error });
       return NextResponse.json(
         { error: 'Failed to fetch sales orders', details: countResult.error.message },
         { status: 500 }
@@ -110,7 +114,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (dataResult.error) {
-      console.error('Sales orders fetch error:', dataResult.error);
+      logger.error('api.sales-orders.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: dataResult.error });
       return NextResponse.json(
         { error: 'Failed to fetch sales orders', details: dataResult.error.message },
         { status: 500 }
@@ -144,7 +148,7 @@ export async function GET(request: NextRequest) {
           productFamilyMap.set(pf.id, { slug: pf.slug, name: pf.name });
         }
       } catch (err) {
-        console.warn('Could not fetch product families (migration may not be applied):', err);
+        logger.warn('api.sales-orders.product-families-fetch.warning', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
         // Continue without product family info
       }
 
@@ -236,7 +240,7 @@ export async function GET(request: NextRequest) {
             }
           }
         } catch (err) {
-          console.error('Error fetching user info:', err);
+          logger.error('api.sales-orders.user-info-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
         }
       }
 
@@ -274,7 +278,7 @@ export async function GET(request: NextRequest) {
       pageSize,
     });
   } catch (error) {
-    console.error('Sales orders API error:', error);
+    logger.error('api.sales-orders.list.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -329,7 +333,7 @@ export async function POST(request: NextRequest) {
       const { data: generatedNumber, error: genError } = await supabase.rpc('next_sales_order_base_number');
 
       if (genError) {
-        console.error('SO base number generation error:', genError);
+        logger.error('api.sales-orders.base-number-generate.failed', { errorCode: ErrorCodes.DB_RPC_FAILED, error: genError });
         return NextResponse.json(
           { error: 'Failed to generate sales order base number', details: genError.message },
           { status: 500 }
@@ -359,7 +363,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (soError) {
-      console.error('Sales order creation error:', soError);
+      logger.error('api.sales-orders.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: soError });
       // Check for unique constraint violation
       if (soError.code === '23505') {
         return NextResponse.json(
@@ -375,7 +379,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(salesOrder, { status: 201 });
   } catch (error) {
-    console.error('Sales order POST error:', error);
+    logger.error('api.sales-orders.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

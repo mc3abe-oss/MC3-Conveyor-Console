@@ -15,6 +15,10 @@
 
 import { type NextRequest, NextResponse } from 'next/server';
 import { updateSession } from './src/lib/supabase/middleware';
+import { createLogger } from './src/lib/logger';
+import { ErrorCodes } from './src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'auth-middleware' });
 
 /**
  * EXPLICIT PUBLIC ROUTES ALLOWLIST
@@ -62,12 +66,12 @@ export async function middleware(request: NextRequest) {
   if (!supabaseConfigured) {
     if (isDevBypassEnabled()) {
       // Dev bypass enabled: allow request through
-      console.warn('[Auth] Dev bypass enabled - skipping auth');
+      logger.warn('auth.middleware.dev-bypass', { message: 'Dev bypass enabled - skipping auth' });
       return NextResponse.next();
     }
 
     // No bypass: return 503 error (not silent pass-through)
-    console.error('[Auth] Supabase not configured and no dev bypass');
+    logger.error('auth.middleware.supabase-not-configured', { errorCode: ErrorCodes.AUTH_SUPABASE_NOT_CONFIGURED });
     return NextResponse.json(
       {
         error: 'Authentication service not configured',
@@ -98,7 +102,7 @@ export async function middleware(request: NextRequest) {
   } catch (error) {
     // FAIL-CLOSED: On ANY error, redirect to login
     // Never allow request through on error
-    console.error('[Auth] Middleware error (fail-closed):', error);
+    logger.error('auth.middleware.error', { errorCode: ErrorCodes.AUTH_UNAUTHORIZED, error });
     const loginUrl = new URL('/login', request.url);
     loginUrl.searchParams.set('next', pathname);
     loginUrl.searchParams.set('error', 'auth_error');

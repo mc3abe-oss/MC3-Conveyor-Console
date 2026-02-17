@@ -10,6 +10,10 @@
 
 import { NextResponse } from 'next/server';
 import { getSessionUser, getUserRole, Role } from '../../../src/lib/auth/rbac';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.me' });
 
 export interface MeResponse {
   userId: string;
@@ -42,7 +46,7 @@ export async function GET() {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Error in /api/me:', error);
+    logger.error('api.me.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

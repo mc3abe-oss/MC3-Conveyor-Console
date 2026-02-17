@@ -10,6 +10,10 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.nord-parts' });
 
 export async function GET() {
   try {
@@ -24,7 +28,7 @@ export async function GET() {
       .order('vendor_part_number', { ascending: true });
 
     if (error) {
-      console.error('[NORD Parts API] GET error:', error);
+      logger.error('api.nord-parts.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
@@ -52,7 +56,7 @@ export async function GET() {
 
     return NextResponse.json(parts);
   } catch (err) {
-    console.error('[NORD Parts API] GET exception:', err);
+    logger.error('api.nord-parts.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error: err });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

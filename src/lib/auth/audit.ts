@@ -6,6 +6,10 @@
  */
 
 import { createClient } from '../supabase/server';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'auth-audit' });
 
 /**
  * Audit action types
@@ -46,11 +50,11 @@ export async function logAuditAction(
 
     if (error) {
       // Log error but don't fail the main operation
-      console.error('[Audit] Failed to log audit action:', error);
+      logger.error('auth.audit.log.failed', { errorCode: ErrorCodes.AUDIT_LOG_FAILED, error, actorUserId, targetUserId, action });
     }
   } catch (err) {
     // Log error but don't fail the main operation
-    console.error('[Audit] Error logging audit action:', err);
+    logger.error('auth.audit.log.failed', { errorCode: ErrorCodes.AUDIT_LOG_FAILED, error: err, actorUserId, targetUserId, action });
   }
 }
 

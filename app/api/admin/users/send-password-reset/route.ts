@@ -10,6 +10,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '../../../../../src/lib/auth/require';
 import { supabaseAdmin } from '../../../../../src/lib/supabase/client';
 import { logAuditAction } from '../../../../../src/lib/auth/audit';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.users-send-password-reset' });
 
 interface RequestBody {
   email: string;
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
     const { data: usersData, error: listError } = await supabaseAdmin.auth.admin.listUsers();
 
     if (listError) {
-      console.error('[Admin] List users error:', listError);
+      logger.error('api.users-send-password-reset.list-users.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: listError });
       return NextResponse.json(
         { error: 'Failed to find user' },
         { status: 500 }
@@ -81,7 +85,7 @@ export async function POST(request: NextRequest) {
     );
 
     if (resetError) {
-      console.error('[Admin] Send password reset error:', resetError);
+      logger.warn('api.users-send-password-reset.send.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error: resetError });
       // Don't reveal error details
     }
 
@@ -95,7 +99,7 @@ export async function POST(request: NextRequest) {
       message: 'If the user exists, a password reset link has been sent.',
     });
   } catch (error) {
-    console.error('[Admin] Send password reset error:', error);
+    logger.error('api.users-send-password-reset.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

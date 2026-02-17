@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'save-target-modal' });
+
 import { useState, useEffect, useCallback } from 'react';
 import { Quote, SalesOrder } from '../../src/lib/database/quote-types';
 import { formatRef, parseBaseLine, isParseError } from '../../src/lib/quote-identifiers';
@@ -82,7 +87,7 @@ export default function SaveTargetModal({
         setQuotes(arr);
       }
     } catch (err) {
-      console.error('Failed to fetch quotes:', err);
+      logger.error('quotes.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
     }
   }, []);
 
@@ -96,7 +101,7 @@ export default function SaveTargetModal({
         setSalesOrders(arr);
       }
     } catch (err) {
-      console.error('Failed to fetch sales orders:', err);
+      logger.error('sales-orders.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
     }
   }, []);
 

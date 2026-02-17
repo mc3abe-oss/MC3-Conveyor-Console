@@ -17,6 +17,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireAuth, requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-search' });
 
 interface SearchResult {
   id: string;
@@ -88,7 +92,7 @@ export async function POST(request: NextRequest) {
     const { data: documents, error } = await dbQuery;
 
     if (error) {
-      console.error('Search query error:', error);
+      logger.error('api.library-search.query.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Search failed', details: error.message },
         { status: 500 }
@@ -178,7 +182,7 @@ export async function POST(request: NextRequest) {
       search_mode: 'keyword',  // Will become 'semantic' or 'hybrid' in Phase 2
     });
   } catch (error) {
-    console.error('Search API error:', error);
+    logger.error('api.library-search.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

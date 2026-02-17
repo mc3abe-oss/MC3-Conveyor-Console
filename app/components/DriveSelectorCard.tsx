@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'drive-selector-card' });
+
 import { useState, useEffect, useCallback } from 'react';
 import { GearmotorCandidate } from '../../src/lib/gearmotor';
 import { GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
@@ -120,7 +125,7 @@ export default function DriveSelectorCard({
         }
       }
     } catch (err) {
-      console.error('Failed to load drive config:', err);
+      logger.error('drive.config.load.failed', { errorCode: ErrorCodes.DRIVE_NO_MATCH, error: err });
     }
   };
 

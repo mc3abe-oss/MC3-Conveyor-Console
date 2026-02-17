@@ -114,7 +114,12 @@ class TelemetryClient {
 
     // Start periodic flush
     this.flushTimer = setInterval(() => {
-      this.flush().catch(console.error);
+      this.flush().catch((err) => {
+        logger.warn('telemetry.flush.interval.failed', {
+          errorCode: ErrorCodes.TELEMETRY_FLUSH_FAILED,
+          error: err,
+        });
+      });
     }, FLUSH_INTERVAL_MS);
 
     // Best-effort flush on page unload

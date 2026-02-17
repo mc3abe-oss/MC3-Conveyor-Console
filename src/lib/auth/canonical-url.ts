@@ -8,6 +8,10 @@
  * IMPORTANT: This must NEVER fall back to VERCEL_URL or request origin for email links.
  */
 
+import { createLogger } from '../logger';
+
+const logger = createLogger().child({ module: 'auth-canonical-url' });
+
 /**
  * Get the canonical production app URL.
  *
@@ -25,11 +29,9 @@ export function getCanonicalAppUrl(): string {
   if (!appUrl) {
     // In development, provide a helpful error message
     if (process.env.NODE_ENV === 'development') {
-      console.warn(
-        '[Auth] NEXT_PUBLIC_APP_URL not set. ' +
-          'For local development, set NEXT_PUBLIC_APP_URL=http://localhost:3000 in .env.local. ' +
-          'For production, set it to your canonical domain (e.g., https://app.example.com).'
-      );
+      logger.warn('auth.canonical-url.base-url-missing', {
+        message: 'NEXT_PUBLIC_APP_URL not set. For local development, set NEXT_PUBLIC_APP_URL=http://localhost:3000 in .env.local. For production, set it to your canonical domain.',
+      });
       // Allow localhost fallback in development only
       return 'http://localhost:3000';
     }
@@ -59,5 +61,5 @@ export function getAuthCallbackUrl(): string {
  */
 export function logAuthEmailUrlSource(): void {
   const url = getCanonicalAppUrl();
-  console.log(`[Auth] Email confirmation links will use: ${url}`);
+  logger.info('auth.canonical-url.resolved', { url });
 }

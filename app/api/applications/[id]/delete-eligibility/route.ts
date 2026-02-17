@@ -11,6 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.application-delete-eligibility' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -66,7 +70,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       application_name: application.name,
     });
   } catch (error) {
-    console.error('Delete eligibility check error:', error);
+    logger.error('api.application-delete-eligibility.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

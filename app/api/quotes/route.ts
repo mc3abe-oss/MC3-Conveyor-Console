@@ -25,6 +25,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../src/lib/supabase/server';
 import { QuoteStatus } from '../../../src/lib/database/quote-types';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -100,7 +104,7 @@ export async function GET(request: NextRequest) {
     ]);
 
     if (countResult.error) {
-      console.error('Quotes count error:', countResult.error);
+      logger.error('api.quotes.count.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: countResult.error });
       return NextResponse.json(
         { error: 'Failed to fetch quotes', details: countResult.error.message },
         { status: 500 }
@@ -108,7 +112,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (dataResult.error) {
-      console.error('Quotes fetch error:', dataResult.error);
+      logger.error('api.quotes.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: dataResult.error });
       return NextResponse.json(
         { error: 'Failed to fetch quotes', details: dataResult.error.message },
         { status: 500 }
@@ -132,7 +136,7 @@ export async function GET(request: NextRequest) {
       pageSize,
     });
   } catch (error) {
-    console.error('Quotes API error:', error);
+    logger.error('api.quotes.list.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -203,7 +207,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Quote create error:', error);
+      logger.error('api.quotes.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create quote', details: error.message },
         { status: 500 }
@@ -217,7 +221,7 @@ export async function POST(request: NextRequest) {
       suffix_line: suffix_line || null,
     }, { status: 201 });
   } catch (error) {
-    console.error('Quote POST error:', error);
+    logger.error('api.quotes.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

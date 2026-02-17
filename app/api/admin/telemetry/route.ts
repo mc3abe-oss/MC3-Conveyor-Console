@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '../../../../src/lib/auth/require';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import type { TelemetryEventRow, TelemetryQueryParams, TopIssue } from '../../../../src/lib/telemetry/types';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.telemetry' });
 
 /**
  * GET /api/admin/telemetry
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
   const { data: events, error } = await query;
 
   if (error) {
-    console.error('Telemetry query error:', error);
+    logger.error('api.telemetry.query.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
     return NextResponse.json(
       { error: 'Failed to query events' },
       { status: 500 }

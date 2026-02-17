@@ -12,6 +12,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
 import { requireAuth, requireBeltAdmin } from '../../../../../src/lib/auth/require';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-document-detail' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -70,7 +74,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       if (error.code === 'PGRST116') {
         return NextResponse.json({ error: 'Document not found' }, { status: 404 });
       }
-      console.error('Document fetch error:', error);
+      logger.error('api.library-document-detail.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch document', details: error.message },
         { status: 500 }
@@ -115,7 +119,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       tags,
     });
   } catch (error) {
-    console.error('Document detail API error:', error);
+    logger.error('api.library-document-detail.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -193,7 +197,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       if (updateError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Document not found' }, { status: 404 });
       }
-      console.error('Document update error:', updateError);
+      logger.error('api.library-document-detail.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to update document', details: updateError.message },
         { status: 500 }
@@ -224,7 +228,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(document);
   } catch (error) {
-    console.error('Update document API error:', error);
+    logger.error('api.library-document-detail.put.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -259,7 +263,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       .is('deleted_at', null);
 
     if (deleteError) {
-      console.error('Document delete error:', deleteError);
+      logger.error('api.library-document-detail.delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: deleteError });
       return NextResponse.json(
         { error: 'Failed to delete document', details: deleteError.message },
         { status: 500 }
@@ -268,7 +272,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Delete document API error:', error);
+    logger.error('api.library-document-detail.delete-handler.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

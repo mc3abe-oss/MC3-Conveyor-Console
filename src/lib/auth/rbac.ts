@@ -7,6 +7,10 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '../supabase/server';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'auth-rbac' });
 
 /**
  * Available roles in the system.
@@ -77,7 +81,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
       .maybeSingle();
 
     if (fallback.error) {
-      console.error('[RBAC] Error fetching user profile:', fallback.error);
+      logger.error('auth.rbac.profile.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: fallback.error });
       return { role: DEFAULT_ROLE, isActive: true };
     }
 
@@ -86,7 +90,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
   }
 
   if (error) {
-    console.error('[RBAC] Error fetching user profile:', error);
+    logger.error('auth.rbac.profile.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
     return { role: DEFAULT_ROLE, isActive: true };
   }
 
@@ -101,7 +105,7 @@ export async function getUserProfile(userId: string): Promise<UserProfile> {
     : DEFAULT_ROLE;
 
   if (validRole !== role) {
-    console.warn(`[RBAC] Unknown role "${role}" for user ${userId}, defaulting to BELT_USER`);
+    logger.warn('auth.rbac.unknown-role', { errorCode: ErrorCodes.AUTH_INSUFFICIENT_ROLE, role, userId, defaultRole: 'BELT_USER' });
   }
 
   // Default is_active to true if column doesn't exist yet (pre-migration)

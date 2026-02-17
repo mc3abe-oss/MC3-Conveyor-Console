@@ -7,6 +7,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../src/lib/supabase/server';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.application-pulleys' });
 
 // Types from database enums
 export type PulleyPosition = 'DRIVE' | 'TAIL';
@@ -91,13 +95,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching application pulleys:', error);
+      logger.error('api.application-pulleys.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(data as ApplicationPulley[]);
   } catch (error) {
-    console.error('Error in application pulleys GET:', error);
+    logger.error('api.application-pulleys.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -269,13 +273,13 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error upserting application pulley:', error);
+      logger.error('api.application-pulleys.upsert.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error in application pulleys POST:', error);
+    logger.error('api.application-pulleys.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -307,13 +311,13 @@ export async function DELETE(request: NextRequest) {
       .eq('id', id);
 
     if (error) {
-      console.error('Error deleting application pulley:', error);
+      logger.error('api.application-pulleys.delete-query.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error in application pulleys DELETE:', error);
+    logger.error('api.application-pulleys.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

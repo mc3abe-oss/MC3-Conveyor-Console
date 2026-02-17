@@ -11,6 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.applications-id' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -38,7 +42,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(application);
   } catch (error) {
-    console.error('Application GET error:', error);
+    logger.error('api.applications-id.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -96,7 +100,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     // Delete vault items first (cascade delete)
     if (hasVaultReferences) {
-      console.log(`[Delete] Deleting vault items for application ${id}: ${referenceTypes.join(', ')}`);
+      logger.info('api.applications-id.delete-vault-items', { applicationId: id, referenceTypes });
       await Promise.all([
         hasSpecs && supabase.from('specs').delete().eq('application_id', id),
         hasNotes && supabase.from('notes').delete().eq('application_id', id),
@@ -112,7 +116,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Application hard delete error:', deleteError);
+      logger.error('api.applications-id.hard-delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: deleteError });
       return NextResponse.json(
         { error: 'Failed to delete application', details: deleteError.message },
         { status: 500 }
@@ -126,7 +130,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       deletedVaultItems: hasVaultReferences ? referenceTypes : undefined,
     });
   } catch (error) {
-    console.error('Application DELETE error:', error);
+    logger.error('api.applications-id.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

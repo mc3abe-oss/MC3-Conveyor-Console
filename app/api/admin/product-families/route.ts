@@ -14,6 +14,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { requireAuth, requireSuperAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.product-families' });
 
 interface ProductFamily {
   id: string;
@@ -70,7 +74,7 @@ export async function GET() {
       .order('sort_order', { ascending: true });
 
     if (error) {
-      console.error('Error fetching product families:', error);
+      logger.error('api.product-families.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch product families', details: error.message },
         { status: 500 }
@@ -79,7 +83,7 @@ export async function GET() {
 
     return NextResponse.json(families || []);
   } catch (error) {
-    console.error('Error in /api/admin/product-families GET:', error);
+    logger.error('api.product-families.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -128,7 +132,7 @@ export async function POST(request: NextRequest) {
       .maybeSingle();
 
     if (checkError) {
-      console.error('Error checking for duplicate slug:', checkError);
+      logger.error('api.product-families.check-slug.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: checkError });
       return NextResponse.json(
         { error: 'Failed to validate slug', details: checkError.message },
         { status: 500 }
@@ -155,18 +159,18 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (insertError) {
-      console.error('Error creating product family:', insertError);
+      logger.error('api.product-families.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: insertError });
       return NextResponse.json(
         { error: 'Failed to create product family', details: insertError.message },
         { status: 500 }
       );
     }
 
-    console.log(`[Admin] Product family created: ${newFamily.name} (${newFamily.slug}) by ${authResult.user.userId}`);
+    logger.info('api.product-families.create.completed', { name: newFamily.name, slug: newFamily.slug, userId: authResult.user.userId });
 
     return NextResponse.json(newFamily, { status: 201 });
   } catch (error) {
-    console.error('Error in /api/admin/product-families POST:', error);
+    logger.error('api.product-families.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -212,7 +216,7 @@ export async function PUT(request: NextRequest) {
       .maybeSingle();
 
     if (findError) {
-      console.error('Error finding product family:', findError);
+      logger.error('api.product-families.find.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: findError });
       return NextResponse.json(
         { error: 'Failed to find product family', details: findError.message },
         { status: 500 }
@@ -247,7 +251,7 @@ export async function PUT(request: NextRequest) {
         .maybeSingle();
 
       if (dupError) {
-        console.error('Error checking for duplicate slug:', dupError);
+        logger.error('api.product-families.check-slug-dup.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: dupError });
         return NextResponse.json(
           { error: 'Failed to validate slug', details: dupError.message },
           { status: 500 }
@@ -281,18 +285,18 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (updateError) {
-      console.error('Error updating product family:', updateError);
+      logger.error('api.product-families.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to update product family', details: updateError.message },
         { status: 500 }
       );
     }
 
-    console.log(`[Admin] Product family updated: ${updated.name} (${updated.slug}) by ${authResult.user.userId}`);
+    logger.info('api.product-families.update.completed', { name: updated.name, slug: updated.slug, userId: authResult.user.userId });
 
     return NextResponse.json(updated);
   } catch (error) {
-    console.error('Error in /api/admin/product-families PUT:', error);
+    logger.error('api.product-families.put.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

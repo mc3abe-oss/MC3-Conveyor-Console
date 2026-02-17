@@ -17,6 +17,10 @@ import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { requireSuperAdmin } from '../../../../src/lib/auth/require';
 import { Role, DEFAULT_ROLE } from '../../../../src/lib/auth/rbac';
 import { logAuditAction } from '../../../../src/lib/auth/audit';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.users' });
 
 interface UserListItem {
   userId: string;
@@ -48,7 +52,7 @@ export async function GET() {
 
     // Check if service role client is available
     if (!supabaseAdmin) {
-      console.error('Service role client not configured');
+      logger.error('api.users.service-role.not-configured', { errorCode: ErrorCodes.DB_NOT_CONFIGURED });
       return NextResponse.json(
         { error: 'Server configuration error: service role not available' },
         { status: 500 }
@@ -59,7 +63,7 @@ export async function GET() {
     const { data: authUsersResponse, error: authError } = await supabaseAdmin.auth.admin.listUsers();
 
     if (authError) {
-      console.error('Error fetching auth users:', authError);
+      logger.error('api.users.fetch-auth-users.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: authError });
       return NextResponse.json(
         { error: 'Failed to fetch users', details: authError.message },
         { status: 500 }
@@ -80,7 +84,7 @@ export async function GET() {
         .select('user_id, role, created_at');
 
       if (fallback.error) {
-        console.error('Error fetching user profiles:', fallback.error);
+        logger.error('api.users.fetch-profiles-fallback.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: fallback.error });
         return NextResponse.json(
           { error: 'Failed to fetch user profiles', details: fallback.error.message },
           { status: 500 }
@@ -93,7 +97,7 @@ export async function GET() {
     }
 
     if (profilesError) {
-      console.error('Error fetching user profiles:', profilesError);
+      logger.error('api.users.fetch-profiles.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: profilesError });
       return NextResponse.json(
         { error: 'Failed to fetch user profiles', details: profilesError.message },
         { status: 500 }
@@ -127,7 +131,7 @@ export async function GET() {
 
     return NextResponse.json(users);
   } catch (error) {
-    console.error('Error in /api/admin/users GET:', error);
+    logger.error('api.users.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -183,7 +187,7 @@ export async function PUT(request: NextRequest) {
       .maybeSingle();
 
     if (findError) {
-      console.error('Error finding user profile:', findError);
+      logger.error('api.users.find-profile.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: findError });
       return NextResponse.json(
         { error: 'Failed to find user', details: findError.message },
         { status: 500 }
@@ -200,7 +204,7 @@ export async function PUT(request: NextRequest) {
         .eq('user_id', body.userId);
 
       if (updateError) {
-        console.error('Error updating user role:', updateError);
+        logger.error('api.users.update-role.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
         return NextResponse.json(
           { error: 'Failed to update role', details: updateError.message },
           { status: 500 }
@@ -213,7 +217,7 @@ export async function PUT(request: NextRequest) {
         .insert({ user_id: body.userId, role: body.role });
 
       if (insertError) {
-        console.error('Error creating user profile:', insertError);
+        logger.error('api.users.create-profile.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: insertError });
         return NextResponse.json(
           { error: 'Failed to create profile', details: insertError.message },
           { status: 500 }
@@ -221,7 +225,7 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    console.log(`[RBAC] Role changed: ${body.userId} from ${previousRole} to ${body.role} by ${currentUser.userId}`);
+    logger.info('api.users.role-change.completed', { targetUserId: body.userId, previousRole, newRole: body.role, actorUserId: currentUser.userId });
 
     // Log to audit
     await logAuditAction(currentUser.userId, body.userId, 'ROLE_CHANGE', {
@@ -236,7 +240,7 @@ export async function PUT(request: NextRequest) {
       newRole: body.role,
     });
   } catch (error) {
-    console.error('Error in /api/admin/users PUT:', error);
+    logger.error('api.users.put.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

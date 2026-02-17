@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'library-upload-page' });
+
 import { Suspense, useState, useRef, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
@@ -84,7 +89,7 @@ function UploadPageInner() {
           setTags(data.data || []);
         }
       } catch (err) {
-        console.error('Failed to fetch tags:', err);
+        logger.error('library.tags.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error: err });
       }
     };
     void fetchTags();

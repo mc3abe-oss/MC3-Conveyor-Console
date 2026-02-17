@@ -472,7 +472,7 @@ export default function DriveSelectorModal({
         }),
       });
     } catch (err) {
-      console.error('Failed to save drive config:', err);
+      logger.error('drive.config.save.failed', { errorCode: ErrorCodes.DRIVE_NO_MATCH, error: err });
     }
   };
 
@@ -501,7 +501,7 @@ export default function DriveSelectorModal({
       setCopyError(null);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy BOM:', err);
+      logger.error('drive.bom.copy.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err });
       setCopyError('Copy failed. Please select and copy manually.');
       setTimeout(() => setCopyError(null), 3000);
     }

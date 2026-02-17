@@ -13,6 +13,10 @@ import { createClient } from '../../../../src/lib/supabase/server';
 import { CleatPattern, CLEAT_PATTERNS } from '../../../../src/lib/cleat-catalog';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.cleats' });
 
 interface CleatCatalogPayload {
   id?: string;
@@ -45,7 +49,7 @@ export async function GET() {
       .order('cleat_pattern', { ascending: true });
 
     if (error) {
-      console.error('Cleat catalog fetch error:', error);
+      logger.error('api.cleats.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch cleat catalog', details: error.message },
         { status: 500 }
@@ -54,7 +58,7 @@ export async function GET() {
 
     return NextResponse.json(catalog || []);
   } catch (error) {
-    console.error('Admin cleats API error:', error);
+    logger.error('api.cleats.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -159,7 +163,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newItem, { status: 201 });
   } catch (error) {
-    console.error('Admin cleats POST error:', error);
+    logger.error('api.cleats.create.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -198,7 +202,7 @@ export async function PUT(request: NextRequest) {
       .maybeSingle();
 
     if (findError) {
-      console.error('Cleat catalog find error:', findError);
+      logger.error('api.cleats.find.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: findError });
       return NextResponse.json(
         { error: 'Failed to find cleat entry', details: findError.message },
         { status: 500 }
@@ -247,7 +251,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updatedItem);
   } catch (error) {
-    console.error('Admin cleats PUT error:', error);
+    logger.error('api.cleats.update.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

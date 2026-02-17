@@ -121,6 +121,23 @@ export const ErrorCodes = {
   CATALOG_PULLEY_NOT_FOUND: 'CATALOG_PULLEY_NOT_FOUND',
   CATALOG_VGUIDE_NOT_FOUND: 'CATALOG_VGUIDE_NOT_FOUND',
   CATALOG_GEARMOTOR_NOT_FOUND: 'CATALOG_GEARMOTOR_NOT_FOUND',
+  CATALOG_FETCH_FAILED: 'CATALOG_FETCH_FAILED',
+
+  // ---------------------------------------------------------------------------
+  // Library / document management
+  // ---------------------------------------------------------------------------
+  LIBRARY_UPLOAD_FAILED: 'LIBRARY_UPLOAD_FAILED',
+  LIBRARY_DOCUMENT_NOT_FOUND: 'LIBRARY_DOCUMENT_NOT_FOUND',
+
+  // ---------------------------------------------------------------------------
+  // Nord coverage
+  // ---------------------------------------------------------------------------
+  NORD_COVERAGE_FAILED: 'NORD_COVERAGE_FAILED',
+
+  // ---------------------------------------------------------------------------
+  // Audit
+  // ---------------------------------------------------------------------------
+  AUDIT_LOG_FAILED: 'AUDIT_LOG_FAILED',
 
   // ---------------------------------------------------------------------------
   // Recipe management

@@ -18,6 +18,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { parseApplicationCode, isApplicationCodeError } from '../../../../src/lib/applicationCode';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.applications-exists' });
 
 export async function GET(request: NextRequest) {
   try {
@@ -90,7 +94,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (error) {
-      console.error('Error checking for existing application:', error);
+      logger.error('api.applications-exists.check-slug.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to check for existing application', details: error.message },
         { status: 500 }
@@ -127,7 +131,7 @@ export async function GET(request: NextRequest) {
     const { data: apps, error: queryError } = await query;
 
     if (queryError) {
-      console.error('Error querying applications:', queryError);
+      logger.error('api.applications-exists.query.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: queryError });
       return NextResponse.json(
         { error: 'Failed to query applications', details: queryError.message },
         { status: 500 }
@@ -175,7 +179,7 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error('Exists check error:', error);
+    logger.error('api.applications-exists.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

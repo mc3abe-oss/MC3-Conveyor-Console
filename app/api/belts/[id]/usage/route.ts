@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase, supabaseAdmin, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.belts-usage' });
 
 /**
  * GET /api/belts/[id]/usage
@@ -49,7 +53,7 @@ export async function GET(
       .filter('inputs->belt_catalog_key', 'eq', belt.catalog_key);
 
     if (appError) {
-      console.error('Error counting belt usage in calc_recipes:', appError);
+      logger.error('api.belts-usage.count-recipes.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: appError });
     }
 
     // Count configuration_revisions (legacy configs) referencing this belt
@@ -59,7 +63,7 @@ export async function GET(
       .filter('inputs_json->belt_catalog_key', 'eq', belt.catalog_key);
 
     if (configError) {
-      console.error('Error counting belt usage in configuration_revisions:', configError);
+      logger.error('api.belts-usage.count-revisions.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: configError });
     }
 
     const applications = appCount || 0;
@@ -74,7 +78,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error('Belt usage API error:', error);
+    logger.error('api.belts-usage.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

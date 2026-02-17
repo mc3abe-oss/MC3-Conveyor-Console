@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.password-reset' });
 
 interface RequestBody {
   email: string;
@@ -48,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       // Log error but don't expose to client to prevent email enumeration
-      console.error('[Auth] Password reset request error:', error);
+      logger.error('api.password-reset.send.failed', { errorCode: ErrorCodes.AUTH_UNAUTHORIZED, error });
     }
 
     // Always return success to prevent email enumeration
@@ -57,7 +61,7 @@ export async function POST(request: NextRequest) {
       message: 'If an account exists with this email, a password reset link has been sent.',
     });
   } catch (error) {
-    console.error('[Auth] Password reset request error:', error);
+    logger.error('api.password-reset.request.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

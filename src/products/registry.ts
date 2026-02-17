@@ -11,6 +11,9 @@
  */
 
 import type { ProductModule, CardConfig, OutputFieldDef } from './types';
+import { createLogger } from '../lib/logger';
+
+const logger = createLogger().child({ module: 'product-registry' });
 
 // Re-export types for convenience
 export * from './types';
@@ -35,9 +38,9 @@ const productModules = new Map<string, ProductModule<any, any, any>>();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerProduct(product: ProductModule<any, any, any>): void {
   if (productModules.has(product.key)) {
-    console.warn(`[ProductRegistry] Overwriting existing product: ${product.key}`);
+    logger.warn('product.registry.overwrite', { productKey: product.key });
   }
-  console.log(`[ProductRegistry] Registered product: ${product.key} (${product.outputsSchema.length} output fields)`);
+  logger.info('product.registry.registered', { productKey: product.key, outputFieldCount: product.outputsSchema.length });
   productModules.set(product.key, product);
 }
 
@@ -85,7 +88,7 @@ export function getAllProducts(): ProductModule<any, any, any>[] {
 export function hasOutputKey(productKey: string, outputKey: string): boolean {
   const product = productModules.get(productKey);
   if (!product) {
-    console.debug(`[ProductRegistry] hasOutputKey: product not found: ${productKey}`);
+    logger.debug('product.registry.hasOutputKey.not-found', { productKey });
     return false;
   }
 
@@ -112,7 +115,7 @@ export function canRenderCard(productKey: string, requiredKeys: string[]): boole
 
   // FAIL-CLOSED: Unknown product cannot render any cards
   if (!product) {
-    console.debug(`[ProductRegistry] canRenderCard: DENIED - product not found: ${productKey}`);
+    logger.debug('product.registry.canRenderCard.denied', { productKey, reason: 'product not found' });
     return false;
   }
 
@@ -127,9 +130,7 @@ export function canRenderCard(productKey: string, requiredKeys: string[]): boole
   // Check each required key
   for (const requiredKey of requiredKeys) {
     if (!availableKeys.has(requiredKey)) {
-      console.debug(
-        `[ProductRegistry] canRenderCard: DENIED - product "${productKey}" missing output key: "${requiredKey}"`
-      );
+      logger.debug('product.registry.canRenderCard.denied', { productKey, missingKey: requiredKey });
       return false;
     }
   }
@@ -147,14 +148,14 @@ export function canRenderCard(productKey: string, requiredKeys: string[]): boole
 export function getVisibleCardsForTab(productKey: string, tabId: string): CardConfig[] {
   const product = productModules.get(productKey);
   if (!product) {
-    console.debug(`[ProductRegistry] getVisibleCardsForTab: product not found: ${productKey}`);
+    logger.debug('product.registry.getVisibleCardsForTab.not-found', { productKey });
     return [];
   }
 
   // Find the tab
   const tab = product.ui.tabs.find((t) => t.id === tabId);
   if (!tab) {
-    console.debug(`[ProductRegistry] getVisibleCardsForTab: tab not found: ${tabId}`);
+    logger.debug('product.registry.getVisibleCardsForTab.tab-not-found', { productKey, tabId });
     return [];
   }
 
@@ -164,9 +165,7 @@ export function getVisibleCardsForTab(productKey: string, tabId: string): CardCo
   // Filter by canRenderCard
   const visibleCards = tabCards.filter((card) => canRenderCard(productKey, card.requiresOutputKeys));
 
-  console.debug(
-    `[ProductRegistry] getVisibleCardsForTab: ${productKey}/${tabId} - ${visibleCards.length}/${tabCards.length} cards visible`
-  );
+  logger.debug('product.registry.getVisibleCardsForTab.result', { productKey, tabId, visibleCount: visibleCards.length, totalCount: tabCards.length });
 
   return visibleCards;
 }

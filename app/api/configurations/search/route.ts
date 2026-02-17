@@ -14,6 +14,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.configurations-search' });
 
 /**
  * Parse a config slug back to reference fields
@@ -88,7 +92,7 @@ export async function GET(request: NextRequest) {
       .limit(limit);
 
     if (error) {
-      console.error('Search configurations error:', error);
+      logger.error('api.configurations-search.query.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to search configurations', details: error.message },
         { status: 500 }
@@ -115,7 +119,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(configurations);
   } catch (error) {
-    console.error('Search configurations API error:', error);
+    logger.error('api.configurations-search.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -13,6 +13,11 @@
 
 'use client';
 
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'admin-belts-page' });
+
 import { useState, useEffect, useCallback } from 'react';
 import { BeltCatalogItem } from '../../../../api/belts/route';
 import { clearBeltCatalogCache } from '../../../../hooks/useBeltCatalog';
@@ -126,7 +131,7 @@ export default function AdminBeltsPage() {
         setBeltUsage(data);
       }
     } catch (err) {
-      console.error('Failed to fetch belt usage:', err);
+      logger.error('belt.usage.fetch.failed', { errorCode: ErrorCodes.CATALOG_BELT_NOT_FOUND, error: err });
     } finally {
       setIsLoadingUsage(false);
     }

@@ -9,6 +9,10 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../src/lib/supabase/client';
 import { CleatCatalogItem, CleatCenterFactor } from '../../../src/lib/cleat-catalog';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.cleats' });
 
 export interface CleatsApiResponse {
   catalog: CleatCatalogItem[];
@@ -38,7 +42,7 @@ export async function GET() {
       .order('cleat_size', { ascending: true });
 
     if (catalogError) {
-      console.error('Cleat catalog fetch error:', catalogError);
+      logger.error('api.cleats.catalog-fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error: catalogError });
       return NextResponse.json(
         { error: 'Failed to fetch cleat catalog', details: catalogError.message },
         { status: 500 }
@@ -53,7 +57,7 @@ export async function GET() {
       .order('centers_in', { ascending: false }); // 12, 8, 6, 4 order
 
     if (factorsError) {
-      console.error('Cleat center factors fetch error:', factorsError);
+      logger.error('api.cleats.center-factors-fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error: factorsError });
       return NextResponse.json(
         { error: 'Failed to fetch center factors', details: factorsError.message },
         { status: 500 }
@@ -67,7 +71,7 @@ export async function GET() {
 
     return NextResponse.json(response);
   } catch (error) {
-    console.error('Cleats API error:', error);
+    logger.error('api.cleats.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

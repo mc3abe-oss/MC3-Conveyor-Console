@@ -10,6 +10,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.delete-quote-line' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -67,7 +71,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
         .eq('id', id);
 
       if (updateError) {
-        console.error('Deactivate error:', updateError);
+        logger.error('api.delete-quote-line.deactivate.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
         return NextResponse.json(
           { error: 'Failed to deactivate application', details: updateError.message },
           { status: 500 }
@@ -111,7 +115,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
         .eq('id', id);
 
       if (deleteError) {
-        console.error('Hard delete error:', deleteError);
+        logger.error('api.delete-quote-line.hard-delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: deleteError });
         return NextResponse.json(
           { error: 'Failed to delete application', details: deleteError.message },
           { status: 500 }
@@ -125,7 +129,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       });
     }
   } catch (error) {
-    console.error('Delete quote line error:', error);
+    logger.error('api.delete-quote-line.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

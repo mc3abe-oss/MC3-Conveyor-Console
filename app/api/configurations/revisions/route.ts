@@ -13,6 +13,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.configurations-revisions' });
 
 /**
  * Parse a config slug back to reference fields
@@ -60,7 +64,7 @@ export async function GET(request: NextRequest) {
       .single();
 
     if (recipeError) {
-      console.error('Recipe fetch error:', recipeError);
+      logger.error('api.configurations-revisions.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: recipeError });
       return NextResponse.json(
         { error: 'Configuration not found', details: recipeError.message },
         { status: 404 }
@@ -109,7 +113,7 @@ export async function GET(request: NextRequest) {
       revisions: [revision],
     });
   } catch (error) {
-    console.error('Get revisions error:', error);
+    logger.error('api.configurations-revisions.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

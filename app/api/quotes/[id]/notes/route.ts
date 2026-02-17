@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes-notes' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -26,7 +30,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Notes fetch error:', error);
+      logger.error('api.quotes-notes.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch notes', details: error.message },
         { status: 500 }
@@ -35,7 +39,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(notes || []);
   } catch (error) {
-    console.error('Notes GET error:', error);
+    logger.error('api.quotes-notes.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -84,7 +88,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Note create error:', error);
+      logger.error('api.quotes-notes.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create note', details: error.message },
         { status: 500 }
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(note, { status: 201 });
   } catch (error) {
-    console.error('Notes POST error:', error);
+    logger.error('api.quotes-notes.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

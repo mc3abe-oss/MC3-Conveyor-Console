@@ -19,6 +19,10 @@ import {
   Role,
   SessionUser,
 } from './rbac';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'auth-require' });
 
 /**
  * Result of a require check.
@@ -44,7 +48,7 @@ export async function requireAuth(): Promise<RequireResult> {
 
   // Block deactivated users
   if (!profile.isActive) {
-    console.warn(`[RBAC] Deactivated user blocked: ${user.userId} (${user.email})`);
+    logger.warn('auth.rbac.user-deactivated', { errorCode: ErrorCodes.AUTH_USER_DEACTIVATED, userId: user.userId, email: user.email });
     return { response: deactivated() };
   }
 
@@ -67,14 +71,12 @@ export async function requireBeltAdmin(): Promise<RequireResult> {
 
   // Block deactivated users
   if (!profile.isActive) {
-    console.warn(`[RBAC] Deactivated user blocked: ${user.userId} (${user.email})`);
+    logger.warn('auth.rbac.user-deactivated', { errorCode: ErrorCodes.AUTH_USER_DEACTIVATED, userId: user.userId, email: user.email });
     return { response: deactivated() };
   }
 
   if (!canBeltAdmin(profile.role)) {
-    console.warn(
-      `[RBAC] Belt admin access denied for user ${user.userId} (${user.email}) with role ${profile.role}`
-    );
+    logger.warn('auth.rbac.belt-admin-denied', { errorCode: ErrorCodes.AUTH_INSUFFICIENT_ROLE, userId: user.userId, email: user.email, role: profile.role });
     return { response: forbidden('Belt admin permissions required.') };
   }
 
@@ -97,14 +99,12 @@ export async function requireSuperAdmin(): Promise<RequireResult> {
 
   // Block deactivated users
   if (!profile.isActive) {
-    console.warn(`[RBAC] Deactivated user blocked: ${user.userId} (${user.email})`);
+    logger.warn('auth.rbac.user-deactivated', { errorCode: ErrorCodes.AUTH_USER_DEACTIVATED, userId: user.userId, email: user.email });
     return { response: deactivated() };
   }
 
   if (!isSuperAdmin(profile.role)) {
-    console.warn(
-      `[RBAC] Super admin access denied for user ${user.userId} (${user.email}) with role ${profile.role}`
-    );
+    logger.warn('auth.rbac.super-admin-denied', { errorCode: ErrorCodes.AUTH_INSUFFICIENT_ROLE, userId: user.userId, email: user.email, role: profile.role });
     return { response: forbidden('Super admin permissions required.') };
   }
 

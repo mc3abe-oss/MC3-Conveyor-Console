@@ -20,6 +20,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
 import { randomUUID } from 'crypto';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-upload-url' });
 
 const BUCKET_NAME = 'pdf-library';
 const MAX_FILE_SIZE = 250 * 1024 * 1024; // 250MB
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest) {
       .createSignedUploadUrl(storagePath);
 
     if (signedUrlError) {
-      console.error('Signed URL creation error:', signedUrlError);
+      logger.error('api.library-upload-url.signed-url-create.failed', { errorCode: ErrorCodes.LIBRARY_UPLOAD_FAILED, error: signedUrlError });
       return NextResponse.json(
         { error: 'Failed to create upload URL', details: signedUrlError.message },
         { status: 500 }
@@ -105,7 +109,7 @@ export async function POST(request: NextRequest) {
       maxFileSizeMB: 250,
     });
   } catch (error) {
-    console.error('Upload URL API error:', error);
+    logger.error('api.library-upload-url.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

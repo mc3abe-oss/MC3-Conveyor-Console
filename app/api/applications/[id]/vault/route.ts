@@ -11,6 +11,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.vault' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -61,16 +65,16 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     // Check for errors
     if (specsResult.error) {
-      console.error('Specs fetch error:', specsResult.error);
+      logger.error('api.vault.specs-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: specsResult.error });
     }
     if (notesResult.error) {
-      console.error('Notes fetch error:', notesResult.error);
+      logger.error('api.vault.notes-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: notesResult.error });
     }
     if (attachmentsResult.error) {
-      console.error('Attachments fetch error:', attachmentsResult.error);
+      logger.error('api.vault.attachments-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: attachmentsResult.error });
     }
     if (scopeLinesResult.error) {
-      console.error('Scope lines fetch error:', scopeLinesResult.error);
+      logger.error('api.vault.scope-lines-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: scopeLinesResult.error });
     }
 
     return NextResponse.json({
@@ -80,7 +84,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       scope_lines: scopeLinesResult.data || [],
     });
   } catch (error) {
-    console.error('Vault GET error:', error);
+    logger.error('api.vault.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

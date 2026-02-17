@@ -11,6 +11,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
 import { normalizeEnvironmentFactors } from '../../../../src/models/sliderbed_v1/schema';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.configurations-load' });
 
 /**
  * Build a unique slug for the recipe from reference fields
@@ -75,7 +79,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (recipeError) {
-      console.error('Recipe fetch error:', recipeError);
+      logger.error('api.configurations-load.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: recipeError });
       return NextResponse.json(
         { error: 'Failed to load configuration', details: recipeError.message },
         { status: 500 }
@@ -136,7 +140,7 @@ export async function GET(request: NextRequest) {
       revision,
     });
   } catch (error) {
-    console.error('Load configuration error:', error);
+    logger.error('api.configurations-load.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -34,6 +34,11 @@ export const CATALOG_KEYS = {
   // - ambient_temperature: text input
 } as const;
 
+import { createLogger } from './logger';
+import { ErrorCodes } from './logger/error-codes';
+
+const logger = createLogger().child({ module: 'catalogs' });
+
 export type CatalogKey = keyof typeof CATALOG_KEYS;
 
 /**
@@ -53,14 +58,14 @@ export async function fetchCatalogItems(catalogKey: string): Promise<CatalogItem
     const response = await fetch(`/api/catalog?key=${encodeURIComponent(catalogKey)}`);
 
     if (!response.ok) {
-      console.error(`Failed to fetch catalog: ${catalogKey}`, await response.text());
+      logger.error('catalog.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, catalogKey, status: response.status });
       return [];
     }
 
     const items = (await response.json()) as CatalogItem[];
     return items;
   } catch (error) {
-    console.error(`Error fetching catalog: ${catalogKey}`, error);
+    logger.error('catalog.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, catalogKey, error });
     return [];
   }
 }

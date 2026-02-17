@@ -22,6 +22,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
 import { requireBeltAdmin } from '../../../../../src/lib/auth/require';
 import crypto from 'crypto';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-upload-finalize' });
 
 const BUCKET_NAME = 'pdf-library';
 
@@ -76,7 +80,7 @@ export async function POST(request: NextRequest) {
       .download(storagePath);
 
     if (fileError || !fileData) {
-      console.error('File verification error:', fileError);
+      logger.error('api.library-upload-finalize.file-verify.failed', { errorCode: ErrorCodes.LIBRARY_UPLOAD_FAILED, error: fileError });
       return NextResponse.json(
         { error: 'File not found in storage. Upload may have failed.' },
         { status: 400 }
@@ -151,7 +155,7 @@ export async function POST(request: NextRequest) {
       if (createError) {
         // Clean up uploaded file
         await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
-        console.error('Document creation error:', createError);
+        logger.error('api.library-upload-finalize.document-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: createError });
         return NextResponse.json(
           { error: 'Failed to create document', details: createError.message },
           { status: 500 }
@@ -179,7 +183,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (versionError) {
-      console.error('Version creation error:', versionError);
+      logger.error('api.library-upload-finalize.version-create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: versionError });
       // Don't delete the file - it's already in storage
       return NextResponse.json(
         { error: 'Failed to create version record', details: versionError.message },
@@ -199,7 +203,7 @@ export async function POST(request: NextRequest) {
       .eq('id', targetDocumentId);
 
     if (updateError) {
-      console.error('Document update error:', updateError);
+      logger.error('api.library-upload-finalize.document-update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       // Non-fatal - version was created
     }
 
@@ -210,7 +214,7 @@ export async function POST(request: NextRequest) {
       storage_path: storagePath,
     });
   } catch (error) {
-    console.error('Upload finalize API error:', error);
+    logger.error('api.library-upload-finalize.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

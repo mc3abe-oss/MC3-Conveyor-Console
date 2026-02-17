@@ -8,6 +8,10 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../src/lib/supabase/server';
 import { isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { createLogger } from '../../../src/lib/logger';
+import { ErrorCodes } from '../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.product-families' });
 
 export interface ProductFamily {
   id: string;
@@ -55,7 +59,7 @@ export async function GET() {
         .order('sort_order', { ascending: true });
 
       if (fallbackResult.error) {
-        console.error('Error fetching product families (fallback):', fallbackResult.error);
+        logger.error('api.product-families.fetch-fallback.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: fallbackResult.error });
         return NextResponse.json(
           { error: 'Failed to fetch product families', details: fallbackResult.error.message },
           { status: 500 }
@@ -69,7 +73,7 @@ export async function GET() {
         model_key: DEFAULT_MODEL_KEYS[product.slug] || null,
       }));
     } else if (error) {
-      console.error('Error fetching product families:', error);
+      logger.error('api.product-families.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch product families', details: error.message },
         { status: 500 }
@@ -78,7 +82,7 @@ export async function GET() {
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('Product families API error:', error);
+    logger.error('api.product-families.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

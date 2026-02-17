@@ -13,6 +13,11 @@
 
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'finish-selector' });
+
 import { useState, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import { CoatingMethod, COATING_METHOD_LABELS } from '../../src/models/sliderbed_v1/schema';
@@ -102,7 +107,7 @@ export default function FinishSelector({
         setColorOptions(data);
         // NOTE: Default color tracking removed - user must explicitly select color
       } catch (err) {
-        console.error('Error fetching powder colors:', err);
+        logger.error('finish.colors.fetch.failed', { errorCode: ErrorCodes.CATALOG_FETCH_FAILED, error: err });
         setError('Failed to load color options');
       } finally {
         setLoading(false);

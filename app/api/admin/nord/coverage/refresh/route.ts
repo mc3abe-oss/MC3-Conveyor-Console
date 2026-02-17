@@ -11,6 +11,10 @@ import { NextResponse } from 'next/server';
 import { createClient } from '../../../../../../src/lib/supabase/server';
 import { requireBeltAdmin } from '../../../../../../src/lib/auth/require';
 import { generateCoverage } from '../../../../../../src/lib/nord/coverage';
+import { createLogger } from '../../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.nord-coverage-refresh' });
 
 export async function POST() {
   try {
@@ -22,16 +26,16 @@ export async function POST() {
 
     const supabase = await createClient();
 
-    console.log('[Coverage Refresh] Starting regeneration triggered by', authResult.user.email);
+    logger.info('api.nord-coverage-refresh.started', { triggeredBy: authResult.user.email });
 
     // Generate coverage (this may take a few seconds)
     const result = await generateCoverage(supabase);
 
-    console.log('[Coverage Refresh] Complete:', result.summary);
+    logger.info('api.nord-coverage-refresh.completed', { summary: result.summary });
 
     // Check for insert errors
     if (result.errors && result.errors.length > 0) {
-      console.error('[Coverage Refresh] Insert errors:', result.errors);
+      logger.error('api.nord-coverage-refresh.insert.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, errors: result.errors });
       return NextResponse.json({
         success: false,
         summary: result.summary,
@@ -44,7 +48,7 @@ export async function POST() {
       summary: result.summary,
     });
   } catch (err) {
-    console.error('[NORD Coverage Refresh API] POST exception:', err);
+    logger.error('api.nord-coverage-refresh.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error: err });
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Internal server error' },
       { status: 500 }

@@ -13,6 +13,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
 import { SpecConfidence, SpecSourceType } from '../../../../../src/lib/database/quote-types';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.specs' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -54,7 +58,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
     const { data: specs, error } = await query;
 
     if (error) {
-      console.error('Specs fetch error:', error);
+      logger.error('api.specs.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch specs', details: error.message },
         { status: 500 }
@@ -63,7 +67,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(specs || []);
   } catch (error) {
-    console.error('Specs GET error:', error);
+    logger.error('api.specs.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -142,7 +146,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Spec create error:', error);
+      logger.error('api.specs.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create spec', details: error.message },
         { status: 500 }
@@ -151,7 +155,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(spec, { status: 201 });
   } catch (error) {
-    console.error('Specs POST error:', error);
+    logger.error('api.specs.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

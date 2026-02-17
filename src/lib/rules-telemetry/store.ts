@@ -8,6 +8,9 @@
  */
 
 import { RuleEvent, RuleTelemetryState, RuleTelemetryConfig } from './types';
+import { createLogger } from '../logger';
+
+const logger = createLogger().child({ module: 'rules-telemetry-store' });
 
 // Configuration
 const DEFAULT_CONFIG: RuleTelemetryConfig = {
@@ -104,7 +107,7 @@ export function addEvent(event: RuleEvent): void {
 
   // Console log in development if configured
   if (config.consoleLog && typeof console !== 'undefined') {
-    console.log('[RuleTelemetry]', event.severity.toUpperCase(), event.rule_id, event.message);
+    logger.info('rules.telemetry.event', { severity: event.severity, ruleId: event.rule_id, message: event.message });
   }
 
   notifyListeners();

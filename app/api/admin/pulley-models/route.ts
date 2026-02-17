@@ -12,6 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.pulley-models' });
 
 export interface PulleyLibraryModel {
   model_key: string;
@@ -82,13 +86,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching pulley models:', error);
+      logger.error('api.pulley-models.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(data as PulleyLibraryModel[]);
   } catch (error) {
-    console.error('Error in pulley models GET:', error);
+    logger.error('api.pulley-models.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -231,7 +235,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error in pulley models POST:', error);
+    logger.error('api.pulley-models.create.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -329,7 +333,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in pulley models PUT:', error);
+    logger.error('api.pulley-models.update.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -385,7 +389,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, deactivated: data });
   } catch (error) {
-    console.error('Error in pulley models DELETE:', error);
+    logger.error('api.pulley-models.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

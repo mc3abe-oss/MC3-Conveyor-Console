@@ -8,6 +8,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.powder-colors' });
 
 export interface PowderColor {
   id: string;
@@ -40,7 +44,7 @@ export async function GET() {
       .order('name', { ascending: true });
 
     if (error) {
-      console.error('Powder colors fetch error:', error);
+      logger.error('api.powder-colors.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch powder colors', details: error.message },
         { status: 500 }
@@ -49,7 +53,7 @@ export async function GET() {
 
     return NextResponse.json(data || []);
   } catch (error) {
-    console.error('Powder colors API error:', error);
+    logger.error('api.powder-colors.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -108,7 +112,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Powder color create error:', error);
+      logger.error('api.powder-colors.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       if (error.code === '23505') {
         return NextResponse.json(
           { error: 'A powder color with this code already exists' },
@@ -123,7 +127,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Powder colors API error:', error);
+    logger.error('api.powder-colors.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -186,7 +190,7 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Powder color update error:', error);
+      logger.error('api.powder-colors.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       if (error.code === '23505') {
         return NextResponse.json(
           { error: 'A powder color with this code already exists' },
@@ -201,7 +205,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Powder colors API error:', error);
+    logger.error('api.powder-colors.put.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

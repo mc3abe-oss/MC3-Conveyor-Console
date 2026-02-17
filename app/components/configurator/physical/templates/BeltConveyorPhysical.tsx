@@ -10,6 +10,11 @@
 
 'use client';
 
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'belt-conveyor-physical' });
+
 import {
   SliderbedInputs,
   SliderbedOutputs,
@@ -227,7 +232,7 @@ export default function BeltConveyorPhysical({
           setApplicationPulleys(data);
         }
       } catch (err) {
-        console.error('Failed to load pulleys:', err);
+        logger.error('pulleys.load.failed', { errorCode: ErrorCodes.CATALOG_PULLEY_NOT_FOUND, error: err });
       } finally {
         setPulleysLoading(false);
       }
@@ -292,7 +297,7 @@ export default function BeltConveyorPhysical({
         setApplicationPulleys(data);
       }
     } catch (err) {
-      console.error('Failed to refresh pulleys:', err);
+      logger.error('pulleys.refresh.failed', { errorCode: ErrorCodes.CATALOG_PULLEY_NOT_FOUND, error: err });
     }
   };
 

@@ -13,6 +13,10 @@
 
 import { NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.admin-pages' });
 
 interface ProductFamily {
   id: string;
@@ -49,7 +53,7 @@ export async function GET() {
       .order('sort_order', { ascending: true });
 
     if (pagesError) {
-      console.error('Error fetching admin pages:', pagesError);
+      logger.error('api.admin-pages.fetch-pages.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: pagesError });
       return NextResponse.json(
         { error: 'Failed to fetch admin pages', details: pagesError.message },
         { status: 500 }
@@ -63,7 +67,7 @@ export async function GET() {
       .order('sort_order', { ascending: true });
 
     if (familiesError) {
-      console.error('Error fetching product families:', familiesError);
+      logger.error('api.admin-pages.fetch-families.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: familiesError });
       return NextResponse.json(
         { error: 'Failed to fetch product families', details: familiesError.message },
         { status: 500 }
@@ -76,7 +80,7 @@ export async function GET() {
       .select('admin_page_id, product_family_id');
 
     if (mappingsError) {
-      console.error('Error fetching page-family mappings:', mappingsError);
+      logger.error('api.admin-pages.fetch-mappings.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: mappingsError });
       return NextResponse.json(
         { error: 'Failed to fetch page mappings', details: mappingsError.message },
         { status: 500 }
@@ -128,7 +132,7 @@ export async function GET() {
       productFamilies: activeProductFamilies,
     });
   } catch (error) {
-    console.error('Error in /api/admin/admin-pages GET:', error);
+    logger.error('api.admin-pages.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

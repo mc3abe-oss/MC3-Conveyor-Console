@@ -12,6 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.catalog-items' });
 
 interface CatalogItemPayload {
   catalog_key: string;
@@ -50,7 +54,7 @@ export async function GET(request: NextRequest) {
       .order('label', { ascending: true });
 
     if (error) {
-      console.error('Catalog items fetch error:', error);
+      logger.error('api.catalog-items.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch catalog items', details: error.message },
         { status: 500 }
@@ -59,7 +63,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(items || []);
   } catch (error) {
-    console.error('Admin catalog items API error:', error);
+    logger.error('api.catalog-items.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -130,7 +134,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newItem, { status: 201 });
   } catch (error) {
-    console.error('Admin catalog items POST error:', error);
+    logger.error('api.catalog-items.create.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -170,7 +174,7 @@ export async function PUT(request: NextRequest) {
       .maybeSingle();
 
     if (findError) {
-      console.error('Catalog item find error:', findError);
+      logger.error('api.catalog-items.find.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: findError });
       return NextResponse.json(
         { error: 'Failed to find catalog item', details: findError.message },
         { status: 500 }
@@ -209,7 +213,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updatedItem);
   } catch (error) {
-    console.error('Admin catalog items PUT error:', error);
+    logger.error('api.catalog-items.update.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'vault-tab' });
+
 import { useState, useEffect, useCallback } from 'react';
 import { Note, Spec, ScopeLine, Attachment, ScopeCategory, ScopeInclusion, SpecConfidence } from '../../src/lib/database/quote-types';
 
@@ -78,7 +83,7 @@ export default function VaultTab({ applicationId, onOpenSaveModal, draftVault, o
         setError(errData.error || 'Failed to load vault');
       }
     } catch (err) {
-      console.error('Failed to load vault data:', err);
+      logger.error('vault.load.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
       setError('Failed to load vault data');
     } finally {
       setLoading(false);

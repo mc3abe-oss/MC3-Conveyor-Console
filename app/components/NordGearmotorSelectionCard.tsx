@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'nord-gearmotor-selection-card' });
+
 import { useState, useEffect, useCallback } from 'react';
 import clsx from 'clsx';
 import {
@@ -136,7 +141,7 @@ export default function NordGearmotorSelectionCard({
         }),
       });
     } catch (err) {
-      console.error('Failed to save drive config:', err);
+      logger.error('drive.config.save.failed', { errorCode: ErrorCodes.DRIVE_NO_MATCH, error: err });
     }
   };
 

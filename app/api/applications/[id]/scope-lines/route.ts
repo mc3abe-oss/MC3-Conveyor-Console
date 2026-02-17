@@ -15,6 +15,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient, getCurrentUserId } from '../../../../../src/lib/supabase/server';
 import { ScopeCategory, ScopeInclusion } from '../../../../../src/lib/database/quote-types';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.scope-lines' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -51,7 +55,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       .order('position', { ascending: true });
 
     if (error) {
-      console.error('Scope lines fetch error:', error);
+      logger.error('api.scope-lines.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch scope lines', details: error.message },
         { status: 500 }
@@ -60,7 +64,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(scopeLines || []);
   } catch (error) {
-    console.error('Scope lines GET error:', error);
+    logger.error('api.scope-lines.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -136,7 +140,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Scope line create error:', error);
+      logger.error('api.scope-lines.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create scope line', details: error.message },
         { status: 500 }
@@ -145,7 +149,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(scopeLine, { status: 201 });
   } catch (error) {
-    console.error('Scope lines POST error:', error);
+    logger.error('api.scope-lines.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -231,7 +235,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Scope line update error:', error);
+      logger.error('api.scope-lines.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to update scope line', details: error.message },
         { status: 500 }
@@ -240,7 +244,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(scopeLine);
   } catch (error) {
-    console.error('Scope lines PATCH error:', error);
+    logger.error('api.scope-lines.patch.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -275,7 +279,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       .eq('application_id', id);
 
     if (error) {
-      console.error('Scope line delete error:', error);
+      logger.error('api.scope-lines.delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to delete scope line', details: error.message },
         { status: 500 }
@@ -284,7 +288,7 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Scope lines DELETE error:', error);
+    logger.error('api.scope-lines.delete-handler.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

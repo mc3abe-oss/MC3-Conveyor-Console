@@ -11,6 +11,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { transitionScopeStatus, getLatestRevision } from '../../../../../src/lib/scope';
 import { getCurrentUserId } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes-status' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       revision: revisionInfo,
     });
   } catch (error) {
-    console.error('Quote status update error:', error);
+    logger.error('api.quotes-status.update.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -104,7 +108,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       revision: revisionInfo,
     });
   } catch (error) {
-    console.error('Quote status GET error:', error);
+    logger.error('api.quotes-status.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

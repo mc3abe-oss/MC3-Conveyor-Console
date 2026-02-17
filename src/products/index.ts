@@ -10,6 +10,10 @@
  *   const canShow = canRenderCard('magnetic_conveyor_v1', ['total_torque_in_lb']);
  */
 
+import { createLogger } from '../lib/logger';
+
+const logger = createLogger().child({ module: 'products' });
+
 // Import registry functions
 import {
   registerProduct,
@@ -38,18 +42,18 @@ let initialized = false;
  */
 export function initializeProducts(): void {
   if (initialized) {
-    console.debug('[Products] Already initialized, skipping');
+    logger.debug('product.registry.skip', { reason: 'already initialized' });
     return;
   }
 
-  console.log('[Products] Initializing product registry...');
+  logger.info('product.registry.initializing');
 
   // Register all products
   registerProduct(magneticConveyorV1);
   registerProduct(beltConveyorV1);
 
   initialized = true;
-  console.log('[Products] Product registry initialized:', getRegistryDebugInfo());
+  logger.info('product.registry.initialized', getRegistryDebugInfo());
 }
 
 // Auto-initialize on import

@@ -1,5 +1,10 @@
 'use client';
 
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'library-document-page' });
+
 import { useEffect, useState, use } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -119,7 +124,7 @@ export default function LibraryDocumentPage({ params }: PageProps) {
       const data = await res.json();
       setPdfUrl(data.url);
     } catch (err) {
-      console.error('Failed to fetch PDF URL:', err);
+      logger.error('library.pdf-url.fetch.failed', { errorCode: ErrorCodes.LIBRARY_DOCUMENT_NOT_FOUND, error: err });
     } finally {
       setLoadingPdf(false);
     }
@@ -168,7 +173,7 @@ export default function LibraryDocumentPage({ params }: PageProps) {
       const updated = await res.json();
       setDocument(prev => prev ? { ...prev, status: updated.status } : null);
     } catch (err) {
-      console.error('Status update failed:', err);
+      logger.error('library.status-update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: err });
     }
   };
 
@@ -188,7 +193,7 @@ export default function LibraryDocumentPage({ params }: PageProps) {
 
       router.push('/console/library');
     } catch (err) {
-      console.error('Delete failed:', err);
+      logger.error('library.delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: err });
     }
   };
 

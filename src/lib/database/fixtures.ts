@@ -5,6 +5,10 @@
  */
 
 import { getSupabaseClient } from './client';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'database-fixtures' });
 import {
   TestFixture,
   TestFixtureInsert,
@@ -305,7 +309,7 @@ export async function runAllFixtureValidations(
       });
     } catch (error) {
       // Log error but continue with other fixtures
-      console.error(`Failed to validate fixture ${fixture.name}:`, error);
+      logger.error('database.fixture.validation.failed', { errorCode: ErrorCodes.VALIDATION_SCHEMA_FAILED, fixtureName: fixture.name, fixtureId: fixture.id, error });
       results.push({
         fixture_id: fixture.id,
         fixture_name: fixture.name,

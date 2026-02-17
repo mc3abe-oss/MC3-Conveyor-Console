@@ -16,6 +16,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireAuth, requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.library-documents' });
 
 interface PdfDocumentRow {
   id: string;
@@ -107,7 +111,7 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query;
 
     if (error) {
-      console.error('PDF documents fetch error:', error);
+      logger.error('api.library-documents.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch documents', details: error.message },
         { status: 500 }
@@ -158,7 +162,7 @@ export async function GET(request: NextRequest) {
       pageSize,
     });
   } catch (error) {
-    console.error('Library documents API error:', error);
+    logger.error('api.library-documents.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -208,7 +212,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (docError) {
-      console.error('Document creation error:', docError);
+      logger.error('api.library-documents.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: docError });
       return NextResponse.json(
         { error: 'Failed to create document', details: docError.message },
         { status: 500 }
@@ -228,14 +232,14 @@ export async function POST(request: NextRequest) {
         .insert(tagInserts);
 
       if (tagsError) {
-        console.error('Tags assignment error:', tagsError);
+        logger.error('api.library-documents.tags-assign.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: tagsError });
         // Don't fail the whole request, just log
       }
     }
 
     return NextResponse.json(document, { status: 201 });
   } catch (error) {
-    console.error('Create document API error:', error);
+    logger.error('api.library-documents.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

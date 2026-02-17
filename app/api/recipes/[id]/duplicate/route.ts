@@ -15,6 +15,10 @@ import {
   RecipeType,
   RecipeStatus,
 } from '../../../../../src/lib/recipes/types';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.recipes-duplicate' });
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -104,7 +108,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (insertError) {
-      console.error('Recipe duplicate error:', insertError);
+      logger.error('api.recipes-duplicate.insert.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error: insertError });
       return NextResponse.json(
         { error: 'Failed to duplicate recipe', details: insertError.message },
         { status: 500 }
@@ -119,7 +123,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       { status: 201 }
     );
   } catch (error) {
-    console.error('Recipe duplicate API error:', error);
+    logger.error('api.recipes-duplicate.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

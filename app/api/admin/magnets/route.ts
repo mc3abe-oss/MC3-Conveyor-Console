@@ -17,6 +17,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.magnets' });
 
 interface MagnetPayload {
   id?: string;
@@ -70,7 +74,7 @@ export async function GET(request: NextRequest) {
     const { data: magnets, error } = await query;
 
     if (error) {
-      console.error('Error fetching magnets:', error);
+      logger.error('api.magnets.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch magnets', details: error.message },
         { status: 500 }
@@ -79,7 +83,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(magnets || []);
   } catch (error) {
-    console.error('Error in GET /api/admin/magnets:', error);
+    logger.error('api.magnets.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -153,7 +157,7 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error creating magnet:', error);
+      logger.error('api.magnets.create.failed', { errorCode: ErrorCodes.DB_INSERT_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to create magnet', details: error.message },
         { status: 500 }
@@ -162,7 +166,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newMagnet, { status: 201 });
   } catch (error) {
-    console.error('Error in POST /api/admin/magnets:', error);
+    logger.error('api.magnets.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -245,7 +249,7 @@ export async function PUT(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error updating magnet:', error);
+      logger.error('api.magnets.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to update magnet', details: error.message },
         { status: 500 }
@@ -261,7 +265,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updatedMagnet);
   } catch (error) {
-    console.error('Error in PUT /api/admin/magnets:', error);
+    logger.error('api.magnets.put.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -301,7 +305,7 @@ export async function DELETE(request: NextRequest) {
       .single();
 
     if (error) {
-      console.error('Error deactivating magnet:', error);
+      logger.error('api.magnets.deactivate.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to deactivate magnet', details: error.message },
         { status: 500 }
@@ -317,7 +321,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ message: 'Magnet deactivated', magnet: deactivatedMagnet });
   } catch (error) {
-    console.error('Error in DELETE /api/admin/magnets:', error);
+    logger.error('api.magnets.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

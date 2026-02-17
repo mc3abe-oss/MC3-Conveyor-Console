@@ -9,6 +9,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../src/lib/api/handleAdminWriteError';
 import { requireBeltAdmin } from '../../../../src/lib/auth/require';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.pulley-library' });
 
 // Pulley style type from the database enum
 export type PulleyStyleType = 'DRUM' | 'WING' | 'SPIRAL_WING';
@@ -62,13 +66,13 @@ export async function GET(request: NextRequest) {
     const { data, error } = await query;
 
     if (error) {
-      console.error('Error fetching pulley library styles:', error);
+      logger.error('api.pulley-library.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
     return NextResponse.json(data as PulleyLibraryStyle[]);
   } catch (error) {
-    console.error('Error in pulley library GET:', error);
+    logger.error('api.pulley-library.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -168,7 +172,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(data, { status: 201 });
   } catch (error) {
-    console.error('Error in pulley library POST:', error);
+    logger.error('api.pulley-library.create.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -254,7 +258,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(data);
   } catch (error) {
-    console.error('Error in pulley library PUT:', error);
+    logger.error('api.pulley-library.update.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -312,7 +316,7 @@ export async function DELETE(request: NextRequest) {
 
     return NextResponse.json({ success: true, deactivated: data });
   } catch (error) {
-    console.error('Error in pulley library DELETE:', error);
+    logger.error('api.pulley-library.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -6,6 +6,11 @@
 
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'find-config-modal' });
+
 import { useState, useEffect } from 'react';
 
 interface Configuration {
@@ -54,7 +59,7 @@ export default function FindConfigModal({ isOpen, onClose, onSelect }: FindConfi
         setRecentConfigs(data);
       }
     } catch (error) {
-      console.error('Error loading recent configs:', error);
+      logger.error('config.recent.load.failed', { errorCode: ErrorCodes.CONFIG_NOT_FOUND, error });
     } finally {
       setIsLoadingRecent(false);
     }
@@ -79,7 +84,7 @@ export default function FindConfigModal({ isOpen, onClose, onSelect }: FindConfi
         setSearchResults(data);
       }
     } catch (error) {
-      console.error('Error searching configs:', error);
+      logger.error('config.search.failed', { errorCode: ErrorCodes.CONFIG_NOT_FOUND, error });
     } finally {
       setIsSearching(false);
     }

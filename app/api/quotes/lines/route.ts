@@ -21,6 +21,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
 import { getCreatorDisplayOrNull } from '../../../../src/lib/user-display';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes-lines' });
 
 interface QuoteLineRow {
   quote_number: string;
@@ -64,7 +68,7 @@ export async function GET(request: NextRequest) {
       .order('updated_at', { ascending: false });
 
     if (recipesError) {
-      console.error('Recipes fetch error:', recipesError);
+      logger.error('api.quotes-lines.recipes-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: recipesError });
       return NextResponse.json(
         { error: 'Failed to fetch applications', details: recipesError.message },
         { status: 500 }
@@ -83,7 +87,7 @@ export async function GET(request: NextRequest) {
         productFamilyMap.set(pf.id, { slug: pf.slug, name: pf.name });
       }
     } catch (err) {
-      console.warn('Could not fetch product families (migration may not be applied):', err);
+      logger.warn('api.quotes-lines.product-families-fetch.warning', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
       // Continue without product family info
     }
 
@@ -121,7 +125,7 @@ export async function GET(request: NextRequest) {
           }
         }
       } catch (err) {
-        console.error('Error fetching creator info:', err);
+        logger.error('api.quotes-lines.creator-info-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: err });
         // Continue without creator info
       }
     }
@@ -133,7 +137,7 @@ export async function GET(request: NextRequest) {
       .is('deleted_at', null);
 
     if (quotesError) {
-      console.error('Quotes fetch error:', quotesError);
+      logger.error('api.quotes-lines.quotes-fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: quotesError });
       // Continue without quotes table data - we can still show calc_recipes data
     }
 
@@ -287,7 +291,7 @@ export async function GET(request: NextRequest) {
       pageSize,
     });
   } catch (error) {
-    console.error('Quote lines API error:', error);
+    logger.error('api.quotes-lines.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -11,6 +11,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSuperAdmin } from '../../../../../../src/lib/auth/require';
 import { supabaseAdmin } from '../../../../../../src/lib/supabase/client';
 import { logAuditAction } from '../../../../../../src/lib/auth/audit';
+import { createLogger } from '../../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.users-deactivate' });
 
 interface RouteParams {
   params: Promise<{ userId: string }>;
@@ -73,7 +77,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       });
 
     if (updateError) {
-      console.error('[Admin] Deactivate user error:', updateError);
+      logger.error('api.users-deactivate.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to deactivate user', details: updateError.message },
         { status: 500 }
@@ -91,7 +95,7 @@ export async function POST(_request: NextRequest, { params }: RouteParams) {
       userId,
     });
   } catch (error) {
-    console.error('[Admin] Deactivate user error:', error);
+    logger.error('api.users-deactivate.post.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

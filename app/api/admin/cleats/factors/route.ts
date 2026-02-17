@@ -12,6 +12,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
 import { handleAdminWriteError } from '../../../../../src/lib/api/handleAdminWriteError';
 import { requireBeltAdmin } from '../../../../../src/lib/auth/require';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.cleat-factors' });
 
 interface CleatCenterFactorPayload {
   id?: string;
@@ -39,7 +43,7 @@ export async function GET() {
       .order('centers_in', { ascending: false }); // 12, 8, 6, 4
 
     if (error) {
-      console.error('Center factors fetch error:', error);
+      logger.error('api.cleat-factors.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to fetch center factors', details: error.message },
         { status: 500 }
@@ -48,7 +52,7 @@ export async function GET() {
 
     return NextResponse.json(factors || []);
   } catch (error) {
-    console.error('Admin center factors API error:', error);
+    logger.error('api.cleat-factors.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -132,7 +136,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(newItem, { status: 201 });
   } catch (error) {
-    console.error('Admin center factors POST error:', error);
+    logger.error('api.cleat-factors.create.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -171,7 +175,7 @@ export async function PUT(request: NextRequest) {
       .maybeSingle();
 
     if (findError) {
-      console.error('Center factor find error:', findError);
+      logger.error('api.cleat-factors.find.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: findError });
       return NextResponse.json(
         { error: 'Failed to find center factor', details: findError.message },
         { status: 500 }
@@ -208,7 +212,7 @@ export async function PUT(request: NextRequest) {
 
     return NextResponse.json(updatedItem);
   } catch (error) {
-    console.error('Admin center factors PUT error:', error);
+    logger.error('api.cleat-factors.update.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

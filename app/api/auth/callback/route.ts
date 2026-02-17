@@ -9,6 +9,10 @@ import { createServerClient } from '@supabase/ssr';
 import type { EmailOtpType } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.auth-callback' });
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
@@ -17,13 +21,12 @@ export async function GET(request: Request) {
   const type = searchParams.get('type') as EmailOtpType | null;
   const next = searchParams.get('next') ?? '/';
 
-  console.log('[Auth Callback] Received request:', {
+  logger.info('api.auth-callback.received', {
     hasCode: !!code,
     hasTokenHash: !!token_hash,
     type,
     next,
     origin,
-    params: Object.fromEntries(searchParams.entries())
   });
 
   const cookieStore = await cookies();
@@ -50,11 +53,11 @@ export async function GET(request: Request) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
     if (!error && data.session) {
-      console.log('[Auth Callback] PKCE session established for:', data.session.user.email);
+      logger.info('api.auth-callback.pkce.completed', { email: data.session.user.email });
       return NextResponse.redirect(new URL(next, origin));
     }
 
-    console.error('[Auth Callback] PKCE code exchange error:', error?.message || 'No session returned');
+    logger.error('api.auth-callback.pkce.failed', { errorCode: ErrorCodes.AUTH_UNAUTHORIZED, error: error?.message || 'No session returned' });
   }
 
   // Handle token-based flow (token_hash parameter) - used by magic links
@@ -65,11 +68,11 @@ export async function GET(request: Request) {
     });
 
     if (!error && data.session) {
-      console.log('[Auth Callback] Token session established for:', data.session.user.email);
+      logger.info('api.auth-callback.token.completed', { email: data.session.user.email });
       return NextResponse.redirect(new URL(next, origin));
     }
 
-    console.error('[Auth Callback] Token verification error:', error?.message || 'No session returned');
+    logger.error('api.auth-callback.token.failed', { errorCode: ErrorCodes.AUTH_UNAUTHORIZED, error: error?.message || 'No session returned' });
   }
 
   // If no valid auth params or error, redirect to login with error

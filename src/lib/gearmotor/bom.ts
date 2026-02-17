@@ -11,6 +11,10 @@
  */
 
 import { supabase, isSupabaseConfigured } from '../supabase/anon';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'gearmotor-bom' });
 
 // ============================================================================
 // MOUNTING VARIANT CONFIGURATION
@@ -364,7 +368,7 @@ async function lookupOutputShaftKitPNv2(
       .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
 
     if (error) {
-      console.error('Output shaft kit v2 lookup error:', error.message);
+      logger.error('drive.bom.output-shaft-kit-v2.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, outputShaftOptionKey });
       return null;
     }
 
@@ -391,7 +395,7 @@ async function lookupOutputShaftKitPNv2(
 
     return null;
   } catch (err) {
-    console.error('Output shaft kit v2 lookup failed:', err);
+    logger.error('drive.bom.output-shaft-kit-v2.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, outputShaftOptionKey });
     return null;
   }
 }
@@ -425,7 +429,7 @@ async function lookupOutputShaftKitPNv1(
       .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
 
     if (error) {
-      console.error('Output shaft kit v1 lookup error:', error.message);
+      logger.error('drive.bom.output-shaft-kit-v1.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, outputShaftOptionKey });
       return null;
     }
 
@@ -447,7 +451,7 @@ async function lookupOutputShaftKitPNv1(
 
     return null;
   } catch (err) {
-    console.error('Output shaft kit v1 lookup failed:', err);
+    logger.error('drive.bom.output-shaft-kit-v1.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, outputShaftOptionKey });
     return null;
   }
 }
@@ -482,7 +486,7 @@ export async function getAvailableShaftStyles(
       .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
 
     if (error) {
-      console.error('Available shaft styles lookup error:', error.message);
+      logger.error('drive.bom.shaft-styles-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, outputShaftOptionKey });
       return [];
     }
 
@@ -512,7 +516,7 @@ export async function getAvailableShaftStyles(
         return order.indexOf(a.style) - order.indexOf(b.style);
       });
   } catch (err) {
-    console.error('Available shaft styles lookup failed:', err);
+    logger.error('drive.bom.shaft-styles-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, outputShaftOptionKey });
     return [];
   }
 }
@@ -547,7 +551,7 @@ export async function lookupOutputShaftKitByStyle(
       .filter('metadata_json->>plug_in_shaft_style', 'eq', plugInShaftStyle);
 
     if (error) {
-      console.error('Output shaft kit style lookup error:', error.message);
+      logger.error('drive.bom.output-shaft-kit-style.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, outputShaftOptionKey, plugInShaftStyle });
       return null;
     }
 
@@ -567,7 +571,7 @@ export async function lookupOutputShaftKitByStyle(
 
     return null;
   } catch (err) {
-    console.error('Output shaft kit style lookup failed:', err);
+    logger.error('drive.bom.output-shaft-kit-style.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, outputShaftOptionKey, plugInShaftStyle });
     return null;
   }
 }
@@ -601,7 +605,7 @@ export async function getAvailableShaftDiameters(
       .filter('metadata_json->>output_shaft_option_key', 'eq', outputShaftOptionKey);
 
     if (error) {
-      console.error('Available sprocket shaft diameters lookup error:', error.message);
+      logger.error('drive.bom.shaft-diameters-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, outputShaftOptionKey });
       return [];
     }
 
@@ -619,7 +623,7 @@ export async function getAvailableShaftDiameters(
 
     return Array.from(diameters).sort((a, b) => a - b);
   } catch (err) {
-    console.error('Available sprocket shaft diameters lookup failed:', err);
+    logger.error('drive.bom.shaft-diameters-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, outputShaftOptionKey });
     return [];
   }
 }
@@ -656,7 +660,7 @@ export async function getAvailableHollowShaftBushings(
       .filter('metadata_json->>shaft_interface_type', 'eq', shaftInterfaceType);
 
     if (error) {
-      console.error('Available hollow shaft bushings lookup error:', error.message);
+      logger.error('drive.bom.hollow-shaft-bushings-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, shaftInterfaceType });
       return [];
     }
 
@@ -680,7 +684,7 @@ export async function getAvailableHollowShaftBushings(
     // Sort by bore size ascending
     return bushings.sort((a, b) => a.bore_in - b.bore_in);
   } catch (err) {
-    console.error('Available hollow shaft bushings lookup failed:', err);
+    logger.error('drive.bom.hollow-shaft-bushings-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, shaftInterfaceType });
     return [];
   }
 }
@@ -712,7 +716,7 @@ export async function lookupHollowShaftBushing(
       .filter('metadata_json->>shaft_interface_type', 'eq', shaftInterfaceType);
 
     if (error) {
-      console.error('Hollow shaft bushing lookup error:', error.message);
+      logger.error('drive.bom.hollow-shaft-bushing-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: error.message, gearUnitSize, shaftInterfaceType, bushingBoreIn });
       return null;
     }
 
@@ -739,7 +743,7 @@ export async function lookupHollowShaftBushing(
 
     return null;
   } catch (err) {
-    console.error('Hollow shaft bushing lookup failed:', err);
+    logger.error('drive.bom.hollow-shaft-bushing-lookup.failed', { errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED, error: err, gearUnitSize, shaftInterfaceType, bushingBoreIn });
     return null;
   }
 }

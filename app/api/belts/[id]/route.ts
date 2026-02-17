@@ -12,6 +12,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '../../../../src/lib/supabase/client';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.belts-id' });
 
 interface BeltUsageBreakdown {
   applications: number;
@@ -47,7 +51,7 @@ async function getBeltUsageCount(catalogKey: string): Promise<BeltUsageResult> {
     .filter('inputs->belt_catalog_key', 'eq', catalogKey);
 
   if (appError) {
-    console.error('Error counting belt usage in calc_recipes:', appError);
+    logger.error('api.belts-id.usage-count-recipes.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: appError });
   }
 
   // Count configuration_revisions (legacy configs) referencing this belt
@@ -57,7 +61,7 @@ async function getBeltUsageCount(catalogKey: string): Promise<BeltUsageResult> {
     .filter('inputs_json->belt_catalog_key', 'eq', catalogKey);
 
   if (configError) {
-    console.error('Error counting belt usage in configuration_revisions:', configError);
+    logger.error('api.belts-id.usage-count-revisions.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: configError });
   }
 
   const applications = appCount || 0;
@@ -112,7 +116,7 @@ export async function GET(
       usage,
     });
   } catch (error) {
-    console.error('Belt GET error:', error);
+    logger.error('api.belts-id.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -170,7 +174,7 @@ export async function DELETE(
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Belt delete error:', deleteError);
+      logger.error('api.belts-id.delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: deleteError });
       return NextResponse.json(
         { error: 'Failed to delete belt', details: deleteError.message },
         { status: 500 }
@@ -182,7 +186,7 @@ export async function DELETE(
       message: `Belt "${belt.display_name}" deleted successfully`,
     });
   } catch (error) {
-    console.error('Belt DELETE error:', error);
+    logger.error('api.belts-id.delete-handler.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -245,7 +249,7 @@ export async function PATCH(
       .single();
 
     if (updateError) {
-      console.error('Belt update error:', updateError);
+      logger.error('api.belts-id.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to update belt', details: updateError.message },
         { status: 500 }
@@ -260,7 +264,7 @@ export async function PATCH(
         : `Belt "${existing.display_name}" deactivated`,
     });
   } catch (error) {
-    console.error('Belt PATCH error:', error);
+    logger.error('api.belts-id.patch.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

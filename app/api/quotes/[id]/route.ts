@@ -12,6 +12,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { QuoteUpdate } from '../../../../src/lib/database/quote-types';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.quotes-detail' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -81,7 +85,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       sales_order: salesOrderRes.data || null,
     });
   } catch (error) {
-    console.error('Quote GET error:', error);
+    logger.error('api.quotes-detail.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -138,7 +142,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Quote update error:', error);
+      logger.error('api.quotes-detail.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to update quote', details: error.message },
         { status: 500 }
@@ -147,7 +151,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(quote);
   } catch (error) {
-    console.error('Quote PATCH error:', error);
+    logger.error('api.quotes-detail.patch.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -172,7 +176,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json({ success: true, id });
   } catch (error) {
-    console.error('Quote DELETE error:', error);
+    logger.error('api.quotes-detail.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

@@ -17,6 +17,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { selectGearmotor, GearmotorSelectionInputs } from '../../../../src/lib/gearmotor';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.gearmotor-select' });
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error('Gearmotor select API error:', error);
+    logger.error('api.gearmotor-select.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

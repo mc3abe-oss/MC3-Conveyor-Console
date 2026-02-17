@@ -12,6 +12,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../src/lib/supabase/server';
 import { SalesOrderUpdate } from '../../../../src/lib/database/quote-types';
+import { createLogger } from '../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.sales-orders-detail' });
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -79,7 +83,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
       origin_quote: originQuoteRes.data || null,
     });
   } catch (error) {
-    console.error('Sales order GET error:', error);
+    logger.error('api.sales-orders-detail.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -118,7 +122,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (error) {
-      console.error('Sales order update error:', error);
+      logger.error('api.sales-orders-detail.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error });
       return NextResponse.json(
         { error: 'Failed to update sales order', details: error.message },
         { status: 500 }
@@ -127,7 +131,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(salesOrder);
   } catch (error) {
-    console.error('Sales order PATCH error:', error);
+    logger.error('api.sales-orders-detail.patch.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -206,7 +210,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       .eq('id', id);
 
     if (deleteError) {
-      console.error('Sales order hard delete error:', deleteError);
+      logger.error('api.sales-orders-detail.hard-delete.failed', { errorCode: ErrorCodes.DB_DELETE_FAILED, error: deleteError });
       return NextResponse.json(
         { error: 'Failed to delete sales order', details: deleteError.message },
         { status: 500 }
@@ -221,7 +225,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
       deleted_apps_count: appIds.length,
     });
   } catch (error) {
-    console.error('Sales order DELETE error:', error);
+    logger.error('api.sales-orders-detail.delete.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

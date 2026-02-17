@@ -60,7 +60,7 @@ export default function VGuideSelect({
         const data = await response.json();
         setVguides(data);
       } catch (err) {
-        console.error('VGuideSelect fetch error:', err);
+        logger.error('vguide.catalog.fetch.failed', { errorCode: ErrorCodes.CATALOG_VGUIDE_NOT_FOUND, error: err });
         setError(err instanceof Error ? err.message : 'Failed to load v-guides');
       } finally {
         setIsLoading(false);

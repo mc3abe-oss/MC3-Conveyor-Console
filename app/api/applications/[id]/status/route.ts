@@ -17,6 +17,10 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '../../../../../src/lib/supabase/server';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.status' });
 
 interface StatusUpdatePayload {
   status: 'DRAFT' | 'FINALIZED';
@@ -48,7 +52,7 @@ export async function PUT(
       .maybeSingle();
 
     if (fetchError || !app) {
-      console.error('Application fetch error:', fetchError);
+      logger.error('api.status.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: fetchError });
       return NextResponse.json(
         { error: 'Application not found' },
         { status: 404 }
@@ -74,7 +78,7 @@ export async function PUT(
       .single();
 
     if (updateError) {
-      console.error('Status update error:', updateError);
+      logger.error('api.status.update.failed', { errorCode: ErrorCodes.DB_UPDATE_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to update status', details: updateError.message },
         { status: 500 }
@@ -87,7 +91,7 @@ export async function PUT(
       message: body.status === 'FINALIZED' ? 'Application finalized' : 'Application reopened as draft',
     });
   } catch (error) {
-    console.error('Status API error:', error);
+    logger.error('api.status.put.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
@@ -120,7 +124,7 @@ export async function GET(
       application_status: app.application_status || 'DRAFT',
     });
   } catch (error) {
-    console.error('Status GET error:', error);
+    logger.error('api.status.get.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

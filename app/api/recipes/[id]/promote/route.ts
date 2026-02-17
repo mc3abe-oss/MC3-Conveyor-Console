@@ -17,6 +17,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { supabase, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
 import { canonicalizeRecipeInputs } from '../../../../../src/lib/recipes/canon/canonicalize-inputs';
 import { hashCanonical } from '../../../../../src/lib/recipes/hash';
+import { createLogger } from '../../../../../src/lib/logger';
+import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'api.recipes-promote' });
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -61,7 +65,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       if (fetchError.code === 'PGRST116') {
         return NextResponse.json({ error: 'Record not found' }, { status: 404 });
       }
-      console.error('Fetch error:', fetchError);
+      logger.error('api.recipes-promote.fetch.failed', { errorCode: ErrorCodes.DB_QUERY_FAILED, error: fetchError });
       return NextResponse.json(
         { error: 'Failed to fetch record', details: fetchError.message },
         { status: 500 }
@@ -87,7 +91,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     // Log removed keys for debugging
     if (removedKeys.length > 0 && process.env.NODE_ENV === 'development') {
-      console.log('Promote canonicalization removed keys:', removedKeys);
+      logger.info('api.recipes-promote.canonicalization.removed-keys', { removedKeys });
     }
 
     // Build update payload
@@ -133,7 +137,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       .single();
 
     if (updateError) {
-      console.error('Promote error:', updateError);
+      logger.error('api.recipes-promote.update.failed', { errorCode: ErrorCodes.RECIPE_PROMOTION_FAILED, error: updateError });
       return NextResponse.json(
         { error: 'Failed to promote to recipe', details: updateError.message },
         { status: 500 }
@@ -146,7 +150,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
       already_promoted: false,
     });
   } catch (error) {
-    console.error('Promote API error:', error);
+    logger.error('api.recipes-promote.failed', { errorCode: ErrorCodes.API_INTERNAL_ERROR, error });
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
