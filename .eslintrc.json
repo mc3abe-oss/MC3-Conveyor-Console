@@ -7,7 +7,10 @@
   "plugins": ["@typescript-eslint"],
   "rules": {
     "@typescript-eslint/no-floating-promises": "error",
-    "no-console": "error"
+    "no-console": "error",
+    "no-empty": ["error", { "allowEmptyCatch": false }],
+    "@typescript-eslint/no-misused-promises": "warn",
+    "@typescript-eslint/no-explicit-any": "warn"
   },
   "overrides": [
     {
@@ -17,7 +20,15 @@
       },
       "rules": {
         "@typescript-eslint/no-floating-promises": "off",
+        "@typescript-eslint/no-misused-promises": "off",
+        "@typescript-eslint/no-explicit-any": "off",
         "no-console": "off"
+      }
+    },
+    {
+      "files": ["src/lib/database/database.types.ts"],
+      "rules": {
+        "@typescript-eslint/no-explicit-any": "off"
       }
     },
     {
