@@ -14,6 +14,11 @@
 
 'use client';
 
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'v-guide-select' });
+
 import { useState, useEffect, useMemo } from 'react';
 import { VGuideItem } from '../api/v-guides/route';
 import { translateVGuideKey } from '../../src/lib/v-guide-utils';
@@ -134,7 +139,13 @@ export async function fetchVGuideByKey(key: string): Promise<VGuideItem | null> 
     if (!response.ok) return null;
     const vguides = await response.json() as VGuideItem[];
     return vguides.find((v) => v.key === translatedKey) || null;
-  } catch {
+  } catch (err) {
+    // INTENTIONAL FALLBACK: return null on v-guide fetch failure
+    logger.warn('vguide.catalog.fetch.failed', {
+      errorCode: ErrorCodes.CATALOG_VGUIDE_NOT_FOUND,
+      key,
+      error: err,
+    });
     return null;
   }
 }

@@ -9,6 +9,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { BeltCatalogItem } from '../api/belts/route';
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'use-belt-catalog' });
 
 // In-memory cache for active belts
 let beltCatalogCache: BeltCatalogItem[] | null = null;
@@ -114,7 +118,13 @@ export function useBelt(catalogKey: string | undefined) {
           setFetchedBelt(found);
           setIsFetching(false);
         })
-        .catch(() => {
+        // INTENTIONAL FALLBACK: clear belt selection on catalog fetch failure
+        .catch((err) => {
+          logger.warn('belt.catalog.fetch.failed', {
+            errorCode: ErrorCodes.CATALOG_BELT_NOT_FOUND,
+            catalogKey,
+            error: err,
+          });
           individualBeltCache.set(catalogKey, null);
           setFetchedBelt(null);
           setIsFetching(false);

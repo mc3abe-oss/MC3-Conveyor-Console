@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { SaveTarget, formatSaveTarget } from './SaveTargetModal';
 import RenameApplicationModal from './RenameApplicationModal';
 import TypedConfirmDeleteModal from './TypedConfirmDeleteModal';
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'application-context-header' });
 
 /** Save state values - matches useSaveState */
 export type SaveState = 'saved' | 'dirty' | 'saving' | 'error';
@@ -149,7 +153,13 @@ export default function ApplicationContextHeader({
           setDeleteLinkageInfo(null);
         }
       })
-      .catch(() => {
+      // INTENTIONAL FALLBACK: deny delete permission on check failure
+      .catch((err) => {
+        logger.warn('application.delete-eligibility.check.failed', {
+          errorCode: ErrorCodes.API_INTERNAL_ERROR,
+          configId: loadedConfigurationId,
+          error: err,
+        });
         setCanDelete(false);
         setDeleteLinkageInfo(null);
       })
@@ -174,7 +184,13 @@ export default function ApplicationContextHeader({
           setSoDeleteBlockReason('Unable to check delete eligibility');
         }
       })
-      .catch(() => {
+      // INTENTIONAL FALLBACK: deny delete permission on check failure
+      .catch((err) => {
+        logger.warn('sales-order.delete-eligibility.check.failed', {
+          errorCode: ErrorCodes.API_INTERNAL_ERROR,
+          salesOrderId: context?.id,
+          error: err,
+        });
         setSoCanDelete(false);
         setSoDeleteBlockReason('Unable to check delete eligibility');
       });

@@ -17,6 +17,10 @@ import {
   type BomResolution,
 } from '../../src/lib/gearmotor';
 import { GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
+import { createLogger } from '../../src/lib/logger';
+import { ErrorCodes } from '../../src/lib/logger/error-codes';
+
+const logger = createLogger().child({ module: 'drive-selector-modal' });
 
 // Formatting helpers for REQUIREMENTS (can round for display)
 const formatRequiredRpm = (rpm: number | null | undefined): string => {
@@ -230,7 +234,12 @@ export default function DriveSelectorModal({
           setAvailableStyles(styles);
           setStylesLoading(false);
         })
-        .catch(() => {
+        // INTENTIONAL FALLBACK: UI degrades gracefully on fetch failure
+        .catch((err) => {
+          logger.warn('drive.styles.fetch.failed', {
+            errorCode: ErrorCodes.DRIVE_NO_MATCH,
+            error: err,
+          });
           setAvailableStyles([]);
           setStylesLoading(false);
         });
@@ -246,7 +255,12 @@ export default function DriveSelectorModal({
           setAvailableBushings(bushings);
           setBushingsLoading(false);
         })
-        .catch(() => {
+        // INTENTIONAL FALLBACK: UI degrades gracefully on fetch failure
+        .catch((err) => {
+          logger.warn('drive.bushings.fetch.failed', {
+            errorCode: ErrorCodes.DRIVE_NO_MATCH,
+            error: err,
+          });
           setAvailableBushings([]);
           setBushingsLoading(false);
         });
@@ -302,7 +316,12 @@ export default function DriveSelectorModal({
       .then((bom) => {
         setResolvedBom(bom);
       })
-      .catch(() => {
+      // INTENTIONAL FALLBACK: UI degrades gracefully on fetch failure
+      .catch((err) => {
+        logger.warn('drive.bom.resolve.failed', {
+          errorCode: ErrorCodes.DRIVE_BOM_RESOLUTION_FAILED,
+          error: err,
+        });
         setResolvedBom(null);
       })
       .finally(() => {

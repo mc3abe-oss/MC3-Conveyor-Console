@@ -6,6 +6,10 @@
  */
 
 import type { TelemetryEvent, TelemetrySeverity } from './types';
+import { createLogger } from '../logger';
+import { ErrorCodes } from '../logger/error-codes';
+
+const logger = createLogger().child({ module: 'telemetry-client' });
 
 const FLUSH_INTERVAL_MS = 2000;
 const DEDUPE_WINDOW_MS = 5000;
@@ -114,8 +118,14 @@ class TelemetryClient {
     }, FLUSH_INTERVAL_MS);
 
     // Best-effort flush on page unload
+    // BACKGROUND: flush best-effort during page unload
     window.addEventListener('beforeunload', () => {
-      this.flush().catch(() => {});
+      this.flush().catch((err) => {
+        logger.warn('telemetry.flush.beforeunload.failed', {
+          errorCode: ErrorCodes.TELEMETRY_FLUSH_FAILED,
+          error: err,
+        });
+      });
     });
 
     // Clean up old fingerprints periodically
