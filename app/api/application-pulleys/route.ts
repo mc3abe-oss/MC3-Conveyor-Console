@@ -28,6 +28,9 @@ export type WallValidationStatus = 'NOT_VALIDATED' | 'PASS' | 'RECOMMEND_UPGRADE
 export type BalanceMethod = 'static' | 'dynamic';
 export type BalanceSource = 'internal_guideline' | 'vendor_spec' | 'user_override';
 
+export type DraftPulleyData = Omit<ApplicationPulley,
+  'id' | 'application_line_id' | 'created_at' | 'updated_at' | 'override_reason'>;
+
 export interface ApplicationPulley {
   id: string;
   application_line_id: string;

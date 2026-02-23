@@ -17,6 +17,7 @@ import {
 } from '../../../../../src/models/magnetic_conveyor_v1/schema';
 import { SliderbedInputs, SliderbedOutputs } from '../../../../../src/models/sliderbed_v1/schema';
 import { SectionCounts, SectionKey, Issue } from '../../../useConfigureIssues';
+import { DraftPulleyData } from '../../../../api/application-pulleys/route';
 
 export interface MagneticConveyorPhysicalProps {
   inputs: SliderbedInputs;
@@ -28,6 +29,8 @@ export interface MagneticConveyorPhysicalProps {
   getMergedIssuesForSection?: (sectionKey: SectionKey) => Issue[];
   outputs?: SliderbedOutputs | null;
   showToast?: (message: string) => void;
+  draftPulleys?: { drive: DraftPulleyData | null; tail: DraftPulleyData | null };
+  onDraftPulleyChange?: (pulleys: { drive: DraftPulleyData | null; tail: DraftPulleyData | null }) => void;
 }
 
 // =============================================================================

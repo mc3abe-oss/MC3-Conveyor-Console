@@ -160,7 +160,6 @@ export default function PulleyPreviewCards({
   drivePulley,
   tailPulley,
   trackingLabel,
-  applicationLineId,
   pulleysLoading,
   onEditDrive,
   onEditTail,
@@ -172,9 +171,9 @@ export default function PulleyPreviewCards({
         <CompactCardHeader
           title="Head/Drive"
           badges={drivePulley ? [{ label: 'Configured', variant: 'success' }] : []}
-          actions={applicationLineId && (
+          actions={
             <EditButton onClick={onEditDrive} configured={!!drivePulley} />
-          )}
+          }
         />
         {pulleysLoading ? (
           <p className="text-xs text-gray-500">Loading...</p>
@@ -190,8 +189,6 @@ export default function PulleyPreviewCards({
             ]}
             columns={2}
           />
-        ) : !applicationLineId ? (
-          <p className="text-xs text-amber-600">Save to configure</p>
         ) : (
           <p className="text-xs text-gray-500">Not configured</p>
         )}
@@ -202,9 +199,9 @@ export default function PulleyPreviewCards({
         <CompactCardHeader
           title="Tail"
           badges={tailPulley ? [{ label: 'Configured', variant: 'success' }] : []}
-          actions={applicationLineId && (
+          actions={
             <EditButton onClick={onEditTail} configured={!!tailPulley} />
-          )}
+          }
         />
         {pulleysLoading ? (
           <p className="text-xs text-gray-500">Loading...</p>
@@ -220,8 +217,6 @@ export default function PulleyPreviewCards({
             ]}
             columns={2}
           />
-        ) : !applicationLineId ? (
-          <p className="text-xs text-amber-600">Save to configure</p>
         ) : (
           <p className="text-xs text-gray-500">Not configured</p>
         )}

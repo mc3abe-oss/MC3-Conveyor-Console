@@ -13,7 +13,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { ApplicationPulley, LaggingType, LaggingPattern } from '../api/application-pulleys/route';
+import { ApplicationPulley, DraftPulleyData, LaggingType, LaggingPattern } from '../api/application-pulleys/route';
 import { LAGGING_PATTERN_LABELS } from '../../src/lib/lagging-patterns';
 import { PulleyLibraryModel } from '../api/admin/pulley-models/route';
 import {
@@ -53,6 +53,8 @@ interface Props {
   beltWidthIn?: number;
   calculatedPulleyRpm?: number;  // Calculated pulley RPM for balancing recommendation
   onSave?: () => void;
+  draftPulley?: DraftPulleyData | null;
+  onDraftSave?: (data: DraftPulleyData) => void;
 }
 
 type TabPosition = 'DRIVE' | 'TAIL';
@@ -138,6 +140,8 @@ export default function PulleyConfigModal({
   beltWidthIn,
   calculatedPulleyRpm,
   onSave,
+  draftPulley,
+  onDraftSave,
 }: Props) {
   // Derive activeTab from pulleyEnd prop (no longer using internal tab state)
   const activeTab: TabPosition = pulleyEnd === 'drive' ? 'DRIVE' : 'TAIL';
@@ -157,7 +161,7 @@ export default function PulleyConfigModal({
 
   // Load models and existing pulley configs when modal opens
   useEffect(() => {
-    if (isOpen && applicationLineId) {
+    if (isOpen) {
       void loadData();
     }
   }, [isOpen, applicationLineId]);
@@ -210,6 +214,25 @@ export default function PulleyConfigModal({
             if (eligibleTail.length > 0) {
               setTailForm(createFormFromModel(eligibleTail[0], 'TAIL'));
             }
+          }
+        }
+      } else {
+        // No applicationLineId — hydrate from draft or select default model
+        if (draftPulley && draftPulley.position === 'DRIVE') {
+          setDriveForm(pulleyToForm(draftPulley as unknown as ApplicationPulley, modelsData, 'DRIVE'));
+        } else {
+          const eligibleDrive = getEligibleModelsForPosition(modelsData, 'DRIVE');
+          if (eligibleDrive.length > 0) {
+            setDriveForm(createFormFromModel(eligibleDrive[0], 'DRIVE'));
+          }
+        }
+
+        if (draftPulley && draftPulley.position === 'TAIL') {
+          setTailForm(pulleyToForm(draftPulley as unknown as ApplicationPulley, modelsData, 'TAIL'));
+        } else {
+          const eligibleTail = getEligibleModelsForPosition(modelsData, 'TAIL');
+          if (eligibleTail.length > 0) {
+            setTailForm(createFormFromModel(eligibleTail[0], 'TAIL'));
           }
         }
       }
@@ -537,11 +560,6 @@ export default function PulleyConfigModal({
   }
 
   async function handleSave() {
-    if (!applicationLineId) {
-      setError('No application line selected');
-      return;
-    }
-
     // Only validate and save the active pulley
     const currentForm = activeTab === 'DRIVE' ? driveForm : tailForm;
     const positionLabel = activeTab === 'DRIVE' ? 'Drive' : 'Tail';
@@ -567,8 +585,13 @@ export default function PulleyConfigModal({
       // Save only the active pulley
       if (currentForm.model_key) {
         const model = models.find((m) => m.model_key === currentForm.model_key);
+        const shellOdIn = model?.shell_od_in || null;
+        const laggingThicknessIn = currentForm.lagging_type !== 'NONE'
+          ? parseFloat(currentForm.lagging_thickness_in) || 0
+          : 0;
+        const finishedOdIn = shellOdIn != null ? shellOdIn + 2 * laggingThicknessIn : null;
+
         const payload = {
-          application_line_id: applicationLineId,
           position: activeTab,
           model_key: currentForm.model_key,
           style_key: model?.style_key || currentForm.model_key, // Keep style_key for backward compat
@@ -582,9 +605,10 @@ export default function PulleyConfigModal({
           lagging_pattern: currentForm.lagging_type !== 'NONE' ? currentForm.lagging_pattern : 'none',
           lagging_pattern_notes: currentForm.lagging_pattern_notes.trim() || null,
           face_width_in: currentForm.face_width_in ? parseFloat(currentForm.face_width_in) : null,
-          shell_od_in: model?.shell_od_in || null,
+          shell_od_in: shellOdIn,
           shell_wall_in: currentForm.shell_wall_in ? parseFloat(currentForm.shell_wall_in) : null,
           hub_centers_in: currentForm.hub_centers_in ? parseFloat(currentForm.hub_centers_in) : null,
+          finished_od_in: finishedOdIn,
           enforce_pci_checks: currentForm.enforce_pci_checks,
           notes: currentForm.notes.trim() || null,
           wall_validation_status: currentForm.wallValidationStatus,
@@ -600,15 +624,21 @@ export default function PulleyConfigModal({
           balance_source: currentForm.balance_source,
         };
 
-        const res = await fetch('/api/application-pulleys', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        });
+        if (applicationLineId) {
+          // Persist to DB
+          const res = await fetch('/api/application-pulleys', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ application_line_id: applicationLineId, ...payload }),
+          });
 
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(`${positionLabel} pulley: ${err.error}`);
+          if (!res.ok) {
+            const err = await res.json();
+            throw new Error(`${positionLabel} pulley: ${err.error}`);
+          }
+        } else if (onDraftSave) {
+          // No applicationLineId — save as draft in local state
+          onDraftSave(payload as DraftPulleyData);
         }
       }
 

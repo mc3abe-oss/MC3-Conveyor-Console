@@ -33,6 +33,7 @@ import { createClient } from '../../src/lib/supabase/browser';
 import { stripSoContextFromSearchParams } from '../../src/lib/strip-so-context';
 import { ProductKey } from '../../src/lib/products';
 import { getProduct } from '../../src/products';
+import { DraftPulleyData } from '../api/application-pulleys/route';
 
 type ViewMode = 'configure' | 'results' | 'outputs_v2' | 'commercial_scope' | 'vault';
 type LoadState = 'idle' | 'loading' | 'loaded' | 'error' | 'awaiting-selection';
@@ -150,6 +151,11 @@ export default function BeltConveyorCalculatorApp({
     scopeLines: [],
     attachments: [],
   });
+
+  // Draft pulleys (local state until applicationLineId exists)
+  const [draftPulleys, setDraftPulleys] = useState<{ drive: DraftPulleyData | null; tail: DraftPulleyData | null }>({ drive: null, tail: null });
+  const draftPulleysRef = useRef(draftPulleys);
+  draftPulleysRef.current = draftPulleys;
 
   // View mode: 'configure' or 'results'
   const [viewMode, setViewMode] = useState<ViewMode>('configure');
@@ -581,6 +587,7 @@ export default function BeltConveyorCalculatorApp({
       setLoadedRevisionId(null);
       setContext(null);
       setResult(null);
+      setDraftPulleys({ drive: null, tail: null });
       setInputs(null);
     }
     setLastLoadParams(currentParams);
@@ -614,6 +621,25 @@ export default function BeltConveyorCalculatorApp({
         setLoadState('error');
       });
   };
+
+  // Flush draft pulleys when applicationLineId becomes available (parent-level safety net)
+  useEffect(() => {
+    if (!loadedConfigurationId) return;
+    const drafts = draftPulleysRef.current;
+    if (!drafts.drive && !drafts.tail) return;
+    async function flush() {
+      for (const d of [drafts.drive, drafts.tail]) {
+        if (!d) continue;
+        await fetch('/api/application-pulleys', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ application_line_id: loadedConfigurationId, ...d }),
+        });
+      }
+      setDraftPulleys({ drive: null, tail: null });
+    }
+    void flush();
+  }, [loadedConfigurationId]);
 
   // Handle new application gate modal selection (Quote/SO attachment)
   const handleNewAppGateSelect = async (target: NewApplicationTarget) => {
@@ -929,6 +955,7 @@ export default function BeltConveyorCalculatorApp({
 
     // Reset loaded state - use a unique revision ID to trigger CalculatorForm reset
     setLoadedConfigurationId(null);
+    setDraftPulleys({ drive: null, tail: null });
     const clearRevisionId = `__clear__${Date.now()}`;
     setLoadedRevisionId(clearRevisionId);
     setCreatedByDisplay(null);
@@ -984,6 +1011,7 @@ export default function BeltConveyorCalculatorApp({
     setContext(null);
     setConveyorQty(1);
     setLoadedConfigurationId(null);
+    setDraftPulleys({ drive: null, tail: null });
     setLoadedRevisionId(null);
     setInitialLoadedPayload(null);
     setInputs(null);
@@ -1041,6 +1069,7 @@ export default function BeltConveyorCalculatorApp({
       setContext(null);
       setConveyorQty(1);
       setLoadedConfigurationId(null);
+      setDraftPulleys({ drive: null, tail: null });
       setLoadedRevisionId(null);
       setInitialLoadedPayload(null);
       setInputs(null);
@@ -1724,6 +1753,8 @@ export default function BeltConveyorCalculatorApp({
             outputs={result?.outputs}
             showToast={showToast}
             skipPaintValidation={!hasAttemptedExplicitAction}
+            draftPulleys={draftPulleys}
+            onDraftPulleyChange={setDraftPulleys}
           />
         </div>
 

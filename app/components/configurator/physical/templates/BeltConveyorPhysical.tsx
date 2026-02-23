@@ -50,7 +50,7 @@ import { getEffectiveMinPulleyDiameters, getCleatSpacingMultiplier } from '../..
 import { getSheetMetalThicknessOptions } from '../../../../../src/lib/frame-catalog';
 import AccordionSection, { useAccordionState } from '../../../AccordionSection';
 import { SectionCounts, SectionKey, Issue, IssueCode } from '../../../useConfigureIssues';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import PulleyConfigModal from '../../../PulleyConfigModal';
 import CleatsConfigModal from '../../../CleatsConfigModal';
 import ReturnSupportModal from '../../../ReturnSupportModal';
@@ -64,7 +64,7 @@ import BeltPiwPilCard from '../../../conveyorPhysical/cards/BeltPiwPilCard';
 import VGuideSelectCard from '../../../conveyorPhysical/cards/VGuideSelectCard';
 import LegacyPulleyOverrideCard from '../../../conveyorPhysical/cards/LegacyPulleyOverrideCard';
 import { getBeltTrackingMode, getFaceProfileLabel } from '../../../../../src/lib/pulley-tracking';
-import { ApplicationPulley } from '../../../../api/application-pulleys/route';
+import { ApplicationPulley, DraftPulleyData } from '../../../../api/application-pulleys/route';
 import {
   lookupCleatsMinPulleyDia,
   CleatPattern,
@@ -89,6 +89,20 @@ export interface BeltConveyorPhysicalProps {
   getMergedIssuesForSection?: (sectionKey: SectionKey) => Issue[];
   outputs?: SliderbedOutputs | null;
   showToast?: (message: string) => void;
+  draftPulleys?: { drive: DraftPulleyData | null; tail: DraftPulleyData | null };
+  onDraftPulleyChange?: (pulleys: { drive: DraftPulleyData | null; tail: DraftPulleyData | null }) => void;
+}
+
+/** Pad a DraftPulleyData with synthetic empty fields to produce an ApplicationPulley shape for display. */
+function draftToApp(draft: DraftPulleyData): ApplicationPulley {
+  return {
+    id: '',
+    application_line_id: '',
+    created_at: '',
+    updated_at: '',
+    override_reason: null,
+    ...draft,
+  };
 }
 
 export default function BeltConveyorPhysical({
@@ -101,6 +115,8 @@ export default function BeltConveyorPhysical({
   getMergedIssuesForSection,
   outputs,
   showToast,
+  draftPulleys,
+  onDraftPulleyChange,
 }: BeltConveyorPhysicalProps) {
   const handleBeltChange = (catalogKey: string | undefined, belt: BeltCatalogItem | undefined) => {
     updateInput('belt_catalog_key', catalogKey);
@@ -218,14 +234,33 @@ export default function BeltConveyorPhysical({
   const trackingMode = getBeltTrackingMode({ belt_tracking_method: inputs.belt_tracking_method });
   const trackingLabel = getFaceProfileLabel(trackingMode);
 
+  // Ref for draft pulleys to avoid stale reads in effects
+  const draftPulleysRef = useRef(draftPulleys);
+  draftPulleysRef.current = draftPulleys;
+
   useEffect(() => {
-    async function loadPulleys() {
+    async function flushAndLoadPulleys() {
       if (!applicationLineId) {
         setApplicationPulleys([]);
         return;
       }
       setPulleysLoading(true);
       try {
+        // Flush any pending drafts to DB before loading
+        const drafts = draftPulleysRef.current;
+        if (drafts?.drive || drafts?.tail) {
+          for (const d of [drafts.drive, drafts.tail]) {
+            if (!d) continue;
+            await fetch('/api/application-pulleys', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ application_line_id: applicationLineId, ...d }),
+            });
+          }
+          onDraftPulleyChange?.({ drive: null, tail: null });
+        }
+
+        // Load from DB
         const res = await fetch(`/api/application-pulleys?line_id=${applicationLineId}`);
         if (res.ok) {
           const data = await res.json();
@@ -237,58 +272,64 @@ export default function BeltConveyorPhysical({
         setPulleysLoading(false);
       }
     }
-    void loadPulleys();
+    void flushAndLoadPulleys();
   }, [applicationLineId]);
 
   const drivePulley = applicationPulleys.find((p) => p.position === 'DRIVE');
   const tailPulley = applicationPulleys.find((p) => p.position === 'TAIL');
 
+  // Effective pulleys: DB data takes precedence, then drafts for display
+  const effectiveDrive = drivePulley || (draftPulleys?.drive ? draftToApp(draftPulleys.drive) : undefined);
+  const effectiveTail = tailPulley || (draftPulleys?.tail ? draftToApp(draftPulleys.tail) : undefined);
+
   useEffect(() => {
-    if (drivePulley?.finished_od_in) {
-      if (inputs.drive_pulley_diameter_in !== drivePulley.finished_od_in) {
-        updateInput('drive_pulley_diameter_in', drivePulley.finished_od_in);
-        updateInput('pulley_diameter_in', drivePulley.finished_od_in);
+    if (effectiveDrive?.finished_od_in) {
+      if (inputs.drive_pulley_diameter_in !== effectiveDrive.finished_od_in) {
+        updateInput('drive_pulley_diameter_in', effectiveDrive.finished_od_in);
+        updateInput('pulley_diameter_in', effectiveDrive.finished_od_in);
       }
     }
-    if (drivePulley?.shell_od_in) {
-      if (inputs.drive_tube_od_in !== drivePulley.shell_od_in) {
-        updateInput('drive_tube_od_in', drivePulley.shell_od_in);
+    if (effectiveDrive?.shell_od_in) {
+      if (inputs.drive_tube_od_in !== effectiveDrive.shell_od_in) {
+        updateInput('drive_tube_od_in', effectiveDrive.shell_od_in);
       }
     }
-    if (drivePulley?.shell_wall_in) {
-      if (inputs.drive_tube_wall_in !== drivePulley.shell_wall_in) {
-        updateInput('drive_tube_wall_in', drivePulley.shell_wall_in);
+    if (effectiveDrive?.shell_wall_in) {
+      if (inputs.drive_tube_wall_in !== effectiveDrive.shell_wall_in) {
+        updateInput('drive_tube_wall_in', effectiveDrive.shell_wall_in);
       }
     }
-    if (drivePulley?.face_width_in) {
-      if (inputs.drive_pulley_face_width_in !== drivePulley.face_width_in) {
-        updateInput('drive_pulley_face_width_in', drivePulley.face_width_in);
+    if (effectiveDrive?.face_width_in) {
+      if (inputs.drive_pulley_face_width_in !== effectiveDrive.face_width_in) {
+        updateInput('drive_pulley_face_width_in', effectiveDrive.face_width_in);
       }
     }
 
-    if (tailPulley?.finished_od_in) {
-      if (inputs.tail_pulley_diameter_in !== tailPulley.finished_od_in) {
-        updateInput('tail_pulley_diameter_in', tailPulley.finished_od_in);
+    if (effectiveTail?.finished_od_in) {
+      if (inputs.tail_pulley_diameter_in !== effectiveTail.finished_od_in) {
+        updateInput('tail_pulley_diameter_in', effectiveTail.finished_od_in);
       }
     }
-    if (tailPulley?.shell_od_in) {
-      if (inputs.tail_tube_od_in !== tailPulley.shell_od_in) {
-        updateInput('tail_tube_od_in', tailPulley.shell_od_in);
+    if (effectiveTail?.shell_od_in) {
+      if (inputs.tail_tube_od_in !== effectiveTail.shell_od_in) {
+        updateInput('tail_tube_od_in', effectiveTail.shell_od_in);
       }
     }
-    if (tailPulley?.shell_wall_in) {
-      if (inputs.tail_tube_wall_in !== tailPulley.shell_wall_in) {
-        updateInput('tail_tube_wall_in', tailPulley.shell_wall_in);
+    if (effectiveTail?.shell_wall_in) {
+      if (inputs.tail_tube_wall_in !== effectiveTail.shell_wall_in) {
+        updateInput('tail_tube_wall_in', effectiveTail.shell_wall_in);
       }
     }
-    if (tailPulley?.face_width_in) {
-      if (inputs.tail_pulley_face_width_in !== tailPulley.face_width_in) {
-        updateInput('tail_pulley_face_width_in', tailPulley.face_width_in);
+    if (effectiveTail?.face_width_in) {
+      if (inputs.tail_pulley_face_width_in !== effectiveTail.face_width_in) {
+        updateInput('tail_pulley_face_width_in', effectiveTail.face_width_in);
       }
     }
-  }, [drivePulley, tailPulley]);
+  }, [effectiveDrive, effectiveTail]);
 
   const handlePulleySave = async () => {
+    // When applicationLineId exists, reload from DB to pick up the just-saved pulley
+    // When no applicationLineId, draft was already saved via onDraftSave — no-op here
     if (!applicationLineId) return;
     try {
       const res = await fetch(`/api/application-pulleys?line_id=${applicationLineId}`);
@@ -333,8 +374,8 @@ export default function BeltConveyorPhysical({
     }
   }, [isHeavySideLoad, inputs.belt_tracking_method]);
 
-  const actualDriveOd = drivePulley?.finished_od_in ?? inputs.drive_pulley_diameter_in ?? safeDrivePulleyDia;
-  const actualTailOd = tailPulley?.finished_od_in ?? inputs.tail_pulley_diameter_in ?? safeTailPulleyDia;
+  const actualDriveOd = effectiveDrive?.finished_od_in ?? inputs.drive_pulley_diameter_in ?? safeDrivePulleyDia;
+  const actualTailOd = effectiveTail?.finished_od_in ?? inputs.tail_pulley_diameter_in ?? safeTailPulleyDia;
 
   const cleatsEnabledForFrame = inputs.cleats_enabled === true;
   const effectiveCleatHeightForFrame = getEffectiveCleatHeight(
@@ -723,8 +764,8 @@ export default function BeltConveyorPhysical({
           <SectionDivider title="Pulleys" />
 
           <PulleyPreviewCards
-            drivePulley={drivePulley}
-            tailPulley={tailPulley}
+            drivePulley={effectiveDrive}
+            tailPulley={effectiveTail}
             trackingLabel={trackingLabel}
             applicationLineId={applicationLineId}
             pulleysLoading={pulleysLoading}
@@ -747,14 +788,14 @@ export default function BeltConveyorPhysical({
           )}
 
           {/* Pulley warnings - compact */}
-          {minPulleyRequired !== undefined && drivePulley?.finished_od_in && drivePulley.finished_od_in < minPulleyRequired && (
+          {minPulleyRequired !== undefined && effectiveDrive?.finished_od_in && effectiveDrive.finished_od_in < minPulleyRequired && (
             <FootnoteRow variant="warning">
-              Drive pulley ({drivePulley.finished_od_in}&quot;) below min ({minPulleyRequired.toFixed(1)}&quot;)
+              Drive pulley ({effectiveDrive.finished_od_in}&quot;) below min ({minPulleyRequired.toFixed(1)}&quot;)
             </FootnoteRow>
           )}
-          {minPulleyRequired !== undefined && tailPulley?.finished_od_in && tailPulley.finished_od_in < minPulleyRequired && (
+          {minPulleyRequired !== undefined && effectiveTail?.finished_od_in && effectiveTail.finished_od_in < minPulleyRequired && (
             <FootnoteRow variant="warning">
-              Tail pulley ({tailPulley.finished_od_in}&quot;) below min ({minPulleyRequired.toFixed(1)}&quot;)
+              Tail pulley ({effectiveTail.finished_od_in}&quot;) below min ({minPulleyRequired.toFixed(1)}&quot;)
             </FootnoteRow>
           )}
 
@@ -1049,6 +1090,14 @@ export default function BeltConveyorPhysical({
         vGuideKey={inputs.v_guide_key}
         beltWidthIn={inputs.belt_width_in}
         onSave={handlePulleySave}
+        draftPulley={pulleyModalEnd === 'drive' ? draftPulleys?.drive : draftPulleys?.tail}
+        onDraftSave={(draft) => {
+          const key = draft.position === 'DRIVE' ? 'drive' : 'tail';
+          onDraftPulleyChange?.({
+            ...(draftPulleys || { drive: null, tail: null }),
+            [key]: draft,
+          });
+        }}
       />
 
       {/* Return Support Modal */}

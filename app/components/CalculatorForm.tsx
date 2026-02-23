@@ -13,6 +13,7 @@ import { PhysicalTab } from './configurator/physical';
 import TabDriveControls from './TabDriveControls';
 import TabBuildOptions from './TabBuildOptions';
 import { ProductKey } from '../../src/lib/products';
+import { DraftPulleyData } from '../api/application-pulleys/route';
 import { useConfigureIssues, ConfigureTabKey, Issue, SectionKey, ValidationOptions } from './useConfigureIssues';
 import StatusLight from './StatusLight';
 import { ValidationError } from '../../src/models/sliderbed_v1/schema';
@@ -53,6 +54,10 @@ interface Props {
   skipPaintValidation?: boolean;
   /** Product key for routing to product-specific Physical tab */
   productKey?: ProductKey;
+  /** Draft pulley data for unsaved applications */
+  draftPulleys?: { drive: DraftPulleyData | null; tail: DraftPulleyData | null };
+  /** Callback when draft pulleys change */
+  onDraftPulleyChange?: (pulleys: { drive: DraftPulleyData | null; tail: DraftPulleyData | null }) => void;
 }
 
 export default function CalculatorForm({
@@ -69,6 +74,8 @@ export default function CalculatorForm({
   showToast,
   skipPaintValidation = false,
   productKey = 'belt_conveyor_v1',
+  draftPulleys,
+  onDraftPulleyChange,
 }: Props) {
   // Active sub-tab state
   const [activeTab, setActiveTab] = useState<ConfigureTab>('application');
@@ -278,6 +285,8 @@ export default function CalculatorForm({
               getMergedIssuesForSection={getMergedIssuesForSection}
               outputs={outputs}
               showToast={showToast}
+              draftPulleys={draftPulleys}
+              onDraftPulleyChange={onDraftPulleyChange}
             />
           )}
           {activeTab === 'drive' && (
