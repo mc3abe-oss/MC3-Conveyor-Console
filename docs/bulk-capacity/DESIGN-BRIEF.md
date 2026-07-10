@@ -1,5 +1,7 @@
 # Bulk Conveyor Capacity & Margin — Design Brief
 
+Terminology: belt conveyor is the product; bed type (slider | roller) is a configuration. See Conveyor-Console decision brief §2.
+
 ## 1. Purpose of this document
 This is a hand-off spec for designing the correct **BULK-material capacity calculation** in the
 belt conveyor calculator. A first implementation shipped to `main` and the domain owner judged its
