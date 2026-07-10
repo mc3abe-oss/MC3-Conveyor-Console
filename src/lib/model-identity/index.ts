@@ -51,7 +51,7 @@ export const MODEL_VERSION_ID = 'belt_conveyor_v1.0' as const;
  * - New features (minor)
  * - Breaking changes (major)
  */
-export const MODEL_SEMVER = '1.32.0' as const;
+export const MODEL_SEMVER = '1.32.1' as const;
 
 /**
  * Type for the model key literal.
