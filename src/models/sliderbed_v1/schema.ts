@@ -173,6 +173,17 @@ export enum FeedBehavior {
 }
 
 /**
+ * Pile shape (v1.49) — BULK material cross-section shape used for capacity.
+ * Determines the shape factor applied to the flat-box cross-section / cleat pocket.
+ */
+export enum PileShape {
+  /** Level fill: area = base × height. shape factor 1.0 */
+  Flat = 'FLAT',
+  /** Domed / crowned fill: parabolic, area = 2/3 × base × height. shape factor 0.67 */
+  Domed = 'DOMED',
+}
+
+/**
  * Display labels for FeedBehavior enum values
  */
 export const FEED_BEHAVIOR_LABELS: Record<FeedBehavior, string> = {
@@ -203,6 +214,14 @@ export const BULK_INPUT_METHOD_LABELS: Record<BulkInputMethod, string> = {
 export const DENSITY_SOURCE_LABELS: Record<DensitySource, string> = {
   [DensitySource.Known]: 'Known / Measured',
   [DensitySource.AssumedClass]: 'Assumed from material class',
+};
+
+/**
+ * Display labels for PileShape enum values
+ */
+export const PILE_SHAPE_LABELS: Record<PileShape, string> = {
+  [PileShape.Flat]: 'Flat (level fill)',
+  [PileShape.Domed]: 'Domed (crowned fill)',
 };
 
 /**
@@ -1180,6 +1199,20 @@ export interface SliderbedInputs {
    * ASSUMED_CLASS triggers a warning about density accuracy.
    */
   density_source?: DensitySource | string;
+
+  /**
+   * Pile / cross-section shape for BULK capacity (v1.49).
+   * FLAT (level, area = base × height) or DOMED (crowned, area = 2/3 × base × height).
+   * Undefined is treated as FLAT.
+   */
+  pile_shape?: PileShape | string;
+
+  /**
+   * Max usable fill height in inches for NON-cleated BULK conveyors (v1.49).
+   * The engineer's judgment for how deep the material rides on the belt. Used to size
+   * the cross-section capacity. Not used when cleated (cleat height sets the pocket).
+   */
+  max_fill_height_in?: number;
 
   /**
    * @deprecated v1.31: Use largest_lump_size_in instead.
@@ -2350,14 +2383,16 @@ export interface SliderbedOutputs {
 
   /**
    * Volume flow rate in ft³/hr (v1.29)
-   * Echo of input when bulk_input_method = VOLUME_FLOW.
-   * Undefined for PARTS mode or WEIGHT_FLOW.
+   * Echo of input when bulk_input_method = VOLUME_FLOW; derived as
+   * mass_flow / density when WEIGHT_FLOW and a density is provided (v1.49).
+   * Undefined for PARTS mode or WEIGHT_FLOW without a density.
    */
   volume_flow_ft3_per_hr?: number;
 
   /**
    * Density value used in calculation (v1.29)
-   * Only populated when bulk_input_method = VOLUME_FLOW.
+   * Populated for VOLUME_FLOW, and for WEIGHT_FLOW when a density is provided and
+   * used to derive volume flow (v1.49).
    */
   density_lbs_per_ft3_used?: number;
 
@@ -2389,8 +2424,40 @@ export interface SliderbedOutputs {
   /** Belt speed in FPM (calculated when speed_mode='drive_rpm', input when speed_mode='belt_speed') */
   belt_speed_fpm: number;
 
-  /** Capacity in parts per hour */
-  capacity_pph: number;
+  /**
+   * Capacity in parts per hour (PARTS mode).
+   * null for BULK material (no pitch) and for PARTS before dimensions are entered.
+   */
+  capacity_pph: number | null;
+
+  // =========================================================================
+  // v1.49: BULK CAPACITY & MARGIN
+  // =========================================================================
+  // Two stages. Stage 1 (required loading per linear foot) applies to every bulk
+  // conveyor. Capacity is a cross-section (non-cleated) or cleat pocket (cleated).
+  // Fill % and margin % compare required against capacity (volume basis). Null in
+  // PARTS mode and when a required input is missing.
+
+  /** Usable belt width per CEMA = 0.9 × belt_width_in − 2 (BULK). */
+  usable_belt_width_in?: number | null;
+  /** Stage 1: required volume loading per linear foot = volume_flow / (belt_speed × 60). */
+  required_ft3_per_ft?: number | null;
+  /** Stage 1: required mass loading per linear foot = mass_flow / (belt_speed × 60). */
+  required_lb_per_ft?: number | null;
+  /** Non-cleated capacity per foot = (usable_width × fill_height / 144) × shape_factor. */
+  bulk_capacity_ft3_per_ft?: number | null;
+  /** Non-cleated capacity per foot in lb = bulk_capacity_ft3_per_ft × density. */
+  bulk_capacity_lb_per_ft?: number | null;
+  /** Cleated pocket capacity in ft³ = (cleat_w × cleat_h × cleat_pitch / 1728) × shape_factor. */
+  pocket_capacity_ft3?: number | null;
+  /** Stage 2: required volume per cleat pocket = required_ft3_per_ft × (cleat_pitch_in / 12). */
+  required_ft3_per_cleat?: number | null;
+  /** Stage 2: required mass per cleat pocket = required_lb_per_ft × (cleat_pitch_in / 12). */
+  required_lb_per_cleat?: number | null;
+  /** Fill percent = required / capacity × 100 (volume basis). */
+  bulk_fill_pct?: number | null;
+  /** Margin percent = (capacity / required − 1) × 100 (volume basis). */
+  bulk_margin_pct?: number | null;
 
   /** Target throughput (required + margin) in parts per hour */
   target_pph?: number;

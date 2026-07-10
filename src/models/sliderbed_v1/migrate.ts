@@ -56,6 +56,7 @@ import {
   FrameConstructionType,
   SheetMetalGauge,
   MaterialForm,
+  PileShape,
 } from './schema';
 import { createLogger } from '../../lib/logger';
 
@@ -307,6 +308,12 @@ export function migrateInputs(inputs: Partial<SliderbedInputs>): SliderbedInputs
   // Note: BULK-specific fields (bulk_input_method, mass_flow_lbs_per_hr, etc.)
   // are NOT defaulted here. They are only required when material_form = BULK.
   // Validation in rules.ts will enforce their presence when needed.
+
+  // v1.49: Default pile_shape to FLAT for legacy configs (neutral shape factor 1.0,
+  // no math drift). The model also treats undefined as FLAT.
+  if (migrated.pile_shape === undefined) {
+    migrated.pile_shape = PileShape.Flat;
+  }
 
   return migrated;
 }

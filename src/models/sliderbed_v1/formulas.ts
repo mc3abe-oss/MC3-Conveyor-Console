@@ -58,6 +58,7 @@ import {
   MaterialForm,
   BulkInputMethod,
   DensitySource,
+  PileShape,
   RiskFlag,
   // v1.29: Return Support
   ReturnFrameStyle,
@@ -591,6 +592,14 @@ export function calculateBulkLoad(
   } else {
     // WEIGHT_FLOW: use mass flow directly
     massFlowLbsPerHr = inputs.mass_flow_lbs_per_hr ?? 0;
+
+    // Derive volume flow when a density is available, so downstream consumers
+    // (e.g. per-cleat pocket volume) have a volume figure in WEIGHT_FLOW mode too.
+    const density = inputs.density_lbs_per_ft3 ?? 0;
+    if (density > 0) {
+      densityLbsPerFt3Used = density;
+      volumeFlowFt3PerHr = massFlowLbsPerHr / density;
+    }
   }
 
   // Calculate residence time and load
@@ -891,12 +900,107 @@ export function calculateSpeedDeltaPct(
  *   capacity_pph = (belt_speed_fpm * 12 * 60) / pitch_in
  *
  * Note: 12 converts feet to inches, 60 converts minutes to hours
+ *
+ * Returns null when pitch is not positive (BULK material has no pitch, and PARTS
+ * mode has pitch 0 until part dimensions are entered). Dividing by 0 would yield
+ * Infinity, which renders literally in the UI. Also reused with cleat pitch to get
+ * cleats-per-hour for BULK cleat-pocket loading.
  */
 export function calculateCapacity(
   beltSpeedFpm: number,
   pitchIn: number
-): number {
-  return (beltSpeedFpm * 12 * 60) / pitchIn;
+): number | null {
+  if (!(pitchIn > 0)) return null;
+  const capacity = (beltSpeedFpm * 12 * 60) / pitchIn;
+  return Number.isFinite(capacity) ? capacity : null;
+}
+
+// ============================================================================
+// v1.49: BULK CAPACITY & MARGIN (Option B — calculated headroom)
+// ============================================================================
+
+/**
+ * Shape factor for BULK cross-section / cleat-pocket capacity.
+ * FLAT (level fill) = 1.0; DOMED (crowned, parabolic 2/3) = 0.67. Undefined → FLAT.
+ */
+export function bulkShapeFactor(pileShape: PileShape | string | undefined): number {
+  return pileShape === PileShape.Domed || pileShape === 'DOMED' ? 0.67 : 1.0;
+}
+
+/**
+ * CEMA usable belt width in inches: 0.9 × belt_width − 2 (edge clearance).
+ * Returns null if the result is not positive (belt too narrow for bulk).
+ */
+export function calculateUsableBeltWidth(beltWidthIn: number): number | null {
+  const usable = 0.9 * beltWidthIn - 2;
+  return usable > 0 ? usable : null;
+}
+
+/**
+ * Required loading on a linear foot of belt: flow_per_hr / (belt_speed_fpm × 60).
+ * Works for both mass (lb/ft) and volume (ft³/ft). Null if flow or speed missing.
+ */
+export function calculateLoadPerFoot(
+  flowPerHr: number | undefined,
+  beltSpeedFpm: number
+): number | null {
+  if (flowPerHr == null || !(beltSpeedFpm > 0)) return null;
+  const perFt = flowPerHr / (beltSpeedFpm * 60);
+  return Number.isFinite(perFt) ? perFt : null;
+}
+
+/**
+ * Non-cleated bulk capacity per linear foot in ft³/ft:
+ *   (usable_width_in × max_fill_height_in / 144) × shape_factor
+ * Null when usable width or fill height is missing/non-positive.
+ */
+export function calculateBulkCapacityPerFt(
+  usableWidthIn: number | null,
+  maxFillHeightIn: number | undefined,
+  shapeFactor: number
+): number | null {
+  if (usableWidthIn == null || !(usableWidthIn > 0)) return null;
+  if (maxFillHeightIn == null || !(maxFillHeightIn > 0)) return null;
+  const cap = ((usableWidthIn * maxFillHeightIn) / 144) * shapeFactor;
+  return Number.isFinite(cap) ? cap : null;
+}
+
+/**
+ * Cleated pocket capacity in ft³ (flat box):
+ *   (cleat_width_in × cleat_height_in × cleat_pitch_in / 1728) × shape_factor
+ * Null when any cleat dimension is missing/non-positive.
+ */
+export function calculatePocketCapacity(
+  cleatWidthIn: number | null | undefined,
+  cleatHeightIn: number | null | undefined,
+  cleatPitchIn: number | null | undefined,
+  shapeFactor: number
+): number | null {
+  if (cleatWidthIn == null || !(cleatWidthIn > 0)) return null;
+  if (cleatHeightIn == null || !(cleatHeightIn > 0)) return null;
+  if (cleatPitchIn == null || !(cleatPitchIn > 0)) return null;
+  const cap = ((cleatWidthIn * cleatHeightIn * cleatPitchIn) / 1728) * shapeFactor;
+  return Number.isFinite(cap) ? cap : null;
+}
+
+/** Fill percent = required / capacity × 100 (volume basis). Null if capacity ≤ 0. */
+export function calculateFillPct(
+  required: number | null,
+  capacity: number | null
+): number | null {
+  if (required == null || capacity == null || !(capacity > 0)) return null;
+  const pct = (required / capacity) * 100;
+  return Number.isFinite(pct) ? pct : null;
+}
+
+/** Margin percent = (capacity / required − 1) × 100 (volume basis). Null if required ≤ 0. */
+export function calculateBulkMarginPct(
+  required: number | null,
+  capacity: number | null
+): number | null {
+  if (required == null || capacity == null || !(required > 0)) return null;
+  const pct = (capacity / required - 1) * 100;
+  return Number.isFinite(pct) ? pct : null;
 }
 
 /**
@@ -2012,8 +2116,67 @@ export function calculate(
     beltSpeedFpm = calculateBeltSpeed(driveShaftRpm, drivePulleyDiameterIn);
   }
 
-  // Step 12: Capacity (parts per hour)
+  // Step 12: Capacity (parts per hour) — null for BULK (pitch 0) and for PARTS
+  // before dimensions are entered.
   const capacityPph = calculateCapacity(beltSpeedFpm, pitchIn);
+
+  // Step 12b: BULK capacity & margin (v1.49). Two stages:
+  //   Stage 1 - required loading per linear foot (cleatless, every bulk conveyor).
+  //   Stage 2 - per cleat = per-ft × cleat pitch (when cleated).
+  // Capacity is a cross-section (non-cleated: usable width × fill height) or a cleat
+  // pocket (cleated: width × height × pitch), times a pile-shape factor. Fill % and
+  // margin % compare required vs capacity on a volume basis.
+  let usableBeltWidthIn: number | null = null;
+  let requiredFt3PerFt: number | null = null;
+  let requiredLbPerFt: number | null = null;
+  let bulkCapacityFt3PerFt: number | null = null;
+  let bulkCapacityLbPerFt: number | null = null;
+  let pocketCapacityFt3: number | null = null;
+  let requiredFt3PerCleat: number | null = null;
+  let requiredLbPerCleat: number | null = null;
+  let bulkFillPct: number | null = null;
+  let bulkMarginPct: number | null = null;
+
+  if (isBulkMode) {
+    const shape = bulkShapeFactor(inputs.pile_shape);
+    usableBeltWidthIn = calculateUsableBeltWidth(inputs.belt_width_in);
+
+    // Stage 1: required loading per linear foot (cleatless, applies to all bulk).
+    requiredFt3PerFt = calculateLoadPerFoot(volumeFlowFt3PerHr, beltSpeedFpm);
+    requiredLbPerFt = calculateLoadPerFoot(massFlowLbsPerHr, beltSpeedFpm);
+
+    const isCleated =
+      inputs.cleats_enabled === true &&
+      !!cleatWeightData &&
+      cleatWeightData.cleat_pitch_in > 0;
+
+    if (isCleated && cleatWeightData) {
+      // Stage 2: per cleat, and pocket capacity from cleat geometry.
+      const pitchFt = cleatWeightData.cleat_pitch_in / 12;
+      requiredFt3PerCleat = requiredFt3PerFt != null ? requiredFt3PerFt * pitchFt : null;
+      requiredLbPerCleat = requiredLbPerFt != null ? requiredLbPerFt * pitchFt : null;
+      pocketCapacityFt3 = calculatePocketCapacity(
+        cleatWeightData.cleat_width_in,
+        inputs.cleat_height_in,
+        cleatWeightData.cleat_pitch_in,
+        shape
+      );
+      bulkFillPct = calculateFillPct(requiredFt3PerCleat, pocketCapacityFt3);
+      bulkMarginPct = calculateBulkMarginPct(requiredFt3PerCleat, pocketCapacityFt3);
+    } else {
+      // Non-cleated: cross-section capacity from usable width × fill height.
+      bulkCapacityFt3PerFt = calculateBulkCapacityPerFt(
+        usableBeltWidthIn,
+        inputs.max_fill_height_in,
+        shape
+      );
+      if (bulkCapacityFt3PerFt != null && densityLbsPerFt3Used != null) {
+        bulkCapacityLbPerFt = bulkCapacityFt3PerFt * densityLbsPerFt3Used;
+      }
+      bulkFillPct = calculateFillPct(requiredFt3PerFt, bulkCapacityFt3PerFt);
+      bulkMarginPct = calculateBulkMarginPct(requiredFt3PerFt, bulkCapacityFt3PerFt);
+    }
+  }
 
   // Step 14: Torque on drive shaft (v1.2: now uses user safety_factor if provided, v1.3: uses drive pulley)
   const torqueDriveShaftInlbf = calculateTorqueDriveShaft(
@@ -2129,9 +2292,12 @@ export function calculate(
 
   if (inputs.required_throughput_pph !== undefined && inputs.required_throughput_pph > 0) {
     targetPph = calculateTargetThroughput(inputs.required_throughput_pph, throughputMarginPct);
-    meetsThroughput = capacityPph >= targetPph;
+    meetsThroughput = capacityPph != null && capacityPph >= targetPph;
     rpmRequiredForTarget = calculateRpmRequired(targetPph, pitchIn, drivePulleyDiameterIn);
-    throughputMarginAchievedPct = calculateMarginAchieved(capacityPph, inputs.required_throughput_pph);
+    throughputMarginAchievedPct =
+      capacityPph != null
+        ? calculateMarginAchieved(capacityPph, inputs.required_throughput_pph)
+        : undefined;
   }
 
   // Step 17: Belt tracking & pulley face calculations
@@ -2522,6 +2688,17 @@ export function calculate(
     pitch_in: pitchIn,
     belt_speed_fpm: beltSpeedFpm,
     capacity_pph: capacityPph,
+    // v1.49: BULK capacity & margin (null unless BULK; per-cleat only when cleated)
+    usable_belt_width_in: usableBeltWidthIn,
+    required_ft3_per_ft: requiredFt3PerFt,
+    required_lb_per_ft: requiredLbPerFt,
+    bulk_capacity_ft3_per_ft: bulkCapacityFt3PerFt,
+    bulk_capacity_lb_per_ft: bulkCapacityLbPerFt,
+    pocket_capacity_ft3: pocketCapacityFt3,
+    required_ft3_per_cleat: requiredFt3PerCleat,
+    required_lb_per_cleat: requiredLbPerCleat,
+    bulk_fill_pct: bulkFillPct,
+    bulk_margin_pct: bulkMarginPct,
     target_pph: targetPph,
     meets_throughput: meetsThroughput,
     rpm_required_for_target: rpmRequiredForTarget,

@@ -1951,6 +1951,80 @@ function applyHeightWarnings(inputs: SliderbedInputs): ValidationWarning[] {
 // ============================================================================
 
 /**
+ * v1.49: BULK capacity / margin rules.
+ *
+ * These depend on COMPUTED outputs (fill %, capacity, usable width), so they run
+ * post-calculation in the engine — not in validateInputs (which sees inputs only).
+ * Over-fill is an error (blocks); a missing fill height is a warning (existing
+ * non-cleated bulk configs keep working, capacity just shows blank until entered).
+ */
+export function applyBulkCapacityRules(
+  inputs: SliderbedInputs,
+  outputs: SliderbedOutputs
+): { errors: ValidationError[]; warnings: ValidationWarning[] } {
+  const errors: ValidationError[] = [];
+  const warnings: ValidationWarning[] = [];
+
+  const isBulk =
+    outputs.material_form_used === MaterialForm.Bulk ||
+    outputs.material_form_used === 'BULK';
+  if (!isBulk) return { errors, warnings };
+
+  const isCleated = inputs.cleats_enabled === true;
+  const fillField = isCleated ? 'cleat_height_in' : 'max_fill_height_in';
+
+  // Belt too narrow for bulk (CEMA usable width not positive)
+  if (outputs.usable_belt_width_in == null && inputs.belt_width_in != null) {
+    errors.push({
+      field: 'belt_width_in',
+      message:
+        'Belt is too narrow for bulk loading (CEMA usable width is not positive).',
+      severity: 'error',
+    });
+  }
+
+  if (isCleated) {
+    // Cleated bulk needs full cleat geometry to size the pocket capacity
+    if (outputs.pocket_capacity_ft3 == null) {
+      errors.push({
+        field: 'cleat_height_in',
+        message:
+          'Cleated bulk conveyor requires cleat height, spacing, and edge offset to size the pocket capacity.',
+        severity: 'error',
+      });
+    }
+  } else if (inputs.max_fill_height_in == null || !(inputs.max_fill_height_in > 0)) {
+    // Non-cleated bulk needs a fill height for the capacity / fit check (warning)
+    warnings.push({
+      field: 'max_fill_height_in',
+      message:
+        'Enter a max fill height to compute bulk capacity and the fill / margin check.',
+      severity: 'warning',
+    });
+  }
+
+  // Fill % vs capacity (volume basis)
+  const fill = outputs.bulk_fill_pct;
+  if (fill != null && Number.isFinite(fill)) {
+    if (fill > 100) {
+      errors.push({
+        field: fillField,
+        message: `Required bulk loading exceeds capacity (${fill.toFixed(0)}% fill). Increase belt speed, belt width, fill height, or cleat size.`,
+        severity: 'error',
+      });
+    } else if (fill > 90) {
+      warnings.push({
+        field: fillField,
+        message: `Bulk fill is at ${fill.toFixed(0)}% of capacity — little headroom.`,
+        severity: 'warning',
+      });
+    }
+  }
+
+  return { errors, warnings };
+}
+
+/**
  * Validate inputs (draft mode - lenient for loading)
  * @param inputs - The sliderbed inputs
  * @param parameters - The sliderbed parameters
