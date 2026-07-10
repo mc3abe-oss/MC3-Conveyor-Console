@@ -63,6 +63,15 @@ export const THICKNESS_OPTIONS: ThicknessOption[] = [
     notes: '12 gauge industrial callout = 0.109"',
   },
   {
+    key: 'ga_11',
+    system: 'gauge',
+    thickness_in: 0.125,
+    label: '11 ga (0.125")',
+    sort_order: 45,
+    is_active: true,
+    notes: '11 gauge industrial callout = 0.125"',
+  },
+  {
     key: 'ga_10',
     system: 'gauge',
     thickness_in: 0.134,
