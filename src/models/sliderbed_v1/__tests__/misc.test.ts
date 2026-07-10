@@ -47,7 +47,6 @@ import {
   SupportMethod,
   VGuideProfile,
 } from '../schema';
-import { migrateInputs } from '../migrate';
 
 describe('PCI Tube Stress Calculations (v1.27)', () => {
   // Base inputs for PCI tests
@@ -753,6 +752,178 @@ describe('Material Form - PARTS vs BULK (v1.29)', () => {
     const result = runCalculation({ inputs });
 
     expect(result.warnings?.some(w => w.field === 'density_lbs_per_ft3')).toBe(true);
+  });
+
+  // =========================================================================
+  // v1.49: BULK capacity & margin (Option B — calculated headroom / fill %)
+  // Golden cases from docs/bulk-capacity/DESIGN-BRIEF.md §11.
+  // =========================================================================
+
+  // T1 — SO33806.1 (cleated). belt 32", speed 100, mass 7000, density 10,
+  // cleat 3"H × 30"W @ 24" pitch, FLAT. capacity_pph stays null (never Infinity).
+  it('T1: cleated bulk (SO33806.1) required-per-cleat, pocket capacity, fill/margin', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 7000,
+      density_lbs_per_ft3: 10,
+      belt_width_in: 32,
+      belt_speed_fpm: 100,
+      conveyor_length_cc_in: 312,
+      cleats_enabled: true,
+      cleat_height_in: 3,
+      cleat_spacing_in: 24,
+      cleat_edge_offset_in: 1,
+      pile_shape: 'FLAT',
+    };
+
+    const result = runCalculation({ inputs });
+    const o = result.outputs!;
+
+    expect(o.capacity_pph).toBeNull();
+    expect(Number.isFinite(o.capacity_pph as number | null)).toBe(false);
+    expect(o.required_lb_per_ft).toBeCloseTo(1.16667, 4);
+    expect(o.required_ft3_per_ft).toBeCloseTo(0.11667, 4);
+    expect(o.required_lb_per_cleat).toBeCloseTo(2.33333, 4);
+    expect(o.required_ft3_per_cleat).toBeCloseTo(0.23333, 4);
+    expect(o.pocket_capacity_ft3).toBeCloseTo(1.25, 5);
+    expect(o.bulk_fill_pct).toBeCloseTo(18.667, 2);
+    expect(o.bulk_margin_pct).toBeCloseTo(435.71, 1);
+    // Non-cleated capacity outputs stay null when cleated
+    expect(o.bulk_capacity_ft3_per_ft).toBeNull();
+  });
+
+  // T2 — T1 with DOMED shape factor 0.67.
+  it('T2: DOMED shape factor reduces pocket capacity', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 7000,
+      density_lbs_per_ft3: 10,
+      belt_width_in: 32,
+      belt_speed_fpm: 100,
+      conveyor_length_cc_in: 312,
+      cleats_enabled: true,
+      cleat_height_in: 3,
+      cleat_spacing_in: 24,
+      cleat_edge_offset_in: 1,
+      pile_shape: 'DOMED',
+    };
+
+    const o = runCalculation({ inputs }).outputs!;
+    expect(o.pocket_capacity_ft3).toBeCloseTo(0.8375, 4);
+    expect(o.bulk_fill_pct).toBeCloseTo(27.861, 2);
+    expect(o.bulk_margin_pct).toBeCloseTo(258.93, 1);
+  });
+
+  // T3 — non-cleated cross-section. belt 24", speed 60, vol flow 900 ft³/hr,
+  // density 30, fill height 3", FLAT.
+  it('T3: non-cleated cross-section capacity and fill/margin', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'VOLUME_FLOW',
+      volume_flow_ft3_per_hr: 900,
+      density_lbs_per_ft3: 30,
+      density_source: 'KNOWN',
+      belt_width_in: 24,
+      belt_speed_fpm: 60,
+      cleats_enabled: false,
+      max_fill_height_in: 3,
+      pile_shape: 'FLAT',
+    };
+
+    const o = runCalculation({ inputs }).outputs!;
+    expect(o.usable_belt_width_in).toBeCloseTo(19.6, 5);
+    expect(o.required_ft3_per_ft).toBeCloseTo(0.25, 5);
+    expect(o.bulk_capacity_ft3_per_ft).toBeCloseTo(0.40833, 4);
+    expect(o.bulk_fill_pct).toBeCloseTo(61.224, 2);
+    expect(o.bulk_margin_pct).toBeCloseTo(63.333, 2);
+    // Per-cleat outputs null when not cleated
+    expect(o.required_lb_per_cleat).toBeNull();
+    expect(o.pocket_capacity_ft3).toBeNull();
+  });
+
+  // T4 — over-fill: T3 with vol flow 1800 → fill 122% → error, success false.
+  it('T4: over-fill raises an error but still returns outputs', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'VOLUME_FLOW',
+      volume_flow_ft3_per_hr: 1800,
+      density_lbs_per_ft3: 30,
+      density_source: 'KNOWN',
+      belt_width_in: 24,
+      belt_speed_fpm: 60,
+      cleats_enabled: false,
+      max_fill_height_in: 3,
+    };
+
+    const result = runCalculation({ inputs });
+    expect(result.outputs?.bulk_fill_pct).toBeCloseTo(122.449, 2);
+    expect(result.success).toBe(false);
+    expect(result.errors?.some(e => e.field === 'max_fill_height_in' && /exceeds capacity/i.test(e.message))).toBe(true);
+  });
+
+  // T5 — warning band: T3 with vol flow 1400 → fill ~95% → warning, no error.
+  it('T5: near-capacity fill raises a warning, not an error', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'VOLUME_FLOW',
+      volume_flow_ft3_per_hr: 1400,
+      density_lbs_per_ft3: 30,
+      density_source: 'KNOWN',
+      belt_width_in: 24,
+      belt_speed_fpm: 60,
+      cleats_enabled: false,
+      max_fill_height_in: 3,
+    };
+
+    const result = runCalculation({ inputs });
+    expect(result.outputs?.bulk_fill_pct).toBeCloseTo(95.238, 2);
+    expect(result.warnings?.some(w => w.field === 'max_fill_height_in' && /headroom/i.test(w.message))).toBe(true);
+    expect(result.errors?.some(e => /exceeds capacity/i.test(e.message)) ?? false).toBe(false);
+  });
+
+  // T6 — missing density (WEIGHT_FLOW): mass side computes, volume/fill/margin null.
+  it('T6: missing density leaves the volumetric fit check null', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 7000,
+      belt_speed_fpm: 60,
+      cleats_enabled: false,
+      // no density_lbs_per_ft3, no max_fill_height_in
+    };
+
+    const o = runCalculation({ inputs }).outputs!;
+    expect(o.required_lb_per_ft).toBeCloseTo(1.94444, 4);
+    expect(o.required_ft3_per_ft).toBeNull();
+    expect(o.bulk_fill_pct).toBeNull();
+    expect(o.bulk_margin_pct).toBeNull();
+  });
+
+  // T7 — belt too narrow: usable width = 0.9×2 − 2 = −0.2 → error.
+  it('T7: belt too narrow for bulk raises a width error', () => {
+    const inputs: SliderbedInputs = {
+      ...BULK_BASE_INPUTS,
+      material_form: 'BULK',
+      bulk_input_method: 'WEIGHT_FLOW',
+      mass_flow_lbs_per_hr: 1000,
+      belt_width_in: 2,
+      belt_speed_fpm: 60,
+      cleats_enabled: false,
+      max_fill_height_in: 3,
+    };
+
+    const result = runCalculation({ inputs });
+    expect(result.outputs?.usable_belt_width_in).toBeNull();
+    expect(result.success).toBe(false);
+    expect(result.errors?.some(e => e.field === 'belt_width_in' && /too narrow/i.test(e.message))).toBe(true);
   });
 });
 

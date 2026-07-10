@@ -19,7 +19,7 @@ import { createLogger } from '../logger';
 import { ErrorCodes } from '../logger/error-codes';
 
 const logger = createLogger().child({ module: 'calculation-engine' });
-import { validate } from '../../models/sliderbed_v1/rules';
+import { validate, applyBulkCapacityRules, requiresBeltValidation } from '../../models/sliderbed_v1/rules';
 import { MODEL_KEY, MODEL_VERSION_ID } from '../model-identity';
 // Use belt_conveyor_v1 for default parameters and COF resolution
 import {
@@ -171,7 +171,7 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
 
     // Step 1: Validate inputs and parameters
     // Pass productKey for product-scoped validation (e.g., skip belt validation for magnetic)
-    const { errors, warnings } = validate(inputs, parameters, productKey);
+    const { errors: inputErrors, warnings: inputWarnings } = validate(inputs, parameters, productKey);
 
     // Step 2: Execute calculations (even with errors)
     // The formulas use NaN for missing values and propagate gracefully.
@@ -179,6 +179,15 @@ export function runCalculation(request: CalculationRequest): CalculationResult {
     // Dispatch to product-specific calculator based on productKey
     const product = resolveProductForCalculation(productKey);
     const outputs = product.calculate(inputs, parameters as unknown as Record<string, unknown>);
+
+    // Step 2b: Output-dependent BULK capacity/margin rules (v1.49). These need the
+    // computed outputs (fill %, capacity, usable width), so they run after calculate().
+    // Scoped to sliderbed/belt products (magnetic uses a different model).
+    const bulkCapacity = requiresBeltValidation(productKey)
+      ? applyBulkCapacityRules(inputs, outputs)
+      : { errors: [], warnings: [] };
+    const errors = [...inputErrors, ...bulkCapacity.errors];
+    const warnings = [...inputWarnings, ...bulkCapacity.warnings];
 
     const durationMs = Date.now() - startTime;
 
