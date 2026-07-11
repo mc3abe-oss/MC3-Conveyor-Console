@@ -14,7 +14,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { createClient } from '../../../../../src/lib/supabase/server';
 import { canonicalizeRecipeInputs } from '../../../../../src/lib/recipes/canon/canonicalize-inputs';
 import { hashCanonical } from '../../../../../src/lib/recipes/hash';
 import { createLogger } from '../../../../../src/lib/logger';
@@ -26,6 +27,7 @@ type RouteParams = { params: Promise<{ id: string }> };
 
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         { error: 'Supabase not configured' },

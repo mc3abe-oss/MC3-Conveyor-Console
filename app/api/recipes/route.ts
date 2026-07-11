@@ -25,7 +25,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { isSupabaseConfigured } from '../../../src/lib/supabase/client';
+import { createClient } from '../../../src/lib/supabase/server';
 import { hashCanonical, stripUndefined } from '../../../src/lib/recipes/hash';
 import { canonicalizeRecipeInputs } from '../../../src/lib/recipes/canon/canonicalize-inputs';
 import { createLogger } from '../../../src/lib/logger';
@@ -35,6 +36,7 @@ const logger = createLogger().child({ module: 'api.recipes' });
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         {
@@ -124,6 +126,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         { error: 'Supabase not configured' },

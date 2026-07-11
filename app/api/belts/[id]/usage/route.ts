@@ -7,7 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, supabaseAdmin, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { supabaseAdmin, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { createClient } from '../../../../../src/lib/supabase/server';
 import { createLogger } from '../../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../../src/lib/logger/error-codes';
 
@@ -30,7 +31,7 @@ export async function GET(
     }
 
     const { id } = await params;
-    const client = supabaseAdmin || supabase;
+    const client = supabaseAdmin ?? (await createClient());
 
     // Fetch belt by id to get catalog_key
     const { data: belt, error } = await client

@@ -7,7 +7,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createClient } from '../../../../src/lib/supabase/server';
 import {
   RecipeRole,
   RECIPE_ROLES,
@@ -42,6 +43,7 @@ function getEffectiveRole(recipe: {
 
 export async function GET(_request: NextRequest, { params }: RouteParams) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         { error: 'Supabase not configured' },
@@ -104,6 +106,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 
 export async function PATCH(request: NextRequest, { params }: RouteParams) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         { error: 'Supabase not configured' },
@@ -243,6 +246,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
 
 export async function DELETE(_request: NextRequest, { params }: RouteParams) {
   try {
+    const supabase = await createClient();
     // Require BELT_ADMIN or SUPER_ADMIN role
     const auth = await requireBeltAdmin();
     if (auth.response) {

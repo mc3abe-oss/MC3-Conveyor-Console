@@ -8,7 +8,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { isSupabaseConfigured } from '../../../../../src/lib/supabase/client';
+import { createClient } from '../../../../../src/lib/supabase/server';
 import {
   RecipeRole,
   deriveRoleFromLegacy,
@@ -33,6 +34,7 @@ function getEffectiveRole(recipe: {
 
 export async function POST(_request: NextRequest, { params }: RouteParams) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json(
         { error: 'Supabase not configured' },
