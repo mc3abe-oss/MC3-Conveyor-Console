@@ -8,6 +8,7 @@
 
 import { GearmotorMountingStyle } from '../../models/sliderbed_v1/schema';
 import { getAvailableShaftStyles, getAvailableHollowShaftBushings } from './bom';
+import { supabase } from '../supabase/anon';
 
 /**
  * Helper to determine what configuration UI to show based on mounting style.
@@ -125,7 +126,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     const expectedStyles = ['single', 'double', 'flange_b5'];
 
     it.each(expectedSizes)('should return 3 styles for %s with inch_keyed', async (size) => {
-      const styles = await getAvailableShaftStyles(size, 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,size, 'inch_keyed');
       expect(styles.length).toBe(3);
       expect(styles.some(s => s.style === 'single')).toBe(true);
       expect(styles.some(s => s.style === 'double')).toBe(true);
@@ -133,7 +134,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return correct OD for SI31 (0.625")', async () => {
-      const styles = await getAvailableShaftStyles('SI31', 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,'SI31', 'inch_keyed');
       expect(styles.length).toBe(3);
       styles.forEach(s => {
         expect(s.od_in).toBeCloseTo(0.625, 2);
@@ -141,7 +142,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return correct OD for SI40 (0.75")', async () => {
-      const styles = await getAvailableShaftStyles('SI40', 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,'SI40', 'inch_keyed');
       expect(styles.length).toBe(3);
       styles.forEach(s => {
         expect(s.od_in).toBeCloseTo(0.75, 2);
@@ -149,7 +150,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return correct OD for SI50 (1.0")', async () => {
-      const styles = await getAvailableShaftStyles('SI50', 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,'SI50', 'inch_keyed');
       expect(styles.length).toBe(3);
       styles.forEach(s => {
         expect(s.od_in).toBeCloseTo(1.0, 2);
@@ -157,7 +158,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return correct OD for SI63 (1.125")', async () => {
-      const styles = await getAvailableShaftStyles('SI63', 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,'SI63', 'inch_keyed');
       expect(styles.length).toBe(3);
       styles.forEach(s => {
         expect(s.od_in).toBeCloseTo(1.125, 2);
@@ -165,7 +166,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return correct OD for SI75 (1.375")', async () => {
-      const styles = await getAvailableShaftStyles('SI75', 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,'SI75', 'inch_keyed');
       expect(styles.length).toBe(3);
       styles.forEach(s => {
         expect(s.od_in).toBeCloseTo(1.375, 2);
@@ -173,7 +174,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return empty array for unknown size', async () => {
-      const styles = await getAvailableShaftStyles('SI99', 'inch_keyed');
+      const styles = await getAvailableShaftStyles(supabase,'SI99', 'inch_keyed');
       expect(styles).toEqual([]);
     });
   });
@@ -183,24 +184,24 @@ describe('Available shaft styles and bushings (integration)', () => {
     // SI31 and SI40 have no bushings (hollow bore already small)
 
     it('should return empty array for SI31 (no bushings - bore too small)', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI31', 'inch_hollow');
+      const bushings = await getAvailableHollowShaftBushings(supabase,'SI31', 'inch_hollow');
       expect(bushings).toEqual([]);
     });
 
     it('should return empty array for SI40 (no bushings - bore too small)', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI40', 'inch_hollow');
+      const bushings = await getAvailableHollowShaftBushings(supabase,'SI40', 'inch_hollow');
       expect(bushings).toEqual([]);
     });
 
     it('should return 1 bushing for SI50 (1.000")', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI50', 'inch_hollow');
+      const bushings = await getAvailableHollowShaftBushings(supabase,'SI50', 'inch_hollow');
       expect(bushings.length).toBe(1);
       expect(bushings[0].bore_in).toBeCloseTo(1.0, 2);
       expect(bushings[0].part_number).toBe('60593400');
     });
 
     it('should return 3 bushings for SI63 (1.000", 1.1875", 1.250")', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI63', 'inch_hollow');
+      const bushings = await getAvailableHollowShaftBushings(supabase,'SI63', 'inch_hollow');
       expect(bushings.length).toBe(3);
 
       // Verify specific bore sizes
@@ -216,7 +217,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return 4 bushings for SI75 (1.1875", 1.250", 1.4375", 1.500")', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI75', 'inch_hollow');
+      const bushings = await getAvailableHollowShaftBushings(supabase,'SI75', 'inch_hollow');
       expect(bushings.length).toBe(4);
 
       // Verify specific bore sizes
@@ -234,7 +235,7 @@ describe('Available shaft styles and bushings (integration)', () => {
     });
 
     it('should return empty array for unknown size', async () => {
-      const bushings = await getAvailableHollowShaftBushings('SI99', 'inch_hollow');
+      const bushings = await getAvailableHollowShaftBushings(supabase,'SI99', 'inch_hollow');
       expect(bushings).toEqual([]);
     });
   });

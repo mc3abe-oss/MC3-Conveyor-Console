@@ -17,6 +17,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { selectGearmotor, GearmotorSelectionInputs } from '../../../../src/lib/gearmotor';
+import { createClient } from '../../../../src/lib/supabase/server';
 import { createLogger } from '../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
 import { GearmotorSelectSchema } from '../../../../src/lib/schemas/api/gearmotor-select.schema';
@@ -75,7 +76,8 @@ export async function POST(request: NextRequest) {
       speed_tolerance_pct: speed_tolerance_pct ?? 15,
     };
 
-    const result = await selectGearmotor(inputs);
+    const supabase = await createClient();
+    const result = await selectGearmotor(supabase, inputs);
 
     return NextResponse.json(result);
   } catch (error) {

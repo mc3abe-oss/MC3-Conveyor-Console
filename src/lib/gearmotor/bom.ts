@@ -10,7 +10,8 @@
  *   - "SK 2SI50 - 140TC - 182T/4"
  */
 
-import { supabase, isSupabaseConfigured } from '../supabase/anon';
+import { isSupabaseConfigured } from '../supabase/anon';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '../logger';
 import { ErrorCodes } from '../logger/error-codes';
 
@@ -349,6 +350,7 @@ export const OUTPUT_SHAFT_OPTION_LABELS: Record<string, string> = {
  * @returns Part number and description if found, null otherwise
  */
 async function lookupOutputShaftKitPNv2(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   outputShaftOptionKey: string,
   sprocketShaftDiameterIn: number
@@ -411,6 +413,7 @@ async function lookupOutputShaftKitPNv2(
  * @returns Part number and description if found, null otherwise
  */
 async function lookupOutputShaftKitPNv1(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   outputShaftOptionKey: string
 ): Promise<{ vendor_part_number: string; description: string } | null> {
@@ -469,6 +472,7 @@ async function lookupOutputShaftKitPNv1(
  * @returns Array of available styles with their associated OD (fixed per gear unit)
  */
 export async function getAvailableShaftStyles(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   outputShaftOptionKey: string
 ): Promise<Array<{ style: string; od_in: number | null }>> {
@@ -532,6 +536,7 @@ export async function getAvailableShaftStyles(
  * @returns Part number, description, and OD if found, null otherwise
  */
 export async function lookupOutputShaftKitByStyle(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   outputShaftOptionKey: string,
   plugInShaftStyle: string
@@ -588,6 +593,7 @@ export async function lookupOutputShaftKitByStyle(
  * @returns Array of available sprocket shaft diameter values in inches
  */
 export async function getAvailableShaftDiameters(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   outputShaftOptionKey: string
 ): Promise<number[]> {
@@ -643,6 +649,7 @@ export async function getAvailableShaftDiameters(
  * @returns Array of available bushing bore values in inches
  */
 export async function getAvailableHollowShaftBushings(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   shaftInterfaceType: string
 ): Promise<Array<{ bore_in: number; part_number: string; description: string }>> {
@@ -698,6 +705,7 @@ export async function getAvailableHollowShaftBushings(
  * @returns Part number and description if found, null otherwise
  */
 export async function lookupHollowShaftBushing(
+  supabase: SupabaseClient,
   gearUnitSize: string,
   shaftInterfaceType: string,
   bushingBoreIn: number
@@ -757,6 +765,7 @@ export async function lookupHollowShaftBushing(
  * @returns BOM resolution with component part numbers
  */
 export async function resolveBom(
+  supabase: SupabaseClient,
   modelType: string | null | undefined,
   motorHp: number,
   options?: ResolveBomOptions
@@ -951,13 +960,13 @@ export async function resolveBom(
     if (gearUnitSize) {
       // Style-based lookup (preferred) - takes precedence over diameter-based
       if (plugInShaftStyle) {
-        shaftKitMatch = await lookupOutputShaftKitByStyle(gearUnitSize, outputShaftOption, plugInShaftStyle);
+        shaftKitMatch = await lookupOutputShaftKitByStyle(supabase, gearUnitSize, outputShaftOption, plugInShaftStyle);
       } else if (sprocketShaftDiameterIn !== null && sprocketShaftDiameterIn !== undefined) {
         // v2 (deprecated): Sprocket shaft diameter selected -> use diameter-specific lookup
-        shaftKitMatch = await lookupOutputShaftKitPNv2(gearUnitSize, outputShaftOption, sprocketShaftDiameterIn);
+        shaftKitMatch = await lookupOutputShaftKitPNv2(supabase, gearUnitSize, outputShaftOption, sprocketShaftDiameterIn);
       } else {
         // v1: No style or diameter selected -> use size-only lookup
-        shaftKitMatch = await lookupOutputShaftKitPNv1(gearUnitSize, outputShaftOption);
+        shaftKitMatch = await lookupOutputShaftKitPNv1(supabase, gearUnitSize, outputShaftOption);
       }
     }
 
@@ -1000,6 +1009,7 @@ export async function resolveBom(
     // Only include bushing if gear unit is inch hollow shaft
     if (parsedBore.isHollowShaft && parsedBore.primaryUnit === 'inch' && gearUnitSize) {
       const bushingMatch = await lookupHollowShaftBushing(
+        supabase,
         gearUnitSize,
         'inch_hollow',
         hollowShaftBushingBoreIn

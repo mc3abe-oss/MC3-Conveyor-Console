@@ -257,6 +257,7 @@ export async function enumerateCoverageInputs(
  * Run a single coverage test case through the BOM resolver.
  */
 export async function runCoverageCase(
+  supabase: SupabaseClientAny,
   inputs: CoverageInputs
 ): Promise<CoverageResult> {
   const caseKey = generateCaseKey(inputs);
@@ -277,7 +278,7 @@ export async function runCoverageCase(
 
   let bom: BomResolution;
   try {
-    bom = await resolveBom(modelType, inputs.motor_hp || 0.5, options);
+    bom = await resolveBom(supabase, modelType, inputs.motor_hp || 0.5, options);
   } catch (err) {
     // Resolver error = invalid combination
     return {
@@ -386,7 +387,7 @@ export async function generateCoverage(
   };
 
   for (const input of inputs) {
-    const result = await runCoverageCase(input);
+    const result = await runCoverageCase(supabase, input);
     results.push(result);
 
     // Update summary counts

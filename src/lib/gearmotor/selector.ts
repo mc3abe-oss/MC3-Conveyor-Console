@@ -15,7 +15,8 @@
  * 3. Smallest motor HP
  */
 
-import { supabase, isSupabaseConfigured } from '../supabase/anon';
+import { isSupabaseConfigured } from '../supabase/anon';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createLogger } from '../logger';
 import { ErrorCodes } from '../logger/error-codes';
 
@@ -82,6 +83,7 @@ export interface GearmotorSelectionResult {
  * @returns Ranked list of candidates (best first)
  */
 export async function selectGearmotor(
+  supabase: SupabaseClient,
   inputs: GearmotorSelectionInputs
 ): Promise<GearmotorSelectionResult> {
   const {
@@ -138,6 +140,7 @@ export async function selectGearmotor(
 
   for (const series of seriesOrder) {
     const candidates = await queryCandidates(
+      supabase,
       series,
       minRpm,
       maxRpm,
@@ -176,6 +179,7 @@ export async function selectGearmotor(
 // ============================================================================
 
 async function queryCandidates(
+  supabase: SupabaseClient,
   series: GearmotorSeries,
   minRpm: number,
   maxRpm: number,

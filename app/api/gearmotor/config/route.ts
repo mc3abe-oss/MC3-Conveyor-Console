@@ -17,7 +17,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { isSupabaseConfigured } from '../../../../src/lib/supabase/client';
+import { createClient } from '../../../../src/lib/supabase/server';
 import { createLogger } from '../../../../src/lib/logger';
 import { ErrorCodes } from '../../../../src/lib/logger/error-codes';
 import { GearmotorConfigSchema } from '../../../../src/lib/schemas/api/gearmotor-config.schema';
@@ -26,6 +27,7 @@ const logger = createLogger().child({ module: 'api.gearmotor-config' });
 
 export async function GET(request: NextRequest) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
     }
@@ -86,6 +88,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient();
     if (!isSupabaseConfigured()) {
       return NextResponse.json({ error: 'Database not configured' }, { status: 503 });
     }

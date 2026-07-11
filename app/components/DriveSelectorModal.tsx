@@ -19,8 +19,13 @@ import {
 import { GearmotorMountingStyle } from '../../src/models/sliderbed_v1/schema';
 import { createLogger } from '../../src/lib/logger';
 import { ErrorCodes } from '../../src/lib/logger/error-codes';
+import { createClient as createBrowserSupabaseClient } from '../../src/lib/supabase/browser';
 
 const logger = createLogger().child({ module: 'drive-selector-modal' });
+
+// Session-aware browser client (carries the auth cookie -> authenticated role).
+// DB reads (styles / bushings / BOM) run client-side in effects where the session exists.
+const supabase = createBrowserSupabaseClient();
 
 // Formatting helpers for REQUIREMENTS (can round for display)
 const formatRequiredRpm = (rpm: number | null | undefined): string => {
@@ -229,7 +234,7 @@ export default function DriveSelectorModal({
     // Fetch available styles for bottom_mount (chain drive) - always inch_keyed
     if (currentGearUnitSize && isBottomMount) {
       setStylesLoading(true);
-      getAvailableShaftStyles(currentGearUnitSize, 'inch_keyed')
+      getAvailableShaftStyles(supabase, currentGearUnitSize, 'inch_keyed')
         .then(styles => {
           setAvailableStyles(styles);
           setStylesLoading(false);
@@ -250,7 +255,7 @@ export default function DriveSelectorModal({
     // Fetch available bushings for shaft_mounted (hollow shaft) - always inch_hollow
     if (currentGearUnitSize && isShaftMounted) {
       setBushingsLoading(true);
-      getAvailableHollowShaftBushings(currentGearUnitSize, 'inch_hollow')
+      getAvailableHollowShaftBushings(supabase, currentGearUnitSize, 'inch_hollow')
         .then(bushings => {
           setAvailableBushings(bushings);
           setBushingsLoading(false);
@@ -305,7 +310,7 @@ export default function DriveSelectorModal({
     const gearUnitRatio = metadata?.worm_ratio as number | undefined;
 
     setBomLoading(true);
-    resolveBom(modelType, selectedCandidate.motor_hp, {
+    resolveBom(supabase, modelType, selectedCandidate.motor_hp, {
       totalRatio: gearUnitRatio, // Worm ratio for gear unit PN lookup
       gearmotorMountingStyle, // For output shaft kit requirement logic
       outputShaftOption, // For output shaft kit configuration status
