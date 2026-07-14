@@ -33,8 +33,10 @@ describe('Auth Middleware - Configuration', () => {
 
     it('has minimal PUBLIC_ROUTES (fail-closed default)', async () => {
       const { PUBLIC_ROUTES } = await import('../../../middleware');
-      // Only login and signup should be public
-      expect(PUBLIC_ROUTES.length).toBeLessThanOrEqual(3);
+      // Exact allowlist: adding any new public route must be a deliberate change here too
+      expect([...PUBLIC_ROUTES].sort()).toEqual(
+        ['/forgot-password', '/login', '/reset-password', '/signup'].sort()
+      );
     });
   });
 });

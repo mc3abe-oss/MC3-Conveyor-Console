@@ -4,11 +4,21 @@
  * Tests for plug-in shaft style vs hollow shaft bushing based on mounting style:
  * - bottom_mount => inch_keyed => plug-in shaft style selector
  * - shaft_mounted => inch_hollow => hollow shaft bushing selector
+ *
+ * Lookup tests run against fixture rows mirroring the NORD vendor_components
+ * catalog (v1.47 output kits, v1.48 bushing mapping) — the live table now
+ * requires an authenticated client, so anon reads return zero rows.
  */
 
+// bom.ts guards every lookup on isSupabaseConfigured(); force it on so the
+// fixture-backed client below is exercised without live credentials.
+jest.mock('../supabase/anon', () => ({
+  isSupabaseConfigured: () => true,
+}));
+
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { GearmotorMountingStyle } from '../../models/sliderbed_v1/schema';
 import { getAvailableShaftStyles, getAvailableHollowShaftBushings } from './bom';
-import { supabase } from '../supabase/anon';
 
 /**
  * Helper to determine what configuration UI to show based on mounting style.
@@ -119,7 +129,90 @@ describe('Mounting style configuration logic', () => {
   });
 });
 
-describe('Available shaft styles and bushings (integration)', () => {
+// =============================================================================
+// FIXTURES: vendor_components rows for lookup tests
+// =============================================================================
+
+interface VendorComponentRow {
+  vendor: string;
+  component_type: string;
+  vendor_part_number: string;
+  description: string;
+  metadata_json: Record<string, unknown>;
+}
+
+// v1.47: every inch size carries all 3 plug-in shaft styles at a fixed OD.
+// Part numbers are format-valid placeholders (tests assert styles/ODs, not PNs).
+const OUTPUT_KIT_ROWS: VendorComponentRow[] = [
+  { size: 'SI31', odIn: 0.625, pnBase: 63100000 },
+  { size: 'SI40', odIn: 0.75, pnBase: 64100000 },
+  { size: 'SI50', odIn: 1.0, pnBase: 65100000 },
+  { size: 'SI63', odIn: 1.125, pnBase: 66100000 },
+  { size: 'SI75', odIn: 1.375, pnBase: 67100000 },
+].flatMap(({ size, odIn, pnBase }) =>
+  ['single', 'double', 'flange_b5'].map((style, i) => ({
+    vendor: 'NORD',
+    component_type: 'OUTPUT_KIT',
+    vendor_part_number: String(pnBase + i),
+    description: `Plug-in shaft kit ${size} ${style}`,
+    metadata_json: {
+      gear_unit_size: size,
+      output_shaft_option_key: 'inch_keyed',
+      plug_in_shaft_style: style,
+      plug_in_shaft_od_in: odIn,
+    },
+  }))
+);
+
+// v1.48 bushing mapping — real NORD part numbers from the vendor_components catalog.
+const HOLLOW_SHAFT_BUSHING_ROWS: VendorComponentRow[] = [
+  { size: 'SI50', boreIn: 1.0, pn: '60593400' },
+  { size: 'SI63', boreIn: 1.0, pn: '60693400' },
+  { size: 'SI63', boreIn: 1.1875, pn: '60693410' },
+  { size: 'SI63', boreIn: 1.25, pn: '60693420' },
+  { size: 'SI75', boreIn: 1.1875, pn: '60793430' },
+  { size: 'SI75', boreIn: 1.25, pn: '60793400' },
+  { size: 'SI75', boreIn: 1.4375, pn: '60793420' },
+  { size: 'SI75', boreIn: 1.5, pn: '60793410' },
+].map(({ size, boreIn, pn }) => ({
+  vendor: 'NORD',
+  component_type: 'HOLLOW_SHAFT_BUSHING',
+  vendor_part_number: pn,
+  description: `Hollow shaft bushing ${size} ${boreIn}"`,
+  metadata_json: {
+    gear_unit_size: size,
+    shaft_interface_type: 'inch_hollow',
+    bushing_bore_in: boreIn,
+  },
+}));
+
+/**
+ * Minimal PostgREST-style query builder over fixture rows. Supports the chain
+ * bom.ts uses: from().select().eq().eq().filter('metadata_json->>key', 'eq', v)
+ * and resolves to { data, error } when awaited.
+ */
+function createFixtureClient(rows: VendorComponentRow[]): SupabaseClient {
+  const builder = (filtered: VendorComponentRow[]) => ({
+    select: () => builder(filtered),
+    eq: (column: string, value: unknown) =>
+      builder(filtered.filter((row) => row[column as keyof VendorComponentRow] === value)),
+    filter: (column: string, _operator: string, value: unknown) => {
+      const key = column.replace('metadata_json->>', '');
+      return builder(
+        filtered.filter((row) => String(row.metadata_json[key]) === String(value))
+      );
+    },
+    then: <T>(onfulfilled: (result: { data: VendorComponentRow[]; error: null }) => T) =>
+      Promise.resolve({ data: filtered, error: null }).then(onfulfilled),
+  });
+  return {
+    from: (table: string) => builder(table === 'vendor_components' ? rows : []),
+  } as unknown as SupabaseClient;
+}
+
+const supabase = createFixtureClient([...OUTPUT_KIT_ROWS, ...HOLLOW_SHAFT_BUSHING_ROWS]);
+
+describe('Available shaft styles and bushings (fixture-backed)', () => {
   describe('getAvailableShaftStyles - full coverage v1.47', () => {
     // v1.47: All inch sizes now have plug-in shaft style data
     const expectedSizes = ['SI31', 'SI40', 'SI50', 'SI63', 'SI75'];

@@ -5,7 +5,6 @@
  * part conditions and belt specifications.
  */
 
-import { describe, it, expect } from 'vitest';
 import {
   checkBeltCompatibility,
   toFahrenheit,

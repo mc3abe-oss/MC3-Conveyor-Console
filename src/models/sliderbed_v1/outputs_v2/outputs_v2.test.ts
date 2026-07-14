@@ -629,7 +629,7 @@ describe('CSV Export', () => {
       expect(result.exports.csv_rows.rows.length).toBeGreaterThan(0);
     });
 
-    it('should have 22 columns per row', () => {
+    it('should have one cell per declared column in every row', () => {
       const fixture = FIXTURES[0];
       const result = buildOutputsV2({
         inputs: fixture.inputs,
@@ -637,7 +637,7 @@ describe('CSV Export', () => {
       });
 
       result.exports.csv_rows.rows.forEach((row) => {
-        expect(row.length).toBe(22);
+        expect(row.length).toBe(CSV_COLUMNS_V2.length);
       });
     });
   });
