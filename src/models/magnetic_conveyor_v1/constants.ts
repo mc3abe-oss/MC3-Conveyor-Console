@@ -49,13 +49,22 @@ export const STANDARD_PARAMS: MagneticParameters = {
   chain_pitch_in: 1.0,
   chain_weight_lb_per_ft: 2.0,
 
-  // Sprockets
+  // Sprockets — C2040 is a DOUBLE-PITCH chain (1.0" pitch = 2× the ANSI 40
+  // base pitch), so the chain engages every other sprocket tooth: a 28T
+  // sprocket advances 28/2 = 14 chain pitches per revolution (D3/D4,
+  // confirmed 2026-07-14). The naive single-pitch formulas in the spec's
+  // constants-table annotations (PD = teeth × pitch / π → 8.91",
+  // lead = teeth × pitch → 28) ignore this and are wrong; the values here
+  // are correct: PD = 14 pitches × 1.0" / π ≈ 4.46" → 4.5" catalog sprocket.
   sprocket_pitch_diameter_in: 4.5,
   head_sprocket_teeth: 28,
   tail_sprocket_teeth: 16,
 
   // Drive
-  lead_in_per_rev: 14, // 28 teeth × 1.0" pitch / 2 = 14
+  // Lead = (28 teeth / 2) × 1.0" pitch = 14 in/rev — the /2 is the
+  // double-pitch engagement (see sprocket note); lead ≈ π × PD holds
+  // (π × 4.5 = 14.14).
+  lead_in_per_rev: 14,
   motor_base_rpm: MOTOR_BASE_RPM,
 
   // Calculation factors
@@ -81,13 +90,19 @@ export const HEAVY_DUTY_PARAMS: MagneticParameters = {
   chain_pitch_in: 1.5,
   chain_weight_lb_per_ft: 3.0,
 
-  // Sprockets
+  // Sprockets — C2060H is a DOUBLE-PITCH chain (1.5" pitch = 2× the ANSI 60
+  // base pitch): a 28T sprocket advances 28/2 = 14 chain pitches per
+  // revolution (D3/D4, confirmed 2026-07-14). The spec's naive annotations
+  // (PD = teeth × pitch / π → 13.37", lead = teeth × pitch → 42) are wrong;
+  // PD = 14 pitches × 1.5" / π ≈ 6.68" → 6.74" catalog sprocket.
   sprocket_pitch_diameter_in: 6.74,
   head_sprocket_teeth: 28,
   tail_sprocket_teeth: 14,
 
   // Drive
-  lead_in_per_rev: 21, // 28 teeth × 1.5" pitch / 2 = 21
+  // Lead = (28 teeth / 2) × 1.5" pitch = 21 in/rev — double-pitch engagement
+  // (see sprocket note); lead ≈ π × PD holds (π × 6.74 = 21.17).
+  lead_in_per_rev: 21,
   motor_base_rpm: MOTOR_BASE_RPM,
 
   // Calculation factors

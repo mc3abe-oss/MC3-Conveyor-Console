@@ -98,6 +98,10 @@ export interface ThroughputResult {
  * - achievedThroughput = removalPerBar × qtyMagnets × beltSpeed × 60 / magnetCenters
  * - throughputMargin = achievedThroughput / requiredThroughput
  *
+ * The /2 in chipLoad (D2, confirmed 2026-07-14): qtyMagnets counts bars over
+ * the full belt loop — belt length spans both chain runs — but only the
+ * top-run magnets carry chips at any instant, so half the bars bear load.
+ *
  * @param qtyMagnets - Number of magnets on belt
  * @param beltSpeedFpm - Belt speed in feet per minute
  * @param magnetCentersIn - Magnet pitch in inches
@@ -124,6 +128,7 @@ export function calculateThroughput(
   }
 
   // chipLoad = removalPerBar × qtyMagnets / 2
+  // /2: belt length spans both chain runs; only top-run magnets carry chips (D2)
   const chip_load_lb = barCapacityLb * qtyMagnets / 2;
 
   // achievedThroughput = removalPerBar × qtyMagnets × beltSpeed × 60 / magnetCenters

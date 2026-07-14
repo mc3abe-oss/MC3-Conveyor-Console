@@ -93,7 +93,8 @@ export function calculateTotalTorque(
  * Formula: requiredRPM = (beltSpeed × 12) / lead
  *
  * Converts belt speed (FPM) to output shaft RPM based on sprocket lead.
- * Lead = teeth × pitch / 2 (14 for Standard, 21 for HD).
+ * Lead = teeth × pitch / 2 (14 for Standard, 21 for HD) — the /2 is the
+ * double-pitch chain engagement; see the sprocket notes in constants.ts.
  *
  * @param beltSpeedFpm - Belt speed in feet per minute
  * @param leadInPerRev - Sprocket lead in inches per revolution (14 std, 21 HD)
