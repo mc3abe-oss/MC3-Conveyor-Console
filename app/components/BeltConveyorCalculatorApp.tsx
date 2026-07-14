@@ -7,6 +7,7 @@ const logger = createLogger().child({ module: 'belt-calculator-app' });
 
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import type { Route } from 'next';
 import CalculatorForm from './CalculatorForm';
 import DesignLogicPanel from './DesignLogicPanel';
 import ApplicationContextHeader from './ApplicationContextHeader';
@@ -990,8 +991,8 @@ export default function BeltConveyorCalculatorApp({
     // Strip SO/Quote context params from URL to prevent rehydration on refresh
     const cleanedSearch = stripSoContextFromSearchParams(searchParams);
     const newUrl = cleanedSearch ? `${pathname}?${cleanedSearch}` : pathname;
-    // @ts-expect-error - Next.js typed routes require string literal, but dynamic URL is valid at runtime
-    router.replace(newUrl, { scroll: false });
+    // Typed routes require a Route literal; this URL is derived from the current pathname so it's valid at runtime
+    router.replace(newUrl as Route, { scroll: false });
 
     // Clear the clearing flag after a short delay to allow URL change to propagate
     setTimeout(() => {
