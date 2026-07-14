@@ -357,8 +357,10 @@ describe('E2E: Bar Configuration System', () => {
   });
 });
 
-describe('E2E: Backwards Compatibility', () => {
-  it('should calculate without bar_configuration', () => {
+// D1 ruling (2026-07-14): no estimation. Configs without an actually
+// configured bar compute chip load 0 — the calc never invents a default bar.
+describe('E2E: No Bar Configured (D1 contract)', () => {
+  it('should calculate with zero chip load without bar_configuration', () => {
     const inputs: MagneticInputs = {
       style: ConveyorStyle.B,
       conveyor_class: ConveyorClass.Standard,
@@ -376,10 +378,11 @@ describe('E2E: Backwards Compatibility', () => {
 
     const outputs = calculate(inputs);
 
-    // Should use fallback capacity
-    expect(outputs.bar_capacity_lb).toBeGreaterThan(0);
-    expect(outputs.bar_ceramic_count).toBeGreaterThan(0);
+    // D1: no configured bar → zero capacity and zero chip load
+    expect(outputs.bar_capacity_lb).toBe(0);
+    expect(outputs.bar_ceramic_count).toBe(0);
     expect(outputs.bar_neo_count).toBe(0);
+    expect(outputs.chip_load_lb).toBe(0);
 
     // All other outputs should be valid
     expect(outputs.qty_magnets).toBeGreaterThan(0);
@@ -409,9 +412,11 @@ describe('E2E: Backwards Compatibility', () => {
 
     const outputs = calculate(inputs);
 
-    // Should fall back to estimated capacity
-    expect(outputs.bar_capacity_lb).toBeGreaterThan(0);
-    expect(outputs.bar_ceramic_count).toBeGreaterThan(0);
+    // D1: a zero-capacity legacy config counts as "no bar configured" —
+    // capacity stays 0, chip load stays 0, no bar is invented
+    expect(outputs.bar_capacity_lb).toBe(0);
+    expect(outputs.bar_ceramic_count).toBe(0);
+    expect(outputs.chip_load_lb).toBe(0);
   });
 });
 

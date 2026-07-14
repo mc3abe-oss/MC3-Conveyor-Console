@@ -40,7 +40,6 @@ import { calculateLoads } from './loads';
 import { calculateDrive } from './drive';
 import { validateInputs, validateOutputs } from './validation';
 import {
-  calculateBarCapacityFromCounts,
   calculateConveyorCapacityFromValues,
   PatternConfig,
   BarPatternMode,
@@ -113,7 +112,9 @@ export function calculateThroughput(
   requiredThroughputLbsHr: number,
   barCapacityLb: number = 0
 ): ThroughputResult {
-  // If no bar capacity, return placeholder values for backwards compatibility
+  // D1 ruling: no configured bar (capacity 0) → chip load is 0, achieved
+  // throughput degenerates to the requested value (margin 1.0). Chip load
+  // computes only from actually configured bars — never from an invented one.
   if (barCapacityLb <= 0) {
     return {
       chip_load_lb: 0,
@@ -143,17 +144,19 @@ export function calculateThroughput(
 }
 
 /**
- * Get bar capacity from configuration or fallback lookup.
+ * Get bar capacity from the configured bar.
+ *
+ * D1 ruling (2026-07-14): no estimation. Bar capacity comes only from an
+ * actually configured bar. With no bar configured (or a configured capacity
+ * of zero), capacity is 0 and chip load computes to 0 downstream. The calc
+ * never invents a default bar; bar estimation is a deferred post-port feature.
  *
  * @param barConfig - Bar configuration from bar builder (optional)
- * @param magnetWidthIn - Magnet bar width in inches (for fallback)
- * @returns Bar capacity in lbs
+ * @returns Bar capacity in lbs (0 when no bar is configured)
  */
 export function getBarCapacity(
-  barConfig: BarConfigurationInput | undefined,
-  magnetWidthIn: number
+  barConfig: BarConfigurationInput | undefined
 ): { capacity: number; ceramicCount: number; neoCount: number } {
-  // Use bar configuration if provided
   if (barConfig && barConfig.bar_capacity_lb > 0) {
     return {
       capacity: barConfig.bar_capacity_lb,
@@ -162,29 +165,7 @@ export function getBarCapacity(
     };
   }
 
-  // Fallback: Use default ceramic-only configuration based on magnet width
-  // This provides backwards compatibility for configs without bar_configuration
-  const ceramicCount = estimateCeramicCount(magnetWidthIn);
-  const capacity = calculateBarCapacityFromCounts(ceramicCount, 0, magnetWidthIn);
-
-  return {
-    capacity,
-    ceramicCount,
-    neoCount: 0,
-  };
-}
-
-/**
- * Estimate ceramic magnet count from bar width.
- * Formula: count = floor((width + 0.25) / (3.5 + 0.25))
- *
- * @param magnetWidthIn - Bar width in inches
- * @returns Estimated ceramic magnet count
- */
-function estimateCeramicCount(magnetWidthIn: number): number {
-  const magnetLength = 3.5; // Standard ceramic length
-  const gap = 0.25; // Standard gap
-  return Math.floor((magnetWidthIn + gap) / (magnetLength + gap));
+  return { capacity: 0, ceramicCount: 0, neoCount: 0 };
 }
 
 /**
@@ -295,13 +276,10 @@ export function calculate(inputs: MagneticInputs): MagneticOutputs {
   );
 
   // =========================================================================
-  // Step 4: Get Bar Capacity (from config or fallback)
+  // Step 4: Get Bar Capacity (configured bars only — D1: no estimation)
   // =========================================================================
 
-  const barCapacityInfo = getBarCapacity(
-    inputs.bar_configuration,
-    inputs.magnet_width_in
-  );
+  const barCapacityInfo = getBarCapacity(inputs.bar_configuration);
 
   // Calculate total conveyor capacity if bar config provided
   const totalConveyorCapacity = calculateConveyorTotalCapacity(

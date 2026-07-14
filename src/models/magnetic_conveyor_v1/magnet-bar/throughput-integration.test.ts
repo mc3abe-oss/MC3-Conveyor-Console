@@ -112,46 +112,36 @@ describe('getBarCapacity', () => {
       neo_count: 2,
     };
 
-    const result = getBarCapacity(barConfig, 12);
+    const result = getBarCapacity(barConfig);
 
     expect(result.capacity).toBe(0.717);
     expect(result.ceramicCount).toBe(1);
     expect(result.neoCount).toBe(2);
   });
 
-  it('should fall back to estimated ceramic count when no config', () => {
-    const result = getBarCapacity(undefined, 12);
+  // D1 ruling (2026-07-14): no estimation. With no configured bar the capacity
+  // is 0 — the calc never invents a default bar. Bar estimation is a deferred
+  // post-port feature.
+  it('should return zero capacity when no config (D1: no estimation)', () => {
+    const result = getBarCapacity(undefined);
 
-    // 12" bar fits 3 ceramic magnets
-    expect(result.ceramicCount).toBe(3);
+    expect(result.capacity).toBe(0);
+    expect(result.ceramicCount).toBe(0);
     expect(result.neoCount).toBe(0);
-    // Capacity should be close to 0.362 (3 × 0.1207)
-    expect(result.capacity).toBeCloseTo(0.362, 2);
   });
 
-  it('should fall back when bar capacity is zero', () => {
+  it('should return zero capacity when configured capacity is zero (D1)', () => {
     const barConfig: BarConfigurationInput = {
       bar_capacity_lb: 0,
       ceramic_count: 0,
       neo_count: 0,
     };
 
-    const result = getBarCapacity(barConfig, 12);
+    const result = getBarCapacity(barConfig);
 
-    // Should use fallback
-    expect(result.ceramicCount).toBe(3);
+    expect(result.capacity).toBe(0);
+    expect(result.ceramicCount).toBe(0);
     expect(result.neoCount).toBe(0);
-  });
-
-  it('should estimate correct ceramic count for different widths', () => {
-    // 12" → 3 ceramics
-    expect(getBarCapacity(undefined, 12).ceramicCount).toBe(3);
-    // 15" → 4 ceramics
-    expect(getBarCapacity(undefined, 15).ceramicCount).toBe(4);
-    // 18" → 4 ceramics (5 don't fit)
-    expect(getBarCapacity(undefined, 18).ceramicCount).toBe(4);
-    // 24" → 6 ceramics
-    expect(getBarCapacity(undefined, 24).ceramicCount).toBe(6);
   });
 });
 
@@ -217,19 +207,21 @@ describe('calculateConveyorTotalCapacity', () => {
 // ============================================================================
 
 describe('calculate() integration', () => {
-  it('should work without bar_configuration (backwards compatibility)', () => {
+  it('should compute zero chip load without bar_configuration (D1: no estimation)', () => {
     const inputs = createBasicInputs();
 
     const outputs = calculate(inputs);
 
     // Should not throw and should have valid outputs
     expect(outputs.qty_magnets).toBeGreaterThan(0);
-    expect(outputs.achieved_throughput_lbs_hr).toBeDefined();
-    expect(outputs.throughput_margin).toBeDefined();
-    // Should use fallback capacity
-    expect(outputs.bar_capacity_lb).toBeGreaterThan(0);
-    expect(outputs.bar_ceramic_count).toBeGreaterThan(0);
+    // D1 ruling: no configured bar → capacity 0, chip load 0, achieved
+    // throughput degenerates to requested (margin 1.0)
+    expect(outputs.bar_capacity_lb).toBe(0);
+    expect(outputs.bar_ceramic_count).toBe(0);
     expect(outputs.bar_neo_count).toBe(0);
+    expect(outputs.chip_load_lb).toBe(0);
+    expect(outputs.achieved_throughput_lbs_hr).toBe(500);
+    expect(outputs.throughput_margin).toBe(1.0);
   });
 
   it('should use bar_configuration when provided', () => {
@@ -248,8 +240,14 @@ describe('calculate() integration', () => {
   });
 
   it('should calculate higher throughput with Neo configuration', () => {
-    // Ceramic only
-    const ceramicInputs = createBasicInputs();
+    // Ceramic only — explicit config (D1: no config means chip 0, not a
+    // ceramic bar, so the comparison needs both bars actually configured)
+    const ceramicConfig: BarConfigurationInput = {
+      bar_capacity_lb: 0.362, // 3 ceramic, 12" bar
+      ceramic_count: 3,
+      neo_count: 0,
+    };
+    const ceramicInputs = createBasicInputs({ bar_configuration: ceramicConfig });
     const ceramicOutputs = calculate(ceramicInputs);
 
     // With Neo

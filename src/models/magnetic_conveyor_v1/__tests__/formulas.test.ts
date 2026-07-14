@@ -186,18 +186,21 @@ describe('resolveParameters', () => {
 // THROUGHPUT CALCULATION TESTS
 // ============================================================================
 
+// D1 ruling (2026-07-14): with no configured bar (capacity 0), chip load is 0,
+// achieved throughput degenerates to the requested value, and margin is 1.0.
+// The calc never invents a default bar.
 describe('calculateThroughput', () => {
-  it('should return chip load of 0 (placeholder)', () => {
+  it('should return chip load of 0 when no bar capacity (D1)', () => {
     const result = calculateThroughput(28, 30, 12, 1000);
     expect(result.chip_load_lb).toBe(0);
   });
 
-  it('should return requested throughput as achieved (placeholder)', () => {
+  it('should return requested throughput as achieved when no bar capacity (D1)', () => {
     const result = calculateThroughput(28, 30, 12, 1000);
     expect(result.achieved_throughput_lbs_hr).toBe(1000);
   });
 
-  it('should calculate margin of 1.0 (placeholder)', () => {
+  it('should calculate margin of 1.0 when no bar capacity (D1)', () => {
     const result = calculateThroughput(28, 30, 12, 1000);
     expect(result.throughput_margin).toBe(1.0);
   });
@@ -285,7 +288,7 @@ describe('calculate - Standard conveyor', () => {
       expect(result.belt_pull_gravity_lb).toBeCloseTo(68.2, 0);
     });
 
-    it('should set chip load to 0 (placeholder)', () => {
+    it('should set chip load to 0 (no bar configured — D1)', () => {
       expect(result.chip_load_lb).toBe(0);
     });
 
@@ -351,9 +354,9 @@ describe('calculate - Standard conveyor', () => {
   });
 
   describe('validation', () => {
-    it('should return throughput warning due to placeholder margin', () => {
-      // Note: The throughput calculation is a placeholder that returns margin = 1.0
-      // This triggers the "undersized for chips" warning (threshold 1.5)
+    it('should return throughput warning when no bar configured (D1)', () => {
+      // D1: no configured bar → margin degenerates to 1.0, which is below the
+      // chips threshold (1.5), so the "Undersized for chips" warning fires
       expect(result.warnings.length).toBeGreaterThanOrEqual(1);
       expect(
         result.warnings.some((w) => w.message === 'Undersized for chips')

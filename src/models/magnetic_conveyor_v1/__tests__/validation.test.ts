@@ -99,14 +99,13 @@ describe('validate - clean configuration', () => {
     expect(result.isValid).toBe(true);
   });
 
-  it('should return throughput warning due to placeholder margin', () => {
-    // Note: The throughput calculation is a placeholder that returns margin = 1.0
-    // This triggers the "undersized for chips" warning (threshold 1.5)
-    // Once real throughput calculation is implemented, this test should be updated
+  it('should return throughput warning when no bar configured (D1)', () => {
+    // D1 ruling (2026-07-14): with no configured bar the margin degenerates to
+    // 1.0, below the chips threshold (1.5), so "Undersized for chips" fires.
+    // This is the ruled contract, not a placeholder awaiting real throughput.
     const outputs = getOutputs(cleanInputs);
     const result = validate(cleanInputs, outputs);
 
-    // Expect throughput warning due to placeholder
     expect(result.warnings.length).toBeGreaterThanOrEqual(1);
     expect(
       result.warnings.some(
@@ -862,7 +861,7 @@ describe('validation - real-world scenarios', () => {
 
     expect(result.isValid).toBe(true);
     expect(result.errors).toHaveLength(0);
-    // Note: Throughput warning expected due to placeholder calculation (margin = 1.0)
+    // Note: Throughput warning expected — no bar configured, margin 1.0 (D1)
   });
 
   it('should validate Style C horizontal conveyor', () => {
